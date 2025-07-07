@@ -4,8 +4,8 @@ import yaml
 
 from diff_benchmark.dataset.generate_dataset import build_dataset
 
-with open("configuration.yaml", "r") as file:
-    config = yaml.safe_load(file)
+with open(Path(__file__).parent.parent.parent / "configuration.yml", "r") as f:
+    config = yaml.safe_load(f)
 
 df_filtered = preprocess_csv(config["csv_path"], config["target_columns"])
 

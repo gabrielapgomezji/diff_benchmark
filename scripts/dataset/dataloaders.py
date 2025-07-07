@@ -8,8 +8,8 @@ from torch.utils.data import DataLoader, Subset
 from diff_benchmark.dataset.generate_dataset import CustomDataset
 from diff_benchmark.dataset.read_save_dataset import load_dataset
 
-with open("configuration.yaml", "r") as file:
-    config = yaml.safe_load(file)
+with open(Path(__file__).parent.parent.parent / "configuration.yml", "r") as f:
+    config = yaml.safe_load(f)
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 

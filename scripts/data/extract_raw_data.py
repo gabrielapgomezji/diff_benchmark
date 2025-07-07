@@ -138,9 +138,7 @@ def main():
     base_folder = Path(expanduser(config["base_path"]))
     subjects = [p.name for p in base_folder.iterdir() if p.is_dir()]
 
-    # Parallel(n_jobs=10)(delayed(process_subject)(sub, config) for sub in subjects)
-    subjects = ["101915"]
-    Parallel(n_jobs=1)(delayed(process_subject)(sub, config) for sub in subjects)
+    Parallel(n_jobs=10)(delayed(process_subject)(sub, config) for sub in subjects)
 
 
 if __name__ == "__main__":

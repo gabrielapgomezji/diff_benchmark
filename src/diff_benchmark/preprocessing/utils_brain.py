@@ -141,7 +141,7 @@ def compute_data(
 
         subject_spheres = []
 
-        print(f"Coucou {bval}")
+        print(f"Computing bval {bval}")
 
         for _, vertex in enumerate(tqdm(data["vertex_indices"], desc=f"B={bval}")):
             signal = (

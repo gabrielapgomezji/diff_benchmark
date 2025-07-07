@@ -1,6 +1,7 @@
 import sys
 import time
 from pathlib import Path
+import yaml
 
 from diff_benchmark.preprocessing.brain_data import preprocess_subject
 
@@ -12,13 +13,16 @@ if len(sys.argv) < 2:
     raise ValueError("Please provide a subject ID as the first argument.")
 sub = sys.argv[1]
 
+with open(Path(__file__).parent.parent.parent / "configuration.yml", "r") as f:
+    config = yaml.safe_load(f)
+        
 raw_data_path = (
-    Path("/data/parietal/store2/work/ggomezji/data4projects/preprocessing/HCP900")
+    Path(config["results_path"])
     / str(sub)
     / "raw_surface_data.h5"
 )
 save_path = (
-    Path("/data/parietal/store2/work/ggomezji/data4projects/preprocessing/HCP900")
+    Path(config["results_path"])
     / str(sub)
     / "processed"
 )
