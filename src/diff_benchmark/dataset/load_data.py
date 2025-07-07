@@ -29,6 +29,7 @@ def load_embeddings_and_power_from_h5(h5_path):
 
     return embeddings, power, metadata
 
+
 # def load_input():
 #     embeddings, power, metadata = load_embeddings_and_power_from_h5("path/to/h5file.h5")
 #     imput_data = embeddings

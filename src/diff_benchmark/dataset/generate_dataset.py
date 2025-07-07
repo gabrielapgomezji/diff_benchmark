@@ -2,17 +2,34 @@ from pathlib import Path
 
 import h5py
 import numpy as np
+import torch
+from torch.utils.data import Dataset
+
 # import pandas as pd
 from tqdm import tqdm
 
 from diff_benchmark.dataset.load_data import load_embeddings_and_power_from_h5
+from diff_benchmark.dataset.read_save_dataset import save_dataset
+
+
+class CustomDataset(Dataset):
+    def __init__(self, X, y, gender):
+        self.X = torch.tensor(X, dtype=torch.float32)
+        self.y = torch.tensor(y, dtype=torch.float32)
+        self.gender = torch.tensor(gender, dtype=torch.int64)
+
+    def __len__(self):
+        return len(self.X)
+
+    def __getitem__(self, idx):
+        return self.X[idx], self.y[idx], self.gender[idx]
 
 
 def build_dataset(
     base_path,
     df_targets,
     h5_filename="mapmri_default_embeddings.h5",  # Model data. (This file is for the computed embeddings)
-    output_dataset="dataset.h5",
+    output_dataset_filename="dataset.h5",
 ):
     """
     Builds a dataset by processing subject directories and extracting embeddings and target values.
@@ -21,7 +38,7 @@ def build_dataset(
         df_targets (pd.DataFrame): Path to the CSV file containing target information for subjects.
         h5_filename (str, optional): Name of the HDF5 file containing embeddings for each subject.
             Defaults to "mapmri_default_embeddings.h5".
-        output_dataset (str, optional): Name of the output dataset file. Defaults to "dataset.h5".
+        output_dataset_filename (str, optional): Name of the output dataset file. Defaults to "dataset.h5".
     Returns:
         tuple: A tuple containing:
             - X (numpy.ndarray): Array of feature vectors extracted from embeddings.
@@ -35,6 +52,7 @@ def build_dataset(
     X = []
     y = []
     subjects_included = []
+    genders = []
 
     for subject_dir in tqdm(Path(base_path).iterdir()):
         if not subject_dir.is_dir():
@@ -67,9 +85,11 @@ def build_dataset(
                 .drop(columns=["Subject"])
                 .values.astype(float)
             )
+            gender_subject = df_targets.loc[df_targets["Subject"] == int(subject_id), "Gender"].values[0]
             X.append(features)
             y.append(target)
             subjects_included.append(subject_id)
+            genders.append(gender_subject)
 
     # --------- FILTER THE DATA ---------
     # Conditions for filtering:
@@ -80,11 +100,18 @@ def build_dataset(
     X_filtered = [X[i] for i in valid_indices]
     y_filtered = [y[i] for i in valid_indices]
     subjects_filtered = [subjects_included[i] for i in valid_indices]
+    genders_filtered = [genders[i] for i in valid_indices]
 
     X = np.stack(X_filtered)
     # X = np.stack([x.astype(np.float16) for x in X_filtered])
     y = np.stack(y_filtered).squeeze(1)
     subjects_included = subjects_filtered
-    
+    breakpoint()
+    print("Verify genders_filtered is a list likesubjects_included")
+    genders = genders_filtered
+
     # --------- SAVE DATASET TO AVOID RE-RUNNING ---------
+    save_dataset(X, y, genders, output_file=output_dataset_filename)
+    
+    # --------- SAVE SUBJECTS IN THE DATASET AND ANALYSIS ---------
     return X, y, subjects_included
