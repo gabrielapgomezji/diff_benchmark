@@ -4,6 +4,8 @@ deen_path: /data/parietal/store2/work/ggomezji/projects/graph_dmri/deen_parcella
 results_path: /data/parietal/store2/work/ggomezji/data4projects/preprocessing/HCP900/test # Path to the processed dataset
 csv_file: /data/parietal/store2/work/ggomezji/Merged_HCP_Demographics.csv
 target_columns: # Needs to be a []
+  - 'Age_in_Yrs'
+  - 'WM_Task_Acc'
 train_size: 0.8
 val_size: 0.1
 validation_size: 0.1
