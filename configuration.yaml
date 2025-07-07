@@ -1,2 +1,4 @@
+base_path: # Path to the unprocessed dataset
+results_path: # Path to save the processed dataset
 csv_file: 
 target_columns: # Needs to be a []
