@@ -7,13 +7,40 @@ authors = [
 ]
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
+dependencies = ["numpy (>=2.0.0,<2.2.10)",
+    "h5py (>=3.14.0,<4.0.0)",
+    "dipy (>=1.11.0,<2.0.0)",
+    "pathlib (>=1.0.1,<2.0.0)",
+    "nibabel (>=5.3.2,<6.0.0)",
+    "pyyaml (>=6.0.2,<7.0.0)",
+    "joblib (>=1.5.1,<2.0.0)",
+    "nilearn (>=0.12.0,<0.13.0)",
+    "networkx (>=3.5,<4.0)",
+    "pandas (>=2.3.0,<3.0.0)",
 ]
 
 [tool.poetry]
 packages = [{include = "diff_benchmark", from = "src"}]
 
 
+[tool.poetry.group.dev.dependencies]
+isort = "^6.0.1"
+black = "^25.1.0"
+pylint = "^3.3.7"
+ipykernel = "^6.29.5"
+pytest = "^8.4.1"
+
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+profile = "black"
+extend_skip_glob = ["./history/*"]
+
+[tool.pylint.master]
+fail-under = "9.50"
+
+[tool.pylint.'MESSAGES CONTROL']
+disable = "missing-module-docstring,line-too-long,too-few-public-methods"
+enable = ["useless-suppression", "use-symbolic-message-instead"]
