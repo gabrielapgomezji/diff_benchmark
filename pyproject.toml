@@ -18,6 +18,7 @@ dependencies = ["numpy (>=2.0.0,<2.2.10)",
     "networkx (>=3.5,<4.0)",
     "pandas (>=2.3.0,<3.0.0)",
     "scikit-learn (>=1.7.0,<2.0.0)",
+    "torch @ https://download.pytorch.org/whl/cu118/torch-2.3.1%2Bcu118-cp312-cp312-linux_x86_64.whl",
 ]
 
 [tool.poetry]
