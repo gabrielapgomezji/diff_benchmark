@@ -85,7 +85,9 @@ def build_dataset(
                 .drop(columns=["Subject"])
                 .values.astype(float)
             )
-            gender_subject = df_targets.loc[df_targets["Subject"] == int(subject_id), "Gender"].values[0]
+            gender_subject = df_targets.loc[
+                df_targets["Subject"] == int(subject_id), "Gender"
+            ].values[0]
             X.append(features)
             y.append(target)
             subjects_included.append(subject_id)
@@ -112,6 +114,6 @@ def build_dataset(
 
     # --------- SAVE DATASET TO AVOID RE-RUNNING ---------
     save_dataset(X, y, genders, output_file=output_dataset_filename)
-    
+
     # --------- SAVE SUBJECTS IN THE DATASET AND ANALYSIS ---------
     return X, y, subjects_included
