@@ -18,10 +18,10 @@ def process_subject(sub: str, config: dict):
         sub (str): Subject identifier.
         config (dict): Configuration dictionary containing paths and settings.
             Expected keys:
-                - "folder" (str): Base folder containing subject data.
-                - "data_folder" (str): Folder containing additional data files.
+                - "base_path" (str): Base folder containing subject data.
+                - "data_path" (str): Folder containing additional data files.
                 - "deen_left" (str): Path to left hemisphere surface labels.
-                - "save_folder" (str): Directory to save processed data.
+                - "results_path" (str): Directory to save processed data.
 
     Returns:
         None: The function saves processed data to an HDF5 file and skips processing
@@ -30,16 +30,16 @@ def process_subject(sub: str, config: dict):
     Raises:
         Exception: If any error occurs during processing, it is caught and logged.
     """
-    folder = Path(expanduser(config["folder"]))
-    data_folder = Path(config["data_folder"])
+    folder = Path(expanduser(config["base_path"]))
+    data_folder = Path(config["data_path"])
     diffusion_folder = folder / sub / "T1w" / "Diffusion"
     surface_folder = folder / sub / "T1w" / "fsaverage_LR32k"
     ribbon_path = folder / sub / "MNINonLinear" / "ribbon.nii.gz"
     surface_left_pial = surface_folder / f"{sub}.L.pial_MSMAll.32k_fs_LR.surf.gii"
     surface_left_white = surface_folder / f"{sub}.L.white_MSMAll.32k_fs_LR.surf.gii"
     surface_left = surface_folder / f"{sub}.L.midthickness_MSMAll.32k_fs_LR.surf.gii"
-    deen_left = Path(expanduser(config["deen_left"]))
-    save_dir = Path(config["save_folder"]) / sub
+    deen_left = Path(expanduser(config["deen_path"]))
+    save_dir = Path(config["results_path"]) / sub
     raw_data_output = save_dir / "raw_surface_data.h5"
 
     # Skip if output already exists
@@ -133,11 +133,14 @@ def main():
         - joblib.Parallel and joblib.delayed: For parallel processing.
     """
 
-    config = yaml.safe_load(open("scripts/configuration.yml"))
-    base_folder = Path(expanduser(config["folder"]))
+    with open("configuration.yaml", "r") as file:
+        config = yaml.safe_load(file)
+    base_folder = Path(expanduser(config["base_path"]))
     subjects = [p.name for p in base_folder.iterdir() if p.is_dir()]
 
-    Parallel(n_jobs=10)(delayed(process_subject)(sub, config) for sub in subjects)
+    # Parallel(n_jobs=10)(delayed(process_subject)(sub, config) for sub in subjects)
+    subjects = ["101915"]
+    Parallel(n_jobs=1)(delayed(process_subject)(sub, config) for sub in subjects)
 
 
 if __name__ == "__main__":
