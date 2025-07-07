@@ -1,14 +1,35 @@
-import h5py
-from pathlib import Path
-import yaml
 from os.path import expanduser
-import numpy as np
+from pathlib import Path
+
+import h5py
 import nibabel as nib
-from dipy.core.gradients import gradient_table
-from nilearn import surface
+import numpy as np
+import yaml
+
+# from dipy.core.gradients import gradient_table
 from joblib import Parallel, delayed
+from nilearn import surface
+
 
 def process_subject(sub: str, config: dict):
+    """Processes diffusion-weighted imaging (DWI) data for a given subject by projecting
+    the volumetric data onto the cortical surface and saving the results in HDF5 format.
+    Args:
+        sub (str): Subject identifier.
+        config (dict): Configuration dictionary containing paths and settings.
+            Expected keys:
+                - "folder" (str): Base folder containing subject data.
+                - "data_folder" (str): Folder containing additional data files.
+                - "deen_left" (str): Path to left hemisphere surface labels.
+                - "save_folder" (str): Directory to save processed data.
+
+    Returns:
+        None: The function saves processed data to an HDF5 file and skips processing
+        if the output file already exists or required files are missing.
+
+    Raises:
+        Exception: If any error occurs during processing, it is caught and logged.
+    """
     folder = Path(expanduser(config["folder"]))
     data_folder = Path(config["data_folder"])
     diffusion_folder = folder / sub / "T1w" / "Diffusion"
@@ -20,7 +41,7 @@ def process_subject(sub: str, config: dict):
     deen_left = Path(expanduser(config["deen_left"]))
     save_dir = Path(config["save_folder"]) / sub
     raw_data_output = save_dir / "raw_surface_data.h5"
-    
+
     # Skip if output already exists
     if raw_data_output.exists():
         print(f"[{sub}] Skipped (already processed)")
@@ -32,9 +53,15 @@ def process_subject(sub: str, config: dict):
     bvecs_path = diffusion_folder / "bvecs"
     bvals_path = diffusion_folder / "bvals"
     required_files = [
-        ribbon_path, surface_left_pial, surface_left_white,
-        surface_left, mask_path, dwi_path, bvecs_path,
-        bvals_path, deen_left
+        ribbon_path,
+        surface_left_pial,
+        surface_left_white,
+        surface_left,
+        mask_path,
+        dwi_path,
+        bvecs_path,
+        bvals_path,
+        deen_left,
     ]
     if not all(f.exists() for f in required_files):
         print(f"[{sub}] Skipped (missing required file)")
@@ -45,7 +72,7 @@ def process_subject(sub: str, config: dict):
         dwi = nib.load(dwi_path)
         bvecs = np.loadtxt(bvecs_path)
         bvals = np.loadtxt(bvals_path)
-        gtab = gradient_table(bvals=bvals, bvecs=bvecs)
+        # gtab = gradient_table(bvals=bvals, bvecs=bvecs) # UNUSED VARIABLE
 
         image = nib.load(mask_path)
         _ = image.get_fdata()  # If you need this later, assign it
@@ -83,12 +110,35 @@ def process_subject(sub: str, config: dict):
     except Exception as e:
         print(f"[{sub}] Failed with error: {e}")
 
+
 def main():
+    """
+    Main function to extract and process raw data for multiple subjects in parallel.
+    This function reads configuration settings from a YAML file, identifies subject folders
+    within a specified base directory, and processes each subject using parallel processing.
+    Steps:
+    1. Load configuration settings from 'scripts/configuration.yml'.
+    2. Determine the base folder path and expand it to an absolute path.
+    3. Identify all subject directories within the base folder.
+    4. Process each subject in parallel using the `process_subject` function.
+    Note:
+    - The number of parallel jobs is set to 10.
+    - Ensure the configuration file and subject directories exist before running this function.
+    Raises:
+        FileNotFoundError: If the configuration file or base folder does not exist.
+        KeyError: If the 'folder' key is missing in the configuration file.
+    Dependencies:
+        - yaml: For loading the configuration file.
+        - pathlib.Path: For handling file paths.
+        - joblib.Parallel and joblib.delayed: For parallel processing.
+    """
+
     config = yaml.safe_load(open("scripts/configuration.yml"))
     base_folder = Path(expanduser(config["folder"]))
     subjects = [p.name for p in base_folder.iterdir() if p.is_dir()]
-    
+
     Parallel(n_jobs=10)(delayed(process_subject)(sub, config) for sub in subjects)
+
 
 if __name__ == "__main__":
     main()
