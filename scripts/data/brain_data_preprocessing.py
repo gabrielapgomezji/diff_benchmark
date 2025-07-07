@@ -13,7 +13,7 @@ if len(sys.argv) < 2:
     raise ValueError("Please provide a subject ID as the first argument.")
 sub = sys.argv[1]
 
-with open(Path(__file__).parent.parent.parent / "configuration.yml", "r") as f:
+with open(Path(__file__).parent.parent.parent / "configuration.yaml", "r") as f:
     config = yaml.safe_load(f)
         
 raw_data_path = (

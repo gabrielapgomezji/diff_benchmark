@@ -133,8 +133,8 @@ def main():
         - joblib.Parallel and joblib.delayed: For parallel processing.
     """
 
-    with open("configuration.yaml", "r") as file:
-        config = yaml.safe_load(file)
+    with open(Path(__file__).parent.parent.parent / "configuration.yaml", "r") as f:
+        config = yaml.safe_load(f)
     base_folder = Path(expanduser(config["base_path"]))
     subjects = [p.name for p in base_folder.iterdir() if p.is_dir()]
 
