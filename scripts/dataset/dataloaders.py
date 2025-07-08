@@ -8,22 +8,13 @@ from torch.utils.data import DataLoader, Subset
 from diff_benchmark.dataset.generate_dataset import CustomDataset
 from diff_benchmark.dataset.read_save_dataset import load_dataset
 
-with open(Path(__file__).parent.parent.parent / "configuration.yml", "r") as f:
+with open(Path(__file__).parent.parent.parent / "configuration.yaml", "r") as f:
     config = yaml.safe_load(f)
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # ---------- LOAD DATASET ----------
-X, y, gender = load_dataset(Path(config["results_path"]) / "datasets" / "dataset.h5")
-# ##########
-# import numpy as np
-
-# num_samples = 1000
-# num_features = 20
-# X = np.random.randn(num_samples, num_features)
-# y = np.random.randint(0, 2, size=num_samples)
-# gender = np.random.randint(0, 2, size=num_samples)
-# ##########
+X, y, gender = load_dataset(Path(config["results_path_2"]) / "datasets" / "dataset.h5")
 
 skf = StratifiedKFold(
     n_splits=config["n_splits"], shuffle=True, random_state=config["random_state"]
@@ -36,7 +27,6 @@ dataset = CustomDataset(X, y, gender)
 # --------- BALANCED SPLIT IN TRAIN, VALIDATION AND TEST ---------
 for fold_idx, (trainval_idx, test_idx) in enumerate(folds):
     print(f"\nFold {fold_idx + 1}/{config["n_splits"]}")
-
     # Stratified split of trainval into train and val
     train_idx, val_idx = train_test_split(
         trainval_idx,
