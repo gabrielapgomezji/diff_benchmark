@@ -10,6 +10,7 @@ from tqdm import tqdm
 
 from diff_benchmark.dataset.load_data import load_embeddings_and_power_from_h5
 from diff_benchmark.dataset.read_save_dataset import save_dataset
+from diff_benchmark.dataset.utils_dataset import is_valid_embedding
 
 
 class CustomDataset(Dataset):
@@ -108,8 +109,6 @@ def build_dataset(
     # X = np.stack([x.astype(np.float16) for x in X_filtered])
     y = np.stack(y_filtered).squeeze(1)
     subjects_included = subjects_filtered
-    breakpoint()
-    print("Verify genders_filtered is a list likesubjects_included")
     genders = genders_filtered
 
     # --------- SAVE DATASET TO AVOID RE-RUNNING ---------
