@@ -17,8 +17,8 @@ def preprocess_csv(csv_path: str, target_columns: np.ndarray):
     csv_path = Path(csv_path)
     df_targets = pd.read_csv(csv_path, index_col=0)
     df_targets = df_targets.loc[:, ["Subject"] + target_columns]
-    
+
     if "Gender" in df_targets.columns:
         df_targets["Gender"] = df_targets["Gender"].map({"M": 1, "F": 0})
-        
+
     return df_targets
