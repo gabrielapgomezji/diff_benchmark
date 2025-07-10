@@ -4,9 +4,9 @@ deen_path: /data/parietal/store2/work/ggomezji/projects/graph_dmri/deen_parcella
 results_path: /data/parietal/store2/work/ggomezji/data4projects/preprocessing/HCP900 # Path to the processed dataset
 results_path_2: /data/parietal/store3/work/ggomezji/benchmark # Path to temporary storage of data
 csv_file: /data/parietal/store2/work/ggomezji/Merged_HCP_Demographics.csv
-target_columns: # Needs to be a []
-  - 'Age_in_Yrs'
-  - 'WM_Task_Acc'
+target_columns:
+  # - 'Age_in_Yrs'
+  # - 'WM_Task_Acc'
   - 'Gender'
 train_size: 0.8
 val_size: 0.1
@@ -16,5 +16,12 @@ random_state: 42
 batch_size: 32
 num_epochs: 100
 n_components: 2
-model_name: cca
+model_name: dummy_classifier
 debugging_analysis: True # True or False
+## MLP CLASSIFIER
+input_dim: config["input_dim"],
+hidden_layers: [128, 64]
+output_dim: 1
+learning_rate: 1e-3
+dropout_rate: 0.2
+epochs: 100

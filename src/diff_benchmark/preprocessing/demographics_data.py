@@ -20,7 +20,7 @@ def preprocess_csv(csv_path: str, target_columns: np.ndarray):
 
     if "Gender" in df_targets.columns:
         df_targets["Gender"] = df_targets["Gender"].map({"M": 1, "F": 0})
-
-    df_targets = df_targets.dropna(subset=target_columns.tolist())
+        
+    df_targets = df_targets.dropna(subset=target_columns)
     
     return df_targets
