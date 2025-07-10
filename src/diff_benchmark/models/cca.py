@@ -58,8 +58,9 @@ class CanonicalCorrelationRegressor:
 
         return y_pred
 
-    def score(self, dataloader):
-        _, y_true = self._dataloader_to_numpy(dataloader)
-        y_pred = self.predict(dataloader)
-        mse = np.mean((y_true - y_pred) ** 2)
-        return mse  # return negative MSE
+    # SHOULD NOT BE INSIDE THE MODEL
+    # def score(self, dataloader):
+    #     _, y_true = self._dataloader_to_numpy(dataloader)
+    #     y_pred = self.predict(dataloader)
+    #     mse = np.mean((y_true - y_pred) ** 2)
+    #     return mse  # return negative MSE
