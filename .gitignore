@@ -1,4 +1,5 @@
 poetry.lock
+scripts/example.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
