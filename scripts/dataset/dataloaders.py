@@ -9,6 +9,7 @@ from diff_benchmark.analysis.save_results import save_fold_results, save_summary
 from diff_benchmark.dataset.generate_dataset import CustomDataset
 from diff_benchmark.dataset.read_save_dataset import load_dataset
 from diff_benchmark.models.model_configurations import get_model
+from diff_benchmark.scores.scores import mse_score
 
 with open(Path(__file__).parent.parent.parent / "configuration.yaml", "r") as f:
     config = yaml.safe_load(f)
@@ -26,7 +27,7 @@ skf = StratifiedKFold(
 folds = list(skf.split(X, gender))
 
 X_test = X.mean(-1).mean(-2)
-y_test = y[:, [0, 2]]
+y_test = y[:, 2]
 dataset = CustomDataset(X_test, y_test, gender)
 # dataset = CustomDataset(X, y, gender)
 
@@ -52,33 +53,25 @@ for fold_idx, (train_idx, test_idx) in enumerate(folds):
         test_dataset, batch_size=config["batch_size"], shuffle=False
     )
 
-    # model = CanonicalCorrelationRegressor(n_components=config["n_components"])
     model = get_model(config["model_name"], config)
 
     # --------- Train / Val / Test Model ---------
     print("Training...")
-    # for X_batch, y_batch, _ in train_loader:
-    #     X_batch, y_batch = X_batch.to(DEVICE), y_batch.to(DEVICE)
-
     model.fit(train_loader)
     train_pred = model.predict(train_loader)
-    train_score = model.score(train_loader)
     _, train_tgt = model._dataloader_to_numpy(train_loader)
-    print(model.score(train_loader))
+    train_score = mse_score(train_tgt, train_pred)
+    print(train_score)
 
     train_scores.append(train_score)
     train_preds.append(train_pred.tolist())
     train_targets.append(train_tgt.tolist())
 
     print("Testing...")
-    # with torch.no_grad():
-    #     for X_batch, y_batch, _ in test_loader:
-    #         X_batch, y_batch = X_batch.to(DEVICE), y_batch.to(DEVICE)
-
     test_pred = model.predict(test_loader)
-    test_score = model.score(test_loader)
     _, test_tgt = model._dataloader_to_numpy(test_loader)
-    print(model.score(test_loader))
+    test_score = mse_score(test_tgt, test_pred)
+    print(test_score)
 
     test_scores.append(test_score)
     test_preds.append(test_pred.tolist())
@@ -89,17 +82,18 @@ for fold_idx, (train_idx, test_idx) in enumerate(folds):
     # --------- SAVE RESULTS ---------
     if DEBUG:
         per_fold_results.append(
-            {
+            {   
+                "model": config["model_name"], 
                 "fold": fold_idx,
                 "train": {
-                    "score": train_score,
+                    "score": float(train_score),
                     "predictions": train_pred.tolist(),
-                    # "targets": train_tgt.tolist()
+                    "targets": train_tgt.tolist()
                 },
                 "test": {
-                    "score": test_score,
+                    "score": float(test_score),
                     "predictions": test_pred.tolist(),
-                    # "targets": test_tgt.tolist()
+                    "targets": test_tgt.tolist()
                 },
             }
         )
@@ -112,13 +106,13 @@ if DEBUG:
         output_dir=Path(config["results_path_2"]) / "analysis_results",
     )
 
-save_summary_results(
-    model_name=config["model_name"],
-    train_scores=train_scores,
-    test_scores=test_scores,
-    train_preds=train_preds,
-    test_preds=test_preds,
-    train_targets=train_targets,
-    test_targets=test_targets,
-    output_dir=Path(config["results_path_2"]) / "analysis_results",
-)
+# save_summary_results(
+#     model_name=config["model_name"],
+#     train_scores=train_scores,
+#     test_scores=test_scores,
+#     train_preds=train_preds,
+#     test_preds=test_preds,
+#     train_targets=train_targets,
+#     test_targets=test_targets,
+#     output_dir=Path(config["results_path_2"]) / "analysis_results",
+# )

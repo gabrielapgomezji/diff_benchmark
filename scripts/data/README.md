@@ -20,20 +20,23 @@ For each subject, and in parallel, the script:
 
 **Configuration requirements in comfiguration.yml file:**
 
-base_path: "~/data/HCP"         # Root directory containing subject folders
-data_path: "~/data/masks"       # Directory with subject-specific mask files
-deen_path: "~/data/labels/deen.L.label.gii"  # Path to left hemisphere surface labels
-results_path: "~/processed_data"            # Output directory for processed files
+`base_path: "~/data/HCP"`        # Root directory containing subject folders
+
+`data_path: "~/data/masks"`       # Directory with subject-specific mask files
+
+`deen_path: "~/data/labels/deen.L.label.gii"`  # Path to left hemisphere surface labels
+
+`results_path: "~/processed_data"`            # Output directory for processed files
 
 
 **Python requirements:**
 
-pip install numpy nibabel nilearn h5py pyyaml joblib
+`pip install numpy nibabel nilearn h5py pyyaml joblib`
 
 
 How to run the code (considering you are in the directory of the project):
 
-poetry run python scripts/data/extract_raw_data.py
+`poetry run python scripts/data/extract_raw_data.py`
 
 
 **Output:**
