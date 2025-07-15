@@ -1,6 +1,7 @@
+n_jobs: 10
 base_path: /data/parietal/store4/data/HCP # Path to the unprocessed dataset
 data_path: /data/parietal/store2/work/ggomezji/HCP900 # Path to the mask data (processed)
-deen_path: /data/parietal/store2/work/ggomezji/projects/graph_dmri/deen_parcellation_left.func.gii
+deen_path: /data/parietal/store2/work/ggomezji/projects/graph_dmri/deen_parcellation_left.func.gii # Path to the ROI to analyse
 results_path: /data/parietal/store2/work/ggomezji/data4projects/preprocessing/HCP900 # Path to the processed dataset
 results_path_2: /data/parietal/store3/work/ggomezji/benchmark # Path to temporary storage of data
 csv_file: /data/parietal/store2/work/ggomezji/Merged_HCP_Demographics.csv
