@@ -5,10 +5,10 @@ from pathlib import Path
 from nilearn import surface
 from os.path import expanduser
 
-from diff_benchmark.raw_data.base import RawDataProcessor
+from diff_benchmark.raw_data.base import RawDataProcessor, RawSubjectInfo
 
-class DWIProcessor(RawDataProcessor):
-    def save_subject_info(self, sub: str):
+class DWIProcessor(RawDataProcessor):    
+    def save_subject_info(self, sub):
         # You can implement saving subject-level metadata here
         print(f"[{sub}] Subject info saved (stub)")
 
