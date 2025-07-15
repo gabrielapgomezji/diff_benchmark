@@ -14,6 +14,45 @@ from diff_benchmark.dataset.utils_dataset import is_valid_embedding
 
 
 class CustomDataset(Dataset):
+
+    def __init__(self, list_path_subjects):
+        self.list_subjects = list_path_subjects
+
+    def __len__(self):
+        return len(self.list_subjects)
+    
+    def __getitem__(self, idx):
+        # load self.list_path_subjects[idx]
+
+
+
+# When you define a torch dataset; you have two options
+# 1. You build a tensor that contains all your data, and then you simply return data[idx] when you need index idx -> method you're using right now
+# Advantages: the data is already loaded into memory so it's fast, and it's simple
+# Inconvenients: when the data is too heavy for the memory (on ram), can't be done
+# 2. When you're asked to load index idx, you load the corresponding file into memory and you return it
+# Advantage: very low memory consumption
+# Inconvenient: slow because you need to load data everytime you need it
+
+
+class PreprocessedData:
+
+    def __init__(self, config):
+
+        
+        if config["mode"] == "all":
+            self.X, self.y = self.build_dataset()
+            self.mode = "all"
+
+
+
+    def build_dataset
+    
+    def get_folds_as_dataloaders
+    
+
+
+class CustomDataset(Dataset):
     def __init__(self, X, y, gender):
         self.X = torch.tensor(X, dtype=torch.float32)
         self.y = torch.tensor(y, dtype=torch.float32)
