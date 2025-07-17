@@ -155,13 +155,6 @@ def plot_folds_predictions_vs_targets(summary_path: Path, output_dir: Path):
             )
 
         # Identity line
-        # all_preds = [
-        #     np.array(f["train"]["predictions"])[:, feat_idx] for f in fold_results
-        # ] + [
-        #     np.array(f["test"]["predictions"])[:, feat_idx] for f in fold_results
-        # ]
-        # all_vals = np.concatenate(all_preds)
-        # min_val, max_val = all_vals.min(), all_vals.max()
         min_val = min(train_target_vals.min(), test_target_vals.min())
         max_val = max(train_target_vals.max(), test_target_vals.max())
 
