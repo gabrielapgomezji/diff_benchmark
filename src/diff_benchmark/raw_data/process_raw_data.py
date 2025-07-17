@@ -5,7 +5,7 @@ from pathlib import Path
 from nilearn import surface
 from os.path import expanduser
 
-from diff_benchmark.raw_data.base import RawDataProcessor, RawSubjectInfo
+from diff_benchmark.raw_data.base import RawDataProcessor
 
 class DWIProcessor(RawDataProcessor):    
     def save_subject_info(self, sub):

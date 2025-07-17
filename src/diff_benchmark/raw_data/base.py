@@ -32,7 +32,7 @@ class RawDataProcessor(ABC):
         """Entry point for full raw data processing for a subject."""
         # if self.check_required_files(sub):
         self.project_dwi_to_cortex(sub)
-        self.save_subject_info(data)
+        # self.save_subject_info(sub)
     
     def run_parallel(self):
         base_folder = Path(self.config["base_path"])
