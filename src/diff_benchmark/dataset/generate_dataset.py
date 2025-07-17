@@ -1,118 +1,288 @@
 from pathlib import Path
 
-import h5py
 import numpy as np
 import torch
+from joblib import Parallel, delayed
 from torch.utils.data import Dataset
 
 # import pandas as pd
 from tqdm import tqdm
 
-from diff_benchmark.dataset.load_data import load_embeddings_and_power_from_h5
+from diff_benchmark.dataset.base import DatasetBuilder
 from diff_benchmark.dataset.read_save_dataset import save_dataset
-from diff_benchmark.dataset.utils_dataset import is_valid_embedding
+
+# class CustomDataset(Dataset):
+
+#     def __init__(self, list_path_subjects):
+#         self.list_subjects = list_path_subjects
+
+#     def __len__(self):
+#         return len(self.list_subjects)
+
+#     def __getitem__(self, idx):
+#         # load self.list_path_subjects[idx]
+
+
+# When you define a torch dataset; you have two options
+# 1. You build a tensor that contains all your data, and then you simply return data[idx] when you need index idx -> method you're using right now
+# Advantages: the data is already loaded into memory so it's fast, and it's simple
+# Inconvenients: when the data is too heavy for the memory (on ram), can't be done
+# 2. When you're asked to load index idx, you load the corresponding file into memory and you return it
+# Advantage: very low memory consumption
+# Inconvenient: slow because you need to load data everytime you need it
+
+
+class PreprocessedData:
+    """
+    PreprocessedData is a class for handling and processing datasets for machine learning tasks.
+    Attributes:
+        X (any): The features of the dataset.
+        y (any): The labels of the dataset.
+        mode (str): The mode of dataset processing, e.g., "all".
+    Methods:
+        build_dataset(): Constructs the dataset based on the provided configuration.
+        get_folds_as_dataloaders(): Retrieves the dataset folds as dataloaders for training and validation.
+    """
+
+    def __init__(self, config):
+
+        if config["mode"] == "all":
+            self.X, self.y = self.build_dataset()
+            self.mode = "all"
+
+    def build_dataset(self):
+        """
+        Builds the dataset for the project.
+        This method is responsible for generating and preparing the dataset
+        needed for the benchmarking process. It may involve loading data,
+        processing it, and saving it in the required format.
+        Currently, this method is not implemented.
+        """
+
+        pass
+
+    def get_folds_as_dataloaders(self):
+        """
+        Retrieves the dataset folds as PyTorch DataLoader instances.
+        This method is intended to be implemented to generate and return
+        DataLoader objects for each fold of the dataset, which can be used
+        for training and validation in a machine learning context.
+        Returns:
+            List[DataLoader]: A list of DataLoader instances, each corresponding
+            to a different fold of the dataset.
+        """
+
+        pass
 
 
 class CustomDataset(Dataset):
     def __init__(self, X, y, gender):
+        """
+        Initializes the dataset object with features, labels, and gender information.
+        Parameters:
+            X (array-like): The input features for the dataset.
+            y (array-like): The target labels for the dataset.
+            gender (array-like): The gender information associated with each sample.
+        Attributes:
+            X (torch.Tensor): A tensor representation of the input features.
+            y (torch.Tensor): A tensor representation of the target labels.
+            gender (torch.Tensor): A tensor representation of the gender information.
+        """
+
         self.X = torch.tensor(X, dtype=torch.float32)
         self.y = torch.tensor(y, dtype=torch.float32)
         self.gender = torch.tensor(gender, dtype=torch.int64)
 
     def __len__(self):
+        """
+        Returns the number of elements in the dataset.
+        This method overrides the built-in __len__ method to provide the length
+        of the dataset, which is determined by the number of samples in the
+        attribute `self.X`.
+        Returns:
+            int: The number of samples in the dataset.
+        """
+
         return len(self.X)
 
     def __getitem__(self, idx):
+        """
+        Retrieve a single data sample from the dataset.
+        Args:
+            idx (int): The index of the data sample to retrieve.
+        Returns:
+            tuple: A tuple containing the features (self.X[idx]),
+                   the target variable (self.y[idx]),
+                   and the gender information (self.gender[idx])
+                   corresponding to the specified index.
+        """
+
         return self.X[idx], self.y[idx], self.gender[idx]
 
 
-def build_dataset(
-    base_path,
-    df_targets,
-    h5_filename="mapmri_default_embeddings.h5",  # Model data. (This file is for the computed embeddings)
-    output_dataset_filename="dataset.h5",
-):
-    """
-    Builds a dataset by processing subject directories and extracting embeddings and target values.
-    Args:
-        base_path (Path): Path to the base directory containing subject subdirectories.
-        df_targets (pd.DataFrame): Path to the CSV file containing target information for subjects.
-        h5_filename (str, optional): Name of the HDF5 file containing embeddings for each subject.
-            Defaults to "mapmri_default_embeddings.h5".
-        output_dataset_filename (str, optional): Name of the output dataset file. Defaults to "dataset.h5".
-    Returns:
-        tuple: A tuple containing:
-            - X (numpy.ndarray): Array of feature vectors extracted from embeddings.
-            - y (numpy.ndarray): Array of target values corresponding to the subjects.
-            - subjects_included (list): List of subject IDs included in the dataset.
-    Notes:
-        - The function filters subjects based on the existence of the HDF5 file and the validity of embeddings.
-        - Embeddings are concatenated into feature vectors, and targets are extracted from the provided CSV file.
-        - Only subjects with embeddings matching the desired shape are included in the final dataset.
-    """
-    X = []
-    y = []
-    subjects_included = []
-    genders = []
+class CustomDatasetBuilder(DatasetBuilder):
+    def __init__(
+        self,
+        base_path,
+        loading_strategy,
+        df_targets,
+        h5_filename="mapmri_default_embeddings.h5",
+        output_dataset_filename="dataset.h5",
+    ):
+        """
+        Initializes the dataset generator.
+        Parameters:
+            base_path (str): The base path for the dataset.
+            loading_strategy (str): The strategy to use for loading the dataset.
+            df_targets (DataFrame): The DataFrame containing target values.
+            h5_filename (str, optional): The name of the HDF5 file for embeddings. Defaults to "mapmri_default_embeddings.h5".
+            output_dataset_filename (str, optional): The name of the output dataset file. Defaults to "dataset.h5".
+        """
+        super().__init__(base_path, h5_filename, output_dataset_filename)
+        self.df_targets = df_targets
+        self.strategy = loading_strategy
 
-    for subject_dir in tqdm(Path(base_path).iterdir()):
-        if not subject_dir.is_dir():
-            continue
+    def verify_files(self, subject_dir: Path) -> bool:
+        """
+        Verifies the existence of a specific HDF5 file and checks if the subject directory name is present in the DataFrame of targets.
+        Args:
+            subject_dir (Path): The directory path of the subject to verify.
+        Returns:
+            bool: True if the HDF5 file exists and the subject directory name is in the DataFrame, False otherwise.
+        """
 
-        # --------- GET THE INPUT DATA ---------
+        h5_path = subject_dir / "processed" / self.h5_filename
+
+        return (
+            h5_path.exists()
+            and int(subject_dir.name) in self.df_targets["Subject"].astype(int).tolist()
+        )
+
+    def filter_features(self, features) -> bool:
+        """
+        Filters features based on their shape.
+        This method checks if the number of columns in the features array
+        is equal to 536. It returns True if the condition is met,
+        indicating that the features are valid, and False otherwise.
+        Args:
+            features (numpy.ndarray): The input features to be checked.
+        Returns:
+            bool: True if the number of columns is 536, False otherwise.
+        """
+
+        return features.shape[1] == 536
+
+    def extract_information(self, subject_dir: Path):
+        """
+        Extracts information from the dataset for a given subject directory.
+        Args:
+            subject_dir (Path): The path to the subject directory containing the dataset.
+        Returns:
+            tuple: A tuple containing the extracted features, target values, subject ID, and gender of the subject.
+                   Returns None if data loading fails, if the data is invalid, or if the subject ID is not found in the targets.
+        Raises:
+            Exception: If there is an error loading the data from the specified h5_path.
+        """
+
         subject_id = subject_dir.name
-        h5_path = subject_dir / "processed" / h5_filename
-
-        if not h5_path.exists():
-            continue
+        h5_path = subject_dir / "processed" / self.h5_filename
 
         try:
-            embeddings, power, metadata = load_embeddings_and_power_from_h5(h5_path)
-            if not is_valid_embedding(embeddings):
-                continue
+            data = self.strategy.load_data(h5_path)
+            if not self.strategy.is_valid(data):
+                return None
         except Exception as e:
-            print(f"Failed to process subject {subject_id}: {e}")
-            continue
+            print(f"Failed to load data for subject {subject_id}: {e}")
+            return None
 
-        # Optional: flatten or format embeddings/power into feature vector
-        features = np.concatenate(
-            [v for v in embeddings.values()]
-        )  # + [power.flatten()])
+        features = self.strategy.to_features(data)
 
-        # --------- GET THE DEMOGRAPHICS TARGETS ---------
-        if int(subject_id) in df_targets["Subject"].astype(int).tolist():
-            target = (
-                df_targets.loc[df_targets["Subject"] == int(subject_id)]
-                .drop(columns=["Subject"])
-                .values.astype(float)
+        if int(subject_id) not in self.df_targets["Subject"].astype(int).tolist():
+            return None
+
+        target = (
+            self.df_targets.loc[self.df_targets["Subject"] == int(subject_id)]
+            .drop(columns=["Subject"])
+            .values.astype(float)
+        )
+
+        gender_subject = self.df_targets.loc[
+            self.df_targets["Subject"] == int(subject_id), "Gender"
+        ].values[0]
+
+        return features, target, subject_id, gender_subject
+
+    def save_dataset(self, X, y, genders):
+        """
+        Saves the dataset to a specified output file.
+        Parameters:
+            X (array-like): The input features of the dataset.
+            y (array-like): The target labels corresponding to the input features.
+            genders (array-like): The gender information associated with the dataset.
+        This method calls the save_dataset function to write the dataset to the
+        output file defined by self.output_dataset_filename.
+        """
+
+        save_dataset(X, y, genders, output_file=self.output_dataset_filename)
+
+    def create_dataset(self, n_jobs=8):
+        """
+        Creates a dataset by processing subject directories in parallel.
+        This method iterates through subject directories in the base path, extracts
+        features and targets from the files, filters the features, and stacks the
+        results into arrays. It utilizes parallel processing to speed up the
+        information extraction.
+        Parameters:
+            n_jobs (int): The number of jobs to run in parallel. Default is 8.
+        Returns:
+            tuple: A tuple containing:
+                - X (np.ndarray): Stacked features array.
+                - y (np.ndarray): Stacked targets array.
+                - subject_ids (list): List of subject IDs.
+                - genders (list): List of genders.
+        Raises:
+            Exception: If there is an error stacking the arrays.
+            None: If no valid data is found or if an error occurs during processing.
+        """
+
+        subject_dirs = [
+            d for d in self.base_path.iterdir() if d.is_dir() and self.verify_files(d)
+        ]
+
+        print(f"Processing {len(subject_dirs)} subjects in parallel...")
+
+        def process(subject_dir):
+            result = self.extract_information(subject_dir)
+            if result is None:
+                return None
+            features, target, subject_id, gender = result
+            if not self.filter_features(features):
+                return None
+            return features, target, subject_id, gender
+
+        results = Parallel(n_jobs=n_jobs)(
+            delayed(process)(d) for d in tqdm(subject_dirs)
+        )
+
+        # Filter out failed entries
+        results = [r for r in results if r is not None]
+
+        if not results:
+            print("No valid data found.")
+            return None
+
+        features_list, targets_list, subject_ids, genders = zip(*results)
+
+        try:
+            X = np.stack(features_list)
+            y = (
+                np.stack(targets_list).squeeze(1)
+                if targets_list[0].ndim == 2 and targets_list[0].shape[1] == 1
+                else np.stack(targets_list)
             )
-            gender_subject = df_targets.loc[
-                df_targets["Subject"] == int(subject_id), "Gender"
-            ].values[0]
-            X.append(features)
-            y.append(target)
-            subjects_included.append(subject_id)
-            genders.append(gender_subject)
+        except Exception as e:
+            print(f"Error stacking arrays: {e}")
+            return None
 
-    # --------- FILTER THE DATA ---------
-    # Conditions for filtering:
-    desired_shape = (3, 536, 10000)
-    # Filter out subjects whose embeddings do not match the desired shape
-    valid_indices = [i for i, x in enumerate(X) if x.shape == desired_shape]
-    # Filter out subjects whose targets are not valid
-    X_filtered = [X[i] for i in valid_indices]
-    y_filtered = [y[i] for i in valid_indices]
-    subjects_filtered = [subjects_included[i] for i in valid_indices]
-    genders_filtered = [genders[i] for i in valid_indices]
-
-    X = np.stack(X_filtered)
-    # X = np.stack([x.astype(np.float16) for x in X_filtered])
-    y = np.stack(y_filtered).squeeze(1)
-    subjects_included = subjects_filtered
-    genders = genders_filtered
-
-    # --------- SAVE DATASET TO AVOID RE-RUNNING ---------
-    save_dataset(X, y, genders, output_file=output_dataset_filename)
-
-    # --------- SAVE SUBJECTS IN THE DATASET AND ANALYSIS ---------
-    return X, y, subjects_included
+        self.save_dataset(X, y, genders)
+        return X, y, subject_ids, genders

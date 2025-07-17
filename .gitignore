@@ -1,5 +1,9 @@
 poetry.lock
 scripts/example.py
+.vscode/
+configuration.yaml
+example.py
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -82,18 +82,18 @@ for fold_idx, (train_idx, test_idx) in enumerate(folds):
     # --------- SAVE RESULTS ---------
     if DEBUG:
         per_fold_results.append(
-            {   
-                "model": config["model_name"], 
+            {
+                "model": config["model_name"],
                 "fold": fold_idx,
                 "train": {
                     "score": float(train_score),
                     "predictions": train_pred.tolist(),
-                    "targets": train_tgt.tolist()
+                    "targets": train_tgt.tolist(),
                 },
                 "test": {
                     "score": float(test_score),
                     "predictions": test_pred.tolist(),
-                    "targets": test_tgt.tolist()
+                    "targets": test_tgt.tolist(),
                 },
             }
         )

@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 import plotly.graph_objects as go
 from sklearn.metrics import mean_squared_error
+
 from diff_benchmark.scores.scores import mse_score
 
 
@@ -117,7 +118,7 @@ def plot_folds_predictions_vs_targets(summary_path: Path, output_dir: Path):
 
             train_targets = np.array(fold_data["train"]["targets"])
             test_targets = np.array(fold_data["test"]["targets"])
-            
+
             if n_features == 1:
                 train_pred_vals = train_preds
                 train_target_vals = train_targets
@@ -155,13 +156,6 @@ def plot_folds_predictions_vs_targets(summary_path: Path, output_dir: Path):
             )
 
         # Identity line
-        # all_preds = [
-        #     np.array(f["train"]["predictions"])[:, feat_idx] for f in fold_results
-        # ] + [
-        #     np.array(f["test"]["predictions"])[:, feat_idx] for f in fold_results
-        # ]
-        # all_vals = np.concatenate(all_preds)
-        # min_val, max_val = all_vals.min(), all_vals.max()
         min_val = min(train_target_vals.min(), test_target_vals.min())
         max_val = max(train_target_vals.max(), test_target_vals.max())
 

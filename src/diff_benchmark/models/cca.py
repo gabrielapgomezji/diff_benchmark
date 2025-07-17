@@ -7,6 +7,25 @@ from sklearn.preprocessing import StandardScaler
 
 
 class CanonicalCorrelationRegressor:
+    """
+    CanonicalCorrelationRegressor is a regression model that utilizes Canonical Correlation Analysis (CCA)
+    to learn the relationship between two sets of variables. It projects the data into a latent space
+    where a regression model is then fitted.
+    Attributes:
+        n_components (int): The number of components to use for CCA.
+        ridge_alpha (float): The regularization strength for the Ridge regression.
+        cca (CCA): An instance of the CCA model.
+        scaler_y (StandardScaler): A scaler for standardizing the target variable.
+        regressor (Ridge): An instance of the Ridge regression model.
+    Methods:
+        _dataloader_to_numpy(dataloader):
+            Converts a PyTorch DataLoader into numpy arrays for features and targets.
+        fit(dataloader):
+            Fits the CanonicalCorrelationRegressor model to the data provided by the DataLoader.
+        predict(dataloader):
+            Predicts the target variable for the given DataLoader using the fitted model.
+    """
+
     def __init__(self, n_components=10, ridge_alpha=1.0):
         self.n_components = n_components
         self.ridge_alpha = ridge_alpha
@@ -16,6 +35,16 @@ class CanonicalCorrelationRegressor:
         self.regressor = Ridge(alpha=self.ridge_alpha)
 
     def _dataloader_to_numpy(self, dataloader):
+        """
+        Converts a PyTorch DataLoader containing batches of data into NumPy arrays.
+        Args:
+            dataloader (torch.utils.data.DataLoader): The DataLoader object that yields batches of data.
+        Returns:
+            Tuple[numpy.ndarray, numpy.ndarray]: A tuple containing two NumPy arrays:
+                - X: Concatenated array of input features from all batches.
+                - Y: Concatenated array of target labels from all batches.
+        """
+
         X_list = []
         Y_list = []
         for x_batch, y_batch, _ in dataloader:
@@ -26,6 +55,18 @@ class CanonicalCorrelationRegressor:
         return X, Y
 
     def fit(self, dataloader):
+        """
+        Fit the CCA model to the provided dataloader.
+        This method converts the data from the dataloader into numpy arrays,
+        standardizes the target view, fits the CCA model on both views, and
+        projects the data into a latent space. Finally, it fits a regression
+        model in the latent space.
+        Parameters:
+            dataloader (DataLoader): A PyTorch DataLoader containing the input data.
+        Returns:
+            None
+        """
+
         # Convert DataLoaders to numpy arrays
         X, y = self._dataloader_to_numpy(dataloader)
 
@@ -43,6 +84,19 @@ class CanonicalCorrelationRegressor:
         self.regressor.fit(Z1, Z2)
 
     def predict(self, dataloader):
+        """
+        Predicts the output based on the input dataloader.
+        This method takes a dataloader as input, converts it to a numpy array,
+        projects the data into a latent space using Canonical Correlation Analysis (CCA),
+        and then uses a regressor to predict the output in that latent space.
+        Finally, it reconstructs the original output using the inverse transformation
+        of the CCA and scales it back to the original range.
+        Parameters:
+            dataloader (DataLoader): A dataloader containing the input data.
+        Returns:
+            numpy.ndarray: The predicted output after reconstruction and scaling.
+        """
+
         # Convert input dataloader to numpy
         X, _ = self._dataloader_to_numpy(dataloader)
 

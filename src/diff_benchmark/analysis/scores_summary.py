@@ -1,9 +1,11 @@
-import os
-import json
 import csv
+import json
+import os
 from pathlib import Path
+
 import numpy as np
 from sklearn.metrics import mean_squared_error
+
 
 def summarize_folds_to_csv(fold_results_path: Path, output_csv_path: Path):
     # Load fold results
@@ -11,7 +13,7 @@ def summarize_folds_to_csv(fold_results_path: Path, output_csv_path: Path):
         fold_results = json.load(f)
 
     os.makedirs(output_csv_path.parent, exist_ok=True)
-    
+
     n_folds = len(fold_results)
     # Check number of features from first fold predictions (train)
     # n_features = len(fold_results[0]["train"]["predictions"][0])
@@ -35,8 +37,12 @@ def summarize_folds_to_csv(fold_results_path: Path, output_csv_path: Path):
         for feat_idx in range(n_features):
             if n_features == 1:
                 # Univariate case, use arrays as-is
-                train_scores[fold_idx, feat_idx] = mean_squared_error(train_targets, train_preds)
-                test_scores[fold_idx, feat_idx] = mean_squared_error(test_targets, test_preds)
+                train_scores[fold_idx, feat_idx] = mean_squared_error(
+                    train_targets, train_preds
+                )
+                test_scores[fold_idx, feat_idx] = mean_squared_error(
+                    test_targets, test_preds
+                )
             else:
                 # Multivariate case, index the feature column
                 train_scores[fold_idx, feat_idx] = mean_squared_error(
@@ -55,13 +61,25 @@ def summarize_folds_to_csv(fold_results_path: Path, output_csv_path: Path):
     # Write to CSV
     with open(output_csv_path, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["Feature", "Train MSE Mean", "Train MSE Std", "Test MSE Mean", "Test MSE Std"])
+        writer.writerow(
+            [
+                "Feature",
+                "Train MSE Mean",
+                "Train MSE Std",
+                "Test MSE Mean",
+                "Test MSE Std",
+            ]
+        )
         for i in range(n_features):
-            writer.writerow([i + 1, train_mean[i], train_std[i], test_mean[i], test_std[i]])
+            writer.writerow(
+                [i + 1, train_mean[i], train_std[i], test_mean[i], test_std[i]]
+            )
 
     print(f"Saved summary CSV at {output_csv_path}")
-    
-    per_fold_csv_path = output_csv_path.parent / (output_csv_path.stem + "_per_fold.csv")
+
+    per_fold_csv_path = output_csv_path.parent / (
+        output_csv_path.stem + "_per_fold.csv"
+    )
 
     with open(per_fold_csv_path, "w", newline="") as f:
         writer = csv.writer(f)
@@ -74,4 +92,3 @@ def summarize_folds_to_csv(fold_results_path: Path, output_csv_path: Path):
     print(f"Saved per-fold summary CSV at {per_fold_csv_path}")
 
     print(f"Saved summary CSV at {per_fold_csv_path}")
-    
