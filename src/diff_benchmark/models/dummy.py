@@ -1,8 +1,8 @@
 import numpy as np
 from collections import Counter
+from diff_benchmark.models.base import NumpyAbstractModel
 
-
-class DummyRegressor:
+class DummyRegressor(NumpyAbstractModel):
     def __init__(self):
         self.prediction_ = None
 
@@ -27,7 +27,7 @@ class DummyRegressor:
 
         return np.full((len(X),), self.prediction_)
 
-class DummyClassifier:
+class DummyClassifier(NumpyAbstractModel):
     def __init__(self):
         self.class_ = None
     
