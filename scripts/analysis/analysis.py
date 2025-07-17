@@ -2,7 +2,10 @@ from pathlib import Path
 
 import yaml
 
-from diff_benchmark.analysis.plot_results import plot_predictions_vs_targets, plot_folds_predictions_vs_targets
+from diff_benchmark.analysis.plot_results import (
+    plot_folds_predictions_vs_targets,
+    plot_predictions_vs_targets,
+)
 from diff_benchmark.analysis.scores_summary import summarize_folds_to_csv
 
 with open(Path(__file__).parent.parent.parent / "configuration.yaml", "r") as f:
@@ -25,7 +28,11 @@ plot_folds_predictions_vs_targets(
 )
 
 # -------- PER FOLD SCORE TABLE --------
-summarize_folds_to_csv(fold_results_path=Path(config["results_path_2"])
+summarize_folds_to_csv(
+    fold_results_path=Path(config["results_path_2"])
     / "analysis_results"
-    / f"{config["model_name"]}_fold_results.json", 
-    output_csv_path=Path(config["results_path_2"]) / "analysis_results" / f"{config["model_name"]}_score_stats.csv")
+    / f"{config["model_name"]}_fold_results.json",
+    output_csv_path=Path(config["results_path_2"])
+    / "analysis_results"
+    / f"{config["model_name"]}_score_stats.csv",
+)

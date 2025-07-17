@@ -1,6 +1,7 @@
+from pathlib import Path
+
 import h5py
 import numpy as np
-from pathlib import Path
 
 
 def load_embeddings_and_power_from_h5(h5_path):
@@ -30,6 +31,7 @@ def load_embeddings_and_power_from_h5(h5_path):
         metadata = {k: meta_grp.attrs[k] for k in meta_grp.attrs}
 
     return embeddings, power, metadata
+
 
 def load_attenuation_from_h5(h5_path: Path):
     """
@@ -74,7 +76,7 @@ def load_attenuation_from_h5(h5_path: Path):
             labels = np.zeros(num_vertices, dtype=np.int32)
             neighbors = []
 
-            for i, (vname, vgrp) in enumerate(vertex_group.items()):
+            for i, (_, vgrp) in enumerate(vertex_group.items()):
                 attenuation_array[i] = vgrp["attenuation"][:]
                 surface_vertices[i] = vgrp["surface_vertex"][()]
                 labels[i] = vgrp["deen_insula_label"][()]
@@ -86,4 +88,3 @@ def load_attenuation_from_h5(h5_path: Path):
             metadata[f"neighbors_b{bval}"] = neighbors
 
     return attenuation_data, metadata
-

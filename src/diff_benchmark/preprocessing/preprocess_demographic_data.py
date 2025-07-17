@@ -1,7 +1,23 @@
-import pandas as pd
+# import pandas as pd
+
 from diff_benchmark.preprocessing.base_demographic_data import DemographicsPreprocessor
 
+
 class DefaultDemographicsPreprocessor(DemographicsPreprocessor):
+    """
+    DefaultDemographicsPreprocessor is a class that extends the DemographicsPreprocessor
+    to preprocess demographic data specifically for a dataset.
+    Methods:
+        filter(target_columns: list[str]) -> None:
+            Filters the DataFrame to include only the specified target columns,
+            ensuring that "Subject" and "Gender" are included if available.
+        categorical_to_numeric() -> None:
+            Converts the "Gender" column from categorical values ("M", "F") to numeric
+            values (1 for "M" and 0 for "F") if the column exists and is of object type.
+        clean_df() -> None:
+            Cleans the DataFrame by removing any rows with missing values.
+    """
+
     def filter(self, target_columns: list[str]) -> None:
         # Always include "Subject" and "Gender" if available
         columns = ["Subject"] + target_columns

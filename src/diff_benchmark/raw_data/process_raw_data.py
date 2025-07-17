@@ -1,13 +1,31 @@
+from os.path import expanduser
+from pathlib import Path
+
+import h5py
 import nibabel as nib
 import numpy as np
-import h5py
-from pathlib import Path
 from nilearn import surface
-from os.path import expanduser
 
 from diff_benchmark.raw_data.base import RawDataProcessor
 
-class DWIProcessor(RawDataProcessor):    
+
+class DWIProcessor(RawDataProcessor):
+    """
+    DWIProcessor is a class that processes diffusion-weighted imaging (DWI) data for subjects.
+    This class inherits from RawDataProcessor and provides methods to save subject-level and dataset-wide metadata,
+    as well as to project DWI data onto the cortical surface.
+    Methods:
+        save_subject_info(sub: str):
+            Saves subject-level metadata for the given subject.
+        save_dataset_info():
+            Logs or exports dataset-wide metadata.
+        project_dwi_to_cortex(sub: str):
+            Projects DWI data onto the cortical surface for the specified subject.
+            This method checks for the existence of required files, loads DWI and associated data,
+            performs the projection, and saves the results in an HDF5 file.
+            If the output file already exists or if any required files are missing, it skips processing.
+    """
+
     def save_subject_info(self, sub):
         # You can implement saving subject-level metadata here
         print(f"[{sub}] Subject info saved (stub)")
@@ -25,7 +43,9 @@ class DWIProcessor(RawDataProcessor):
         ribbon_path = folder / sub / "MNINonLinear" / "ribbon.nii.gz"
         surface_left_pial = surface_folder / f"{sub}.L.pial_MSMAll.32k_fs_LR.surf.gii"
         surface_left_white = surface_folder / f"{sub}.L.white_MSMAll.32k_fs_LR.surf.gii"
-        surface_left = surface_folder / f"{sub}.L.midthickness_MSMAll.32k_fs_LR.surf.gii"
+        surface_left = (
+            surface_folder / f"{sub}.L.midthickness_MSMAll.32k_fs_LR.surf.gii"
+        )
         deen_left = Path(expanduser(config["deen_path"]))
         save_dir = Path(config["results_path"]) / sub
         raw_data_output = save_dir / "raw_surface_data.h5"
@@ -40,8 +60,15 @@ class DWIProcessor(RawDataProcessor):
         bvals_path = diffusion_folder / "bvals"
 
         required_files = [
-            ribbon_path, surface_left_pial, surface_left_white, surface_left,
-            mask_path, dwi_path, bvecs_path, bvals_path, deen_left,
+            ribbon_path,
+            surface_left_pial,
+            surface_left_white,
+            surface_left,
+            mask_path,
+            dwi_path,
+            bvecs_path,
+            bvals_path,
+            deen_left,
         ]
         if not all(f.exists() for f in required_files):
             print(f"[{sub}] Skipped (missing required file)")

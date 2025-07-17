@@ -16,4 +16,3 @@ X, y, gender = build_dataset(
     h5_filename="mapmri_default_embeddings.h5",  # Model data. (This file is for the computed embeddings)
     output_dataset_filename=Path(config["results_path_2"]) / "datasets" / "dataset.h5",
 )
-

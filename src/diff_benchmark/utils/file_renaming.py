@@ -1,7 +1,24 @@
 from pathlib import Path
+
 from joblib import Parallel, delayed
 
-def rename_files_in_parallel(base_path: str, old_file_name: str, new_file_name: str, n_jobs: int = -1):
+
+def rename_files_in_parallel(
+    base_path: str, old_file_name: str, new_file_name: str, n_jobs: int = -1
+):
+    """
+    Renames files in parallel within a specified directory structure.
+    This function searches for a specific file in the 'processed' subdirectory of each subject directory
+    under the given base path and renames it if found. The renaming operation is performed in parallel
+    using the specified number of jobs.
+    Parameters:
+        base_path (str): The path to the base directory containing subject directories.
+        old_file_name (str): The name of the file to be renamed.
+        new_file_name (str): The new name for the file.
+        n_jobs (int, optional): The number of jobs to run in parallel. Default is -1, which uses all available cores.
+    Returns:
+        List[str]: A list of messages indicating the result of each renaming operation.
+    """
     base_dir = Path(base_path)
     subject_dirs = [d for d in base_dir.iterdir() if d.is_dir()]
 
@@ -20,8 +37,6 @@ def rename_files_in_parallel(base_path: str, old_file_name: str, new_file_name: 
             return f"Skipped (not found): {old_file}"
 
     # Parallel processing
-    results = Parallel(n_jobs=n_jobs)(
+    _ = Parallel(n_jobs=n_jobs)(
         delayed(rename_file)(subject_dir) for subject_dir in subject_dirs
     )
-
-

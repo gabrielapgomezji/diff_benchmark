@@ -1,11 +1,27 @@
 import numpy as np
-from abc import ABC, abstractmethod
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LogisticRegression
+
 from diff_benchmark.models.base import NumpyAbstractModel
 
 
 class PCALogisticRegressionModel(NumpyAbstractModel):
+    """
+    PCALogisticRegressionModel is a model that combines Principal Component Analysis (PCA)
+    with Logistic Regression for dimensionality reduction and classification.
+    Attributes:
+        n_components (int): The number of principal components to keep.
+        pca (PCA): PCA instance for dimensionality reduction.
+        model (LogisticRegression): Logistic regression model for classification.
+    Methods:
+        _dataloader_to_numpy(dataloader):
+            Converts the data from the dataloader into numpy arrays for features and labels.
+        fit(dataloader):
+            Fits the PCA and logistic regression model on the provided dataloader.
+        predict(dataloader):
+            Transforms the input data using PCA and predicts the class labels using the logistic regression model.
+    """
+
     def __init__(self, n_components=10):
         self.n_components = n_components
         self.pca = PCA(n_components=n_components)

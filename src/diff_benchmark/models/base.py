@@ -1,10 +1,14 @@
 from abc import ABC, abstractmethod
 
+
 class NumpyAbstractModel(ABC):
-    """
-    Abstract base class for all models in the diff_benchmark framework.
-    Defines the interface that all models must implement.
-    """
+    def __init__(self):
+        pass
+        """
+        Abstract base class for all models in the diff_benchmark framework.
+        Defines the interface that all models must implement.
+        """
+
     @abstractmethod
     def _dataloader_to_numpy(self, dataloader):
         """
@@ -12,25 +16,31 @@ class NumpyAbstractModel(ABC):
         This method should be implemented by all subclasses to handle the conversion.
         """
         pass
+
     @abstractmethod
-    def fit(self, X, y):
+    def fit(self, dataloader):
         """
         Fit the model to the training data.
         """
         pass
 
     @abstractmethod
-    def predict(self, X):
+    def predict(self, dataloader):
         """
         Predict using the fitted model.
         """
         pass
+
 
 class TorchAbstractModel(ABC):
     """
     Abstract base class for all models in the diff_benchmark framework.
     Defines the interface that all models must implement.
     """
+
+    def __init__(self):
+        pass
+
     @abstractmethod
     def _dataloader_to_numpy(self, dataloader):
         """
@@ -38,15 +48,16 @@ class TorchAbstractModel(ABC):
         This method should be implemented by all subclasses to handle the conversion.
         """
         pass
+
     @abstractmethod
-    def fit(self, X, y):
+    def fit(self, dataloader):
         """
         Fit the model to the training data.
         """
         pass
 
     @abstractmethod
-    def predict(self, X):
+    def predict(self, dataloader):
         """
         Predict using the fitted model.
         """
