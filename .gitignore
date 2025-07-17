@@ -4,6 +4,7 @@ scripts/example.py
 configuration.yaml
 example.py
 
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
