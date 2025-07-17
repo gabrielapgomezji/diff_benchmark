@@ -1,3 +1,4 @@
+import os
 import h5py
 import networkx as nx
 import numpy as np
@@ -205,6 +206,7 @@ def save_output(all_results, save_path, name, sphere, data, sub):
         sub (str): Subject identifier.
     """
     out_file = save_path / f"{name}_all_bvals.h5"
+    os.makedirs(save_path, exist_ok=True)
 
     with h5py.File(out_file, "w") as f:
         # Save sphere geometry once
