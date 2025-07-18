@@ -29,6 +29,10 @@ with open(config_path, "r") as f:
     config = yaml.safe_load(f)
 DEBUG = config["debugging_analysis"]
 
+from diff_benchmark.raw_data.process_raw_data import DWISchaeferProcessor
+processor = DWISchaeferProcessor(config)
+processor.run_parallel()
+breakpoint()
 # ----------- FILE RENAMING -----------
 # rename_files_in_parallel(
 #     base_path=Path(config["results_path_2"]),
