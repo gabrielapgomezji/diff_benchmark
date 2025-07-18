@@ -41,12 +41,14 @@ class PCALogisticRegressionModel(NumpyAbstractModel):
         """Fit PCA and then logistic regression on reduced features."""
         X, y = self._dataloader_to_numpy(dataloader)
         X_reshaped = X.reshape(X.shape[0], -1)
-        X_reduced = self.pca.fit_transform(X_reshaped)
-        self.model.fit(X_reduced, y.flatten())
-
+        # X_reduced = self.pca.fit_transform(X_reshaped)
+        # self.model.fit(X_reduced, y.flatten())
+        self.model.fit(X_reshaped, y.flatten())
+        
     def predict(self, dataloader):
         """Transform input with PCA and predict with logistic regression."""
         X, _ = self._dataloader_to_numpy(dataloader)
         X_reshaped = X.reshape(X.shape[0], -1)
-        X_reduced = self.pca.transform(X_reshaped)
-        return self.model.predict(X_reduced).reshape(-1, 1)
+        # X_reduced = self.pca.transform(X_reshaped)
+        # return self.model.predict(X_reduced).reshape(-1, 1)
+        return self.model.predict(X_reshaped).reshape(-1, 1)
