@@ -1,6 +1,9 @@
 from diff_benchmark.models.cca import CanonicalCorrelationRegressor
 from diff_benchmark.models.dummy import DummyClassifier
-from diff_benchmark.models.logistic_regression import PCALogisticRegressionModel
+from diff_benchmark.models.logistic_regression import (
+    LogisticRegressionModel,
+    PCALogisticRegressionModel,
+)
 from diff_benchmark.models.mlp import MLPClassifier
 
 
@@ -43,8 +46,11 @@ def get_model(name: str, config: dict):
             epochs=config["epochs"],
         )
 
-    elif name == "logistic_regression":
+    elif name == "pca_logistic":
         return PCALogisticRegressionModel(n_components=config["n_components"])
+
+    elif name == "logistic_regression":
+        return LogisticRegressionModel()
     # elif name == "other_model":
     #     return OtherModelClass(param1=config["param1"], ...)
 
