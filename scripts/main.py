@@ -30,6 +30,7 @@ with open(config_path, "r") as f:
 DEBUG = config["debugging_analysis"]
 
 from diff_benchmark.raw_data.process_raw_data import DWISchaeferProcessor
+
 processor = DWISchaeferProcessor(config)
 processor.run_parallel()
 breakpoint()
