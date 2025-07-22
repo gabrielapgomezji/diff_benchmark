@@ -10,6 +10,6 @@ def mse_score(y_true, y_pred):
     Returns:
         float: The mean squared error between the true and predicted values.
     """
-    
+
     mse = np.mean((y_true - y_pred) ** 2)
     return mse
