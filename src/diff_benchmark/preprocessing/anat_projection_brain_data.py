@@ -307,15 +307,15 @@ class DWISchaeferProcessor(RawDataProcessor):
         diffusion_folder = folder / sub / "T1w" / "Diffusion"
         surface_folder = folder / sub / "T1w" / "fsaverage_LR32k"
         ribbon_path = folder / sub / "MNINonLinear" / "ribbon.nii.gz"
-        save_dir = Path(config["results_path"]) / sub
-        raw_data_output = save_dir / "raw_surface_data.h5"
+        save_dir = Path(config["results_path_2"]) / sub
+        raw_data_output = save_dir / "processed" / "rtop_surface_data.h5"
 
         # if raw_data_output.exists():
         #     print(f"[{sub}] Skipped (already processed)")
         #     return
 
         mask_path = data_folder / sub / "deen_subject.nii.gz"
-        dwi_path = diffusion_folder / "data.nii.gz"
+        dwi_path = Path(config["results_path_2"]) / sub / "RTOP.nii.gz"
         bvecs_path = diffusion_folder / "bvecs"
         bvals_path = diffusion_folder / "bvals"
 
@@ -413,99 +413,3 @@ class DWISchaeferProcessor(RawDataProcessor):
             print(f"[{sub}] Saved to {raw_data_output}")
         except Exception as e:
             print(f"[{sub}] Failed with error: {e}")
-
-
-#####################
-# class DWISchaeferProcessor(RawDataProcessor):
-#     """
-#     Processes DWI data by projecting it to the cortical surface and aggregating it by Schaefer parcels.
-#     """
-
-#     def __init__(self, config: dict, schaefer_resampled: dict):
-#         super().__init__(config)
-#         self.schaefer_resampled = schaefer_resampled  # dict with 'left.data', 'right.data'
-
-#     def save_subject_info(self, sub: str):
-#         print(f"[{sub}] Subject info saved (stub)")
-
-#     def save_dataset_info(self):
-#         print("Dataset info saved (stub)")
-
-#     def project_dwi_to_cortex(self, sub: str):
-#         cfg = self.config
-#         schaefer = self.schaefer_resampled
-
-#         folder = Path(expanduser(cfg["base_path"]))
-#         diffusion_folder = folder / sub / "T1w" / "Diffusion"
-#         surface_folder = folder / sub / "T1w" / "fsaverage_LR32k"
-#         ribbon_path = folder / sub / "MNINonLinear" / "ribbon.nii.gz"
-#         save_dir = Path(cfg["results_path"]) / sub
-#         save_dir.mkdir(parents=True, exist_ok=True)
-#         output_path = save_dir / "parcellated_dwi_schaefer.h5"
-
-#         if output_path.exists():
-#             print(f"[{sub}] Skipped: already processed.")
-#             return
-
-#         # Surface paths
-#         surface_L_pial = surface_folder / f"{sub}.L.pial_MSMAll.32k_fs_LR.surf.gii"
-#         surface_L_white = surface_folder / f"{sub}.L.white_MSMAll.32k_fs_LR.surf.gii"
-#         surface_R_pial = surface_folder / f"{sub}.R.pial_MSMAll.32k_fs_LR.surf.gii"
-#         surface_R_white = surface_folder / f"{sub}.R.white_MSMAll.32k_fs_LR.surf.gii"
-
-#         # DWI paths
-#         dwi_path = diffusion_folder / "data.nii.gz"
-#         bvecs_path = diffusion_folder / "bvecs"
-#         bvals_path = diffusion_folder / "bvals"
-
-#         required = [
-#             ribbon_path,
-#             surface_L_pial, surface_L_white,
-#             surface_R_pial, surface_R_white,
-#             dwi_path, bvecs_path, bvals_path,
-#         ]
-
-#         if not all(p.exists() for p in required):
-#             print(f"[{sub}] Skipped: missing files.")
-#             return
-
-#         try:
-#             # Load data
-#             dwi_img = nib.load(dwi_path)
-#             bvecs = np.loadtxt(bvecs_path)
-#             bvals = np.loadtxt(bvals_path)
-
-#             # Project to surface
-#             surf_L = surface.vol_to_surf(dwi_img, surface_L_pial, inner_mesh=surface_L_white, kind="depth", mask_img=ribbon_path)
-#             surf_R = surface.vol_to_surf(dwi_img, surface_R_pial, inner_mesh=surface_R_white, kind="depth", mask_img=ribbon_path)
-
-#             # Aggregate by Schaefer parcels
-#             parcels_L = schaefer["left.data"]
-#             parcels_R = schaefer["right.data"]
-#             unique_L = np.unique(parcels_L)
-#             unique_R = np.unique(parcels_R)
-
-#             n_directions = surf_L.shape[1]
-#             n_parcels = len(unique_L) + len(unique_R)
-#             parcellated_dwi = np.zeros((n_parcels, n_directions))
-
-#             for i, p in enumerate(unique_L):
-#                 mask = parcels_L == p
-#                 parcellated_dwi[i] = surf_L[mask].mean(axis=0)
-
-#             for i, p in enumerate(unique_R):
-#                 mask = parcels_R == p
-#                 parcellated_dwi[i + len(unique_L)] = surf_R[mask].mean(axis=0)
-
-#             # Save
-#             with h5py.File(output_path, "w") as f:
-#                 f.create_dataset("dwi_parcellated", data=parcellated_dwi)
-#                 f.create_dataset("bvecs", data=bvecs)
-#                 f.create_dataset("bvals", data=bvals)
-#                 f.attrs["subject"] = sub
-#                 f.attrs["n_parcels"] = n_parcels
-#                 f.attrs["description"] = "DWI projected to surface and averaged using Schaefer parcels"
-
-#             print(f"[{sub}] Saved to {output_path}")
-#         except Exception as e:
-#             print(f"[{sub}] Failed with error: {e}")

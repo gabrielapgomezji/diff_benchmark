@@ -2,10 +2,12 @@ import os
 
 import h5py
 import networkx as nx
+import nibabel as nib
 import numpy as np
 from dipy.core.gradients import gradient_table
 from scipy.linalg import LinAlgError
 from tqdm import tqdm
+from pathlib import Path
 
 
 def extract_data(raw_data_path: str):
@@ -240,3 +242,54 @@ def save_output(all_results, save_path, name, sphere, data, sub):
                 vgrp.create_dataset("deen_insula_label", data=vdata["label"])
 
     print(f"Saved full output with all b-values to:\n{out_file}")
+
+
+def dti_measure(model_fit, affine, measure_list: list, save_path: Path):
+    # === Fit DTI model only if any DTI metrics requested ===
+    if "FA" in measure_list:
+        fa = model_fit.fa
+        nib.save(
+            nib.Nifti1Image(fa.astype(np.float32), affine), save_path / "FA.nii.gz"
+        )
+
+    if "MD" in measure_list:
+        md = model_fit.md
+        nib.save(
+            nib.Nifti1Image(md.astype(np.float32), affine), save_path / "MD.nii.gz"
+        )
+
+    if "AD" in measure_list:
+        ad = model_fit.ad
+        nib.save(
+            nib.Nifti1Image(ad.astype(np.float32), affine), save_path / "AD.nii.gz"
+        )
+
+    if "RD" in measure_list:
+        rd = model_fit.rd
+        nib.save(
+            nib.Nifti1Image(rd.astype(np.float32), affine), save_path / "RD.nii.gz"
+        )
+
+
+def mapmri_measure(model_fit, affine, measure_list: list, save_path: Path):
+    # === Fit MAP-MRI model only if needed ===
+    if "RTOP" in measure_list:
+        rtop = model_fit.rtop()
+        rtop = np.nan_to_num(rtop, nan=0.0, posinf=0.0, neginf=0.0)
+        nib.save(
+            nib.Nifti1Image(rtop.astype(np.float32), affine), save_path / "RTOP.nii.gz"
+        )
+
+    if "RTAP" in measure_list:
+        rtap = model_fit.rtap()
+        rtap = np.nan_to_num(rtap, nan=0.0, posinf=0.0, neginf=0.0)
+        nib.save(
+            nib.Nifti1Image(rtap.astype(np.float32), affine), save_path / "RTAP.nii.gz"
+        )
+
+    if "RTPP" in measure_list:
+        rtpp = model_fit.rtpp()
+        rtpp = np.nan_to_num(rtpp, nan=0.0, posinf=0.0, neginf=0.0)
+        nib.save(
+            nib.Nifti1Image(rtpp.astype(np.float32), affine), save_path / "RTPP.nii.gz"
+        )

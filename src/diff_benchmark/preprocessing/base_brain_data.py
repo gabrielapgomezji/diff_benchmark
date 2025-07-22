@@ -76,12 +76,17 @@ class BrainDataPreprocessor(ABC):
         valid_subjects = []
 
         for sub_id in subjects:
-            raw_path = base_path / sub_id / "raw_surface_data.h5"
-            if not raw_path.exists():
-                print(f"Skipping {sub_id} — raw data file not found at {raw_path}")
-                self.processing_result.add_invalid(sub_id)
-            else:
-                valid_subjects.append(sub_id)
+            if not sub_id.isdigit():
+                print(f"Skipping {sub_id} — not a numeric subject ID")
+            else:    
+                raw_path = base_path / sub_id / "raw_surface_data2.h5"
+                if not raw_path.exists():
+                    print(f"Skipping {sub_id} — raw data file not found at {raw_path}")
+                    # self.processing_result.add_invalid(sub_id)
+                    valid_subjects.append(sub_id)
+                else:
+                    # valid_subjects.append(sub_id)
+                    self.processing_result.add_invalid(sub_id)
 
         def process_single_subject(sub_id):
             raw_path = base_path / sub_id / "raw_surface_data.h5"
