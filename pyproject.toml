@@ -22,6 +22,7 @@ dependencies = ["numpy (>=2.0.0,<2.2.10)",
     "jason (>=0.1.7,<0.2.0)",
     "plotly (>=6.2.0,<7.0.0)",
     "templateflow (>=24.2.2,<25.0.0)",
+    "matplotlib (>=3.10.3,<4.0.0)",
 ]
 
 [tool.poetry]
