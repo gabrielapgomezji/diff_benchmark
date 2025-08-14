@@ -19,7 +19,7 @@ DEVICE = "cpu"
 DEBUG = config["debugging_analysis"]
 
 # ---------- LOAD DATASET ----------
-X, y, gender = load_dataset(Path(config["results_path_2"]) / "datasets" / "dataset.h5")
+X, y, gender = load_dataset(Path(config["results_path"]) / "datasets" / "dataset.h5")
 
 skf = StratifiedKFold(
     n_splits=config["n_splits"], shuffle=True, random_state=config["random_state"]
@@ -103,7 +103,7 @@ if DEBUG:
     save_fold_results(
         model_name=config["model_name"],
         fold_results=per_fold_results,
-        output_dir=Path(config["results_path_2"]) / "analysis_results",
+        output_dir=Path(config["results_path"]) / "analysis_results",
     )
 
 # save_summary_results(
@@ -114,5 +114,5 @@ if DEBUG:
 #     test_preds=test_preds,
 #     train_targets=train_targets,
 #     test_targets=test_targets,
-#     output_dir=Path(config["results_path_2"]) / "analysis_results",
+#     output_dir=Path(config["results_path"]) / "analysis_results",
 # )

@@ -36,17 +36,17 @@ processor.run_parallel()
 breakpoint()
 # ----------- FILE RENAMING -----------
 # rename_files_in_parallel(
-#     base_path=Path(config["results_path_2"]),
+#     base_path=Path(config["results_path"]),
 #     old_file_name="mapmri_default_all_bvals.h5",
 #     new_file_name="7_mapmri_default_all_bvals.h5",
 #     n_jobs=config["n_jobs"],
 # )
 
-if os.path.exists(Path(config["results_path_2"]) / "datasets" / "dataset.h5"):
+if os.path.exists(Path(config["results_path"]) / "datasets" / "dataset.h5"):
     # ----------- LOAD DATASET IF EXISTS ALREADY -----------
     print("Dataset already exists, loading from file...")
     X, y, gender = load_dataset(
-        Path(config["results_path_2"]) / "datasets" / "dataset.h5"
+        Path(config["results_path"]) / "datasets" / "dataset.h5"
     )
     dataset = CustomDataset(X, y, gender)
 else:
@@ -57,7 +57,6 @@ else:
 
     # ---------- RUN PREPROCESSING FOR INPUT DATA ----------
 
-    # Create preprocessor instance
     preprocessor = DefaultBrainPreprocessor(config)
     preprocessor.preprocess_dataset()
 
@@ -71,11 +70,11 @@ else:
     name = "mapmri_default"
     loading_strategy = AttenuationStrategy()
     builder = CustomDatasetBuilder(
-        base_path=config["results_path_2"],
+        base_path=config["results_path"],
         loading_strategy=loading_strategy,
         df_targets=df_clean,
         h5_filename=f"{name}_all_bvals.h5",
-        output_dataset_filename=Path(config["results_path_2"])
+        output_dataset_filename=Path(config["results_path"])
         / "datasets"
         / "dataset.h5",
     )
@@ -158,7 +157,7 @@ if DEBUG:
     save_fold_results(
         model_name=config["model_name"],
         fold_results=per_fold_results,
-        output_dir=Path(config["results_path_2"]) / "analysis_results",
+        output_dir=Path(config["results_path"]) / "analysis_results",
     )
 
 # ------------ EVALUATION AND ANALYSIS ------------
@@ -166,18 +165,18 @@ if DEBUG:
 
 # -------- PLOT PER FOLD PRED VS TARGETS --------
 plot_folds_predictions_vs_targets(
-    summary_path=Path(config["results_path_2"])
+    summary_path=Path(config["results_path"])
     / "analysis_results"
     / f"{config["model_name"]}_fold_results.json",
-    output_dir=Path(config["results_path_2"]) / "analysis_results" / "plots",
+    output_dir=Path(config["results_path"]) / "analysis_results" / "plots",
 )
 
 # -------- PER FOLD SCORE TABLE --------
 summarize_folds_to_csv(
-    fold_results_path=Path(config["results_path_2"])
+    fold_results_path=Path(config["results_path"])
     / "analysis_results"
     / f"{config["model_name"]}_fold_results.json",
-    output_csv_path=Path(config["results_path_2"])
+    output_csv_path=Path(config["results_path"])
     / "analysis_results"
     / f"{config["model_name"]}_score_stats.csv",
 )

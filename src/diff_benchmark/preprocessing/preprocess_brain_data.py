@@ -63,7 +63,7 @@ class DefaultBrainPreprocessor(BrainDataPreprocessor):
     #     subjects = [p.name for p in base_path.iterdir() if p.is_dir()]
     #     for sub in subjects:
     #         raw_path = base_path / sub / "raw_surface_data.h5"
-    #         save_path = Path(self.config["results_path_2"]) / sub / "processed"
+    #         save_path = Path(self.config["results_path"]) / sub / "processed"
     #         self.preprocess_subject(raw_path, sub, save_path)
 
     def save_subject_info(self, subject_id: str):
@@ -192,11 +192,12 @@ class DWIMetricPreprocessor(BrainDataPreprocessor):
         from dipy.reconst.mapmri import MapmriModel
 
         from diff_benchmark.preprocessing.utils_brain import dti_measure, mapmri_measure
+
         save_path.mkdir(parents=True, exist_ok=True)
 
         folder = Path(expanduser(self.config["base_path"]))
         diffusion_folder = folder / subject_id / "T1w" / "Diffusion"
-        breakpoint()    
+        breakpoint()
         # === Load DWI data ===
         dwi = nib.load(diffusion_folder / "data.nii.gz")
         data = dwi.get_fdata()

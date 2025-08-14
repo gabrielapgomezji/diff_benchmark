@@ -307,7 +307,7 @@ class DWISchaeferProcessor(RawDataProcessor):
         diffusion_folder = folder / sub / "T1w" / "Diffusion"
         surface_folder = folder / sub / "T1w" / "fsaverage_LR32k"
         ribbon_path = folder / sub / "MNINonLinear" / "ribbon.nii.gz"
-        save_dir = Path(config["results_path_2"]) / sub
+        save_dir = Path(config["results_path"]) / sub
         raw_data_output = save_dir / "processed" / "rtop_surface_data.h5"
 
         # if raw_data_output.exists():
@@ -315,7 +315,7 @@ class DWISchaeferProcessor(RawDataProcessor):
         #     return
 
         mask_path = data_folder / sub / "deen_subject.nii.gz"
-        dwi_path = Path(config["results_path_2"]) / sub / "RTOP.nii.gz"
+        dwi_path = Path(config["results_path"]) / sub / "RTOP.nii.gz"
         bvecs_path = diffusion_folder / "bvecs"
         bvals_path = diffusion_folder / "bvals"
 

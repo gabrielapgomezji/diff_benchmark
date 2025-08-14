@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import h5py
 import networkx as nx
@@ -7,7 +8,6 @@ import numpy as np
 from dipy.core.gradients import gradient_table
 from scipy.linalg import LinAlgError
 from tqdm import tqdm
-from pathlib import Path
 
 
 def extract_data(raw_data_path: str):
@@ -244,7 +244,41 @@ def save_output(all_results, save_path, name, sphere, data, sub):
     print(f"Saved full output with all b-values to:\n{out_file}")
 
 
-def dti_measure(model_fit, affine, measure_list: list, save_path: Path):
+def dti_measure(model_fit, measure_list: list):
+    # === Fit DTI model only if any DTI metrics requested ===
+    if "FA" in measure_list:
+        fa = model_fit.fa
+        return fa
+
+    if "MD" in measure_list:
+        md = model_fit.md
+        return md
+
+    if "AD" in measure_list:
+        ad = model_fit.ad
+        return ad
+
+    if "RD" in measure_list:
+        rd = model_fit.rd
+        return rd
+
+
+def mapmri_measure(model_fit, measure_list: list):
+    # === Fit MAP-MRI model only if needed ===
+    if "RTOP" in measure_list:
+        rtop = model_fit.rtop()
+        return rtop
+
+    if "RTAP" in measure_list:
+        rtap = model_fit.rtap()
+        return rtap
+
+    if "RTPP" in measure_list:
+        rtpp = model_fit.rtpp()
+        return rtpp
+
+
+def dti_measure2(model_fit, affine, measure_list: list, save_path: Path):
     # === Fit DTI model only if any DTI metrics requested ===
     if "FA" in measure_list:
         fa = model_fit.fa
@@ -271,7 +305,7 @@ def dti_measure(model_fit, affine, measure_list: list, save_path: Path):
         )
 
 
-def mapmri_measure(model_fit, affine, measure_list: list, save_path: Path):
+def mapmri_measure2(model_fit, affine, measure_list: list, save_path: Path):
     # === Fit MAP-MRI model only if needed ===
     if "RTOP" in measure_list:
         rtop = model_fit.rtop()
