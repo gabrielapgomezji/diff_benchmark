@@ -21,9 +21,6 @@ from tqdm import tqdm
 import networkx as nx
 from scipy.linalg import LinAlgError
 
-
-# from diff_benchmark.preprocessing.utils_brain import dti_measure, mapmri_measure
-
 def extract_selected_labels(nifti_path):
     header = nib.load(nifti_path).header
     labels = {

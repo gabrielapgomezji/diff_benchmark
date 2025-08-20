@@ -1,8 +1,5 @@
 from pathlib import Path
 
-# from diff_benchmark.preprocessing.wrapper_utils_brain_data import project_volume_to_surface, extract_by_parcel  # or extract_by_vertex
-from diff_benchmark.preprocessing.wrapper_utils_brain_data import compute_data
-
 # rtop_pipeline.py
 import numpy as np
 import nibabel as nib
@@ -13,11 +10,14 @@ from tqdm import tqdm
 import nilearn as ni
 import h5py
 import networkx as nx
+from dipy.core.gradients import gradient_table
+from dipy.core.subdivide_octahedron import create_unit_sphere
+from dipy.reconst.mapmri import MapmriModel
         
 from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
     extract_selected_labels, create_masks, compute_rtop,
     project_to_surface, resample_schaefer_onto_fs_LR,
-    average_per_parcel, compute_md
+    average_per_parcel, compute_md, compute_data
 )
 from diff_benchmark.preprocessing.wrapper_brain_base import DataPreparationBrain
 
@@ -133,7 +133,7 @@ class LCOTEmbed_HCPPipeline(DataPreparationBrain):
         labels = extract_selected_labels(aparc_aseg)
         aparc_resampled = nimage.resample_to_img(aparc_aseg, nodif_mask, interpolation='nearest', force_resample=True, copy_header=True)
         
-        ctx_mask, vent_mask = create_masks(aparc_resampled, labels)
+        ctx_mask, _ = create_masks(aparc_resampled, labels)
         
         surfaces = {
             f"{h}.{s}": subject_dir / "T1w" / "fsaverage_LR32k" / f"{subject_id}.{h}.{s}.32k_fs_LR.surf.gii"
@@ -203,11 +203,6 @@ class LCOTEmbed_HCPPipeline(DataPreparationBrain):
         G.add_edges_from(edge_index.T)
 
         graph = G.subgraph(vertex_indices)
-        # graph = nx.Graph()
-        # for tri in faces:
-        #     graph.add_edge(tri[0], tri[1])
-        #     graph.add_edge(tri[1], tri[2])
-        #     graph.add_edge(tri[2], tri[0])
 
         # Labels (optional)
         labels = np.zeros(coords.shape[0], dtype=np.int32)  # placeholder, can be from aparc
@@ -222,11 +217,7 @@ class LCOTEmbed_HCPPipeline(DataPreparationBrain):
             "coords": coords,
             "faces": faces
         }
-    def compute_microstructure(self, subject_id: str):
-        from dipy.core.gradients import gradient_table
-        from dipy.core.subdivide_octahedron import create_unit_sphere
-        from dipy.reconst.mapmri import MapmriModel
-        
+    def compute_microstructure(self, subject_id: str):        
         sphere = create_unit_sphere(7)
 
         # Gradient table for b0 reference (needed for attenuation normalization)

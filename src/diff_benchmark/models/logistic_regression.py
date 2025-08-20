@@ -26,9 +26,6 @@ class PCALogisticRegressionModel(NumpyAbstractModel):
     """
 
     def __init__(self):
-        # self.n_components = n_components
-        # self.pca = PCA(n_components=n_components)
-        # self.model = LogisticRegression(max_iter=100)
         pipeline = Pipeline([
             ("scaler", StandardScaler()),
             ("pca", PCA()),

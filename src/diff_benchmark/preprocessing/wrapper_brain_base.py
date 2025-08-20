@@ -1,9 +1,45 @@
 # base_pipeline.py
 from abc import ABC, abstractmethod
 from pathlib import Path
+from dataclasses import dataclass, field
 import pandas as pd
 from joblib import Parallel, delayed
 from tqdm import tqdm
+
+
+@dataclass
+class ProcessingResult:
+    """
+    A class to store and manage the results of processing subjects in a dataset.
+    Attributes:
+        valid_subjects (list[str]): A list of subject IDs that are considered valid.
+        invalid_subjects (list[str]): A list of subject IDs that are considered invalid.
+    Methods:
+        add_valid(subject_id: str): Adds a subject ID to the list of valid subjects.
+        add_invalid(subject_id: str): Adds a subject ID to the list of invalid subjects.
+    """
+
+    valid_subjects: list[str] = field(default_factory=list)
+    invalid_subjects: list[str] = field(default_factory=list)
+
+    def add_valid(self, subject_id: str):
+        """
+        Adds a valid subject ID to the list of valid subjects.
+        Args:
+            subject_id (str): The ID of the subject to be added as valid.
+        """
+
+        self.valid_subjects.append(subject_id)
+
+    def add_invalid(self, subject_id: str):
+        """
+        Adds a subject ID to the list of invalid subjects.
+        Parameters:
+            subject_id (str): The ID of the subject to be marked as invalid.
+        """
+
+        self.invalid_subjects.append(subject_id)
+
 
 class DataPreparationBrain(ABC):
 
