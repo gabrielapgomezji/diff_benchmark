@@ -69,19 +69,24 @@ class BrainDataPreprocessor(ABC):
     def preprocess_dataset(self):
         """Preprocess brain data for the entire dataset."""
         base_path = Path(self.config["results_path"])
-        output_base = Path(self.config["results_path_2"])
+        output_base = Path(self.config["results_path"])
         subjects = [p.name for p in base_path.iterdir() if p.is_dir()]
         n_jobs = self.config.get("n_jobs", -1)
 
         valid_subjects = []
 
         for sub_id in subjects:
-            raw_path = base_path / sub_id / "raw_surface_data.h5"
-            if not raw_path.exists():
-                print(f"Skipping {sub_id} — raw data file not found at {raw_path}")
-                self.processing_result.add_invalid(sub_id)
+            if not sub_id.isdigit():
+                print(f"Skipping {sub_id} — not a numeric subject ID")
             else:
-                valid_subjects.append(sub_id)
+                raw_path = base_path / sub_id / "raw_surface_data2.h5"
+                if not raw_path.exists():
+                    print(f"Skipping {sub_id} — raw data file not found at {raw_path}")
+                    # self.processing_result.add_invalid(sub_id)
+                    valid_subjects.append(sub_id)
+                else:
+                    # valid_subjects.append(sub_id)
+                    self.processing_result.add_invalid(sub_id)
 
         def process_single_subject(sub_id):
             raw_path = base_path / sub_id / "raw_surface_data.h5"

@@ -34,7 +34,8 @@ class PreprocessedData:
     """
 
     def __init__(self, X, y, genders, n_splits=5, random_state=42):
-        super().__init__(X, y, genders, n_splits)
+        self.X = X
+        self.y = y
         self.genders = genders
         self.skf = StratifiedKFold(
             n_splits=n_splits, shuffle=True, random_state=random_state
@@ -53,7 +54,7 @@ class PreprocessedData:
         train_idx, test_idx = fold_indices[fold_idx]
 
         train_loader = DataLoader(
-            Subset(dataset, train_idx), batch_size=batch_size, shuffle=shuffle
+            Subset(dataset, train_idx), batch_size=batch_size, shuffle=False
         )
         test_loader = DataLoader(
             Subset(dataset, test_idx), batch_size=batch_size, shuffle=False

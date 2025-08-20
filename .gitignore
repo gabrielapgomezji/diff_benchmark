@@ -3,6 +3,8 @@ scripts/example.py
 .vscode/
 configuration.yaml
 example.py
+scripts/main_test.py
+scripts/main_test2.py
 
 
 # Byte-compiled / optimized / DLL files

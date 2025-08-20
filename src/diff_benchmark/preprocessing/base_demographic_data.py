@@ -78,4 +78,5 @@ class DemographicsPreprocessor(ABC):
         self.filter(target_columns)
         self.categorical_to_numeric()
         self.clean_df()
+        # self.df is a dataframe with the cognitive columns defined in config + Subject + Gender
         return self.df
