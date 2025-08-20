@@ -55,7 +55,7 @@ class DataPreparationBrain(ABC):
             delayed(process_subject)(subject_id)
             for subject_id in tqdm(subject_list, desc="Processing subjects")
         )
-        breakpoint()
+
         # Once all files are ready, run the analysis
         self.run_analysis()
         df = self.export_to_csv(

@@ -54,7 +54,7 @@ class PreprocessedData:
         train_idx, test_idx = fold_indices[fold_idx]
 
         train_loader = DataLoader(
-            Subset(dataset, train_idx), batch_size=batch_size, shuffle=shuffle
+            Subset(dataset, train_idx), batch_size=batch_size, shuffle=False
         )
         test_loader = DataLoader(
             Subset(dataset, test_idx), batch_size=batch_size, shuffle=False

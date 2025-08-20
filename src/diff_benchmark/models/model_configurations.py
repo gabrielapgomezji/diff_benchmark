@@ -47,7 +47,7 @@ def get_model(name: str, config: dict):
         )
 
     elif name == "pca_logistic":
-        return PCALogisticRegressionModel(n_components=config["n_components"])
+        return PCALogisticRegressionModel()
 
     elif name == "logistic_regression":
         return LogisticRegressionModel()
