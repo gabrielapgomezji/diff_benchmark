@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 def test_X_y_alignment(synthetic_brain_csv, synthetic_demographics_csv):
     # Load both CSVs
     brain_df = pd.read_csv(synthetic_brain_csv)
@@ -10,10 +11,16 @@ def test_X_y_alignment(synthetic_brain_csv, synthetic_demographics_csv):
     assert "Subject" in demo_df.columns
 
     # --- Alignment step ---
-    common_subjects = set(brain_df["subject_id"].astype(str)) & set(demo_df["Subject"].astype(str))
-    assert len(common_subjects) > 0, "No overlapping subjects between brain and demographics"
+    common_subjects = set(brain_df["subject_id"].astype(str)) & set(
+        demo_df["Subject"].astype(str)
+    )
+    assert (
+        len(common_subjects) > 0
+    ), "No overlapping subjects between brain and demographics"
 
-    brain_filtered = brain_df[brain_df["subject_id"].astype(str).isin(common_subjects)].copy()
+    brain_filtered = brain_df[
+        brain_df["subject_id"].astype(str).isin(common_subjects)
+    ].copy()
     demo_filtered = demo_df[demo_df["Subject"].astype(str).isin(common_subjects)].copy()
 
     # Align order by sorting
@@ -25,8 +32,9 @@ def test_X_y_alignment(synthetic_brain_csv, synthetic_demographics_csv):
     assert len(brain_filtered) == len(demo_filtered), "X and y lengths mismatch"
 
     # 2. Same subjects in same order
-    assert list(brain_filtered["subject_id"].astype(str)) == list(demo_filtered["Subject"].astype(str)), \
-        "Subjects not aligned between X and y"
+    assert list(brain_filtered["subject_id"].astype(str)) == list(
+        demo_filtered["Subject"].astype(str)
+    ), "Subjects not aligned between X and y"
 
     # 3. Brain features exclude ID column
     X = brain_filtered.drop(columns=["subject_id"])

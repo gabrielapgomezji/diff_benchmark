@@ -87,6 +87,7 @@ class CustomDataset(Dataset):
         y (torch.Tensor): A tensor representation of the target labels.
         gender (torch.Tensor): A tensor representation of the gender information.
     """
+
     def __init__(self, features, targets, gender):
         self.features = torch.tensor(features, dtype=torch.float32)
         self.targets = torch.tensor(targets, dtype=torch.float32)
@@ -129,6 +130,7 @@ class CustomDatasetBuilder(DatasetBuilder):
         h5_filename (str, optional): The name of the HDF5 file for embeddings. Defaults to "mapmri_default_embeddings.h5".
         output_dataset_filename (str, optional): The name of the output dataset file. Defaults to "dataset.h5".
     """
+
     def __init__(
         self,
         base_path,
@@ -222,7 +224,9 @@ class CustomDatasetBuilder(DatasetBuilder):
         output file defined by self.output_dataset_filename.
         """
 
-        save_dataset(features, targets, genders, output_file=self.output_dataset_filename)
+        save_dataset(
+            features, targets, genders, output_file=self.output_dataset_filename
+        )
 
     def create_dataset(self, n_jobs=8):
         """

@@ -12,11 +12,10 @@ from diff_benchmark.models.model_configurations import get_model
 from diff_benchmark.preprocessing.preprocess_demographic_data import (
     DefaultDemographicsPreprocessor,
 )
-from diff_benchmark.preprocessing.wrapper_brain_data import (
+from diff_benchmark.preprocessing.wrapper_brain_data import (  # LcotEmbedHcpPipeline,
     DefaultHcpPipeline,
-    #LcotEmbedHcpPipeline,
 )
-from diff_benchmark.scores.scores import accuracy_score#, mse_score
+from diff_benchmark.scores.scores import accuracy_score  # , mse_score
 
 DEBUG = True
 

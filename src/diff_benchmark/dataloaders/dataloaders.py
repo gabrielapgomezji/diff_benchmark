@@ -42,12 +42,16 @@ class PreprocessedData:
         )
 
     def get_fold_indices(self):
-        """ Returns the indices for each fold in the stratified K-Folds."""
+        """Returns the indices for each fold in the stratified K-Folds."""
         indices = list(self.skf.split(np.zeros(len(self.genders)), self.genders))
         return indices
 
     def get_dataloader_fold(
-        self, dataset, fold_idx, fold_indices, batch_size=32, #shuffle=True
+        self,
+        dataset,
+        fold_idx,
+        fold_indices,
+        batch_size=32,  # shuffle=True
     ):
         """
         Returns DataLoaders for the specified fold index using precomputed indices.
@@ -83,7 +87,7 @@ class PreprocessedData:
         )
 
     def get_folds_as_dataloaders(self, batch_size=32, shuffle=True):
-        """ Generates and returns DataLoaders for all folds."""
+        """Generates and returns DataLoaders for all folds."""
         folds = []
 
         for train_idx, val_idx in self.skf.split(self.features, self.genders):
@@ -119,18 +123,26 @@ class PreprocessedData:
         return folds
 
     def get_folds_as_arrays(self):
-        """ Generates and returns arrays for all folds."""
+        """Generates and returns arrays for all folds."""
         folds = []
 
         for train_idx, val_idx in self.skf.split(self.features, self.genders):
-            train_data = (self.features[train_idx], self.targets[train_idx], self.genders[train_idx])
-            val_data = (self.features[val_idx], self.targets[val_idx], self.genders[val_idx])
+            train_data = (
+                self.features[train_idx],
+                self.targets[train_idx],
+                self.genders[train_idx],
+            )
+            val_data = (
+                self.features[val_idx],
+                self.targets[val_idx],
+                self.genders[val_idx],
+            )
             folds.append((train_data, val_data))
 
         return folds
 
     def get_specs(self) -> DatasetSpecs:
-        """ Returns specifications of the dataset including sample count, feature count,"""
+        """Returns specifications of the dataset including sample count, feature count,"""
         gender_dist = dict(Counter(self.genders))
         return DatasetSpecs(
             num_samples=len(self.features),
