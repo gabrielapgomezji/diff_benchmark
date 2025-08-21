@@ -1,14 +1,30 @@
-from diff_benchmark.preprocessing.wrapper_brain_data import Default_HCPPipeline, LCOTEmbed_HCPPipeline
-from diff_benchmark.preprocessing.preprocess_demographic_data import DefaultDemographicsPreprocessor
 from pathlib import Path
+
+import numpy as np
 import yaml
+
+from diff_benchmark.analysis.plot_results import plot_folds_predictions_vs_targets
+from diff_benchmark.analysis.save_results import save_fold_results
+from diff_benchmark.analysis.scores_summary import summarize_folds_to_csv
+from diff_benchmark.dataloaders.dataloaders import PreprocessedData
+from diff_benchmark.dataset.generate_dataset import CustomDataset
+from diff_benchmark.models.model_configurations import get_model
+from diff_benchmark.preprocessing.preprocess_demographic_data import (
+    DefaultDemographicsPreprocessor,
+)
+from diff_benchmark.preprocessing.wrapper_brain_data import (  # LcotEmbedHcpPipeline,
+    DefaultHcpPipeline,
+)
+from diff_benchmark.scores.scores import accuracy_score  # , mse_score
+
+DEBUG = True
 
 config_path = Path(__file__).parent.parent / "configuration.yaml"
 with open(config_path, "r") as f:
     config = yaml.safe_load(f)
 
 config["metric_to_compute"] = "md"
-brain_preparator = Default_HCPPipeline(config)
+brain_preparator = DefaultHcpPipeline(config)
 brain_df = brain_preparator.run_pipeline()
 brain_df = brain_df.reset_index()
 # breakpoint()
@@ -19,26 +35,18 @@ preprocessor = DefaultDemographicsPreprocessor(config["csv_file"])
 demographics_df = preprocessor.preprocess(config["target_columns"])
 # breakpoint()
 
+common_subjects = set(brain_df["subject_id"].astype(str)) & set(
+    demographics_df["Subject"].astype(str)
+)
+demographics_filtered = demographics_df[
+    demographics_df["Subject"].astype(str).isin(common_subjects)
+]
+brain_filtered = brain_df[brain_df["subject_id"].astype(str).isin(common_subjects)]
 
-brain_df["subject_id"] = brain_df["subject_id"].astype(str)
-demographics_df["Subject"] = demographics_df["Subject"].astype(str)
-demographics_filtered = demographics_df[demographics_df["Subject"].isin(brain_df["subject_id"])]
-
-#DATASET GENERATION
-import numpy as np
-X = brain_df.drop(columns=["subject_id"]).to_numpy()
+# DATASET GENERATION
+X = brain_filtered.drop(columns=["subject_id"]).to_numpy()
 y = np.array(demographics_filtered["Gender"])
 gender = np.array(demographics_filtered["Gender"])
-
-from diff_benchmark.dataset.generate_dataset import CustomDataset
-from diff_benchmark.dataloaders.dataloaders import PreprocessedData
-from diff_benchmark.models.model_configurations import get_model
-from diff_benchmark.scores.scores import mse_score, accuracy_score
-from diff_benchmark.analysis.plot_results import plot_folds_predictions_vs_targets
-from diff_benchmark.analysis.save_results import save_fold_results
-from diff_benchmark.analysis.scores_summary import summarize_folds_to_csv
-
-DEBUG = True
 
 dataset = CustomDataset(X, y, gender)
 
@@ -144,7 +152,7 @@ summarize_folds_to_csv(
 
 
 ###### VERY EARLY IN TESTING
-# preparator = LCOTEmbed_HCPPipeline(config)
+# preparator = LcotEmbedHcpPipeline(config)
 # preparator.extract_raw_data("100206")
 # preparator.compute_microstructure("100206")
 # breakpoint()

@@ -5,10 +5,9 @@ import numpy as np
 import plotly.graph_objects as go
 from sklearn.metrics import mean_squared_error
 
-from diff_benchmark.scores.scores import mse_score
-
 
 def plot_predictions_vs_targets(summary_path: Path, output_dir: Path):
+    """Plot predictions vs targets for each feature in the dataset."""
     # Load JSON summary
     with open(summary_path, "r") as f:
         summary = json.load(f)
@@ -89,13 +88,14 @@ def plot_predictions_vs_targets(summary_path: Path, output_dir: Path):
 
 
 def plot_folds_predictions_vs_targets(summary_path: Path, output_dir: Path):
+    """Plot predictions vs targets for each fold in the dataset."""
     with open(summary_path, "r") as f:
         fold_results = json.load(f)
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
     symbols = ["circle", "x", "square", "diamond", "cross", "star"]  # Up to 6 folds
-    n_folds = len(fold_results)
+    # n_folds = len(fold_results)
 
     # Check first fold to determine number of features
     # n_features = len(fold_results[0]["train"]["predictions"][0])

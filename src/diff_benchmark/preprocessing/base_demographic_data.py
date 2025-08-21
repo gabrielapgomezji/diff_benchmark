@@ -36,8 +36,6 @@ class DemographicsPreprocessor(ABC):
             None
         """
 
-        pass
-
     @abstractmethod
     def categorical_to_numeric(self) -> None:
         """
@@ -50,8 +48,6 @@ class DemographicsPreprocessor(ABC):
             None: This method modifies the dataset in place and does not return any value.
         """
 
-        pass
-
     @abstractmethod
     def clean_df(self) -> None:
         """
@@ -61,8 +57,6 @@ class DemographicsPreprocessor(ABC):
         that the data is in a suitable format for further analysis.
         It modifies the DataFrame in place and does not return any value.
         """
-
-        pass
 
     def preprocess(self, target_columns: list[str]) -> pd.DataFrame:
         """

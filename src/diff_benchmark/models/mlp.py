@@ -1,10 +1,22 @@
 import numpy as np
 import torch
-import torch.nn as nn
+from torch import nn
 from torch.utils.data import DataLoader
 
 
 class MLPClassifier(nn.Module):
+    """
+    Initialize the Multi-Layer Perceptron (MLP) model.
+    Parameters:
+        input_dim (int): The number of input features.
+        output_dim (int): The number of output classes.
+        hidden_dims (list, optional): A list of integers representing the number of units in each hidden layer. Default is [128, 64].
+        dropout (float, optional): The dropout rate to be applied after each hidden layer. Default is 0.2.
+        lr (float, optional): The learning rate for the optimizer. Default is 1e-3.
+        epochs (int, optional): The number of training epochs. Default is 10.
+        device (str, optional): The device to run the model on ('cuda' or 'cpu'). If None, it will use 'cuda' if available, otherwise 'cpu'.
+    """
+
     def __init__(
         self,
         input_dim,
@@ -15,17 +27,6 @@ class MLPClassifier(nn.Module):
         epochs=10,
         device=None,
     ):
-        """
-        Initialize the Multi-Layer Perceptron (MLP) model.
-        Parameters:
-            input_dim (int): The number of input features.
-            output_dim (int): The number of output classes.
-            hidden_dims (list, optional): A list of integers representing the number of units in each hidden layer. Default is [128, 64].
-            dropout (float, optional): The dropout rate to be applied after each hidden layer. Default is 0.2.
-            lr (float, optional): The learning rate for the optimizer. Default is 1e-3.
-            epochs (int, optional): The number of training epochs. Default is 10.
-            device (str, optional): The device to run the model on ('cuda' or 'cpu'). If None, it will use 'cuda' if available, otherwise 'cpu'.
-        """
         super().__init__()
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.epochs = epochs
@@ -44,16 +45,16 @@ class MLPClassifier(nn.Module):
         self.loss_fn = nn.CrossEntropyLoss()
         self.optimizer = torch.optim.Adam(self.network.parameters(), lr=lr)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
         """
         Forward pass through the neural network.
         Args:
-            x (torch.Tensor): Input tensor to the network.
+            features (torch.Tensor): Input tensor to the network.
         Returns:
             torch.Tensor: Output tensor after passing through the network.
         """
 
-        return self.network(x)
+        return self.network(features)
 
     def _dataloader_to_numpy(self, dataloader: torch.utils.data.DataLoader) -> tuple:
         """
@@ -67,15 +68,17 @@ class MLPClassifier(nn.Module):
             batches of data and labels.
         Returns:
             tuple: A tuple containing two NumPy arrays:
-                - X (np.ndarray): Concatenated input data from all batches.
-                - Y (np.ndarray): Concatenated labels from all batches.
+                - features (np.ndarray): Concatenated input data from all batches.
+                - targets (np.ndarray): Concatenated labels from all batches.
         """
 
-        X_list, Y_list = [], []
-        for x_batch, y_batch, _ in dataloader:
-            X_list.append(x_batch.numpy())
-            Y_list.append(y_batch.numpy())
-        return np.concatenate(X_list, axis=0), np.concatenate(Y_list, axis=0)
+        features_list, targets_list = [], []
+        for features_batch, targets_batch, _ in dataloader:
+            features_list.append(features_batch.numpy())
+            targets_list.append(targets_batch.numpy())
+        return np.concatenate(features_list, axis=0), np.concatenate(
+            targets_list, axis=0
+        )
 
     def fit(self, dataloader: DataLoader):
         """
@@ -92,12 +95,13 @@ class MLPClassifier(nn.Module):
 
         self.train()
         for epoch in range(self.epochs):
-            for x_batch, y_batch, _ in dataloader:
-                x_batch = x_batch.to(self.device).float()
-                y_batch = y_batch.to(self.device).long()
+            print(epoch)
+            for features_batch, targets_batch, _ in dataloader:
+                features_batch = features_batch.to(self.device).float()
+                targets_batch = targets_batch.to(self.device).long()
 
-                logits = self(x_batch)
-                loss = self.loss_fn(logits, y_batch)
+                logits = self(features_batch)
+                loss = self.loss_fn(logits, targets_batch)
 
                 self.optimizer.zero_grad()
                 loss.backward()
@@ -115,9 +119,9 @@ class MLPClassifier(nn.Module):
         self.eval()
         all_preds = []
         with torch.no_grad():
-            for x_batch, _, _ in dataloader:
-                x_batch = x_batch.to(self.device).float()
-                logits = self(x_batch)
+            for features_batch, _, _ in dataloader:
+                features_batch = features_batch.to(self.device).float()
+                logits = self(features_batch)
                 preds = torch.argmax(logits, dim=1)
                 all_preds.append(preds.cpu().numpy())
         return np.concatenate(all_preds)
@@ -135,8 +139,8 @@ class MLPClassifier(nn.Module):
         self.eval()
         all_probs = []
         with torch.no_grad():
-            for x_batch, _, _ in dataloader:
-                x_batch = x_batch.to(self.device).float()
-                probs = torch.softmax(self(x_batch), dim=1)
+            for features_batch, _, _ in dataloader:
+                features_batch = features_batch.to(self.device).float()
+                probs = torch.softmax(self(features_batch), dim=1)
                 all_probs.append(probs.cpu().numpy())
         return np.concatenate(all_probs)

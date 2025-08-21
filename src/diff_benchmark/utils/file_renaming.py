@@ -33,8 +33,8 @@ def rename_files_in_parallel(
         if old_file.exists():
             old_file.rename(new_file)
             return f"Renamed: {old_file} → {new_file}"
-        else:
-            return f"Skipped (not found): {old_file}"
+
+        return f"Skipped (not found): {old_file}"
 
     # Parallel processing
     _ = Parallel(n_jobs=n_jobs)(

@@ -38,18 +38,18 @@ class DummyRegressor(NumpyAbstractModel):
                                    are the input and target tensors, respectively.
         Returns:
             tuple: A tuple containing two NumPy arrays:
-                - X (np.ndarray): Concatenated array of input data.
-                - Y (np.ndarray): Concatenated array of target data.
+                - features (np.ndarray): Concatenated array of input data.
+                - targets (np.ndarray): Concatenated array of target data.
         """
 
-        X_list = []
-        Y_list = []
-        for x_batch, y_batch, _ in dataloader:
-            X_list.append(x_batch.numpy())
-            Y_list.append(y_batch.numpy())
-        X = np.concatenate(X_list, axis=0)
-        Y = np.concatenate(Y_list, axis=0)
-        return X, Y
+        features_list = []
+        targets_list = []
+        for features_batch, targets_batch, _ in dataloader:
+            features_list.append(features_batch.numpy())
+            targets_list.append(targets_batch.numpy())
+        features = np.concatenate(features_list, axis=0)
+        targets = np.concatenate(targets_list, axis=0)
+        return features, targets
 
     def fit(self, dataloader):
         """
@@ -63,8 +63,8 @@ class DummyRegressor(NumpyAbstractModel):
         """
 
         # Convert DataLoaders to numpy arrays
-        _, y = self._dataloader_to_numpy(dataloader)
-        self.prediction_ = np.mean(y)
+        _, targets = self._dataloader_to_numpy(dataloader)
+        self.prediction_ = np.mean(targets)
 
     def predict(self, dataloader):
         """
@@ -76,9 +76,9 @@ class DummyRegressor(NumpyAbstractModel):
         """
 
         # Convert input dataloader to numpy
-        X, _ = self._dataloader_to_numpy(dataloader)
+        features, _ = self._dataloader_to_numpy(dataloader)
 
-        return np.full((len(X),), self.prediction_)
+        return np.full((len(features),), self.prediction_)
 
 
 class DummyClassifier(NumpyAbstractModel):
@@ -108,14 +108,14 @@ class DummyClassifier(NumpyAbstractModel):
                 - X (np.ndarray): Concatenated array of input data.
                 - Y (np.ndarray): Concatenated array of target data.
         """
-        X_list = []
-        Y_list = []
-        for x_batch, y_batch, _ in dataloader:
-            X_list.append(x_batch.numpy())
-            Y_list.append(y_batch.numpy())
-        X = np.concatenate(X_list, axis=0)
-        Y = np.concatenate(Y_list, axis=0)
-        return X, Y
+        features_list = []
+        targets_list = []
+        for features_batch, targets_batch, _ in dataloader:
+            features_list.append(features_batch.numpy())
+            targets_list.append(targets_batch.numpy())
+        features = np.concatenate(features_list, axis=0)
+        targets = np.concatenate(targets_list, axis=0)
+        return features, targets
 
     def fit(self, dataloader):
         """
@@ -128,8 +128,8 @@ class DummyClassifier(NumpyAbstractModel):
             None
         """
         # Convert DataLoaders to numpy arrays
-        _, y = self._dataloader_to_numpy(dataloader)
-        self.class_ = Counter(y.flatten()).most_common(1)[0][0]
+        _, targets = self._dataloader_to_numpy(dataloader)
+        self.class_ = Counter(targets.flatten()).most_common(1)[0][0]
 
     def predict(self, dataloader):
         """
@@ -140,6 +140,6 @@ class DummyClassifier(NumpyAbstractModel):
             numpy.ndarray: An array filled with the predicted value for each input sample.
         """
         # Convert input dataloader to numpy
-        X, _ = self._dataloader_to_numpy(dataloader)
+        features, _ = self._dataloader_to_numpy(dataloader)
 
-        return np.full((len(X),), self.class_)
+        return np.full((len(features),), self.class_)

@@ -15,7 +15,7 @@ class CanonicalCorrelationRegressor:
         n_components (int): The number of components to use for CCA.
         ridge_alpha (float): The regularization strength for the Ridge regression.
         cca (CCA): An instance of the CCA model.
-        scaler_y (StandardScaler): A scaler for standardizing the target variable.
+        scaler_targets (StandardScaler): A scaler for standardizing the target variable.
         regressor (Ridge): An instance of the Ridge regression model.
     Methods:
         _dataloader_to_numpy(dataloader):
@@ -31,7 +31,7 @@ class CanonicalCorrelationRegressor:
         self.ridge_alpha = ridge_alpha
 
         self.cca = CCA(n_components=n_components)
-        self.scaler_y = StandardScaler()
+        self.scaler_targets = StandardScaler()
         self.regressor = Ridge(alpha=self.ridge_alpha)
 
     def _dataloader_to_numpy(self, dataloader):
@@ -41,18 +41,18 @@ class CanonicalCorrelationRegressor:
             dataloader (torch.utils.data.DataLoader): The DataLoader object that yields batches of data.
         Returns:
             Tuple[numpy.ndarray, numpy.ndarray]: A tuple containing two NumPy arrays:
-                - X: Concatenated array of input features from all batches.
-                - Y: Concatenated array of target labels from all batches.
+                - features: Concatenated array of input features from all batches.
+                - targets: Concatenated array of target labels from all batches.
         """
 
-        X_list = []
-        Y_list = []
-        for x_batch, y_batch, _ in dataloader:
-            X_list.append(x_batch.numpy())
-            Y_list.append(y_batch.numpy())
-        X = np.concatenate(X_list, axis=0)
-        Y = np.concatenate(Y_list, axis=0)
-        return X, Y
+        features_list = []
+        targets_list = []
+        for features_batch, targets_batch, _ in dataloader:
+            features_list.append(features_batch.numpy())
+            targets_list.append(targets_batch.numpy())
+        features = np.concatenate(features_list, axis=0)
+        targets = np.concatenate(targets_list, axis=0)
+        return features, targets
 
     def fit(self, dataloader):
         """
@@ -68,20 +68,20 @@ class CanonicalCorrelationRegressor:
         """
 
         # Convert DataLoaders to numpy arrays
-        X, y = self._dataloader_to_numpy(dataloader)
+        features, targets = self._dataloader_to_numpy(dataloader)
 
         # Standardize target view y (X will be standardized by CCA)
         # X_std = self.scaler_X.fit_transform(X)
-        y_std = self.scaler_y.fit_transform(y)
+        targets_std = self.scaler_targets.fit_transform(targets)
 
         # Fit CCA on both views
-        self.cca.fit(X, y_std)
+        self.cca.fit(features, targets_std)
 
         # Project both views to latent space
-        Z1, Z2 = self.cca.transform(X, y_std)
+        embed_features, embed_targets = self.cca.transform(features, targets_std)
 
         # Fit regression in latent space
-        self.regressor.fit(Z1, Z2)
+        self.regressor.fit(embed_features, embed_targets)
 
     def predict(self, dataloader):
         """
@@ -98,19 +98,21 @@ class CanonicalCorrelationRegressor:
         """
 
         # Convert input dataloader to numpy
-        X, _ = self._dataloader_to_numpy(dataloader)
+        features, _ = self._dataloader_to_numpy(dataloader)
 
         # Project X to latent space
-        Z1 = self.cca.transform(X)
+        embed_features = self.cca.transform(features)
 
         # Predict in latent space
-        Z2_pred = self.regressor.predict(Z1)
+        embed_targets_pred = self.regressor.predict(embed_features)
 
         # Reconstruct original y
-        _, y_pred_std = self.cca.inverse_transform(Z1, Z2_pred)
-        y_pred = self.scaler_y.inverse_transform(y_pred_std)
+        _, targets_pred_std = self.cca.inverse_transform(
+            embed_features, embed_targets_pred
+        )
+        targets_pred = self.scaler_targets.inverse_transform(targets_pred_std)
 
-        return y_pred
+        return targets_pred
 
     # SHOULD NOT BE INSIDE THE MODEL
     # def score(self, dataloader):
