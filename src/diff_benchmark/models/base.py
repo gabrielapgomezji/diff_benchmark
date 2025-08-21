@@ -7,9 +7,6 @@ class NumpyAbstractModel(ABC):
     Defines the interface that all models must implement.
     """
 
-    def __init__(self):
-        pass
-
     @abstractmethod
     def _dataloader_to_numpy(self, dataloader):
         """
@@ -35,9 +32,6 @@ class TorchAbstractModel(ABC):
     Abstract base class for all models in the diff_benchmark framework.
     Defines the interface that all models must implement.
     """
-
-    def __init__(self):
-        pass
 
     @abstractmethod
     def _dataloader_to_numpy(self, dataloader):

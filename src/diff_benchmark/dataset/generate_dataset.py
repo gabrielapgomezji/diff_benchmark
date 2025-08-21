@@ -159,7 +159,7 @@ class CustomDatasetBuilder(DatasetBuilder):
             and int(subject_dir.name) in self.df_targets["Subject"].astype(int).tolist()
         )
 
-    def filter_features(self, features) -> bool:
+    def filter_features(self, features: np.array) -> bool:
         """
         Filters features based on their shape.
         This method checks if the number of columns in the features array
@@ -173,7 +173,7 @@ class CustomDatasetBuilder(DatasetBuilder):
 
         return features.shape[1] == 536
 
-    def extract_information(self, subject_dir: Path):
+    def extract_information(self, subject_dir: Path) -> tuple:
         """
         Extracts information from the dataset for a given subject directory.
         Args:
@@ -213,7 +213,7 @@ class CustomDatasetBuilder(DatasetBuilder):
 
         return features, target, subject_id, gender_subject
 
-    def save_dataset(self, features, targets, genders):
+    def save_dataset(self, features, targets, genders) -> None:
         """
         Saves the dataset to a specified output file.
         Parameters:
@@ -228,7 +228,7 @@ class CustomDatasetBuilder(DatasetBuilder):
             features, targets, genders, output_file=self.output_dataset_filename
         )
 
-    def create_dataset(self, n_jobs=8):
+    def create_dataset(self, n_jobs: int = 8) -> tuple:
         """
         Creates a dataset by processing subject directories in parallel.
         This method iterates through subject directories in the base path, extracts

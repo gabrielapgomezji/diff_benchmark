@@ -32,27 +32,22 @@ class DatasetBuilder(ABC):
     @abstractmethod
     def verify_files(self, subject_dir: Path) -> bool:
         """Verify the existence and validity of files in the specified subject directory."""
-        # pass
 
     @abstractmethod
     def filter_features(self, features: np.ndarray) -> bool:
         """Filter features based on some criteria or pass."""
-        # pass
 
     @abstractmethod
     def extract_information(self, subject_dir: Path):
         """Extract relevant information from the specified subject directory."""
-        # pass
 
     @abstractmethod
     def save_dataset(self, features, targets, genders):
         """Save dataset function."""
-        # pass
 
     @abstractmethod
     def create_dataset(self):
         """Create the dataset by orchestrating the necessary steps."""
-        # pass
 
 
 class DataLoadingStrategy(ABC):
