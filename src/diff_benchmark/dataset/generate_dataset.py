@@ -47,7 +47,7 @@ class PreprocessedData:
     def __init__(self, config):
 
         if config["mode"] == "all":
-            self.X, self.y = self.build_dataset()
+            self.features, self.targets = self.build_dataset()
             self.mode = "all"
 
     def build_dataset(self):
@@ -76,21 +76,20 @@ class PreprocessedData:
 
 
 class CustomDataset(Dataset):
-    def __init__(self, X, y, gender):
-        """
-        Initializes the dataset object with features, labels, and gender information.
-        Parameters:
-            X (array-like): The input features for the dataset.
-            y (array-like): The target labels for the dataset.
-            gender (array-like): The gender information associated with each sample.
-        Attributes:
-            X (torch.Tensor): A tensor representation of the input features.
-            y (torch.Tensor): A tensor representation of the target labels.
-            gender (torch.Tensor): A tensor representation of the gender information.
-        """
-
-        self.X = torch.tensor(X, dtype=torch.float32)
-        self.y = torch.tensor(y, dtype=torch.float32)
+    """
+    Initializes the dataset object with features, labels, and gender information.
+    Parameters:
+        X (array-like): The input features for the dataset.
+        y (array-like): The target labels for the dataset.
+        gender (array-like): The gender information associated with each sample.
+    Attributes:
+        X (torch.Tensor): A tensor representation of the input features.
+        y (torch.Tensor): A tensor representation of the target labels.
+        gender (torch.Tensor): A tensor representation of the gender information.
+    """
+    def __init__(self, features, targets, gender):
+        self.features = torch.tensor(features, dtype=torch.float32)
+        self.targets = torch.tensor(targets, dtype=torch.float32)
         self.gender = torch.tensor(gender, dtype=torch.int64)
 
     def __len__(self):
@@ -103,7 +102,7 @@ class CustomDataset(Dataset):
             int: The number of samples in the dataset.
         """
 
-        return len(self.X)
+        return len(self.features)
 
     def __getitem__(self, idx):
         """
@@ -117,10 +116,19 @@ class CustomDataset(Dataset):
                    corresponding to the specified index.
         """
 
-        return self.X[idx], self.y[idx], self.gender[idx]
+        return self.features[idx], self.targets[idx], self.gender[idx]
 
 
 class CustomDatasetBuilder(DatasetBuilder):
+    """
+    Initializes the dataset generator.
+    Parameters:
+        base_path (str): The base path for the dataset.
+        loading_strategy (str): The strategy to use for loading the dataset.
+        df_targets (DataFrame): The DataFrame containing target values.
+        h5_filename (str, optional): The name of the HDF5 file for embeddings. Defaults to "mapmri_default_embeddings.h5".
+        output_dataset_filename (str, optional): The name of the output dataset file. Defaults to "dataset.h5".
+    """
     def __init__(
         self,
         base_path,
@@ -129,15 +137,6 @@ class CustomDatasetBuilder(DatasetBuilder):
         h5_filename="mapmri_default_embeddings.h5",
         output_dataset_filename="dataset.h5",
     ):
-        """
-        Initializes the dataset generator.
-        Parameters:
-            base_path (str): The base path for the dataset.
-            loading_strategy (str): The strategy to use for loading the dataset.
-            df_targets (DataFrame): The DataFrame containing target values.
-            h5_filename (str, optional): The name of the HDF5 file for embeddings. Defaults to "mapmri_default_embeddings.h5".
-            output_dataset_filename (str, optional): The name of the output dataset file. Defaults to "dataset.h5".
-        """
         super().__init__(base_path, h5_filename, output_dataset_filename)
         self.df_targets = df_targets
         self.strategy = loading_strategy
@@ -212,18 +211,18 @@ class CustomDatasetBuilder(DatasetBuilder):
 
         return features, target, subject_id, gender_subject
 
-    def save_dataset(self, X, y, genders):
+    def save_dataset(self, features, targets, genders):
         """
         Saves the dataset to a specified output file.
         Parameters:
-            X (array-like): The input features of the dataset.
-            y (array-like): The target labels corresponding to the input features.
+            features (array-like): The input features of the dataset.
+            targets (array-like): The target labels corresponding to the input features.
             genders (array-like): The gender information associated with the dataset.
         This method calls the save_dataset function to write the dataset to the
         output file defined by self.output_dataset_filename.
         """
 
-        save_dataset(X, y, genders, output_file=self.output_dataset_filename)
+        save_dataset(features, targets, genders, output_file=self.output_dataset_filename)
 
     def create_dataset(self, n_jobs=8):
         """
@@ -236,8 +235,8 @@ class CustomDatasetBuilder(DatasetBuilder):
             n_jobs (int): The number of jobs to run in parallel. Default is 8.
         Returns:
             tuple: A tuple containing:
-                - X (np.ndarray): Stacked features array.
-                - y (np.ndarray): Stacked targets array.
+                - features (np.ndarray): Stacked features array.
+                - targets (np.ndarray): Stacked targets array.
                 - subject_ids (list): List of subject IDs.
                 - genders (list): List of genders.
         Raises:
@@ -274,8 +273,8 @@ class CustomDatasetBuilder(DatasetBuilder):
         features_list, targets_list, subject_ids, genders = zip(*results)
 
         try:
-            X = np.stack(features_list)
-            y = (
+            features = np.stack(features_list)
+            targets = (
                 np.stack(targets_list).squeeze(1)
                 if targets_list[0].ndim == 2 and targets_list[0].shape[1] == 1
                 else np.stack(targets_list)
@@ -284,5 +283,5 @@ class CustomDatasetBuilder(DatasetBuilder):
             print(f"Error stacking arrays: {e}")
             return None
 
-        self.save_dataset(X, y, genders)
-        return X, y, subject_ids, genders
+        self.save_dataset(features, targets, genders)
+        return features, targets, subject_ids, genders

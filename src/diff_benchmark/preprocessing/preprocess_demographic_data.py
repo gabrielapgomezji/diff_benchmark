@@ -31,7 +31,7 @@ class DefaultDemographicsPreprocessor(DemographicsPreprocessor):
 
     def clean_df(self) -> None:
         self.df = self.df.dropna()
-        
+
     # def gender_stratification(self) -> None:
     #     # This method is not implemented in the base class, but can be overridden if needed.
     #     if "Gender" in self.df.columns:

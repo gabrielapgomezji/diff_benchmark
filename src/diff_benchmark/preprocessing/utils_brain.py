@@ -1,9 +1,7 @@
 import os
-from pathlib import Path
 
 import h5py
 import networkx as nx
-import nibabel as nib
 import numpy as np
 from dipy.core.gradients import gradient_table
 from scipy.linalg import LinAlgError
@@ -51,10 +49,10 @@ def create_subgraph(data: dict):
     edge_index = np.concatenate([faces[:2], faces[1:], faces[::2]], axis=1)
     edge_index = np.unique(edge_index, axis=1)
 
-    G = nx.Graph()
-    G.add_edges_from(edge_index.T)
+    g_graph = nx.Graph()
+    g_graph.add_edges_from(edge_index.T)
 
-    graph = G.subgraph(data["vertex_indices"])
+    graph = g_graph.subgraph(data["vertex_indices"])
     return graph
 
 
@@ -242,88 +240,3 @@ def save_output(all_results, save_path, name, sphere, data, sub):
                 vgrp.create_dataset("deen_insula_label", data=vdata["label"])
 
     print(f"Saved full output with all b-values to:\n{out_file}")
-
-
-def dti_measure(model_fit, measure_list: list):
-    # === Fit DTI model only if any DTI metrics requested ===
-    if "FA" in measure_list:
-        fa = model_fit.fa
-        return fa
-
-    if "MD" in measure_list:
-        md = model_fit.md
-        return md
-
-    if "AD" in measure_list:
-        ad = model_fit.ad
-        return ad
-
-    if "RD" in measure_list:
-        rd = model_fit.rd
-        return rd
-
-
-def mapmri_measure(model_fit, measure_list: list):
-    # === Fit MAP-MRI model only if needed ===
-    if "RTOP" in measure_list:
-        rtop = model_fit.rtop()
-        return rtop
-
-    if "RTAP" in measure_list:
-        rtap = model_fit.rtap()
-        return rtap
-
-    if "RTPP" in measure_list:
-        rtpp = model_fit.rtpp()
-        return rtpp
-
-
-def dti_measure2(model_fit, affine, measure_list: list, save_path: Path):
-    # === Fit DTI model only if any DTI metrics requested ===
-    if "FA" in measure_list:
-        fa = model_fit.fa
-        nib.save(
-            nib.Nifti1Image(fa.astype(np.float32), affine), save_path / "FA.nii.gz"
-        )
-
-    if "MD" in measure_list:
-        md = model_fit.md
-        nib.save(
-            nib.Nifti1Image(md.astype(np.float32), affine), save_path / "MD.nii.gz"
-        )
-
-    if "AD" in measure_list:
-        ad = model_fit.ad
-        nib.save(
-            nib.Nifti1Image(ad.astype(np.float32), affine), save_path / "AD.nii.gz"
-        )
-
-    if "RD" in measure_list:
-        rd = model_fit.rd
-        nib.save(
-            nib.Nifti1Image(rd.astype(np.float32), affine), save_path / "RD.nii.gz"
-        )
-
-
-def mapmri_measure2(model_fit, affine, measure_list: list, save_path: Path):
-    # === Fit MAP-MRI model only if needed ===
-    if "RTOP" in measure_list:
-        rtop = model_fit.rtop()
-        rtop = np.nan_to_num(rtop, nan=0.0, posinf=0.0, neginf=0.0)
-        nib.save(
-            nib.Nifti1Image(rtop.astype(np.float32), affine), save_path / "RTOP.nii.gz"
-        )
-
-    if "RTAP" in measure_list:
-        rtap = model_fit.rtap()
-        rtap = np.nan_to_num(rtap, nan=0.0, posinf=0.0, neginf=0.0)
-        nib.save(
-            nib.Nifti1Image(rtap.astype(np.float32), affine), save_path / "RTAP.nii.gz"
-        )
-
-    if "RTPP" in measure_list:
-        rtpp = model_fit.rtpp()
-        rtpp = np.nan_to_num(rtpp, nan=0.0, posinf=0.0, neginf=0.0)
-        nib.save(
-            nib.Nifti1Image(rtpp.astype(np.float32), affine), save_path / "RTPP.nii.gz"
-        )

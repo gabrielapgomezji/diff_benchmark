@@ -8,6 +8,7 @@ from sklearn.metrics import mean_squared_error
 
 
 def summarize_folds_to_csv(fold_results_path: Path, output_csv_path: Path):
+    """Summarizes fold results from a JSON file into a CSV file with per-feature MSE scores."""
     # Load fold results
     with open(fold_results_path, "r") as f:
         fold_results = json.load(f)

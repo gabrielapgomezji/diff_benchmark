@@ -4,7 +4,8 @@ from diff_benchmark.models.logistic_regression import (
     LogisticRegressionModel,
     PCALogisticRegressionModel,
 )
-from diff_benchmark.models.mlp import MLPClassifier
+
+# from diff_benchmark.models.mlp import MLPClassifier
 
 
 def get_model(name: str, config: dict):
@@ -33,26 +34,25 @@ def get_model(name: str, config: dict):
     if name == "cca":
         return CanonicalCorrelationRegressor(n_components=config["n_components"])
 
-    elif name == "dummy_classifier":
+    if name == "dummy_classifier":
         return DummyClassifier()
 
-    elif name == "mlp_classifier":
-        return MLPClassifier(
-            input_dim=config["input_dim"],
-            hidden_layers=config["hidden_layers"],
-            output_dim=config["output_dim"],
-            learning_rate=config["learning_rate"],
-            dropout_rate=config["dropout_rate"],
-            epochs=config["epochs"],
-        )
+    # if name == "mlp_classifier":
+    #     return MLPClassifier(
+    #         input_dim=config["input_dim"],
+    #         hidden_layers=config["hidden_layers"],
+    #         output_dim=config["output_dim"],
+    #         learning_rate=config["learning_rate"],
+    #         dropout_rate=config["dropout_rate"],
+    #         epochs=config["epochs"],
+    #     )
 
-    elif name == "pca_logistic":
+    if name == "pca_logistic":
         return PCALogisticRegressionModel()
 
-    elif name == "logistic_regression":
+    if name == "logistic_regression":
         return LogisticRegressionModel()
     # elif name == "other_model":
     #     return OtherModelClass(param1=config["param1"], ...)
 
-    else:
-        raise ValueError(f"Unknown model name: {name}")
+    raise ValueError(f"Unknown model name: {name}")

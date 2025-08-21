@@ -31,24 +31,28 @@ class DatasetBuilder(ABC):
 
     @abstractmethod
     def verify_files(self, subject_dir: Path) -> bool:
-        pass
+        """ Verify the existence and validity of files in the specified subject directory."""
+        # pass
 
     @abstractmethod
     def filter_features(self, features: np.ndarray) -> bool:
         """Filter features based on some criteria or pass."""
-        pass
+        # pass
 
     @abstractmethod
     def extract_information(self, subject_dir: Path):
-        pass
+        """ Extract relevant information from the specified subject directory."""
+        # pass
 
     @abstractmethod
-    def save_dataset(self, X, y, genders):
-        pass
+    def save_dataset(self, features, targets, genders):
+        """ Save dataset function."""
+        # pass
 
     @abstractmethod
     def create_dataset(self):
-        pass
+        """ Create the dataset by orchestrating the necessary steps."""
+        # pass
 
 
 class DataLoadingStrategy(ABC):
@@ -64,14 +68,14 @@ class DataLoadingStrategy(ABC):
     @abstractmethod
     def load_data(self, h5_path: Path):
         """Load embeddings, power, metadata, etc., from the given HDF5 file."""
-        pass
+        # pass
 
     @abstractmethod
     def is_valid(self, data: dict) -> bool:
         """Check if the loaded data is valid."""
-        pass
+        # pass
 
     @abstractmethod
     def to_features(self, data: dict) -> np.ndarray:
         """Convert the data dict into a feature vector."""
-        pass
+        # pass

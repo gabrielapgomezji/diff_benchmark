@@ -33,20 +33,21 @@ class PreprocessedData:
             target count, and gender distribution.
     """
 
-    def __init__(self, X, y, genders, n_splits=5, random_state=42):
-        self.X = X
-        self.y = y
+    def __init__(self, features, targets, genders, n_splits=5, random_state=42):
+        self.features = features
+        self.targets = targets
         self.genders = genders
         self.skf = StratifiedKFold(
             n_splits=n_splits, shuffle=True, random_state=random_state
         )
 
     def get_fold_indices(self):
+        """ Returns the indices for each fold in the stratified K-Folds."""
         indices = list(self.skf.split(np.zeros(len(self.genders)), self.genders))
         return indices
 
     def get_dataloader_fold(
-        self, dataset, fold_idx, fold_indices, batch_size=32, shuffle=True
+        self, dataset, fold_idx, fold_indices, batch_size=32, #shuffle=True
     ):
         """
         Returns DataLoaders for the specified fold index using precomputed indices.
@@ -68,43 +69,44 @@ class PreprocessedData:
         """
         train_idx, test_idx = fold_indices[fold_idx]
 
-        X = dataset.X.numpy()
-        y = dataset.y.numpy()
+        features = dataset.features.numpy()
+        targets = dataset.targets.numpy()
         genders = dataset.gender.numpy()
 
         return (
-            X[train_idx],
-            y[train_idx],
+            features[train_idx],
+            targets[train_idx],
             genders[train_idx],
-            X[test_idx],
-            y[test_idx],
+            features[test_idx],
+            targets[test_idx],
             genders[test_idx],
         )
 
     def get_folds_as_dataloaders(self, batch_size=32, shuffle=True):
+        """ Generates and returns DataLoaders for all folds."""
         folds = []
 
-        for train_idx, val_idx in self.skf.split(self.X, self.genders):
-            X_train, y_train, g_train = (
-                self.X[train_idx],
-                self.y[train_idx],
+        for train_idx, val_idx in self.skf.split(self.features, self.genders):
+            features_train, targets_train, genders_train = (
+                self.features[train_idx],
+                self.targets[train_idx],
                 self.genders[train_idx],
             )
-            X_val, y_val, g_val = (
-                self.X[val_idx],
-                self.y[val_idx],
+            features_val, targets_val, genders_val = (
+                self.features[val_idx],
+                self.targets[val_idx],
                 self.genders[val_idx],
             )
 
             train_dataset = TensorDataset(
-                torch.tensor(X_train, dtype=torch.float32),
-                torch.tensor(y_train, dtype=torch.float32),
-                torch.tensor(g_train, dtype=torch.int64),
+                torch.tensor(features_train, dtype=torch.float32),
+                torch.tensor(targets_train, dtype=torch.float32),
+                torch.tensor(genders_train, dtype=torch.int64),
             )
             val_dataset = TensorDataset(
-                torch.tensor(X_val, dtype=torch.float32),
-                torch.tensor(y_val, dtype=torch.float32),
-                torch.tensor(g_val, dtype=torch.int64),
+                torch.tensor(features_val, dtype=torch.float32),
+                torch.tensor(targets_val, dtype=torch.float32),
+                torch.tensor(genders_val, dtype=torch.int64),
             )
 
             train_loader = DataLoader(
@@ -117,20 +119,22 @@ class PreprocessedData:
         return folds
 
     def get_folds_as_arrays(self):
+        """ Generates and returns arrays for all folds."""
         folds = []
 
-        for train_idx, val_idx in self.skf.split(self.X, self.genders):
-            train_data = (self.X[train_idx], self.y[train_idx], self.genders[train_idx])
-            val_data = (self.X[val_idx], self.y[val_idx], self.genders[val_idx])
+        for train_idx, val_idx in self.skf.split(self.features, self.genders):
+            train_data = (self.features[train_idx], self.targets[train_idx], self.genders[train_idx])
+            val_data = (self.features[val_idx], self.targets[val_idx], self.genders[val_idx])
             folds.append((train_data, val_data))
 
         return folds
 
     def get_specs(self) -> DatasetSpecs:
+        """ Returns specifications of the dataset including sample count, feature count,"""
         gender_dist = dict(Counter(self.genders))
         return DatasetSpecs(
-            num_samples=len(self.X),
-            num_features=self.X.shape[1],
-            num_targets=self.y.shape[1] if self.y.ndim > 1 else 1,
+            num_samples=len(self.features),
+            num_features=self.features.shape[1],
+            num_targets=self.targets.shape[1] if self.targets.ndim > 1 else 1,
             gender_distribution=gender_dist,
         )
