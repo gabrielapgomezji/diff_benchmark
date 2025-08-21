@@ -52,7 +52,7 @@ jobs:
     - name: Pylint
       run: |
         # Run Pylint on the main script
-        poetry run pylint $(git ls-files "*.py")
+        poetry run pylint src/
 
     - name: Run tests
       run: |
