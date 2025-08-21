@@ -30,6 +30,6 @@ def test_X_y_alignment(synthetic_brain_csv, synthetic_demographics_csv):
 
     # 3. Brain features exclude ID column
     X = brain_filtered.drop(columns=["subject_id"])
-    y = demo_filtered[["Age"]]  # for example, target = Age
+    y = demo_filtered[["Age_in_Yrs"]]  # for example, target = Age
 
     assert len(X) == len(y), "Final X and y lengths mismatch"
