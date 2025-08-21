@@ -1,7 +1,9 @@
+import copy
 from pathlib import Path
 
 import numpy as np
 import yaml
+from joblib import Parallel, delayed
 
 from diff_benchmark.analysis.plot_results import plot_folds_predictions_vs_targets
 from diff_benchmark.analysis.save_results import save_fold_results
@@ -63,71 +65,95 @@ print(specs)
 # folds = preprocessed.get_folds_as_dataloaders(batch_size=16)
 indices = preprocessed.get_fold_indices()
 
-train_scores, test_scores = [], []
-train_preds, test_preds = [], []
-train_targets, test_targets = [], []
-per_fold_results = []
 
-for fold_idx, (train_idx, test_idx) in enumerate(indices):
-    print(
-        f"Fold {fold_idx+1} - Train samples: {len(train_idx)}, test_samples: {len(test_idx)}"
-    )
-    train_loader, test_loader = preprocessed.get_dataloader_fold(
-        dataset, fold_idx, indices
-    )
-    _, y_train, _, _, y_test, _ = preprocessed.get_arrays_from_indices(
-        dataset, fold_idx, indices
-    )
+def run_single_model(model_name, config, dataset, preprocessed, indices, results_path):
+    local_config = copy.deepcopy(config)
+    local_config["model_name"] = model_name
 
-    model = get_model(config["model_name"], config)
+    train_scores, test_scores = [], []
+    train_preds, test_preds = [], []
+    train_targets, test_targets = [], []
+    per_fold_results = []
 
-    # --------- Train / Val / Test Model ---------
-    print("Training...")
-    model.fit(train_loader)
-    train_pred = model.predict(train_loader)
-    train_score = accuracy_score(y_train, train_pred)
-    print(train_score)
-
-    train_scores.append(train_score)
-    train_preds.append(train_pred.tolist())
-    train_targets.append(y_train.tolist())
-
-    print("Testing...")
-    test_pred = model.predict(test_loader)
-    test_score = accuracy_score(y_test, test_pred)
-    print(test_score)
-
-    test_scores.append(test_score)
-    test_preds.append(test_pred.tolist())
-    test_targets.append(y_test.tolist())
-
-    print(f"Done Fold {fold_idx + 1}")
-    if DEBUG:
-        per_fold_results.append(
-            {
-                "model": config["model_name"],
-                "fold": fold_idx,
-                "train": {
-                    "score": float(train_score),
-                    "predictions": train_pred.tolist(),
-                    "targets": y_train.tolist(),
-                },
-                "test": {
-                    "score": float(test_score),
-                    "predictions": test_pred.tolist(),
-                    "targets": y_test.tolist(),
-                },
-            }
+    for fold_idx, (train_idx, test_idx) in enumerate(indices):
+        # print(
+        #     f"Fold {fold_idx+1} - Train samples: {len(train_idx)}, test_samples: {len(test_idx)}"
+        # )
+        train_loader, test_loader = preprocessed.get_dataloader_fold(
+            dataset, fold_idx, indices
+        )
+        _, y_train, _, _, y_test, _ = preprocessed.get_arrays_from_indices(
+            dataset, fold_idx, indices
         )
 
+        model = get_model(model_name, local_config)
 
-print("\n Saving results...")
-if DEBUG:
-    save_fold_results(
-        model_name=config["model_name"],
-        fold_results=per_fold_results,
-        output_dir=Path(config["results_path"]) / "analysis_results",
+        # --------- Train / Val / Test Model ---------
+        # print("Training...")
+        model.fit(train_loader)
+        train_pred = model.predict(train_loader)
+        train_score = accuracy_score(y_train, train_pred)
+        print(train_score)
+
+        train_scores.append(train_score)
+        train_preds.append(train_pred.tolist())
+        train_targets.append(y_train.tolist())
+
+        # print("Testing...")
+        test_pred = model.predict(test_loader)
+        test_score = accuracy_score(y_test, test_pred)
+        print(test_score)
+
+        test_scores.append(test_score)
+        test_preds.append(test_pred.tolist())
+        test_targets.append(y_test.tolist())
+
+        # print(f"Done Fold {fold_idx + 1}")
+        if DEBUG:
+            per_fold_results.append(
+                {
+                    "model": model_name,
+                    "fold": fold_idx,
+                    "train": {
+                        "score": float(train_score),
+                        "predictions": train_pred.tolist(),
+                        "targets": y_train.tolist(),
+                    },
+                    "test": {
+                        "score": float(test_score),
+                        "predictions": test_pred.tolist(),
+                        "targets": y_test.tolist(),
+                    },
+                }
+            )
+
+    # print("\n Saving results...")
+    if DEBUG:
+        save_fold_results(
+            model_name=model_name,
+            fold_results=per_fold_results,
+            output_dir=Path(results_path) / "analysis_results",
+        )
+
+    return model_name, per_fold_results
+
+
+models_to_run = config["model_name"]
+
+# Execute models in parallel
+results = Parallel(n_jobs=1)(  # len(models_to_run)
+    delayed(run_single_model)(
+        model_name, config, dataset, preprocessed, indices, config["results_path"]
     )
+    for model_name in models_to_run
+)
+
+# results is a list of (model_name, per_fold_results)
+for model_name, per_fold_results in results:
+    print(f"Completed model: {model_name}")
+    breakpoint()
+
+breakpoint()
 
 # ------------ EVALUATION AND ANALYSIS ------------
 
