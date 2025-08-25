@@ -25,7 +25,8 @@ config_path = Path(__file__).parent.parent / "configuration.yaml"
 with open(config_path, "r") as f:
     config = yaml.safe_load(f)
 
-config["metric_to_compute"] = "md"
+# config["metric_to_compute"] = "md"
+# breakpoint()
 brain_preparator = DefaultHcpPipeline(config)
 brain_df = brain_preparator.run_pipeline()
 brain_df = brain_df.reset_index()
@@ -151,28 +152,29 @@ results = Parallel(n_jobs=1)(  # len(models_to_run)
 # results is a list of (model_name, per_fold_results)
 for model_name, per_fold_results in results:
     print(f"Completed model: {model_name}")
-
+    breakpoint()
 
 # ------------ EVALUATION AND ANALYSIS ------------
 
 
 # -------- PLOT PER FOLD PRED VS TARGETS --------
-plot_folds_predictions_vs_targets(
-    summary_path=Path(config["results_path"])
-    / "analysis_results"
-    / f"{config["model_name"]}_fold_results.json",
-    output_dir=Path(config["results_path"]) / "analysis_results" / "plots",
-)
+for name in models_to_run:
+    plot_folds_predictions_vs_targets(
+        summary_path=Path(config["results_path"])
+        / "analysis_results"
+        / f"{name}_fold_results.json",
+        output_dir=Path(config["results_path"]) / "analysis_results" / "plots",
+    )
 
-# -------- PER FOLD SCORE TABLE --------
-summarize_folds_to_csv(
-    fold_results_path=Path(config["results_path"])
-    / "analysis_results"
-    / f"{config["model_name"]}_fold_results.json",
-    output_csv_path=Path(config["results_path"])
-    / "analysis_results"
-    / f"{config["model_name"]}_score_stats.csv",
-)
+    # -------- PER FOLD SCORE TABLE --------
+    summarize_folds_to_csv(
+        fold_results_path=Path(config["results_path"])
+        / "analysis_results"
+        / f"{name}_fold_results.json",
+        output_csv_path=Path(config["results_path"])
+        / "analysis_results"
+        / f"{name}_score_stats.csv",
+    )
 
 
 ###### VERY EARLY IN TESTING

@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import nibabel as nib
 import numpy as np
 import torch
 from joblib import Parallel, delayed
@@ -59,8 +60,6 @@ class PreprocessedData:
         Currently, this method is not implemented.
         """
 
-        pass
-
     def get_folds_as_dataloaders(self):
         """
         Retrieves the dataset folds as PyTorch DataLoader instances.
@@ -71,8 +70,6 @@ class PreprocessedData:
             List[DataLoader]: A list of DataLoader instances, each corresponding
             to a different fold of the dataset.
         """
-
-        pass
 
 
 class CustomDataset(Dataset):
@@ -89,9 +86,18 @@ class CustomDataset(Dataset):
     """
 
     def __init__(self, features, targets, gender):
-        self.features = torch.tensor(features, dtype=torch.float32)
+        # self.features = torch.tensor(features, dtype=torch.float32)
+        self.features = features.drop(columns=["subject_id"])
         self.targets = torch.tensor(targets, dtype=torch.float32)
         self.gender = torch.tensor(gender, dtype=torch.int64)
+
+        self.mode = self.get_features_model()
+
+        if self.mode == "features":
+            self.features = self.features.to_numpy()
+            self.features = torch.tensor(self.features, dtype=torch.float32)
+        if self.mode == "paths":
+            self.features = self.features[0].tolist()
 
     def __len__(self):
         """
@@ -116,8 +122,31 @@ class CustomDataset(Dataset):
                    and the gender information (self.gender[idx])
                    corresponding to the specified index.
         """
+        if self.mode == "features":
+            final_features = self.features[idx]
+        if self.mode == "paths":
+            img = nib.load(Path(self.features[idx]))
+            data = np.nan_to_num(img.get_fdata()).clip(0, 7)
+            final_features = torch.tensor(data, dtype=torch.float32)
+            # features = nib.Nifti1Image(data, affine=img.affine)
 
-        return self.features[idx], self.targets[idx], self.gender[idx]
+        return final_features, self.targets[idx], self.gender[idx]
+
+    def get_features_model(self):
+        """
+        Determines the mode of the features based on their data type.
+        This method checks if the first column of the features DataFrame, excluding
+        the 'subject_id' column, is of a numeric subtype. If it is numeric, the mode
+        is set to "features"; otherwise, it is set to "paths".
+        Returns:
+            str: The mode of the features, either "features" or "paths".
+        """
+
+        if np.issubdtype(self.features.dtypes[0], np.number):
+            self.mode = "features"
+        else:
+            self.mode = "paths"
+        return self.mode
 
 
 class CustomDatasetBuilder(DatasetBuilder):

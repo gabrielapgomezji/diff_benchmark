@@ -185,6 +185,126 @@ class DefaultHcpPipeline(DataPreparationBrain):
         pass
 
 
+class ImageHcpPipeline(DataPreparationBrain):
+    """
+    ImageHcpPipeline is a class that extends the DataPreparationBrain class to handle
+    the preprocessing of brain data for the Human Connectome Project (HCP) pipeline.
+    Attributes:
+        hcp_dir (Path): The directory containing HCP data.
+        results_root (Path): The root directory for storing results.
+        metric (str): The metric to compute (e.g., 'rtop', 'md').
+        schaefer_resampled: Resampled Schaefer atlas onto fs_LR.
+        big_delta (float): The big delta value for diffusion metrics.
+        small_delta (float): The small delta value for diffusion metrics.
+    Methods:
+        verify_subject_files(subject_id: str, metric: str) -> bool:
+            Checks if both hemispheres' .scalar.gii files exist for the given subject and metric.
+        compute_microstructure(subject_id: str):
+            Computes microstructure metrics for the given subject and saves the results.
+        run_analysis():
+            Runs the analysis on the scalar files and computes average data per parcel.
+        extract_features():
+            Placeholder method for extracting features (to be implemented).
+    """
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.hcp_dir = Path(config["base_path"])
+        self.results_root = Path(config["results_path"]) / "default"
+        self.metric = config["metric_to_compute"]
+        self.schaefer_resampled = resample_schaefer_onto_fs_lr(scale=1000)
+        self.big_delta = config["big_delta"]
+        self.small_delta = config["small_delta"]
+
+    def verify_subject_files(self, subject_id: str, metric: str) -> bool:
+        """
+        Check if whole brain .nii.gii files exist for the given subject and metric.
+        """
+        derivatives_dir = (
+            self.results_root / "derivatives" / f"sub-{subject_id}" / "dwi"
+        )
+        file = derivatives_dir / f"sub-{subject_id}_param-{metric}_dwimap.nii.gz"
+
+        return file.exists()
+
+    def compute_microstructure(self, subject_id: str):
+        """Compute microstructure metrics for the given subject and save the results."""
+        try:
+            derivatives_dir = (
+                self.results_root / "derivatives" / f"sub-{subject_id}" / "dwi"
+            )
+            derivatives_dir.mkdir(parents=True, exist_ok=True)
+
+            subject_dir = self.hcp_dir / subject_id
+
+            diffusion_dir = subject_dir / "T1w" / "Diffusion"
+            dwi_nib = nib.load(diffusion_dir / "data.nii.gz")
+            bvals, bvecs = diffusion_dir / "bvals", diffusion_dir / "bvecs"
+            bvals = np.loadtxt(bvals)
+            bvecs = np.loadtxt(bvecs).T
+            nodif_mask = diffusion_dir / "nodif_brain_mask.nii.gz"
+
+            aparc_aseg = subject_dir / "T1w" / "aparc+aseg.nii.gz"
+
+            labels = extract_selected_labels(aparc_aseg)
+            aparc_resampled = nimage.resample_to_img(
+                aparc_aseg,
+                nodif_mask,
+                interpolation="nearest",
+                force_resample=True,
+                copy_header=True,
+            )
+
+            ctx_mask, vent_mask = create_masks(aparc_resampled, labels)
+
+            if self.metric == "rtop":
+                rtop_img = compute_rtop(
+                    dwi_nib,
+                    ctx_mask,
+                    vent_mask,
+                    bvals,
+                    bvecs,
+                    self.big_delta,
+                    self.small_delta,
+                )
+                nib.save(
+                    rtop_img,
+                    derivatives_dir / f"sub-{subject_id}_param-rtop_dwimap.nii.gz",
+                )
+            elif self.metric == "md":
+                md_img = compute_md(
+                    dwi_nib,
+                    ctx_mask,
+                    vent_mask,
+                    bvals,
+                    bvecs,
+                    self.big_delta,
+                    self.small_delta,
+                )
+                nib.save(
+                    md_img, derivatives_dir / f"sub-{subject_id}_param-md_dwimap.nii.gz"
+                )
+
+        except Exception as e:
+            print(f"[{subject_id}] Error during microstructure: {e}")
+
+    def run_analysis(self):
+        img_files = sorted(
+            self.results_root.glob(
+                f"derivatives/sub-*/dwi/*_param-{self.metric}_dwimap.nii.gz"
+            )
+        )
+        for file in tqdm(img_files, desc="Running analysis"):
+            try:
+                subject_id = file.stem.split("_")[0].replace("sub-", "")
+                self.results[subject_id] = file
+            except Exception as e:
+                print(f"[{subject_id}] Error during analysis: {e}")
+
+    def extract_features(self):
+        pass
+
+
 class LcotEmbedHcpPipeline(DataPreparationBrain):
     """
     LcotEmbedHcpPipeline is a class that extends the DataPreparationBrain class to handle
