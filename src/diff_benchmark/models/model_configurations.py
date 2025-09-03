@@ -1,12 +1,22 @@
+import hashlib
+import json
+
 from diff_benchmark.models.cca import CanonicalCorrelationRegressor
 from diff_benchmark.models.dummy import DummyClassifier
 from diff_benchmark.models.logistic_regression import (
     LogisticRegressionModel,
     PCALogisticRegressionModel,
 )
+from diff_benchmark.models.cnn import ResNet3SliceModel
 
 # from diff_benchmark.models.mlp import MLPClassifier
 
+def make_run_id(name, params):
+    # Sort params to keep consistency
+    params_str = json.dumps(params, sort_keys=True)
+    # Hash to avoid overly long filenames
+    run_hash = hashlib.md5(params_str.encode()).hexdigest()[:8]
+    return f"{name}_{run_hash}"
 
 def get_model(name: str, config: dict):
     """
@@ -52,6 +62,11 @@ def get_model(name: str, config: dict):
 
     if name == "logistic_regression":
         return LogisticRegressionModel()
+    
+    if name == "2dcnn":
+        # return ResNet3SliceModel(input_slices=config.get("input_slices", 145), num_classes=config.get("num_classes", 2), device=config.get("device", "cuda"))
+        return ResNet3SliceModel(**config)
+    
     # elif name == "other_model":
     #     return OtherModelClass(param1=config["param1"], ...)
 

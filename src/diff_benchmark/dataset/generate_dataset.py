@@ -127,6 +127,7 @@ class CustomDataset(Dataset):
         if self.mode == "paths":
             img = nib.load(Path(self.features[idx]))
             data = np.nan_to_num(img.get_fdata()).clip(0, 7)
+            data /= 7.
             final_features = torch.tensor(data, dtype=torch.float32)
             # features = nib.Nifti1Image(data, affine=img.affine)
 
