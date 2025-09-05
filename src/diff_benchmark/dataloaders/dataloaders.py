@@ -72,7 +72,6 @@ class PreprocessedData:
         Given full arrays and fold index, return X, y, gender arrays for train/test sets.
         """
         train_idx, test_idx = fold_indices[fold_idx]
-        breakpoint()
         features = dataset.features.numpy()
         targets = dataset.targets.numpy()
         genders = dataset.gender.numpy()

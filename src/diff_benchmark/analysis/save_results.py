@@ -1,12 +1,28 @@
-import os
 import json
+import os
 from pathlib import Path
 
 import numpy as np
 from filelock import FileLock
 
 
-def save_model_results(summary: dict, output_dir: Path, results_filename="all_results.json"):
+def save_model_results(
+    summary: dict, output_dir: Path, results_filename="all_results.json"
+):
+    """
+    Saves the model results to a specified output directory in JSON format.
+    Parameters:
+        summary (dict): A dictionary containing the model results and metadata.
+        output_dir (Path): The directory where the results will be saved.
+        results_filename (str, optional): The name of the results file. Defaults to "all_results.json".
+    The function checks for a training log associated with the run ID in the summary. 
+    If the log exists, it loads the training history from the log file and adds it to the summary. 
+    The log file is then deleted to clean up. 
+    The function creates the output directory if it does not exist and acquires a file lock 
+    to ensure that results are saved safely. It appends the new results to the existing results 
+    if the results file already exists, or creates a new file if it does not. 
+    Finally, it prints a message indicating that the results have been saved.
+    """
     run_id = summary.get("pipeline", {}).get("run_id", None)
     if run_id:
         log_file = Path("./data/results") / f"{run_id}_training_log.json"
@@ -17,10 +33,10 @@ def save_model_results(summary: dict, output_dir: Path, results_filename="all_re
             os.remove(log_file)  # cleanup
         else:
             summary["history"] = []
-    
+
     output_dir.mkdir(parents=True, exist_ok=True)
     out_path = output_dir / results_filename
-    
+
     lock = FileLock(f"{out_path}.lock")
     with lock:
         if out_path.exists():
@@ -34,7 +50,9 @@ def save_model_results(summary: dict, output_dir: Path, results_filename="all_re
         with open(out_path, "w") as f:
             json.dump(all_results, f, indent=2)
 
-        print(f"Saved results for {summary['model_name']} (run_id={summary['pipeline']['run_id']})")
+        print(
+            f"Saved results for {summary['model_name']} (run_id={summary['pipeline']['run_id']})"
+        )
 
 
 def save_fold_results(
