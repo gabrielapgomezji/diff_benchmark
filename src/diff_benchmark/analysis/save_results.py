@@ -1,7 +1,40 @@
+import os
 import json
 from pathlib import Path
 
 import numpy as np
+from filelock import FileLock
+
+
+def save_model_results(summary: dict, output_dir: Path, results_filename="all_results.json"):
+    run_id = summary.get("pipeline", {}).get("run_id", None)
+    if run_id:
+        log_file = Path("./data/results") / f"{run_id}_training_log.json"
+        if log_file.exists():
+            with open(log_file, "r") as f:
+                history = json.load(f)
+            summary["history"] = history
+            os.remove(log_file)  # cleanup
+        else:
+            summary["history"] = []
+    
+    output_dir.mkdir(parents=True, exist_ok=True)
+    out_path = output_dir / results_filename
+    
+    lock = FileLock(f"{out_path}.lock")
+    with lock:
+        if out_path.exists():
+            with open(out_path, "r") as f:
+                all_results = json.load(f)
+        else:
+            all_results = []
+
+        all_results.append(summary)
+
+        with open(out_path, "w") as f:
+            json.dump(all_results, f, indent=2)
+
+        print(f"Saved results for {summary['model_name']} (run_id={summary['pipeline']['run_id']})")
 
 
 def save_fold_results(
