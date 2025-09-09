@@ -4,9 +4,9 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from torch import nn
 from sklearn.model_selection import train_test_split
-from torch.utils.data import DataLoader, Subset, random_split
+from torch import nn
+from torch.utils.data import DataLoader, Subset
 from torchvision import models
 from tqdm import tqdm
 
@@ -14,25 +14,26 @@ from diff_benchmark.models.base import TorchAbstractModel
 
 
 class ResNet18Backbone(nn.Module):
-    """ResNet18Backbone is a PyTorch neural network module that utilizes a pre-trained ResNet-18 model 
-    as a feature extractor. It removes the final fully connected layer to output feature vectors 
+    """ResNet18Backbone is a PyTorch neural network module that utilizes a pre-trained ResNet-18 model
+    as a feature extractor. It removes the final fully connected layer to output feature vectors
     of a specified dimension.
     Attributes:
-        feature_extractor (nn.Sequential): A sequential container that holds the layers of the 
+        feature_extractor (nn.Sequential): A sequential container that holds the layers of the
         ResNet-18 model up to the average pooling layer.
         out_dim (int): The output dimension of the feature vectors, which is 512 for ResNet-18.
     Args:
         pretrained (bool): If True, initializes the model with pre-trained weights. Defaults to True.
         **kwargs: Additional keyword arguments to be passed to the parent class.
     Methods:
-        forward(x): 
+        forward(x):
             Takes an input tensor and returns the extracted feature vector.
             Args:
-                x (torch.Tensor): Input tensor of shape (B, 3, H, W), where B is the batch size, 
+                x (torch.Tensor): Input tensor of shape (B, 3, H, W), where B is the batch size,
                 3 is the number of channels (RGB), H is the height, and W is the width of the image.
             Returns:
-                torch.Tensor: A tensor of shape (B, 512) containing the extracted features."""
-    
+                torch.Tensor: A tensor of shape (B, 512) containing the extracted features.
+    """
+
     def __init__(self, pretrained=True, **kwargs):
         super().__init__()
         resnet = models.resnet18(
@@ -65,14 +66,15 @@ class ResNet3SliceClassifier(nn.Module):
         freeze_backbone (bool, optional): If True, the backbone parameters are frozen during training. Default is True.
         **kwargs: Additional keyword arguments passed to the ResNet18 backbone.
     Methods:
-        forward(x): 
+        forward(x):
             Forward pass of the model.
             Args:
-                x (torch.Tensor): Input tensor of shape (batch, Slice, Height, Width) where batch is batch size, 
+                x (torch.Tensor): Input tensor of shape (batch, Slice, Height, Width) where batch is batch size,
                                   Slice is the number of slices, Height is height, and Width is width.
             Returns:
-                torch.Tensor: Output tensor of shape (batch, num_classes) representing class scores."""
-    
+                torch.Tensor: Output tensor of shape (batch, num_classes) representing class scores.
+    """
+
     def __init__(self, input_slices, num_classes=2, freeze_backbone=True, **kwargs):
         super().__init__()
         self.backbone = ResNet18Backbone(**kwargs)
@@ -91,7 +93,9 @@ class ResNet3SliceClassifier(nn.Module):
         # batch, slice, height, width = x.shape
         # assert S % 3 == 0, "Slice dimension must be divisible by 3"
 
-        subvols = x.unfold(dimension=1, size=3, step=3)  # (Batch, num_subvols, 3, Height, Width)
+        subvols = x.unfold(
+            dimension=1, size=3, step=3
+        )  # (Batch, num_subvols, 3, Height, Width)
         subvols = subvols.permute(0, 1, 4, 2, 3)
         num_subvols = subvols.size(1)
 
@@ -127,10 +131,8 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
         fit(dataloader): Trains the model using the provided DataLoader.
         predict(dataloader): Generates predictions for the provided DataLoader.
     """
-    
-    def __init__(
-        self, input_slices=145, num_classes=2, device="cuda", **kwargs
-    ):
+
+    def __init__(self, input_slices=145, num_classes=2, device="cuda", **kwargs):
         super(ResNet3SliceModel, self).__init__()
         self.device = device
         self.run_id = kwargs.get("run_id", "unnamed_run")
@@ -161,12 +163,12 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
         }
 
     def _dataloader_to_numpy(self, dataloader):
-        X, y, g = [], [], []
+        x, y, g = [], [], []
         for xb, yb, gb in dataloader:
-            X.append(xb.numpy())
+            x.append(xb.numpy())
             y.append(yb.numpy())
             g.append(gb.numpy())
-        return np.concatenate(X), np.concatenate(y), np.concatenate(g)
+        return np.concatenate(x), np.concatenate(y), np.concatenate(g)
 
     def _train_val_loader_split(self, train_loader, val_ratio=0.3):
         dataset = train_loader.dataset  # access the underlying dataset
@@ -196,12 +198,13 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
 
     def _save_logs(self, history, save_path):
         path = Path(save_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
         if path.suffix == ".json":
-            with open(path, "w") as f:
+            with open(path, "w", encoding="utf-8") as f:
                 json.dump(history, f)
         elif path.suffix == ".csv":
             keys = history[0].keys()
-            with open(path, "w", newline="") as f:
+            with open(path, "w", encoding="utf-8", newline="") as f:
                 writer = csv.DictWriter(f, fieldnames=keys)
                 writer.writeheader()
                 writer.writerows(history)
@@ -243,7 +246,7 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
                     val_loss = 0
                     val_accuracy = 0
                     with torch.no_grad():
-                        for batch_val_idx, (xb, yb, gb) in enumerate(val_loader):
+                        for batch_val_idx, (xb, yb, _) in enumerate(val_loader):
                             xb, yb = xb.to(self.device), yb.long().to(self.device)
                             preds = self.model(xb)
                             loss = self.criterion(preds, yb)
@@ -269,10 +272,12 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
                     # avg_val_loss = val_loss / len(val_loader)   # NOT USED FOR THE MOMENT
                     avg_val_accuracy = val_accuracy / len(val_loader)
                     if avg_val_accuracy > self.best_val_model:
+                        save_path = Path("./data/models") / f"{self.run_id}_best.pth"
+                        save_path.parent.mkdir(parents=True, exist_ok=True)
                         self.best_val_model = avg_val_accuracy
                         torch.save(
                             self.model.state_dict(),
-                            f"./data/models/best_{self.run_id}_model.pth",
+                            save_path,
                         )
                     self.model.train()  # switch back to train mode
 

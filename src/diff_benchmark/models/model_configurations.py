@@ -19,10 +19,10 @@ def make_run_id(name, params):
         name (str): The name associated with the run.
         params (dict): A dictionary of parameters that will be used to generate the run ID.
     Returns:
-        str: A unique run ID formatted as 'name_hash', where 'hash' is the first 8 characters 
+        str: A unique run ID formatted as 'name_hash', where 'hash' is the first 8 characters
              of the MD5 hash of the sorted parameters.
     """
-    
+
     # Sort params to keep consistency
     params_str = json.dumps(params, sort_keys=True)
     # Hash to avoid overly long filenames
