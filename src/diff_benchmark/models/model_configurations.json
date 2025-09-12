@@ -1,0 +1,29 @@
+{
+    "models": [
+      {
+        "name": "2dcnn",
+        "params": {
+          "input_slices": 145,
+          "num_classes": 2,
+          "device": "cuda",
+          "learning_rate": 0.00001,
+          "pretrained": true,
+          "freeze_backbone": true,
+          "batch_size": 128
+        }
+      },
+      {
+        "name": "2dcnn",
+        "params": {
+          "input_slices": 145,
+          "num_classes": 2,
+          "device": "cuda",
+          "learning_rate": 0.00001,
+          "pretrained": true,
+          "freeze_backbone": true,
+          "batch_size": 128
+        }
+      }
+    ]
+  }
+  
