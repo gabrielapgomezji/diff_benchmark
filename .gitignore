@@ -2,10 +2,16 @@ poetry.lock
 scripts/example.py
 .vscode/
 configuration.yaml
+configuration2.yaml
 example.py
 scripts/main_test.py
 scripts/main_test2.py
 scripts/main_test_modular.py
+*.png
+/data
+/data_old
+example_result.jsonl
+MedicalNet_pytorch_files2
 
 
 # Byte-compiled / optimized / DLL files
