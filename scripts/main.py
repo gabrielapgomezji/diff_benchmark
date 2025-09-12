@@ -106,9 +106,9 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
         #     "target_columns": config.get("target_columns", [])
         # },
         "pipeline": {
-            "batch_size": config.get("batch_size"),
-            "n_splits": config.get("n_splits"),
-            "random_state": config.get("random_state"),
+            "batch_size": local_config.get("batch_size"),
+            "n_splits": local_config.get("n_splits"),
+            "random_state": local_config.get("random_state"),
             "run_id": run_id,
         },
         "results": {
@@ -218,20 +218,6 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
 
 
 models_to_run = config["models"]
-# models_to_run = model_configs
-
-# # Execute models in parallel
-# results = Parallel(n_jobs=5)(  #
-#     delayed(run_single_model)(
-#         model_entry["name"],
-#         {**model_entry["params"]},
-#         dataset,
-#         preprocessed,
-#         indices,
-#         "./data",  # config["results_path"]
-#     )
-#     for model_entry in models_to_run
-# )
 
 results = run_jobs(
     run_single_model, models_to_run, dataset, preprocessed, indices, config
@@ -240,7 +226,7 @@ results = run_jobs(
 # results is a list of (model_name, per_fold_results)
 for model_name, run_id in results:
     print(f"Completed model: {model_name}")
-    breakpoint()
+
 
 # ------------ EVALUATION AND ANALYSIS ------------
 
