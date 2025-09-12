@@ -17,7 +17,7 @@ def run_with_joblib(run_fn, models_to_run, dataset, preprocessed, indices, resul
 
 
 def run_with_slurm(run_fn, models_to_run, dataset, preprocessed, indices, results_path, slurm_cfg): 
-    submitit.helpers.SLURMExecutor.USE_SQUEUE = True   
+    submitit.slurm.slurm.SlurmJob.USE_SQUEUE = True  
     executor = submitit.AutoExecutor(folder=slurm_cfg.get("log_folder", "./slurm_logs"))
     executor.update_parameters(
         mem_gb=slurm_cfg.get("mem_gb", 32),
