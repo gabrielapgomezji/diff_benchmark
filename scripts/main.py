@@ -26,6 +26,7 @@ from diff_benchmark.preprocessing.wrapper_brain_data import (  # LcotEmbedHcpPip
     ImageHcpPipeline,
 )
 from diff_benchmark.scores.scores import accuracy_score  # , mse_score
+from diff_benchmark.utils.job_manager import run_jobs
 
 DEBUG = True
 
@@ -33,7 +34,9 @@ config_path = Path(__file__).parent.parent / "configuration.yaml"
 with open(config_path, "r") as f:
     config = yaml.safe_load(f)
 
-json_path = Path(__file__).parent.parent / "src/diff_benchmark/models/model_configurations.json" 
+json_path = (
+    Path(__file__).parent.parent / "src/diff_benchmark/models/model_configurations.json"
+)
 with open(json_path, "r") as f:
     model_configs = json.load(f)["models"]
 
@@ -59,7 +62,7 @@ brain_filtered = brain_df[brain_df["subject_id"].astype(str).isin(common_subject
 
 # DATASET GENERATION
 
-X = brain_filtered#.drop(columns=["subject_id"]).to_numpy()
+X = brain_filtered  # .drop(columns=["subject_id"]).to_numpy()
 y = np.array(demographics_filtered["Gender"])
 gender = np.array(demographics_filtered["Gender"])
 
@@ -83,18 +86,18 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
     local_config = copy.deepcopy(config)
     local_config["model_name"] = model_name
     run_id = make_run_id(model_name, local_config)
-    local_config["run_id"] = run_id 
+    local_config["run_id"] = run_id
 
     if is_cached(run_id, Path(results_path) / "analysis_results"):
         print(f"Skipping {model_name} (run_id={run_id}) - already cached.")
         return model_name, run_id
     print(f"\nRunning model: {model_name} with run_id: {run_id}")
-    
+
     train_scores, test_scores = [], []
     train_preds, test_preds = [], []
     train_targets, test_targets = [], []
     per_fold_results = []
-    
+
     summary = {
         "model_name": model_name,
         # "preprocessing": {
@@ -106,16 +109,16 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
             "batch_size": config.get("batch_size"),
             "n_splits": config.get("n_splits"),
             "random_state": config.get("random_state"),
-            "run_id": run_id
+            "run_id": run_id,
         },
         "results": {
-            "train_average_score": None,   # will fill after loop
-            "train_std_score": None,       # will fill after loop
-            "test_average_score": None,   # will fill after loop
-            "test_std_score": None,       # will fill after loop
+            "train_average_score": None,  # will fill after loop
+            "train_std_score": None,  # will fill after loop
+            "test_average_score": None,  # will fill after loop
+            "test_std_score": None,  # will fill after loop
             "number_folds": len(indices),
-            "folds": {}              # will fill inside loop
-        }
+            "folds": {},  # will fill inside loop
+        },
     }
 
     for fold_idx, (train_idx, test_idx) in enumerate(indices):
@@ -132,7 +135,7 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
         targets = dataset.targets.numpy()
         y_train = np.array(targets[train_idx]).squeeze()
         y_test = np.array(targets[test_idx]).squeeze()
-        
+
         model = get_model(model_name, local_config)
 
         # --------- Train / Val / Test Model ---------
@@ -156,7 +159,7 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
         test_scores.append(test_score)
         test_preds.append(test_pred.tolist())
         test_targets.append(y_test.tolist())
-        
+
         summary["results"]["folds"][f"fold_{fold_idx+1}"] = {
             "train": {
                 "score": float(train_score),
@@ -190,10 +193,14 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
             )
             training_log_path = Path("./data/results") / f"{run_id}_training_log.json"
             training_log_path.parent.mkdir(parents=True, exist_ok=True)
-            training_history_plot_path = Path("./data/plots") / f"training_history_{run_id}.png"
+            training_history_plot_path = (
+                Path("./data/plots") / f"training_history_{run_id}.png"
+            )
             training_history_plot_path.parent.mkdir(parents=True, exist_ok=True)
-            plot_history_from_file(training_log_path, save_path=training_history_plot_path)
-    
+            plot_history_from_file(
+                training_log_path, save_path=training_history_plot_path
+            )
+
     summary["results"]["train_average_score"] = float(np.mean(train_scores))
     summary["results"]["train_std_score"] = float(np.std(train_scores))
     summary["results"]["test_average_score"] = float(np.mean(test_scores))
@@ -213,13 +220,20 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
 models_to_run = config["models"]
 # models_to_run = model_configs
 
-# Execute models in parallel
-results = Parallel(n_jobs=1)(  # len(models_to_run)
-    delayed(run_single_model)(
-        model_entry["name"], {**model_entry["params"]}, dataset, preprocessed, indices, "./data" #config["results_path"]
-    )
-    for model_entry in models_to_run
-)
+# # Execute models in parallel
+# results = Parallel(n_jobs=5)(  # 
+#     delayed(run_single_model)(
+#         model_entry["name"],
+#         {**model_entry["params"]},
+#         dataset,
+#         preprocessed,
+#         indices,
+#         "./data",  # config["results_path"]
+#     )
+#     for model_entry in models_to_run
+# )
+
+results = run_jobs(run_single_model, models_to_run, dataset, preprocessed, indices, config)
 
 # results is a list of (model_name, per_fold_results)
 for model_name, run_id in results:
@@ -247,7 +261,6 @@ for model_entry in models_to_run:
         / "analysis_results"
         / f"{name}_score_stats.csv",
     )
-
 
 
 ###### VERY EARLY IN TESTING

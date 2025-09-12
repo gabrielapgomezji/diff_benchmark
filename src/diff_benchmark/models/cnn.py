@@ -34,7 +34,7 @@ class ResNet18Backbone(nn.Module):
                 torch.Tensor: A tensor of shape (B, 512) containing the extracted features.
     """
 
-    def __init__(self, pretrained=True, **kwargs):
+    def __init__(self, pretrained=True, trainable_blocks=0, **kwargs):
         super().__init__()
         resnet = models.resnet18(
             weights=models.ResNet18_Weights.DEFAULT if pretrained else None
@@ -44,6 +44,17 @@ class ResNet18Backbone(nn.Module):
             *list(resnet.children())[:-1]
         )  # up to avgpool
         self.out_dim = 512
+        
+        # freeze all by default
+        for param in self.feature_extractor.parameters():
+            param.requires_grad = False
+
+        # unfreeze last N blocks
+        if trainable_blocks > 0:
+            blocks = [resnet.layer4, resnet.layer3, resnet.layer2, resnet.layer1]
+            for block in blocks[:trainable_blocks]:
+                for param in block.parameters():
+                    param.requires_grad = True
 
     def forward(self, x):
         """
@@ -75,13 +86,15 @@ class ResNet3SliceClassifier(nn.Module):
                 torch.Tensor: Output tensor of shape (batch, num_classes) representing class scores.
     """
 
-    def __init__(self, input_slices, num_classes=2, freeze_backbone=True, **kwargs):
+    def __init__(
+        self, input_slices, num_classes=2, freeze_backbone=True, dropout=0.5, **kwargs
+    ):
         super().__init__()
         self.backbone = ResNet18Backbone(**kwargs)
         self.num_subvols = input_slices // 3
+        self.dropout = nn.Dropout(p=dropout) if dropout > 0 else nn.Identity()
         self.fc = nn.Linear(self.num_subvols * self.backbone.out_dim, num_classes)
 
-        # freeze_backbone = kwargs.get("freeze_backbone", True)
         if freeze_backbone:
             for param in self.backbone.parameters():
                 param.requires_grad = False
@@ -106,7 +119,7 @@ class ResNet3SliceClassifier(nn.Module):
             feats.append(f)
 
         feats = torch.cat(feats, dim=1)  # (Batch, num_subvols*512)
-        # Add dropout
+        feats = self.dropout(feats)
         # Normalization layer
         out = self.fc(feats)  # (Batch, num_classes)
         return out
@@ -142,10 +155,16 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
         ).to(device)
         self.criterion = nn.CrossEntropyLoss()
         lr = kwargs.get("learning_rate", 1e-5)
-        if kwargs.get("freeze_backbone", True):
-            self.optimizer = torch.optim.Adam(self.model.fc.parameters(), lr=lr)
-        else:
-            self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+        weight_decay = kwargs.get("weight_decay", 1e-4)
+        self.optimizer = torch.optim.Adam(
+            (
+                self.model.parameters()
+                if not kwargs.get("freeze_backbone", True)
+                else self.model.fc.parameters()
+            ),
+            lr=lr,
+            weight_decay=weight_decay,
+        )
         # self.optimizer = torch.optim.Adam(self.model.fc.parameters(), lr=1e-5)
         # self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
         # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=5, gamma=0.5)
@@ -300,3 +319,18 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
                 preds = torch.argmax(logits, dim=1)
                 preds_all.append(preds.cpu())
         return torch.cat(preds_all).numpy()
+
+class AttentionPool(nn.Module):
+    def __init__(self, feature_dim, hidden_dim=128):
+        super().__init__()
+        self.attn = nn.Sequential(
+            nn.Linear(feature_dim, hidden_dim),
+            nn.Tanh(),
+            nn.Linear(hidden_dim, 1)
+        )
+
+    def forward(self, feats):
+        # feats: (B, num_subvols, 512)
+        attn_weights = torch.softmax(self.attn(feats), dim=1)  # (B, num_subvols, 1)
+        pooled = torch.sum(attn_weights * feats, dim=1)  # (B, 512)
+        return pooled
