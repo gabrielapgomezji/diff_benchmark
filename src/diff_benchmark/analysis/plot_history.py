@@ -17,7 +17,7 @@ def load_history(path="history.json"):
         json.JSONDecodeError: If the file is not a valid JSON.
     """
 
-    with open(path, "r") as f:
+    with open(path, "r", encoding="utf-8") as f:
         history = json.load(f)
     return history
 
