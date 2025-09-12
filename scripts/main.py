@@ -221,7 +221,7 @@ models_to_run = config["models"]
 # models_to_run = model_configs
 
 # # Execute models in parallel
-# results = Parallel(n_jobs=5)(  # 
+# results = Parallel(n_jobs=5)(  #
 #     delayed(run_single_model)(
 #         model_entry["name"],
 #         {**model_entry["params"]},
@@ -233,7 +233,9 @@ models_to_run = config["models"]
 #     for model_entry in models_to_run
 # )
 
-results = run_jobs(run_single_model, models_to_run, dataset, preprocessed, indices, config)
+results = run_jobs(
+    run_single_model, models_to_run, dataset, preprocessed, indices, config
+)
 
 # results is a list of (model_name, per_fold_results)
 for model_name, run_id in results:
