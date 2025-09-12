@@ -79,7 +79,7 @@ def get_model(name: str, config: dict):
     if name == "2dcnn":
         # return ResNet3SliceModel(input_slices=config.get("input_slices", 145), num_classes=config.get("num_classes", 2), device=config.get("device", "cuda"))
         return ResNet3SliceModel(**config)
-    
+
     if name == "3dcnn_medicalnet":
         return ResNet3DModel(**config)
 

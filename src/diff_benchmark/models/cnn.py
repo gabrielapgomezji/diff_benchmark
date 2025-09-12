@@ -44,7 +44,7 @@ class ResNet18Backbone(nn.Module):
             *list(resnet.children())[:-1]
         )  # up to avgpool
         self.out_dim = 512
-        
+
         # freeze all by default
         for param in self.feature_extractor.parameters():
             param.requires_grad = False
@@ -320,13 +320,12 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
                 preds_all.append(preds.cpu())
         return torch.cat(preds_all).numpy()
 
+
 class AttentionPool(nn.Module):
     def __init__(self, feature_dim, hidden_dim=128):
         super().__init__()
         self.attn = nn.Sequential(
-            nn.Linear(feature_dim, hidden_dim),
-            nn.Tanh(),
-            nn.Linear(hidden_dim, 1)
+            nn.Linear(feature_dim, hidden_dim), nn.Tanh(), nn.Linear(hidden_dim, 1)
         )
 
     def forward(self, feats):
