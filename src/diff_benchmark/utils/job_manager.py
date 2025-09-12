@@ -131,7 +131,7 @@ def run_jobs(
             dataset,
             preprocessed,
             indices,
-            config.get("results_path", "./data"),
+            config.get("results_path_logs", "./data"),
             config.get("slurm", {}),
         )
 
@@ -142,6 +142,6 @@ def run_jobs(
         dataset,
         preprocessed,
         indices,
-        config.get("results_path", "./data"),
+        config.get("results_path_logs", "./data"),
         config.get("n_jobs", 5),
     )

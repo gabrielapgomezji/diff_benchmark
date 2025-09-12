@@ -87,7 +87,7 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
     local_config["model_name"] = model_name
     run_id = make_run_id(model_name, local_config)
     local_config["run_id"] = run_id
-
+    breakpoint()
     if is_cached(run_id, Path(results_path) / "analysis_results"):
         print(f"Skipping {model_name} (run_id={run_id}) - already cached.")
         return model_name, run_id
@@ -106,10 +106,17 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
         #     "target_columns": config.get("target_columns", [])
         # },
         "pipeline": {
-            "batch_size": local_config.get("batch_size"),
-            "n_splits": local_config.get("n_splits"),
-            "random_state": local_config.get("random_state"),
             "run_id": run_id,
+            "input_slices": local_config.get("input_slices"),
+            "num_classes": local_config.get("num_classes"),
+            "device": local_config.get("device"),
+            "learning_rate": local_config.get("learning_rate"),
+            "pretrained": local_config.get("pretrained"),
+            "freeze_backbone": local_config.get("freeze_backbone"),
+            "batch_size": local_config.get("batch_size"),
+            "epochs": local_config.get("epochs"),
+            "dropout": local_config.get("dropout"),
+            "weight_decay": local_config.get("weight_decay"),
         },
         "results": {
             "train_average_score": None,  # will fill after loop
@@ -120,86 +127,103 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
             "folds": {},  # will fill inside loop
         },
     }
-
+    save_model_results(
+        summary, Path(results_path) / "analysis_results" / f"{run_id}_partial.json"
+    )
+    breakpoint()
     for fold_idx, (train_idx, test_idx) in enumerate(indices):
-        # print(
-        #     f"Fold {fold_idx+1} - Train samples: {len(train_idx)}, test_samples: {len(test_idx)}"
-        # )
-        train_loader, test_loader = preprocessed.get_dataloader_fold(
-            dataset, fold_idx, indices, batch_size=local_config["batch_size"]
-        )
-        # _, y_train, _, _, y_test, _ = preprocessed.get_arrays_from_indices(
-        #     dataset, fold_idx, indices
-        # )
-        train_idx, test_idx = indices[fold_idx]
-        targets = dataset.targets.numpy()
-        y_train = np.array(targets[train_idx]).squeeze()
-        y_test = np.array(targets[test_idx]).squeeze()
-
-        model = get_model(model_name, local_config)
-
-        # --------- Train / Val / Test Model ---------
-        # print("Training...")
-        # device = torch.device("cpu")
-        # model = model.to(device)
-        model.fit(train_loader)
-        train_pred = model.predict(train_loader)
-        train_score = accuracy_score(y_train, train_pred)
-        print(train_score)
-
-        train_scores.append(train_score)
-        train_preds.append(train_pred.tolist())
-        train_targets.append(y_train.tolist())
-
-        # print("Testing...")
-        test_pred = model.predict(test_loader)
-        test_score = accuracy_score(y_test, test_pred)
-        print(test_score)
-
-        test_scores.append(test_score)
-        test_preds.append(test_pred.tolist())
-        test_targets.append(y_test.tolist())
-
-        summary["results"]["folds"][f"fold_{fold_idx+1}"] = {
-            "train": {
-                "score": float(train_score),
-                "predictions": train_pred.tolist(),
-                "targets": y_train.tolist(),
-            },
-            "test": {
-                "score": float(test_score),
-                "predictions": test_pred.tolist(),
-                "targets": y_test.tolist(),
-            },
-        }
-
-        # print(f"Done Fold {fold_idx + 1}")
-        if DEBUG:
-            per_fold_results.append(
-                {
-                    "model": model_name,
-                    "fold": fold_idx,
-                    "train": {
-                        "score": float(train_score),
-                        "predictions": train_pred.tolist(),
-                        "targets": y_train.tolist(),
-                    },
-                    "test": {
-                        "score": float(test_score),
-                        "predictions": test_pred.tolist(),
-                        "targets": y_test.tolist(),
-                    },
-                }
+        try:
+            # print(
+            #     f"Fold {fold_idx+1} - Train samples: {len(train_idx)}, test_samples: {len(test_idx)}"
+            # )
+            train_loader, test_loader = preprocessed.get_dataloader_fold(
+                dataset, fold_idx, indices, batch_size=local_config["batch_size"]
             )
-            training_log_path = Path("./data/results") / f"{run_id}_training_log.json"
-            training_log_path.parent.mkdir(parents=True, exist_ok=True)
-            training_history_plot_path = (
-                Path("./data/plots") / f"training_history_{run_id}.png"
+            # _, y_train, _, _, y_test, _ = preprocessed.get_arrays_from_indices(
+            #     dataset, fold_idx, indices
+            # )
+            train_idx, test_idx = indices[fold_idx]
+            targets = dataset.targets.numpy()
+            y_train = np.array(targets[train_idx]).squeeze()
+            y_test = np.array(targets[test_idx]).squeeze()
+
+            model = get_model(model_name, local_config)
+
+            # --------- Train / Val / Test Model ---------
+            # print("Training...")
+            # device = torch.device("cpu")
+            # model = model.to(device)
+            model.fit(train_loader)
+            train_pred = model.predict(train_loader)
+            train_score = accuracy_score(y_train, train_pred)
+            print(train_score)
+
+            train_scores.append(train_score)
+            train_preds.append(train_pred.tolist())
+            train_targets.append(y_train.tolist())
+
+            # print("Testing...")
+            test_pred = model.predict(test_loader)
+            test_score = accuracy_score(y_test, test_pred)
+            print(test_score)
+
+            test_scores.append(test_score)
+            test_preds.append(test_pred.tolist())
+            test_targets.append(y_test.tolist())
+
+            summary["results"]["folds"][f"fold_{fold_idx+1}"] = {
+                "train": {
+                    "score": float(train_score),
+                    "predictions": train_pred.tolist(),
+                    "targets": y_train.tolist(),
+                },
+                "test": {
+                    "score": float(test_score),
+                    "predictions": test_pred.tolist(),
+                    "targets": y_test.tolist(),
+                },
+            }
+
+            # print(f"Done Fold {fold_idx + 1}")
+            if DEBUG:
+                per_fold_results.append(
+                    {
+                        "model": model_name,
+                        "fold": fold_idx,
+                        "train": {
+                            "score": float(train_score),
+                            "predictions": train_pred.tolist(),
+                            "targets": y_train.tolist(),
+                        },
+                        "test": {
+                            "score": float(test_score),
+                            "predictions": test_pred.tolist(),
+                            "targets": y_test.tolist(),
+                        },
+                    }
+                )
+                training_log_path = (
+                    Path("./data/results") / f"{run_id}_training_log.json"
+                )
+                training_log_path.parent.mkdir(parents=True, exist_ok=True)
+                training_history_plot_path = (
+                    Path("./data/plots") / f"training_history_{run_id}.png"
+                )
+                training_history_plot_path.parent.mkdir(parents=True, exist_ok=True)
+                plot_history_from_file(
+                    training_log_path, save_path=training_history_plot_path
+                )
+            save_model_results(
+                summary,
+                Path(results_path) / "analysis_results" / f"{run_id}_partial.json",
             )
-            training_history_plot_path.parent.mkdir(parents=True, exist_ok=True)
-            plot_history_from_file(
-                training_log_path, save_path=training_history_plot_path
+        except Exception as e:
+            print(f"Crash in fold {fold_idx} of {run_id}: {e}")
+            save_model_results(
+                summary,
+                Path(results_path) / "analysis_results" / f"{run_id}_crashed.json",
             )
+            raise
 
     summary["results"]["train_average_score"] = float(np.mean(train_scores))
     summary["results"]["train_std_score"] = float(np.std(train_scores))
