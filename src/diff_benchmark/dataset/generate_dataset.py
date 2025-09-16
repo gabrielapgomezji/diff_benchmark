@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from joblib import Parallel, delayed
 from torch.utils.data import Dataset
+from nilearn.image import resample_img
 
 # import pandas as pd
 from tqdm import tqdm
@@ -126,7 +127,10 @@ class CustomDataset(Dataset):
             final_features = self.features[idx]
         if self.mode == "paths":
             img = nib.load(Path(self.features[idx]))
-            data = np.nan_to_num(img.get_fdata()).clip(0, 7)
+            target_affine = np.diag([1.25, 1.25, 1.25, 1.0])
+            target_shape = (180, 224, 224)
+            resampled_img = resample_img(img, target_affine=target_affine, target_shape=target_shape, interpolation='continuous', copy_header=True, force_resample=True)
+            data = np.nan_to_num(resampled_img.get_fdata()).clip(0, 7)
             data /= 7.0
             final_features = torch.tensor(data, dtype=torch.float32)
             # features = nib.Nifti1Image(data, affine=img.affine)

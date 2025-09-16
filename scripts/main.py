@@ -87,7 +87,7 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
     local_config["model_name"] = model_name
     run_id = make_run_id(model_name, local_config)
     local_config["run_id"] = run_id
-    breakpoint()
+
     if is_cached(run_id, Path(results_path) / "analysis_results"):
         print(f"Skipping {model_name} (run_id={run_id}) - already cached.")
         return model_name, run_id
@@ -130,8 +130,8 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
     save_model_results(
         summary, Path(results_path) / "analysis_results" / f"{run_id}_partial.json"
     )
-    breakpoint()
-    for fold_idx, (train_idx, test_idx) in enumerate(indices):
+
+    for fold_idx, (train_idx, test_idx) in enumerate(indices[:1]):
         try:
             # print(
             #     f"Fold {fold_idx+1} - Train samples: {len(train_idx)}, test_samples: {len(test_idx)}"
@@ -203,11 +203,11 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
                     }
                 )
                 training_log_path = (
-                    Path("./data/results") / f"{run_id}_training_log.json"
+                    Path("./data/results/logs") / f"{run_id}_training_log.json"
                 )
                 training_log_path.parent.mkdir(parents=True, exist_ok=True)
                 training_history_plot_path = (
-                    Path("./data/plots") / f"training_history_{run_id}.png"
+                    Path("./data/results/plots") / f"training_history_{run_id}.png"
                 )
                 training_history_plot_path.parent.mkdir(parents=True, exist_ok=True)
                 plot_history_from_file(
@@ -231,12 +231,12 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
     summary["results"]["test_std_score"] = float(np.std(test_scores))
 
     # print("\n Saving results...")
-    if DEBUG:
-        save_fold_results(
-            model_name=model_name,
-            fold_results=per_fold_results,
-            output_dir=Path(results_path) / "analysis_results",
-        )
+    # if DEBUG:
+    #     save_fold_results(
+    #         model_name=model_name,
+    #         fold_results=per_fold_results,
+    #         output_dir=Path(results_path) / "analysis_results",
+    #     )
     save_model_results(summary, Path(results_path) / "analysis_results")
     return model_name, run_id
 
