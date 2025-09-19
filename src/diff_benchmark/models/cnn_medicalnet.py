@@ -473,7 +473,7 @@ class ResNet3DModel(TorchAbstractModel, nn.Module):
             total_loss = 0
             train_accuracy = 0
             for batch_train_idx, (xb, yb, _) in enumerate(train_loader):
-                xb, yb = xb.to(self.device), yb.long().to(self.device)
+                xb, yb = xb.to(self.device, non_blocking=True), yb.long().to(self.device, non_blocking=True)
                 self.optimizer.zero_grad()
                 xb = xb.unsqueeze(1)
                 preds = self.model(xb)
@@ -502,7 +502,7 @@ class ResNet3DModel(TorchAbstractModel, nn.Module):
                     val_accuracy = 0
                     with torch.no_grad():
                         for batch_val_idx, (xb, yb, _) in enumerate(val_loader):
-                            xb, yb = xb.to(self.device), yb.long().to(self.device)
+                            xb, yb = xb.to(self.device, non_blocking=True), yb.long().to(self.device, non_blocking=True)
                             xb = xb.unsqueeze(1)
                             preds = self.model(xb)
                             loss = self.criterion(preds, yb)
@@ -559,7 +559,7 @@ class ResNet3DModel(TorchAbstractModel, nn.Module):
         preds_all = []
         with torch.no_grad():
             for xb, _, _ in dataloader:
-                xb = xb.to(self.device)
+                xb = xb.to(self.device, non_blocking=True)
                 xb = xb.unsqueeze(1)
                 logits = self.model(xb)
                 preds = torch.argmax(logits, dim=1)
