@@ -86,11 +86,12 @@ class CustomDataset(Dataset):
         gender (torch.Tensor): A tensor representation of the gender information.
     """
 
-    def __init__(self, features, targets, gender):
+    def __init__(self, features, targets, gender, transform=None):
         # self.features = torch.tensor(features, dtype=torch.float32)
         self.features = features.drop(columns=["subject_id"])
         self.targets = torch.tensor(targets, dtype=torch.float32)
         self.gender = torch.tensor(gender, dtype=torch.int64)
+        self.transform = transform
 
         self.mode = self.get_features_model()
 
@@ -127,13 +128,24 @@ class CustomDataset(Dataset):
             final_features = self.features[idx]
         if self.mode == "paths":
             img = nib.load(Path(self.features[idx]))
-            target_affine = np.diag([1.25, 1.25, 1.25, 1.0])
-            target_shape = (180, 224, 224)
-            resampled_img = resample_img(img, target_affine=target_affine, target_shape=target_shape, interpolation='continuous', copy_header=True, force_resample=True)
+            # target_affine = np.diag([1.25, 1.25, 1.25, 1.0])
+            # target_shape = (180, 224, 224)
+            # resampled_img = resample_img(img, target_affine=target_affine, target_shape=target_shape, interpolation='continuous', copy_header=True, force_resample=True)
+            resampled_img = img
             data = np.nan_to_num(resampled_img.get_fdata()).clip(0, 7)
             data /= 7.0
             final_features = torch.tensor(data, dtype=torch.float32)
             # features = nib.Nifti1Image(data, affine=img.affine)
+            if self.transform is not None:
+                slices = []
+                for i in range(final_features.shape[0]):  # iterate through depth dimension
+                    slice_2d = final_features[i, :, :]#.unsqueeze(0)  # (1,H,W)
+                    slice_2d = self.transform(slice_2d)
+                    slices.append(slice_2d)
+                final_features = torch.stack(slices, dim=0)  # (D,1,H,W)
+                final_features = final_features.permute(1,0,2,3)  # (C=1,D,H,W)
+                # final_features = final_features.squeeze(0)  # (D,H,W)
+
 
         return final_features, self.targets[idx], self.gender[idx]
 
