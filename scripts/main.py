@@ -107,6 +107,7 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
         # },
         "pipeline": {
             "run_id": run_id,
+            "comment": local_config.get("comment", ""),
             "input_slices": local_config.get("input_slices"),
             "num_classes": local_config.get("num_classes"),
             "device": local_config.get("device"),
@@ -117,6 +118,7 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
             "epochs": local_config.get("epochs"),
             "dropout": local_config.get("dropout"),
             "weight_decay": local_config.get("weight_decay"),
+            "trainable_blocks": local_config.get("trainable_blocks", None),
         },
         "results": {
             "train_average_score": None,  # will fill after loop
@@ -185,31 +187,31 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
             }
 
             # print(f"Done Fold {fold_idx + 1}")
-            if DEBUG:
-                per_fold_results.append(
-                    {
-                        "model": model_name,
-                        "fold": fold_idx,
-                        "train": {
-                            "score": float(train_score),
-                            "predictions": train_pred.tolist(),
-                            "targets": y_train.tolist(),
-                        },
-                        "test": {
-                            "score": float(test_score),
-                            "predictions": test_pred.tolist(),
-                            "targets": y_test.tolist(),
-                        },
-                    }
-                )
-                training_log_path = (
-                    Path("./data/results/logs") / f"{run_id}_training_log.json"
-                )
-                training_log_path.parent.mkdir(parents=True, exist_ok=True)
-                training_history_plot_path = (
-                    Path("./data/results/plots") / f"training_history_{run_id}.png"
-                )
-                training_history_plot_path.parent.mkdir(parents=True, exist_ok=True)
+            per_fold_results.append(
+                {
+                    "model": model_name,
+                    "fold": fold_idx,
+                    "train": {
+                        "score": float(train_score),
+                        "predictions": train_pred.tolist(),
+                        "targets": y_train.tolist(),
+                    },
+                    "test": {
+                        "score": float(test_score),
+                        "predictions": test_pred.tolist(),
+                        "targets": y_test.tolist(),
+                    },
+                }
+            )
+            training_log_path = (
+                Path("./data/results/logs") / f"{run_id}_training_log.json"
+            )
+            training_log_path.parent.mkdir(parents=True, exist_ok=True)
+            training_history_plot_path = (
+                Path("./data/results/plots") / f"training_history_{run_id}.png"
+            )
+            training_history_plot_path.parent.mkdir(parents=True, exist_ok=True)
+            if training_log_path.exists():
                 plot_history_from_file(
                     training_log_path, save_path=training_history_plot_path
                 )
