@@ -4,6 +4,20 @@ import submitit
 from joblib import Parallel, delayed
 
 
+def run_single_process(
+    run_fn: Callable,
+    models_to_run: list,
+    dataset: any,
+    preprocessed: any,
+    indices: any,
+    results_path: str
+) -> list:
+    results = []
+    for model in models_to_run:
+        results.append(run_fn(model["name"], {**model["params"]}, dataset, preprocessed, indices, results_path))
+    return results
+
+
 def run_with_joblib(
     run_fn: Callable,
     models_to_run: list,
@@ -135,13 +149,24 @@ def run_jobs(
             config.get("slurm", {}),
         )
 
-    print("Running with Joblib...")
-    return run_with_joblib(
+    if config.get("use_joblib", False):
+        print("Running with Joblib...")
+        return run_with_joblib(
+            run_fn,
+            models_to_run,
+            dataset,
+            preprocessed,
+            indices,
+            config.get("results_path_logs", "./data"),
+            config.get("n_jobs", 5),
+        )
+
+    print("Running in a single process...")
+    return run_single_process(
         run_fn,
         models_to_run,
         dataset,
         preprocessed,
         indices,
         config.get("results_path_logs", "./data"),
-        config.get("n_jobs", 5),
     )
