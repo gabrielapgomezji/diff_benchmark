@@ -1,8 +1,8 @@
 import json
 import os
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def load_history(path="history.json"):
@@ -55,29 +55,71 @@ def plot_history_from_file(path="history.json", save_path="training_history.pdf"
     _, axes = plt.subplots(1, 2, figsize=(14, 6))
 
     ax = axes[0]
-    ax.plot(train_epochs, history["train"]["loss"], "b-", alpha=0.7, linewidth=1.5, label="Training")
-    ax.plot(train_epochs, history["train"]["loss"], "bx", markersize=5, markeredgewidth=1.5)
+    ax.plot(
+        train_epochs,
+        history["train"]["loss"],
+        "b-",
+        alpha=0.7,
+        linewidth=1.5,
+        label="Training",
+    )
+    ax.plot(
+        train_epochs, history["train"]["loss"], "bx", markersize=5, markeredgewidth=1.5
+    )
 
-    ax.plot(val_epochs, history["val"]["loss"], "r-", alpha=0.7, linewidth=2, label="Validation")
+    ax.plot(
+        val_epochs,
+        history["val"]["loss"],
+        "r-",
+        alpha=0.7,
+        linewidth=2,
+        label="Validation",
+    )
     ax.plot(val_epochs, history["val"]["loss"], "rx", markersize=7, markeredgewidth=2)
 
     ax.set_xlabel("Epochs")
     ax.set_ylabel("Loss")
-    ax.set_title(f"Loss\n({steps_per_epoch} steps/epoch, validation every {val_interval} steps)")
+    ax.set_title(
+        f"Loss\n({steps_per_epoch} steps/epoch, validation every {val_interval} steps)"
+    )
     ax.legend()
     num_epochs = max(history["train"]["epoch"]) + 1
     ax.set_xlim(0, num_epochs)
 
     ax = axes[1]
-    ax.plot(train_epochs, history["train"]["accuracy"], "b-", alpha=0.7, linewidth=1.5, label="Training")
-    ax.plot(train_epochs, history["train"]["accuracy"], "bx", markersize=5, markeredgewidth=1.5)
+    ax.plot(
+        train_epochs,
+        history["train"]["accuracy"],
+        "b-",
+        alpha=0.7,
+        linewidth=1.5,
+        label="Training",
+    )
+    ax.plot(
+        train_epochs,
+        history["train"]["accuracy"],
+        "bx",
+        markersize=5,
+        markeredgewidth=1.5,
+    )
 
-    ax.plot(val_epochs, history["val"]["accuracy"], "r-", alpha=0.7, linewidth=2, label="Validation")
-    ax.plot(val_epochs, history["val"]["accuracy"], "rx", markersize=7, markeredgewidth=2)
+    ax.plot(
+        val_epochs,
+        history["val"]["accuracy"],
+        "r-",
+        alpha=0.7,
+        linewidth=2,
+        label="Validation",
+    )
+    ax.plot(
+        val_epochs, history["val"]["accuracy"], "rx", markersize=7, markeredgewidth=2
+    )
 
     ax.set_xlabel("Epochs")
     ax.set_ylabel("Accuracy")
-    ax.set_title(f"Accuracy\n({steps_per_epoch} steps/epoch, validation every {val_interval} steps)")
+    ax.set_title(
+        f"Accuracy\n({steps_per_epoch} steps/epoch, validation every {val_interval} steps)"
+    )
     ax.legend()
     ax.set_xlim(0, num_epochs)
 

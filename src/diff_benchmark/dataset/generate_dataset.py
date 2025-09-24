@@ -4,8 +4,8 @@ import nibabel as nib
 import numpy as np
 import torch
 from joblib import Parallel, delayed
-from torch.utils.data import Dataset
 from nilearn.image import resample_img
+from torch.utils.data import Dataset
 
 # import pandas as pd
 from tqdm import tqdm
@@ -138,14 +138,15 @@ class CustomDataset(Dataset):
             # features = nib.Nifti1Image(data, affine=img.affine)
             if self.transform is not None:
                 slices = []
-                for i in range(final_features.shape[0]):  # iterate through depth dimension
-                    slice_2d = final_features[i, :, :]#.unsqueeze(0)  # (1,H,W)
+                for i in range(
+                    final_features.shape[0]
+                ):  # iterate through depth dimension
+                    slice_2d = final_features[i, :, :]  # .unsqueeze(0)  # (1,H,W)
                     slice_2d = self.transform(slice_2d)
                     slices.append(slice_2d)
                 final_features = torch.stack(slices, dim=0)  # (D,1,H,W)
-                final_features = final_features.permute(1,0,2,3)  # (C=1,D,H,W)
+                final_features = final_features.permute(1, 0, 2, 3)  # (C=1,D,H,W)
                 # final_features = final_features.squeeze(0)  # (D,H,W)
-
 
         return final_features, self.targets[idx], self.gender[idx]
 
