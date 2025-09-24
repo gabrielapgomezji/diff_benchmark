@@ -24,6 +24,7 @@ dependencies = ["numpy (>=2.0.0,<2.2.10)",
     "matplotlib (>=3.10.3,<4.0.0)",
     "torch (>=2.8.0,<3.0.0)",
     "torchvision (>=0.23.0,<0.24.0)",
+    "submitit (>=1.5.3,<2.0.0)",
 ]
 
 [tool.poetry]
@@ -47,7 +48,7 @@ profile = "black"
 extend_skip_glob = ["./history/*"]
 
 [tool.pylint.master]
-fail-under = "9.21"
+fail-under = "9.24"
 
 [tool.pylint.'MESSAGES CONTROL']
 disable = "missing-module-docstring,line-too-long,too-few-public-methods"

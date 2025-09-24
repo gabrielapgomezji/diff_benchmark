@@ -59,10 +59,18 @@ class PreprocessedData:
         train_idx, test_idx = fold_indices[fold_idx]
 
         train_loader = DataLoader(
-            Subset(dataset, train_idx), batch_size=batch_size, shuffle=False
+            Subset(dataset, train_idx),
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=0,
+            pin_memory=True,
         )
         test_loader = DataLoader(
-            Subset(dataset, test_idx), batch_size=batch_size, shuffle=False
+            Subset(dataset, test_idx),
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=0,
+            pin_memory=True,
         )
 
         return train_loader, test_loader
@@ -72,7 +80,6 @@ class PreprocessedData:
         Given full arrays and fold index, return X, y, gender arrays for train/test sets.
         """
         train_idx, test_idx = fold_indices[fold_idx]
-        breakpoint()
         features = dataset.features.numpy()
         targets = dataset.targets.numpy()
         genders = dataset.gender.numpy()
