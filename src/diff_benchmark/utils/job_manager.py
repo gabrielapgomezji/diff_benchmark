@@ -10,11 +10,20 @@ def run_single_process(
     dataset: any,
     preprocessed: any,
     indices: any,
-    results_path: str
+    results_path: str,
 ) -> list:
     results = []
     for model in models_to_run:
-        results.append(run_fn(model["name"], {**model["params"]}, dataset, preprocessed, indices, results_path))
+        results.append(
+            run_fn(
+                model["name"],
+                {**model["params"]},
+                dataset,
+                preprocessed,
+                indices,
+                results_path,
+            )
+        )
     return results
 
 
