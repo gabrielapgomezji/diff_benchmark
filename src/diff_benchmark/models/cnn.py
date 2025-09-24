@@ -2,9 +2,8 @@ import csv
 import json
 from pathlib import Path
 
-
-import torch
 import numpy as np
+import torch
 from sklearn.model_selection import train_test_split
 from torch import nn
 from torch.utils.data import DataLoader, Subset
