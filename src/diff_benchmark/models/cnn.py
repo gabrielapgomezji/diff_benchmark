@@ -12,6 +12,37 @@ from tqdm import tqdm
 
 from diff_benchmark.models.base import TorchAbstractModel
 
+from torchvision import transforms
+
+def collate_with_augmentation(batch, transform=None):
+    xs, ys, gs = zip(*batch)  # separate batch components
+    xs_aug = []
+    for x in xs:  # x shape: (D,H,W)
+        slices = []
+        for i in range(x.shape[0]):
+            slice_2d = x[i, :, :].unsqueeze(0)  # (1,H,W)
+            if transform:
+                slice_2d = transform(slice_2d)
+            slices.append(slice_2d)
+        x_aug = torch.stack(slices, dim=0)  # (D,1,H,W)
+        x_aug = x_aug.permute(1, 0, 2, 3)   # (C=1,D,H,W)
+        xs_aug.append(x_aug)
+
+    xs_aug = torch.stack(xs_aug, dim=0)
+    ys = torch.stack(ys)
+    gs = torch.stack(gs)
+    return xs_aug, ys, gs
+train_transforms = transforms.Compose([
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomRotation(15),
+            # transforms.RandomResizedCrop((224, 224), scale=(0.8, 1.0)),
+            transforms.Normalize(mean=[0.5], std=[0.5]),
+        ])
+val_transforms = transforms.Compose([
+    # transforms.Resize((224, 224)),
+    transforms.Normalize(mean=[0.5], std=[0.5]),
+])
+
 
 class ResNet18Backbone(nn.Module):
     """ResNet18Backbone is a PyTorch neural network module that utilizes a pre-trained ResNet-18 model
@@ -105,7 +136,7 @@ class ResNet3SliceClassifier(nn.Module):
         """
         # batch, slice, height, width = x.shape
         # assert S % 3 == 0, "Slice dimension must be divisible by 3"
-
+        x = x.squeeze(1)
         subvols = x.unfold(
             dimension=1, size=3, step=3
         )  # (Batch, num_subvols, 3, Height, Width)
@@ -192,26 +223,43 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
     def _train_val_loader_split(self, train_loader, val_ratio=0.3):
         dataset = train_loader.dataset  # access the underlying dataset
         n = len(dataset)
+        genders = np.asarray(dataset.dataset.gender[dataset.indices])
 
-        genders = []
-        for i in range(n):
-            _, _, g = dataset[i]
-            genders.append(g)
-        genders = np.array(genders)
+        # for i in range(n):
+        #     _, _, g = dataset[i]
+        #     genders.append(g)
+        # genders = np.array(genders)
 
         indices = np.arange(n)
         train_idx, val_idx = train_test_split(
             indices, test_size=val_ratio, stratify=genders, random_state=42
         )
-
+        
         train_subset = Subset(dataset, train_idx)
         val_subset = Subset(dataset, val_idx)
 
+        # train_transforms = transforms.Compose([
+        #     transforms.RandomHorizontalFlip(),
+        #     transforms.RandomRotation(15),
+        #     # transforms.RandomResizedCrop((224, 224), scale=(0.8, 1.0)),
+        #     transforms.Normalize(mean=[0.5], std=[0.5]),
+        # ])
+        # val_transforms = transforms.Compose([
+        #     # transforms.Resize((224, 224)),
+        #     transforms.Normalize(mean=[0.5], std=[0.5]),
+        # ])
+        
+        # train_subset = TransformedDataset(train_subset, transform=train_transforms)
+        # val_subset = TransformedDataset(val_subset, transform=val_transforms)
+
+        
         train_loader_new = DataLoader(
-            train_subset, batch_size=train_loader.batch_size, shuffle=True
+            train_subset, batch_size=train_loader.batch_size, shuffle=True, num_workers=20, pin_memory=True,
+            collate_fn=lambda batch: collate_with_augmentation(batch, transform=train_transforms)
         )
         val_loader_new = DataLoader(
-            val_subset, batch_size=train_loader.batch_size, shuffle=False
+            val_subset, batch_size=128, shuffle=True, num_workers=20, pin_memory=True,
+            collate_fn=lambda batch: collate_with_augmentation(batch, transform=val_transforms)
         )
         return train_loader_new, val_loader_new
 
@@ -234,15 +282,20 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
         print(f"Device: {self.device}")
         self.model.train()
         train_loader, val_loader = self._train_val_loader_split(dataloader)
+        print(f"Dataloaders created")
         for epoch in tqdm(range(self.epochs)):
             total_loss = 0
             train_accuracy = 0
+            print(f"Epoch {epoch}")
             for batch_train_idx, (xb, yb, _) in enumerate(train_loader):
+                print("Batch loaded")
                 xb, yb = xb.to(self.device), yb.long().to(self.device)
+                print("Moved to device")
                 self.optimizer.zero_grad()
                 preds = self.model(xb)
                 loss = self.criterion(preds, yb)
                 loss.backward()
+                print("Forward + Bakcward done")
                 self.optimizer.step()
                 total_loss += loss.item()
                 train_current_loss = loss.item()
@@ -260,12 +313,13 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
                 )
 
                 # print(f"Epoch {epoch+1}, Loss: {total_loss/len(train_loader):.4f}")
-                if batch_train_idx % 3 == 0:
+                if batch_train_idx % 10 == 0:
                     self.model.eval()
                     val_loss = 0
                     val_accuracy = 0
                     with torch.no_grad():
                         for batch_val_idx, (xb, yb, _) in enumerate(val_loader):
+                            print(f"Val: batch {batch_val_idx}")
                             xb, yb = xb.to(self.device), yb.long().to(self.device)
                             preds = self.model(xb)
                             loss = self.criterion(preds, yb)
@@ -307,7 +361,7 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
                 print(
                     f"Epoch {epoch+1}: Train Loss={train_current_loss:.4f}, Train Acc={train_current_accuracy:.4f}, Val Loss={val_current_loss:.4f}, Val Acc={val_current_accuracy:.4f}"
                 )
-        self._save_logs(self.history, f"./data/results/{self.run_id}_training_log.json")
+        self._save_logs(self.history, f"./data/results/logs/{self.run_id}_training_log.json")
 
     def predict(self, dataloader):
         self.model.eval()
