@@ -10,8 +10,13 @@ from torch.utils.data import DataLoader, Subset
 from torchvision import models, transforms
 from tqdm import tqdm
 
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score,
+    f1_score, confusion_matrix, roc_auc_score
+)
+
 from diff_benchmark.models.base import TorchAbstractModel
-from diff_benchmark.utils.logger import TrainLogger
+from diff_benchmark.utils.logger import TrainLogger, MetricsManager
 
 
 def collate_with_augmentation(batch, transform=None):
@@ -205,15 +210,15 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
         # self.optimizer = torch.optim.Adam(self.model.fc.parameters(), lr=1e-5)
         # self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
         # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=5, gamma=0.5)
+        self.average = "binary"
 
         self.best_val_model = 0
         self.history = {
-            "train": {"epoch": [], "batch": [], "loss": [], "accuracy": []},
+            "train": {"epoch": [], "batch": [], "loss": [], "metrics": []},
             "val": {
                 "epoch": [],
-                "batch": [],
                 "loss": [],
-                "accuracy": [],
+                "metrics": [],
                 "batch_train_idx": [],
             },
         }
@@ -302,40 +307,40 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
         logger = TrainLogger(run_id=self.run_id, save_dir="./data/results/logger", monitor="val_accuracy", mode="max")
         print(f"Dataloaders created")
         for epoch in tqdm(range(self.epochs)):
-            total_loss = 0
-            train_accuracy = 0
+
             print(f"Epoch {epoch}")
             for batch_train_idx, (xb, yb, _) in enumerate(train_loader):
-                print("Batch loaded")
+                # print("Batch loaded")
                 xb, yb = xb.to(self.device), yb.long().to(self.device)
-                print("Moved to device")
+                # print("Moved to device")
                 self.optimizer.zero_grad()
                 preds = self.model(xb)
                 loss = self.criterion(preds, yb)
                 loss.backward()
-                print("Forward + Bakcward done")
+                # print("Forward + Bakcward done")
                 self.optimizer.step()
-                total_loss += loss.item()
-                train_current_loss = loss.item()
-                train_accuracy += (preds.argmax(dim=1) == yb).float().mean().item()
-                train_current_accuracy = (
-                    (preds.argmax(dim=1) == yb).float().mean().item()
-                )
-                # avg_train_accuracy = train_accuracy / len(train_loader) # NOT USED FOR THE MOMENT
 
+                y_true = yb.cpu().detach().numpy()
+                y_pred = preds.argmax(dim=1).cpu().detach().numpy()
+                
+                metrics = {
+                    "accuracy": accuracy_score(y_true, y_pred),
+                    "precision": precision_score(y_true, y_pred, average=self.average, zero_division="warn"),
+                    "recall": recall_score(y_true, y_pred, average=self.average, zero_division="warn"),
+                    "f1": f1_score(y_true, y_pred, average=self.average, zero_division="warn"),
+                    "confusion_matrix": confusion_matrix(y_true, y_pred).tolist()
+                }
                 self.history["train"]["epoch"].append(epoch)
                 self.history["train"]["batch"].append(batch_train_idx)
                 self.history["train"]["loss"].append(loss.item())
-                self.history["train"]["accuracy"].append(
-                    (preds.argmax(dim=1) == yb).float().mean().item()
-                )
+                self.history["train"]["metrics"].append(metrics)
 
                 # print(f"Epoch {epoch+1}, Loss: {total_loss/len(train_loader):.4f}")
                 if batch_train_idx % 10 == 0:
                     self.model.eval()
-                    logger.log_batch
+                    y_true = []
+                    y_pred = []
                     val_loss = 0
-                    val_accuracy = 0
                     with torch.no_grad():
                         for batch_val_idx, (xb, yb, _) in enumerate(val_loader):
                             print(f"Val: batch {batch_val_idx}")
@@ -343,50 +348,172 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
                             preds = self.model(xb)
                             loss = self.criterion(preds, yb)
                             val_loss += loss.item()
-                            val_current_loss = loss.item()
-                            val_accuracy += (
-                                (preds.argmax(dim=1) == yb).float().mean().item()
-                            )
-                            val_current_accuracy = (
-                                (preds.argmax(dim=1) == yb).float().mean().item()
-                            )
 
-                            self.history["val"]["epoch"].append(epoch)
-                            self.history["val"]["batch"].append(batch_val_idx)
-                            self.history["val"]["loss"].append(loss.item())
-                            self.history["val"]["accuracy"].append(
-                                (preds.argmax(dim=1) == yb).float().mean().item()
-                            )
-                            self.history["val"]["batch_train_idx"].append(
-                                batch_train_idx
-                            )
-
-                    # avg_val_loss = val_loss / len(val_loader)   # NOT USED FOR THE MOMENT
-                    avg_val_accuracy = val_accuracy / len(val_loader)
-                    # if avg_val_accuracy > self.best_val_model:
-                    #     save_path = Path("./data/models") / f"{self.run_id}_best.pth"
-                    #     save_path.parent.mkdir(parents=True, exist_ok=True)
-                    #     self.best_val_model = avg_val_accuracy
-                    #     torch.save(
-                    #         self.model.state_dict(),
-                    #         save_path,
-                    #     )
-                    # save checkpoint if best
-                    logger.save_checkpoint(self.model, epoch, avg_val_accuracy)
+                            y_true.append(yb.cpu().numpy())
+                            y_pred.append(preds.argmax(dim=1).cpu().numpy())
                     
-                    self.model.train()  # switch back to train mode
+                    val_loss /= len(val_loader)
+                        
+                    y_true = np.concatenate(y_true)
+                    y_pred = np.concatenate(y_pred)
+                    
+                    metrics = {
+                        "accuracy": accuracy_score(y_true, y_pred),
+                        "precision": precision_score(y_true, y_pred, average=self.average, zero_division="warn"),
+                        "recall": recall_score(y_true, y_pred, average=self.average, zero_division="warn"),
+                        "f1": f1_score(y_true, y_pred, average=self.average, zero_division="warn"),
+                        "confusion_matrix": confusion_matrix(y_true, y_pred).tolist()
+                    }
+                    self.history["val"]["epoch"].append(epoch)
+                    self.history["val"]["batch_train_idx"].append(batch_train_idx)
+                    self.history["val"]["loss"].append(val_loss)
+                    self.history["val"]["metrics"].append(metrics)
 
-                # avg_train_loss = total_loss / (batch_train_idx + 1)  # len(train_loader) #NOT USED FOR THE MOMENT
+                    logger.save_checkpoint(self.model, epoch, metrics["accuracy"])                    
+                    self.model.train()  
 
-                # self.scheduler.step()
-                # print(f"Epoch {epoch+1}: Train Loss={avg_train_loss:.4f}, Train Acc={avg_train_accuracy:.4f}, Val Loss={avg_val_loss:.4f}, Val Acc={avg_val_accuracy:.4f}")
-                print(
-                    f"Epoch {epoch+1}: Train Loss={train_current_loss:.4f}, Train Acc={train_current_accuracy:.4f}, Val Loss={val_current_loss:.4f}, Val Acc={val_current_accuracy:.4f}"
-                )
-        logger.save_checkpoint(self.model, self.epochs, avg_val_accuracy, is_last=True)
+        logger.save_checkpoint(self.model, self.epochs, 0, is_last=True)
+        logger.save_logs()
         self._save_logs(
             self.history, f"./data/results/logs/{self.run_id}_training_log.json"
         )
+
+    # def fit(self, dataloader):
+    #     print(f"Device: {self.device}")
+    #     self.model.train()
+    #     train_loader, val_loader = self._train_val_loader_split(dataloader)
+    #     logger = TrainLogger(run_id=self.run_id, save_dir="./data/results/logger", monitor="val_accuracy", mode="max")
+    #     print(f"Dataloaders created")
+    #     for epoch in tqdm(range(self.epochs)):
+    #         total_loss = 0
+    #         train_accuracy = 0
+            
+    #         train_metrics = MetricsManager(average="binary")
+    #         val_metrics = MetricsManager(average="binary")
+
+    #         print(f"Epoch {epoch}")
+    #         for batch_train_idx, (xb, yb, _) in enumerate(train_loader):
+    #             # print("Batch loaded")
+    #             xb, yb = xb.to(self.device), yb.long().to(self.device)
+    #             # print("Moved to device")
+    #             self.optimizer.zero_grad()
+    #             preds = self.model(xb)
+    #             loss = self.criterion(preds, yb)
+    #             loss.backward()
+    #             # print("Forward + Bakcward done")
+    #             self.optimizer.step()
+                
+    #             # ---- Log per batch ----
+    #             batch_scores = torch.softmax(preds, dim=1)[:,1].detach().cpu().numpy()
+    #             batch_metrics = train_metrics.compute_batch(
+    #                 y_true=yb.cpu().numpy(),
+    #                 y_pred=preds.argmax(dim=1).cpu().numpy(),
+    #                 y_scores=batch_scores
+    #             )
+    #             logger.log_batch(
+    #                 phase="train",
+    #                 epoch=epoch,
+    #                 batch=batch_train_idx,
+    #                 loss=loss.item(),
+    #                 metrics=batch_metrics
+    #             )
+                
+    #             # ---- Update accumulators for epoch ----
+    #             train_metrics.update(
+    #                 y_true=yb.cpu().numpy(),
+    #                 y_pred=preds.cpu().numpy(),
+    #                 y_scores=batch_scores
+    #             )
+                
+    #             total_loss += loss.item()
+    #             train_current_loss = loss.item()
+    #             train_accuracy += (preds.argmax(dim=1) == yb).float().mean().item()
+    #             train_current_accuracy = (
+    #                 (preds.argmax(dim=1) == yb).float().mean().item()
+    #             )
+    #             # avg_train_accuracy = train_accuracy / len(train_loader) # NOT USED FOR THE MOMENT
+
+    #             self.history["train"]["epoch"].append(epoch)
+    #             self.history["train"]["batch"].append(batch_train_idx)
+    #             self.history["train"]["loss"].append(loss.item())
+    #             self.history["train"]["accuracy"].append(
+    #                 (preds.argmax(dim=1) == yb).float().mean().item()
+    #             )
+
+    #             # print(f"Epoch {epoch+1}, Loss: {total_loss/len(train_loader):.4f}")
+    #             if batch_train_idx % 10 == 0:
+    #                 self.model.eval()
+    #                 logger.log_batch
+    #                 val_loss = 0
+    #                 val_accuracy = 0
+    #                 with torch.no_grad():
+    #                     for batch_val_idx, (xb, yb, _) in enumerate(val_loader):
+    #                         print(f"Val: batch {batch_val_idx}")
+    #                         xb, yb = xb.to(self.device), yb.long().to(self.device)
+    #                         preds = self.model(xb)
+    #                         loss = self.criterion(preds, yb)
+    #                         val_loss += loss.item()
+    #                         ############## Probably will be removed ###################
+    #                         val_current_loss = loss.item()
+    #                         val_accuracy += (
+    #                             (preds.argmax(dim=1) == yb).float().mean().item()
+    #                         )
+    #                         val_current_accuracy = (
+    #                             (preds.argmax(dim=1) == yb).float().mean().item()
+    #                         )
+
+    #                         self.history["val"]["epoch"].append(epoch)
+    #                         self.history["val"]["batch"].append(batch_val_idx)
+    #                         self.history["val"]["loss"].append(loss.item())
+    #                         self.history["val"]["accuracy"].append(
+    #                             (preds.argmax(dim=1) == yb).float().mean().item()
+    #                         )
+    #                         self.history["val"]["batch_train_idx"].append(
+    #                             batch_train_idx
+    #                         )
+    #                         #########################
+    #                         y_pred = preds.argmax(dim=1).cpu().numpy()
+    #                         y_true = yb.cpu().numpy()
+                            
+    #                         y_scores = torch.softmax(preds, dim=1)[:, 1].cpu().numpy()
+
+    #                         val_metrics.update(y_true, y_pred, y_scores)
+                            
+    #                 batch_metrics = val_metrics.compute()
+    #                 logger.log_metrics("val", epoch, batch=batch_train_idx, metrics=batch_metrics)
+
+
+    #                 # avg_val_loss = val_loss / len(val_loader)   # NOT USED FOR THE MOMENT
+    #                 avg_val_accuracy = val_accuracy / len(val_loader)
+    #                 # if avg_val_accuracy > self.best_val_model:
+    #                 #     save_path = Path("./data/models") / f"{self.run_id}_best.pth"
+    #                 #     save_path.parent.mkdir(parents=True, exist_ok=True)
+    #                 #     self.best_val_model = avg_val_accuracy
+    #                 #     torch.save(
+    #                 #         self.model.state_dict(),
+    #                 #         save_path,
+    #                 #     )
+    #                 # save checkpoint if best
+    #                 logger.save_checkpoint(self.model, epoch, avg_val_accuracy)
+                    
+    #                 self.model.train()  # switch back to train mode
+
+    #             # avg_train_loss = total_loss / (batch_train_idx + 1)  # len(train_loader) #NOT USED FOR THE MOMENT
+
+    #             # self.scheduler.step()
+    #             # last printing element
+    #             # print(
+    #             #     f"Epoch {epoch+1}: Train Loss={train_current_loss:.4f}, Train Acc={train_current_accuracy:.4f}, Val Loss={val_current_loss:.4f}, Val Acc={val_current_accuracy:.4f}"
+    #             # )
+    #         # --- Epoch-end metrics ---
+    #         epoch_metrics = train_metrics.compute()
+    #         logger.log_epoch("train", epoch, epoch_metrics)
+    #     logger.save_checkpoint(self.model, self.epochs, avg_val_accuracy, is_last=True)
+    #     logger.save_logs()
+    #     self._save_logs(
+    #         self.history, f"./data/results/logs/{self.run_id}_training_log.json"
+    #     )
+    #     breakpoint()
 
     def predict(self, dataloader):
         self.model.eval()
