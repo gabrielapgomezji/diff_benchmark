@@ -3,6 +3,73 @@ import csv
 from pathlib import Path
 import torch
 
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score,
+    f1_score, confusion_matrix, roc_auc_score
+)
+import numpy as np
+
+class MetricsManager:
+    def __init__(self, average="binary"):
+        """
+        Compute and store metrics for classification tasks.
+
+        Args:
+            average (str): averaging method for multi-class/multi-label metrics
+                           ('binary', 'macro', 'micro', 'weighted')
+        """
+        self.average = average
+        self.reset()
+
+    def reset(self):
+        self.y_true = []
+        self.y_pred = []
+        self.y_scores = []
+
+    def update(self, y_true, y_pred, y_scores=None):
+        self.y_true.extend(y_true)
+        self.y_pred.extend(y_pred)
+        if y_scores is not None:
+            self.y_scores.extend(y_scores)
+    
+    def compute_batch(self, y_true, y_pred, y_scores=None):
+        """Compute metrics for a single batch only."""
+        return self._compute_core(y_true, y_pred, y_scores)
+    
+    def compute(self):
+        """Compute metrics over ALL stored batches (epoch)."""
+        return self._compute_core(self.y_true, self.y_pred, self.y_scores)
+            
+    def _compute_core(self, y_true, y_pred, y_scores=None):
+        """
+        Compute a dictionary of metrics.
+        
+        Args:
+            y_true (array-like): Ground truth labels.
+            y_pred (array-like): Predicted labels.
+            y_scores (array-like, optional): Prediction scores or probabilities.
+        
+        Returns:
+            dict: Metrics results.
+        """
+        y_true = np.array(self.y_true)
+        y_pred = np.array(self.y_pred)
+        y_scores = np.array(self.y_scores) if len(self.y_scores) > 0 else None
+
+        metrics = {
+            "accuracy": accuracy_score(y_true, y_pred),
+            "precision": precision_score(y_true, y_pred, average=self.average, zero_division="warn"),
+            "recall": recall_score(y_true, y_pred, average=self.average, zero_division="warn"),
+            "f1": f1_score(y_true, y_pred, average=self.average, zero_division="warn"),
+            "confusion_matrix": confusion_matrix(y_true, y_pred).tolist()
+        }
+        if y_scores is not None:
+            try:
+                metrics["roc_auc"] = roc_auc_score(y_true, y_scores, multi_class="ovr")
+            except ValueError:
+                metrics["roc_auc"] = None
+        return metrics
+
 class TrainLogger:
     def __init__(self, run_id="unnamed_run", save_dir="./data/results/logger", monitor="val_accuracy", mode="max"):
         """
@@ -34,24 +101,59 @@ class TrainLogger:
         self.best_path = self.models_path / f"{self.run_id}_best.pth"
         self.last_path = self.models_path / f"{self.run_id}_last.pth"
     
-    def log_batch(self, phase:str, epoch: int, loss: float, accuracy: float=None):
-        self.history[phase]["epoch"].append(epoch)
-        self.history[phase]["loss"].append(loss)
-        if accuracy is not None:
-            self.history[phase]["accuracy"].append(accuracy)
-            
+    # def log_batch(self, phase:str, epoch: int, loss: float, accuracy: float=None):
+    #     self.history[phase]["epoch"].append(epoch)
+    #     self.history[phase]["loss"].append(loss)
+    #     if accuracy is not None:
+    #         self.history[phase]["accuracy"].append(accuracy)
+    
+    def log_batch(self, phase, epoch, batch, loss, metrics):
+        self.history["batch"].append({
+            "phase": phase,
+            "epoch": epoch,
+            "batch": batch,
+            "loss": loss,
+            **metrics
+        })
+
+    def log_epoch(self, phase, epoch, metrics):
+        self.history["epoch"].append({
+            "phase": phase,
+            "epoch": epoch,
+            **metrics
+        })
+                
     def log_predictions(self, epoch, y_true, y_pred, scores=None):
         self.history["predictions"]["epoch"].append(epoch)
         self.history["predictions"]["y_true"].append(y_true.to_list())
         self.history["predictions"]["y_pred"].append(y_pred.to_list())
         if scores is not None:
             self.history["predictions"]["scores"].append(scores.to_list())
+    
+    def log_metrics(self, phase:str, epoch:int, batch:int=None, metrics:dict=None):
+        """
+        Log metrics at batch or epoch level.
+        Args:
+            phase (str): 'train' or 'val'.
+            epoch (int): Current epoch.
+            batch (int, optional): Current batch. If None, it's epoch-level logging.
+            metrics (dict): Dictionary of metrics.
+        """
+        key = f"{phase}_metrics"
+        if key not in self.history:
+            self.history[key] = []
+
+        entry = {"epoch": epoch, "metrics": metrics}
+        if batch is not None:
+            entry["batch"] = batch
+        self.history[key].append(entry)
+        print(f"[INFO] Metrics at epoch {epoch}: {metrics}")
 
     def _is_best(self, score):
         if self.mode == "max":
             return score > self.best_score
         elif self.mode == "min":
-            return score< self.best_score
+            return score < self.best_score
         raise ValueError("mode should be 'max' or 'min'")
         
     def save_checkpoint(self, model, epoch, current_score, is_last=False):
