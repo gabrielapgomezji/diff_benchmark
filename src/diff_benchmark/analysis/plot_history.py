@@ -50,7 +50,7 @@ def plot_history_from_file(path="history.json", save_path="training_history.pdf"
     # --- Validation steps/epochs ---
     val_steps = np.arange(len(history["val"]["epoch"]))
     val_epochs = val_steps / val_steps_per_epoch
-
+    breakpoint()
     # --- Create figure with 2 subplots ---
     _, axes = plt.subplots(1, 2, figsize=(14, 6))
 
