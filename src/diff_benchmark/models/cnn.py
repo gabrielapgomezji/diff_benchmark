@@ -11,6 +11,7 @@ from torchvision import models, transforms
 from tqdm import tqdm
 
 from diff_benchmark.models.base import TorchAbstractModel
+from diff_benchmark.utils.logger import TrainLogger
 
 
 def collate_with_augmentation(batch, transform=None):
@@ -298,6 +299,7 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
         print(f"Device: {self.device}")
         self.model.train()
         train_loader, val_loader = self._train_val_loader_split(dataloader)
+        logger = TrainLogger(run_id=self.run_id, save_dir="./data/results/logger", monitor="val_accuracy", mode="max")
         print(f"Dataloaders created")
         for epoch in tqdm(range(self.epochs)):
             total_loss = 0
@@ -331,6 +333,7 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
                 # print(f"Epoch {epoch+1}, Loss: {total_loss/len(train_loader):.4f}")
                 if batch_train_idx % 10 == 0:
                     self.model.eval()
+                    logger.log_batch
                     val_loss = 0
                     val_accuracy = 0
                     with torch.no_grad():
