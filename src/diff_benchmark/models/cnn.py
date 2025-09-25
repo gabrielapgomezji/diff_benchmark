@@ -363,14 +363,17 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
 
                     # avg_val_loss = val_loss / len(val_loader)   # NOT USED FOR THE MOMENT
                     avg_val_accuracy = val_accuracy / len(val_loader)
-                    if avg_val_accuracy > self.best_val_model:
-                        save_path = Path("./data/models") / f"{self.run_id}_best.pth"
-                        save_path.parent.mkdir(parents=True, exist_ok=True)
-                        self.best_val_model = avg_val_accuracy
-                        torch.save(
-                            self.model.state_dict(),
-                            save_path,
-                        )
+                    # if avg_val_accuracy > self.best_val_model:
+                    #     save_path = Path("./data/models") / f"{self.run_id}_best.pth"
+                    #     save_path.parent.mkdir(parents=True, exist_ok=True)
+                    #     self.best_val_model = avg_val_accuracy
+                    #     torch.save(
+                    #         self.model.state_dict(),
+                    #         save_path,
+                    #     )
+                    # save checkpoint if best
+                    logger.save_checkpoint(self.model, epoch, avg_val_accuracy)
+                    
                     self.model.train()  # switch back to train mode
 
                 # avg_train_loss = total_loss / (batch_train_idx + 1)  # len(train_loader) #NOT USED FOR THE MOMENT
@@ -380,6 +383,7 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
                 print(
                     f"Epoch {epoch+1}: Train Loss={train_current_loss:.4f}, Train Acc={train_current_accuracy:.4f}, Val Loss={val_current_loss:.4f}, Val Acc={val_current_accuracy:.4f}"
                 )
+        logger.save_checkpoint(self.model, self.epochs, avg_val_accuracy, is_last=True)
         self._save_logs(
             self.history, f"./data/results/logs/{self.run_id}_training_log.json"
         )
