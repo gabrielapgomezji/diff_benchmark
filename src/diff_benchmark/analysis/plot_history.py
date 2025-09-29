@@ -34,7 +34,7 @@ def plot_history_from_file(path="history.json", save_path="training_history.pdf"
 
     # Infer steps_per_epoch from training history
     steps_per_epoch = max(history["train"]["batch"]) + 1
-    val_steps_per_epoch = max(history["val"]["batch"]) + 1
+    val_steps_per_epoch = max(history["val"]["batch_train_idx"]) + 1
 
     # Infer validation interval from val history
     if len(history["val"]["batch_train_idx"]) > 1:
@@ -50,7 +50,7 @@ def plot_history_from_file(path="history.json", save_path="training_history.pdf"
     # --- Validation steps/epochs ---
     val_steps = np.arange(len(history["val"]["epoch"]))
     val_epochs = val_steps / val_steps_per_epoch
-    breakpoint()
+
     # --- Create figure with 2 subplots ---
     _, axes = plt.subplots(1, 2, figsize=(14, 6))
 
@@ -89,7 +89,7 @@ def plot_history_from_file(path="history.json", save_path="training_history.pdf"
     ax = axes[1]
     ax.plot(
         train_epochs,
-        history["train"]["accuracy"],
+        history["train"]["metrics"]["accuracy"],
         "b-",
         alpha=0.7,
         linewidth=1.5,
@@ -97,7 +97,7 @@ def plot_history_from_file(path="history.json", save_path="training_history.pdf"
     )
     ax.plot(
         train_epochs,
-        history["train"]["accuracy"],
+        history["train"]["metrics"]["accuracy"],
         "bx",
         markersize=5,
         markeredgewidth=1.5,
@@ -105,14 +105,14 @@ def plot_history_from_file(path="history.json", save_path="training_history.pdf"
 
     ax.plot(
         val_epochs,
-        history["val"]["accuracy"],
+        history["val"]["metrics"]["accuracy"],
         "r-",
         alpha=0.7,
         linewidth=2,
         label="Validation",
     )
     ax.plot(
-        val_epochs, history["val"]["accuracy"], "rx", markersize=7, markeredgewidth=2
+        val_epochs, history["val"]["metrics"]["accuracy"], "rx", markersize=7, markeredgewidth=2
     )
 
     ax.set_xlabel("Epochs")
