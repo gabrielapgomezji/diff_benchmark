@@ -298,12 +298,12 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
                 writer.writerows(history)
         else:
             raise ValueError("Save path must end with .json or .csv")
-
+        
     def fit(self, dataloader):
         print(f"Device: {self.device}")
         self.model.train()
         train_loader, val_loader = self._train_val_loader_split(dataloader)
-        logger = TrainLogger(run_id=self.run_id, save_dir="./data/results/logger", monitor="val_accuracy", mode="max")
+        self.logger = TrainLogger(run_id=self.run_id, save_dir="./data/results/logger", monitor="val_accuracy", mode="max")
         print(f"Dataloaders created")
         for epoch in tqdm(range(self.epochs)):
 
@@ -368,16 +368,22 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
                     self.history["val"]["loss"].append(val_loss)
                     self.history["val"]["metrics"].append(metrics)
 
-                    logger.save_checkpoint(self.model, epoch, metrics["accuracy"])                    
+                    self.logger.save_checkpoint(self.model, epoch, metrics["accuracy"])                    
                     self.model.train()  
             self.scheduler.step(val_loss)
-        logger.save_checkpoint(self.model, self.epochs, 0, is_last=True)
-        logger.save_logs()
+        self.logger.save_checkpoint(self.model, self.epochs, 0, is_last=True)
+        self.logger.save_logs()
         self._save_logs(
             self.history, f"./data/results/logs/{self.run_id}_training_log.json"
         )
 
     def predict(self, dataloader):
+        checkpoint_path = Path(self.logger.best_path)
+        if checkpoint_path.exists():
+            state_dict = torch.load(checkpoint_path, map_location=self.device)
+            self.model.load_state_dict(state_dict)
+            print(f"[INFO] Loaded checkpoint from {checkpoint_path}")
+            
         self.model.eval()
         preds_all = []
         with torch.no_grad():
