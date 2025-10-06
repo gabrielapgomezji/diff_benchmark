@@ -133,8 +133,9 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
         summary, Path(results_path) / "analysis_results" / f"{run_id}_partial.json"
     )
 
-    for fold_idx, (train_idx, test_idx) in enumerate(indices[:1]):
+    for fold_idx, (train_idx, test_idx) in enumerate(indices):
         try:
+            local_config["fold_idx"] = fold_idx
             # print(
             #     f"Fold {fold_idx+1} - Train samples: {len(train_idx)}, test_samples: {len(test_idx)}"
             # )
@@ -211,10 +212,10 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
                 Path("./data/results/plots") / f"training_history_{run_id}.png"
             )
             training_history_plot_path.parent.mkdir(parents=True, exist_ok=True)
-            if training_log_path.exists():
-                plot_history_from_file(
-                    training_log_path, save_path=training_history_plot_path
-                )
+            # if training_log_path.exists():
+            #     plot_history_from_file(
+            #         training_log_path, save_path=training_history_plot_path
+            #     )
             save_model_results(
                 summary,
                 Path(results_path) / "analysis_results" / f"{run_id}_partial.json",
