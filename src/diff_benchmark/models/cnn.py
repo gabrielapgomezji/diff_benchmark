@@ -191,6 +191,7 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
         super(ResNet3SliceModel, self).__init__()
         self.device = device
         self.run_id = kwargs.get("run_id", "unnamed_run")
+        self.fold_idx = kwargs.get("fold_idx", -1)
         self.epochs = kwargs.get("epochs", 100)
         self.model = ResNet3SliceClassifier(
             input_slices=input_slices, num_classes=num_classes, **kwargs
@@ -303,7 +304,8 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
         print(f"Device: {self.device}")
         self.model.train()
         train_loader, val_loader = self._train_val_loader_split(dataloader)
-        self.logger = TrainLogger(run_id=self.run_id, save_dir="./data/results/logger", monitor="val_accuracy", mode="max")
+        print(f"Fold index: {self.fold_idx}")
+        self.logger = TrainLogger(fold_idx=self.fold_idx, run_id=self.run_id, save_dir="./data/results/logger", monitor="val_accuracy", mode="max")
         print(f"Dataloaders created")
         for epoch in tqdm(range(self.epochs)):
 
@@ -368,7 +370,8 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
                     self.history["val"]["loss"].append(val_loss)
                     self.history["val"]["metrics"].append(metrics)
 
-                    self.logger.save_checkpoint(self.model, epoch, metrics["accuracy"])                    
+                    # self.logger.save_checkpoint(self.model, epoch, metrics["accuracy"]) 
+                    self.logger.update_smooth_checkpoint(self.model, epoch, metrics["accuracy"])     
                     self.model.train()  
             self.scheduler.step(val_loss)
         self.logger.save_checkpoint(self.model, self.epochs, 0, is_last=True)
@@ -386,8 +389,13 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
             
         self.model.eval()
         preds_all = []
+        
+        mean = 0.5
+        std = 0.5
+    
         with torch.no_grad():
             for xb, _, _ in dataloader:
+                xb = (xb - mean) / std 
                 xb = xb.to(self.device)
                 logits = self.model(xb)
                 preds = torch.argmax(logits, dim=1)
