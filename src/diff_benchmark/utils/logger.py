@@ -71,7 +71,7 @@ class MetricsManager:
         return metrics
 
 class TrainLogger:
-    def __init__(self, run_id="unnamed_run", save_dir="./data/results/logger", monitor="val_accuracy", mode="max"):
+    def __init__(self, fold_idx, run_id="unnamed_run", save_dir="./data/results/logger", monitor="val_accuracy", mode="max"):
         """
         Training logger and checkpoint saver.
 
@@ -82,10 +82,16 @@ class TrainLogger:
             mode (str): "max" if higher is better, "min" if lower is better.
         """
         self.run_id = run_id
+        self.fold_idx = fold_idx
         self.save_dir = Path(save_dir)
         self.monitor = monitor
         self.mode = mode
 
+        self.val_scores = []
+        self.waiting_candidate = None
+        self.patience_window = 3  # number of epochs to average
+        self.tolerance = 0.005    # tolerance for next-epoch drop
+        self.smoothed_best = float("-inf") if mode == "max" else float("inf")
         self.best_score = float("-inf") if mode == "max" else float("inf")
         self.history = {
             "train": {"epoch": [], "loss": [], "accuracy": []},
@@ -98,8 +104,8 @@ class TrainLogger:
         self.models_path = self.save_dir / "models"
         self.logs_path.mkdir(parents=True, exist_ok=True)
         self.models_path.mkdir(parents=True, exist_ok=True)
-        self.best_path = self.models_path / f"{self.run_id}_best.pth"
-        self.last_path = self.models_path / f"{self.run_id}_last.pth"
+        self.best_path = self.models_path / f"{self.run_id}_fold{self.fold_idx}_best.pth"
+        self.last_path = self.models_path / f"{self.run_id}_fold{self.fold_idx}_last.pth"
     
     # def log_batch(self, phase:str, epoch: int, loss: float, accuracy: float=None):
     #     self.history[phase]["epoch"].append(epoch)
@@ -185,3 +191,44 @@ class TrainLogger:
         
         
         print(f"[INFO] Logs saved at {json_path}")
+        
+    def update_smooth_checkpoint(self, model, epoch, val_score):
+        """
+        Check 3-step smoothed validation accuracy and save checkpoint
+        only when improvement is stable.
+        """
+        self.val_scores.append(val_score)
+        if len(self.val_scores) < self.patience_window:
+            return  # not enough epochs yet
+
+        # Compute 3-step moving average
+        recent_avg = np.mean(self.val_scores[-self.patience_window:])
+
+        # If this moving average is new best → candidate for saving
+        is_improvement = (
+            recent_avg > self.smoothed_best
+            if self.mode == "max"
+            else recent_avg < self.smoothed_best
+        )
+
+        if is_improvement:
+            self.waiting_candidate = (epoch, recent_avg, model.state_dict())
+            self.smoothed_best = recent_avg
+            print(f"[Epoch {epoch}] Candidate smoothed avg: {recent_avg:.4f}")
+
+        # Confirm stability one epoch later
+        if self.waiting_candidate is not None and len(self.val_scores) > self.patience_window:
+            last_val = self.val_scores[-1]
+            candidate_epoch, candidate_score, candidate_state = self.waiting_candidate
+
+            # Stable if score hasn't dropped too much
+            stable = (
+                last_val >= candidate_score * (1 - self.tolerance)
+                if self.mode == "max"
+                else last_val <= candidate_score * (1 + self.tolerance)
+            )
+            if stable:
+                print(f"[INFO] Stable checkpoint saved (epoch {candidate_epoch}, smooth={candidate_score:.4f})")
+                self.save_checkpoint(model, candidate_epoch, candidate_score, is_last=False)
+                
+                self.waiting_candidate = None
