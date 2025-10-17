@@ -89,6 +89,16 @@ class LightningModel(pl.LightningModule, ABC):
         """Forward pass."""
         pass
     
+    @abstractmethod
+    def fit(self, dataloader):
+        """Fit the model to the training data."""
+        pass
+    
+    @abstractmethod
+    def predict(self, dataloader):
+        """Predict using the fitted model."""
+        pass
+    
     def compute_metrics(self, y_true, y_pred):
         return {
             "accuracy": accuracy_score(y_true, y_pred),
