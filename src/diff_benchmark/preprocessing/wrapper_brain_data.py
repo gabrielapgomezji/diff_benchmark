@@ -7,6 +7,7 @@ import nilearn as ni
 
 # rtop_pipeline.py
 import numpy as np
+import pandas as pd
 from dipy.core.gradients import gradient_table
 from dipy.core.subdivide_octahedron import create_unit_sphere
 from dipy.reconst.mapmri import MapmriModel
@@ -345,6 +346,28 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
 
     def verify_subject_files(self, subject_id: str, metric: str) -> bool:
         pass
+    
+    def _resolve_region_ids_from_names(self, regions):
+        """
+        Convert Schaefer network names or parcel names to integer IDs.
+        Example inputs:
+            regions = ['Visual', 'Default']
+            regions = [1, 2, 3]  # direct IDs
+        """
+        if all(isinstance(r, int) for r in regions):
+            return regions
+
+        # Load Schaefer label info file (should be bundled with the atlas)
+        # Example path: $FREESURFER_HOME/atlases/Schaefer2018_1000Parcels_7Networks_order.txt
+        schaefer_info = np.loadtxt(
+            "/path/to/Schaefer2018_1000Parcels_7Networks_order.txt",
+            dtype=str,
+            delimiter="\t"
+        )
+        id_to_network = {int(row[0]): row[1].split("_")[1] for row in schaefer_info}
+        region_ids = [k for k, v in id_to_network.items() if any(r in v for r in regions)]
+        return region_ids
+
 
     def extract_raw_data(self, subject_id: str):
         """
@@ -388,6 +411,9 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
         }
 
         for h in ("L", "R"):
+            schaefer_hemi_data = (
+                self.schaefer_resampled["left.data"] if h == "L" else self.schaefer_resampled["right.data"]
+            )
             # Full 4D projection: output shape (n_vertices, n_directions)
             surf_data = ni.surface.vol_to_surf(
                 dwi_nib,
@@ -406,7 +432,7 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
                 ctx_mask, surfaces[f"{h}.pial"], inner_mesh=surfaces[f"{h}.white"]
             )
             nodes = np.where(mask_surf > 0)[0]
-
+            
             # Save as HDF5 for embedding pipeline
             h5_path = derivatives_dir / f"sub-{subject_id}_hemi-{h}_raw_dwi.h5"
             with h5py.File(h5_path, "w") as f:
@@ -416,6 +442,7 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
                 f.create_dataset("surface_coordinates", data=mesh_coords)
                 f.create_dataset("surface_faces", data=mesh_faces)
                 f.create_dataset("nodes", data=nodes)
+                f.create_dataset("labels", data=schaefer_hemi_data)
 
                 f.attrs["subject"] = subject_id
                 f.attrs["hemisphere"] = h
@@ -429,7 +456,7 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
                         intent="NIFTI_INTENT_NONE",
                     )
                 )
-            # breakpoint()
+            
             nib.save(
                 gii, derivatives_dir / f"sub-{subject_id}_hemi-{h}_raw_dwi.func.gii"
             )
@@ -443,6 +470,7 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
             vertex_indices = np.array(f["nodes"])  # cortical mask indices
             coords = np.array(f["surface_coordinates"])
             faces = np.array(f["surface_faces"])
+            labels = np.array(f["labels"])
 
         # Build mesh graph for neighbor lookup
         faces = faces.T
@@ -455,10 +483,22 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
         graph = g_graph.subgraph(vertex_indices)
 
         # Labels (optional)
-        labels = np.zeros(
-            coords.shape[0], dtype=np.int32
-        )  # placeholder, can be from aparc
-
+        # labels = np.zeros(
+        #     coords.shape[0], dtype=np.int32
+        # )  # placeholder, can be from aparc
+        
+        mapping = {v: i for i, v in enumerate(sorted(vertex_indices))}
+        graph = nx.relabel_nodes(graph, mapping)
+        vertex_indices = np.array([mapping[v] for v in vertex_indices])
+        
+        dwi_signal = dwi_signal[sorted(mapping.keys())]
+        labels = labels[sorted(mapping.keys())]
+        coords = coords[sorted(mapping.keys())]
+        
+        valid_faces_mask = np.all(np.isin(faces, list(mapping.keys())), axis=0)
+        faces_valid = faces[:, valid_faces_mask]
+        faces = np.vectorize(mapping.get)(faces_valid)
+        
         return {
             "dwi_signal": dwi_signal,
             "bvals": bvals,
@@ -472,6 +512,90 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
 
     def compute_microstructure(self, subject_id: str):
         """Compute microstructural features for LCOT embedding."""
+        schaefer = self.schaefer_resampled
+
+        # Copy label tables
+        labels_left = schaefer["left.labels"].copy()
+        labels_right = schaefer["right.labels"].copy()
+
+        # Get unique values present in data arrays
+        unique_values_left = np.unique(schaefer["left.data"])
+        unique_values_right = np.unique(schaefer["right.data"])
+        unique_values_left.sort()
+        unique_values_right.sort()
+
+        # --- 1. Create unique continuous indices across both hemispheres ---
+        # Left hemisphere: 1..N_left
+        left_region_values = np.arange(1, len(unique_values_left) + 1)
+
+        # Right hemisphere: N_left+1..N_left+N_right
+        right_region_values = np.arange(
+            len(unique_values_left) + 1, len(unique_values_left) + len(unique_values_right) + 1
+        )
+
+        # Assign new region values to label tables
+        labels_left["region_value"] = left_region_values
+        labels_right["region_value"] = right_region_values
+
+        # --- 2. Remap the actual data arrays to use these new region values ---
+        # Build mapping dictionaries
+        left_map = {old: new for old, new in zip(unique_values_left, left_region_values)}
+        right_map = {old: new for old, new in zip(unique_values_right, right_region_values)}
+
+        # Apply mapping
+        left_data_mapped = np.vectorize(left_map.get)(schaefer["left.data"])
+        right_data_mapped = np.vectorize(right_map.get)(schaefer["right.data"])
+
+        # --- 3. Update the stored data ---
+        schaefer["left.data"] = left_data_mapped
+        schaefer["right.data"] = right_data_mapped
+        schaefer["left.labels"] = labels_left
+        schaefer["right.labels"] = labels_right
+
+        # Combine for later use
+        hemi_labels = pd.concat([labels_left, labels_right], ignore_index=True)
+        full_parc = np.concatenate([left_data_mapped, right_data_mapped])
+        
+        region_to_vertices = {
+            rv: np.where(full_parc == rv)[0]
+            for rv in np.unique(full_parc)
+        }
+        
+        region_name = "17Networks_LH_VisCent_Striate_1"
+        region_value = hemi_labels.loc[hemi_labels["name"] == region_name, "region_value"].values[0]
+        vertex_mask = full_parc == region_value
+        
+        left_mask = vertex_mask[:len(left_data_mapped)]
+        right_mask = vertex_mask[len(left_data_mapped):]
+        
+        ###########
+        derivatives_dir = (
+            self.results_root / "derivatives" / f"sub-{subject_id}" / "dwi"
+        )
+        derivatives_dir.mkdir(parents=True, exist_ok=True)
+        output_file = derivatives_dir / f"sub-{subject_id}_spheres.h5"
+        
+        if output_file.exists():
+            print(f"[INFO] Found precomputed microstructure features for {subject_id}. Loading...")
+            with h5py.File(output_file, "r") as f:
+                all_results = {
+                    bval: [
+                        {
+                            "vertex": int(v),
+                            "attenuation": np.array(d["attenuation"]),
+                            "neighbors": json.loads(d.attrs["neighbors"]),
+                            "label": int(d.attrs["label"]),
+                        }
+                        for v, d in f[bval].items()
+                    ]
+                    for bval in f.keys()
+                }
+            return all_results
+
+        # Otherwise, compute the data
+        print(f"[INFO] Computing microstructure features for {subject_id}...")
+        self.extract_raw_data(subject_id)
+        
         sphere = create_unit_sphere(7)
 
         # Gradient table for b0 reference (needed for attenuation normalization)
@@ -491,7 +615,7 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
         merged_graph = nx.Graph()
 
         offset = 0
-        for h in ("L", "R"):
+        for h, mask in zip(("L", "R"), (left_mask, right_mask)):
             # rawdwi_dir = self.results_root / "derivatives" / f"sub-{subject_id}" / "dwi" / f"sub-{subject_id}_hemi-{h}_raw_dwi.func.gii"
             rawdwi_dir = (
                 self.results_root
@@ -504,39 +628,73 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
 
             n_vertices = len(data_dict["vertex_indices"])
 
-            # Offset vertex indices and faces so R hemisphere doesn't overwrite L indices
-            data_dict["vertex_indices"] = data_dict["vertex_indices"] + offset
-            data_dict["faces"] = data_dict["faces"] + offset
+            # Apply mask (keep only region vertices)
+            
+            mask_subset = mask[data_dict["vertex_indices"]]  # shape ~30k
+            cortical_signal = data_dict["dwi_signal"][data_dict["vertex_indices"]] # shape ~30k × n_dirs
+            cortical_labels = data_dict["labels"][data_dict["vertex_indices"]]     # shape ~30k
+            masked_indices = data_dict["vertex_indices"][mask_subset]
+            masked_signal = cortical_signal[mask_subset]
+            masked_labels = cortical_labels[mask_subset]
 
-            # Append hemisphere's signals
-            merged_data["dwi_signal"].append(data_dict["dwi_signal"])
-            merged_data["vertex_indices"].extend(data_dict["vertex_indices"])
-            merged_data["labels"].extend(data_dict["labels"])
-            merged_data["faces"].extend(data_dict["faces"])
+            # Filter graph to masked vertices
+            g_graph = data_dict["graph"].subgraph(masked_indices).copy()
 
-            # Save bvals/bvecs (identical for both hemispheres)
+            # Offset indices so hemispheres don't overlap
+            n_vertices = len(mask_subset)
+            mapping = {old: old + offset for old in g_graph.nodes()}
+            g_graph = nx.relabel_nodes(g_graph, mapping)
+
+            merged_graph.add_nodes_from(g_graph.nodes())
+            merged_graph.add_edges_from(g_graph.edges())
+
+            masked_indices = masked_indices + offset
+
+            # Append hemisphere data
+            merged_data["dwi_signal"].append(masked_signal)
+            merged_data["vertex_indices"].extend(masked_indices)
+            merged_data["labels"].extend(masked_labels)
+            # n_masked = masked_signal.shape[0]
+            # merged_data["vertex_indices"].extend(np.arange(offset, offset + n_masked))
+
             if merged_data["bvals"] is None:
                 merged_data["bvals"] = data_dict["bvals"]
                 merged_data["bvecs"] = data_dict["bvecs"]
 
-            # Merge graphs
-            g_graph = data_dict["graph"].copy()
-            mapping = {old: old + offset for old in g_graph.nodes()}
-            g_graph = nx.relabel_nodes(g_graph, mapping)
-            merged_graph.add_nodes_from(g_graph.nodes())
-            merged_graph.add_edges_from(g_graph.edges())
+            offset += n_vertices #n_masked #
+            ######
+            # # Offset vertex indices and faces so R hemisphere doesn't overwrite L indices
+            # data_dict["vertex_indices"] = data_dict["vertex_indices"] + offset
+            # data_dict["faces"] = data_dict["faces"] + offset
 
-            offset += n_vertices
+            # # Append hemisphere's signals
+            # merged_data["dwi_signal"].append(data_dict["dwi_signal"])
+            # merged_data["vertex_indices"].extend(data_dict["vertex_indices"])
+            # merged_data["labels"].extend(data_dict["labels"])
+            # merged_data["faces"].extend(data_dict["faces"])
 
-        # breakpoint()
+            # # Save bvals/bvecs (identical for both hemispheres)
+            # if merged_data["bvals"] is None:
+            #     merged_data["bvals"] = data_dict["bvals"]
+            #     merged_data["bvecs"] = data_dict["bvecs"]
+
+            # # Merge graphs
+            # g_graph = data_dict["graph"].copy()
+            # mapping = {old: old + offset for old in g_graph.nodes()}
+            # g_graph = nx.relabel_nodes(g_graph, mapping)
+            # merged_graph.add_nodes_from(g_graph.nodes())
+            # merged_graph.add_edges_from(g_graph.edges())
+
+            # offset += n_vertices
+        
         # Stack signal arrays: final shape = (n_total_vertices, n_directions)
         merged_data["dwi_signal"] = np.vstack(merged_data["dwi_signal"])
         merged_data["vertex_indices"] = np.array(
             merged_data["vertex_indices"], dtype=int
         )
         merged_data["labels"] = np.array(merged_data["labels"], dtype=int)
-        merged_data["faces"] = np.array(merged_data["faces"], dtype=int)
-
+        # merged_data["faces"] = np.array(merged_data["faces"], dtype=int) # Used for not masking
+        breakpoint()
         # Build MAP-MRI model once for all vertices
         gtab_all = gradient_table(merged_data["bvals"], merged_data["bvecs"])
         model = MapmriModel(gtab_all, radial_order=6, laplacian_regularization=True)
@@ -555,7 +713,25 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
             graph_ins=merged_graph,
             normalize_input=normalize_input,
         )
-        # breakpoint()
+        breakpoint()
+        print(f"[INFO] Saving computed features to {output_file}")
+        with h5py.File(output_file, "w") as f:
+            for bval, vertex_list in all_results.items():
+                grp = f.create_group(bval)
+                for vdata in vertex_list:
+                    v = str(vdata["vertex"])
+                    vgrp = grp.create_group(v)
+                    vgrp.create_dataset("attenuation", data=vdata["attenuation"])
+                    vgrp.attrs["neighbors"] = json.dumps(vdata["neighbors"])
+                    vgrp.attrs["label"] = vdata["label"]
+
+            # Store metadata
+            f.attrs["subject_id"] = subject_id
+            f.attrs["bvals_to_compute"] = json.dumps(bvals_to_compute)
+            f.attrs["sphere_vertices"] = len(sphere.vertices)
+
+        print(f"[INFO] Microstructure features saved to {output_file}")
+        breakpoint()
         return all_results
 
     def run_analysis(self):

@@ -426,9 +426,10 @@ def compute_data(
 
         subject_spheres = []
 
-        print(f"Coucou {bval}")
+        print(f"{bval}")
 
         for _, vertex in enumerate(tqdm(data["vertex_indices"], desc=f"B={bval}")):
+            breakpoint()
             signal = (
                 normalize(data["dwi_signal"][vertex])
                 if normalize_input

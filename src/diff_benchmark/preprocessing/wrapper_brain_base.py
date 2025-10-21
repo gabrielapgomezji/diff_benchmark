@@ -142,7 +142,7 @@ class DataPreparationBrain(ABC):
             else:
                 print(f"[{subject_id}] All required files found.")
 
-        Parallel(n_jobs=20)(
+        Parallel(n_jobs=1)(
             delayed(process_subject)(subject_id)
             for subject_id in tqdm(subject_list, desc="Processing subjects")
         )
