@@ -16,6 +16,8 @@ from scipy.linalg import LinAlgError
 from scipy.spatial import cKDTree
 from templateflow import api as tflow
 from tqdm import tqdm
+import h5py
+import json
 
 
 def extract_selected_labels(nifti_path):
@@ -391,6 +393,70 @@ def average_per_parcel(hem_left, hem_right, schaefer_resampled):
         rtop_avg[i] = hem_right[mask].mean()
     return rtop_avg
 
+def extract_region_data(hem_left, hem_right, schaefer_resampled, target_substring=None, average=False):
+    """
+    Average microstructure values across selected parcels in both hemispheres.
+
+    Args:
+        hem_left (ndarray): Microstructure values for left hemisphere.
+        hem_right (ndarray): Microstructure values for right hemisphere.
+        schaefer_resampled (dict): Contains 'left.data' and 'right.data' arrays.
+        region_ids (list[int] or None): Optional list of parcel IDs to include.
+            If None, all parcels will be included.
+        average (bool): If True, return the overall average across selected regions.
+    Returns:
+        np.ndarray: Mean values per selected region (in order of selection if provided).
+    """
+    parc_left = schaefer_resampled["left.data"]
+    parc_right = schaefer_resampled["right.data"]
+    labels_left = schaefer_resampled["left.labels"].copy()
+    labels_right = schaefer_resampled["right.labels"].copy()
+    
+    unique_left = np.unique(parc_left)
+    unique_right = np.unique(parc_right)
+
+    labels_left["array_index"] = unique_left[:len(labels_left)]
+    labels_right["array_index"] = unique_right[:len(labels_right)]
+    labels_left["hemi"] = "L"
+    labels_right["hemi"] = "R"
+    all_labels = pd.concat([labels_left, labels_right], ignore_index=True)
+    
+    if target_substring:
+        matched_labels = all_labels[
+            all_labels["name"].str.contains(target_substring, case=False, na=False)
+        ]
+    else:
+        matched_labels = all_labels
+
+    region_data = {}
+    region_values = []
+    
+    # --- Iterate through matched regions (each has unique hemi + name)
+    for _, row in matched_labels.iterrows():
+        hemi = row["hemi"]
+        region_id = row["array_index"]
+        region_name = row["name"]
+        if hemi == "L":
+            mask = parc_left == region_id
+            vals = hem_left[mask]
+            region_values.append(vals)
+        elif hemi == "R":
+            mask = parc_right == region_id
+            vals = hem_right[mask]
+            region_values.append(vals)
+        else:
+            continue  # unexpected hemi label
+
+        if vals.size == 0:
+            continue  # skip empty
+        
+        region_data[region_name] = np.nanmean(vals) if average else vals
+
+    region_values = np.concatenate(
+        [np.atleast_1d(v) for v in region_values]
+    )
+    # return region_data # returns dict and csv is a column per region with the corresponding arrays
+    return region_values
 
 def normalize(data):
     """Normalizes the input data to have zero mean and unit variance."""
@@ -428,27 +494,28 @@ def compute_data(
 
         print(f"{bval}")
 
-        for _, vertex in enumerate(tqdm(data["vertex_indices"], desc=f"B={bval}")):
-            breakpoint()
-            signal = (
-                normalize(data["dwi_signal"][vertex])
-                if normalize_input
-                else data["dwi_signal"][vertex]
-            )
+        for vertex, attrs in tqdm(graph_ins.nodes(data=True), desc=f"B={bval}"):
+            signal = attrs["signal"]
+            if normalize_input:
+                signal = signal / np.linalg.norm(signal)
+            
+            fit_success = True
 
             try:
                 fit = model.fit(signal)
             except LinAlgError:
+                fit_success = False
                 print(
                     f"Vertex {vertex} - SVD did not converge. Using neighbor average."
                 )
 
-                neighbors = list(nx.neighbors(graph_ins, vertex))
+                neighbors = list(graph_ins.neighbors(vertex))
                 if not neighbors:
                     print(f"Vertex {vertex} has no neighbors. Skipping.")
-                    continue
 
-                neighbor_signals = np.array([data["dwi_signal"][n] for n in neighbors])
+                neighbor_signals = np.array(
+                    [graph_ins.nodes[n]["signal"] for n in neighbors]
+                )
                 avg_signal = np.mean(neighbor_signals, axis=0)
 
                 if normalize_input:
@@ -456,23 +523,73 @@ def compute_data(
 
                 try:
                     fit = model.fit(avg_signal)
+                    fit_success = True
                 except LinAlgError:
                     print(
                         f"Vertex {vertex} - Averaged neighbor signal also failed. Skipping."
                     )
-                    continue
-
-            b0_val = fit.predict(gtab0)
-            attenuation = fit.predict(gtab_sphere) / b0_val
+            
+            if not fit_success:
+                attenuation = np.full(len(sphere.vertices), np.nan, dtype=np.float32)
+                b0_val = np.nan
+                fit_status = "failed"
+            else:
+                b0_val = fit.predict(gtab0)
+                attenuation = fit.predict(gtab_sphere) / b0_val
+                fit_status = "success"
 
             vertex_data = {
                 "vertex": vertex,
                 "attenuation": attenuation.astype(np.float32),
-                "neighbors": list(nx.neighbors(graph_ins, vertex)),
-                "label": data["labels"][vertex],
+                "neighbors": list(graph_ins.neighbors(vertex)),
+                "label": attrs["label"],
+                "fit_status": fit_status
             }
             subject_spheres.append(vertex_data)
 
         all_results[str(bval)] = subject_spheres
 
     return all_results
+
+def load_vertexwise_attenuations(file_path):
+    """
+    Load attenuations from an HDF5 file into a NumPy array of shape:
+        [num_vertices, num_bvals, attenuation_length]
+    """
+    with h5py.File(file_path, "r") as f:
+        # Sort bvals and vertices to ensure consistent order
+        bvals = sorted(f.keys(), key=lambda x: float(x))
+        vertices = sorted(f[bvals[0]].keys(), key=lambda x: int(x))
+
+        num_bvals = len(bvals)
+        num_vertices = len(vertices)
+
+        # Determine attenuation length from the first dataset
+        example_att = f[bvals[0]][vertices[0]]["attenuation"][()]
+        att_length = example_att.shape[0] if example_att.ndim > 0 else 1
+
+        # Initialize array [num_vertices, num_bvals, attenuation_length]
+        data = np.zeros((num_vertices, num_bvals, att_length), dtype=example_att.dtype)
+
+        # Fill array
+        for j, vertex in enumerate(vertices):
+            for i, bval in enumerate(bvals):
+                vgrp = f[bval][vertex]
+                data[j, i, :] = vgrp["attenuation"][()]
+
+        # Optional metadata
+        metadata = {
+            "subject_id": f.attrs["subject_id"],
+            "bvals_to_compute": json.loads(f.attrs["bvals_to_compute"]),
+            "sphere_vertices": f.attrs["sphere_vertices"],
+            "bvals": bvals,
+            "vertices": vertices,
+        }
+
+    return data, metadata
+
+def split_data(data, num_splits):
+    split_size = data.shape[0] // num_splits
+    return [
+        data[i * split_size : (i + 1) * split_size] for i in range(num_splits - 1)
+    ] + [data[(num_splits - 1) * split_size :]]
