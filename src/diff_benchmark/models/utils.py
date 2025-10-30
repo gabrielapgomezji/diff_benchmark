@@ -1,5 +1,5 @@
-from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning import Trainer
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 
 
 def create_trainer(
@@ -11,7 +11,9 @@ def create_trainer(
     devices="auto",
     save_dir="./data/results/checkpoints",
 ):
-    early_stop = EarlyStopping(monitor=monitor, mode=mode, patience=patience, verbose=True)
+    early_stop = EarlyStopping(
+        monitor=monitor, mode=mode, patience=patience, verbose=True
+    )
     checkpoint = ModelCheckpoint(
         dirpath=save_dir,
         save_top_k=1,
@@ -27,6 +29,6 @@ def create_trainer(
         devices=devices,
         log_every_n_steps=10,
         fast_dev_run=False,
-        val_check_interval=0.5
+        val_check_interval=0.5,
     )
     return trainer

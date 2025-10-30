@@ -36,7 +36,7 @@ class PCALogisticRegressionModel(NumpyAbstractModel):
 
         # Grid of hyperparameters
         param_grid = {
-            "pca__n_components": [50, 100, 400],  # number of PCA components to try
+            "pca__n_components": [10, 50, 100],  # number of PCA components to try
             "logreg__C": [0.01, 0.1, 1, 10, 100],  # inverse regularization strength
             "logreg__penalty": ["l2"],  # penalty (l1 requires saga solver)
             "logreg__solver": ["lbfgs"],  # stable solver for l2

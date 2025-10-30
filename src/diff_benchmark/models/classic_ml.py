@@ -1,10 +1,10 @@
 import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.svm import SVC
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
 
 from diff_benchmark.models.base import NumpyAbstractModel
 
@@ -67,6 +67,7 @@ class PCARandomForestModel(NumpyAbstractModel):
         features_reshaped = features.reshape(features.shape[0], -1)
         return self.model.predict(features_reshaped)
 
+
 class PCASVMModel(NumpyAbstractModel):
     """
     PCASVMModel combines PCA for dimensionality reduction
@@ -123,4 +124,3 @@ class PCASVMModel(NumpyAbstractModel):
         features, _ = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
         return self.model.predict(features_reshaped)
-

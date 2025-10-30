@@ -4,19 +4,22 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from sklearn.metrics import (
+    accuracy_score,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
 from sklearn.model_selection import train_test_split
 from torch import nn
 from torch.utils.data import DataLoader, Subset
 from torchvision import models, transforms
 from tqdm import tqdm
 
-from sklearn.metrics import (
-    accuracy_score, precision_score, recall_score,
-    f1_score, confusion_matrix, roc_auc_score
-)
-
 from diff_benchmark.models.base import TorchAbstractModel
-from diff_benchmark.utils.logger import TrainLogger, MetricsManager
+from diff_benchmark.utils.logger import MetricsManager, TrainLogger
 
 
 def collate_with_augmentation(batch, transform=None):
@@ -209,7 +212,9 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
             weight_decay=weight_decay,
         )
         # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=5, gamma=0.5)
-        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, patience=10)
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            self.optimizer, mode="min", factor=0.5, patience=10
+        )
         self.average = "binary"
 
         self.best_val_model = 0
@@ -299,13 +304,19 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
                 writer.writerows(history)
         else:
             raise ValueError("Save path must end with .json or .csv")
-        
+
     def fit(self, dataloader):
         print(f"Device: {self.device}")
         self.model.train()
         train_loader, val_loader = self._train_val_loader_split(dataloader)
         print(f"Fold index: {self.fold_idx}")
-        self.logger = TrainLogger(fold_idx=self.fold_idx, run_id=self.run_id, save_dir="./data/results/logger", monitor="val_accuracy", mode="max")
+        self.logger = TrainLogger(
+            fold_idx=self.fold_idx,
+            run_id=self.run_id,
+            save_dir="./data/results/logger",
+            monitor="val_accuracy",
+            mode="max",
+        )
         print(f"Dataloaders created")
         for epoch in tqdm(range(self.epochs)):
 
@@ -323,13 +334,19 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
 
                 y_true = yb.cpu().detach().numpy()
                 y_pred = preds.argmax(dim=1).cpu().detach().numpy()
-                
+
                 metrics = {
                     "accuracy": accuracy_score(y_true, y_pred),
-                    "precision": precision_score(y_true, y_pred, average=self.average, zero_division="warn"),
-                    "recall": recall_score(y_true, y_pred, average=self.average, zero_division="warn"),
-                    "f1": f1_score(y_true, y_pred, average=self.average, zero_division="warn"),
-                    "confusion_matrix": confusion_matrix(y_true, y_pred).tolist()
+                    "precision": precision_score(
+                        y_true, y_pred, average=self.average, zero_division="warn"
+                    ),
+                    "recall": recall_score(
+                        y_true, y_pred, average=self.average, zero_division="warn"
+                    ),
+                    "f1": f1_score(
+                        y_true, y_pred, average=self.average, zero_division="warn"
+                    ),
+                    "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
                 }
                 self.history["train"]["epoch"].append(epoch)
                 self.history["train"]["batch"].append(batch_train_idx)
@@ -352,27 +369,35 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
 
                             y_true.append(yb.cpu().numpy())
                             y_pred.append(preds.argmax(dim=1).cpu().numpy())
-                    
+
                     val_loss /= len(val_loader)
-                        
+
                     y_true = np.concatenate(y_true)
                     y_pred = np.concatenate(y_pred)
-                    
+
                     metrics = {
                         "accuracy": accuracy_score(y_true, y_pred),
-                        "precision": precision_score(y_true, y_pred, average=self.average, zero_division="warn"),
-                        "recall": recall_score(y_true, y_pred, average=self.average, zero_division="warn"),
-                        "f1": f1_score(y_true, y_pred, average=self.average, zero_division="warn"),
-                        "confusion_matrix": confusion_matrix(y_true, y_pred).tolist()
+                        "precision": precision_score(
+                            y_true, y_pred, average=self.average, zero_division="warn"
+                        ),
+                        "recall": recall_score(
+                            y_true, y_pred, average=self.average, zero_division="warn"
+                        ),
+                        "f1": f1_score(
+                            y_true, y_pred, average=self.average, zero_division="warn"
+                        ),
+                        "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
                     }
                     self.history["val"]["epoch"].append(epoch)
                     self.history["val"]["batch_train_idx"].append(batch_train_idx)
                     self.history["val"]["loss"].append(val_loss)
                     self.history["val"]["metrics"].append(metrics)
 
-                    # self.logger.save_checkpoint(self.model, epoch, metrics["accuracy"]) 
-                    self.logger.update_smooth_checkpoint(self.model, epoch, metrics["accuracy"])     
-                    self.model.train()  
+                    # self.logger.save_checkpoint(self.model, epoch, metrics["accuracy"])
+                    self.logger.update_smooth_checkpoint(
+                        self.model, epoch, metrics["accuracy"]
+                    )
+                    self.model.train()
             self.scheduler.step(val_loss)
         self.logger.save_checkpoint(self.model, self.epochs, 0, is_last=True)
         self.logger.save_logs()
@@ -386,16 +411,16 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
             state_dict = torch.load(checkpoint_path, map_location=self.device)
             self.model.load_state_dict(state_dict)
             print(f"[INFO] Loaded checkpoint from {checkpoint_path}")
-            
+
         self.model.eval()
         preds_all = []
-        
+
         mean = 0.5
         std = 0.5
-    
+
         with torch.no_grad():
             for xb, _, _ in dataloader:
-                xb = (xb - mean) / std 
+                xb = (xb - mean) / std
                 xb = xb.to(self.device)
                 logits = self.model(xb)
                 preds = torch.argmax(logits, dim=1)

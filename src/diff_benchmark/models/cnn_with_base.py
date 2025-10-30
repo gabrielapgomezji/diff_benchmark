@@ -1,16 +1,17 @@
-import torch
-from torch import nn
-from torch.utils.data import DataLoader, Subset
-from sklearn.model_selection import train_test_split
-import numpy as np
+import csv
+import json
 from pathlib import Path
-import json, csv
 
 import numpy as np
+import torch
+from sklearn.model_selection import train_test_split
+from torch import nn
+from torch.utils.data import DataLoader, Subset
 from torchvision import models, transforms
 
 from diff_benchmark.models.base import LightningModel
 from diff_benchmark.models.utils import create_trainer
+
 
 def collate_with_augmentation(batch, transform=None):
     xs, ys, gs = zip(*batch)  # separate batch components
@@ -143,7 +144,7 @@ class ResNet3SliceClassifier(nn.Module):
         if isinstance(x, (list, tuple)):
             x = x[0]
         x = x.squeeze(1)
-        
+
         subvols = x.unfold(
             dimension=1, size=3, step=3
         )  # (Batch, num_subvols, 3, Height, Width)
@@ -161,6 +162,7 @@ class ResNet3SliceClassifier(nn.Module):
         # Normalization layer
         out = self.fc(feats)  # (Batch, num_classes)
         return out
+
 
 class ResNet3SliceModel(LightningModel):
     """
@@ -196,8 +198,18 @@ class ResNet3SliceModel(LightningModel):
     def build_model(self):
         """Build the actual ResNet classifier."""
         # To avoid repeating args as input_slices
-        model_kwargs = {k: v for k, v in vars(self.hparams).items() 
-                    if k not in ["input_slices", "num_classes", "learning_rate", "weight_decay", "average"]}
+        model_kwargs = {
+            k: v
+            for k, v in vars(self.hparams).items()
+            if k
+            not in [
+                "input_slices",
+                "num_classes",
+                "learning_rate",
+                "weight_decay",
+                "average",
+            ]
+        }
         self.model = ResNet3SliceClassifier(
             input_slices=self.input_slices,
             num_classes=self.num_classes,
@@ -229,7 +241,7 @@ class ResNet3SliceModel(LightningModel):
             train_subset,
             batch_size=train_loader.batch_size,
             shuffle=True,
-            num_workers=19, #0,#
+            num_workers=19,  # 0,#
             pin_memory=False,
             collate_fn=lambda batch: collate_with_augmentation(
                 batch, transform=train_transforms
@@ -239,7 +251,7 @@ class ResNet3SliceModel(LightningModel):
             val_subset,
             batch_size=128,
             shuffle=False,
-            num_workers=19, #0,#10,
+            num_workers=19,  # 0,#10,
             pin_memory=False,
             collate_fn=lambda batch: collate_with_augmentation(
                 batch, transform=val_transforms
@@ -292,8 +304,10 @@ class ResNet3SliceModel(LightningModel):
         trainer.fit(self, train_loader, val_loader)
         self.trainer = trainer  # store for predict later
 
-        print(f"[INFO] Training finished. Best model: {trainer.checkpoint_callback.best_model_path}")
-    
+        print(
+            f"[INFO] Training finished. Best model: {trainer.checkpoint_callback.best_model_path}"
+        )
+
     def x_only_loader(self, dl):
         for x, _, _ in dl:
             if isinstance(x, list):
@@ -302,18 +316,18 @@ class ResNet3SliceModel(LightningModel):
             if x.dim() == 4:
                 x = x.unsqueeze(1)
             yield (x,)
-        
+
     def predict(self, dataloader):
         """
         Lightning-based predict function to preserve the old API.
         Automatically loads the best checkpoint from the Trainer.
         """
-        dataset = dataloader.dataset 
+        dataset = dataloader.dataset
         dataloader = DataLoader(
             dataset,
             batch_size=128,
             shuffle=False,
-            num_workers=19, #0,#10,
+            num_workers=19,  # 0,#10,
             pin_memory=False,
             collate_fn=lambda batch: collate_with_augmentation(
                 batch, transform=val_transforms
@@ -338,9 +352,13 @@ class ResNet3SliceModel(LightningModel):
         self.eval()
         # preds_all = trainer.predict(self, dataloaders=self.x_only_loader(dataloader))
         if best_path and Path(best_path).exists():
-            preds_all = trainer.predict(self, dataloaders=dataloader, ckpt_path=best_path)
+            preds_all = trainer.predict(
+                self, dataloaders=dataloader, ckpt_path=best_path
+            )
         else:
-            preds_all = trainer.predict(self, dataloaders=self.x_only_loader(dataloader))
+            preds_all = trainer.predict(
+                self, dataloaders=self.x_only_loader(dataloader)
+            )
         # preds_all = trainer.predict(self, dataloaders=dataloader)
         preds = torch.cat([p.cpu() for p in preds_all])
         return preds.numpy()
