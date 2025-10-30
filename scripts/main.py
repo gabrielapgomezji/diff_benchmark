@@ -21,11 +21,13 @@ from diff_benchmark.models.model_configurations import get_model, make_run_id
 from diff_benchmark.preprocessing.preprocess_demographic_data import (
     DefaultDemographicsPreprocessor,
 )
-from diff_benchmark.preprocessing.wrapper_brain_data import (  # LcotEmbedHcpPipeline,
+from diff_benchmark.preprocessing.wrapper_brain_data import (
     DefaultHcpPipeline,
     ImageHcpPipeline,
+    LcotEmbedHcpPipeline,
+    DefaultWandPipeline,
 )
-from diff_benchmark.scores.scores import accuracy_score  # , mse_score
+from diff_benchmark.scores.scores import accuracy_score, compute_metrics
 from diff_benchmark.utils.job_manager import run_jobs
 
 DEBUG = True
@@ -40,17 +42,16 @@ json_path = (
 with open(json_path, "r") as f:
     model_configs = json.load(f)["models"]
 
-# config["metric_to_compute"] = "md"
-brain_preparator = ImageHcpPipeline(config)
+# brain_preparator = ImageHcpPipeline(config)
 # brain_preparator = DefaultHcpPipeline(config)
+brain_preparator = LcotEmbedHcpPipeline(config)
+# brain_preparator = DefaultWandPipeline(config)
 brain_df = brain_preparator.run_pipeline()
 brain_df = brain_df.reset_index()
-
 
 ##### NEXT TESTING STEPS
 preprocessor = DefaultDemographicsPreprocessor(config["csv_file"])
 demographics_df = preprocessor.preprocess(config["target_columns"])
-
 
 common_subjects = set(brain_df["subject_id"].astype(str)) & set(
     demographics_df["Subject"].astype(str)
@@ -67,7 +68,8 @@ y = np.array(demographics_filtered["Gender"])
 gender = np.array(demographics_filtered["Gender"])
 
 dataset = CustomDataset(X, y, gender)
-
+# features, target, gender = dataset[0]
+# features, target, gender = dataset[len(dataset)-1]
 # ----------- CROSS VALIDATION + TRAINING + TESTING -----------
 
 
@@ -108,6 +110,7 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
         "pipeline": {
             "run_id": run_id,
             "comment": local_config.get("comment", ""),
+            "region_name": local_config.get("region_name", ""),
             "input_slices": local_config.get("input_slices"),
             "num_classes": local_config.get("num_classes"),
             "device": local_config.get("device"),
@@ -149,9 +152,8 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
             targets = dataset.targets.numpy()
             y_train = np.array(targets[train_idx]).squeeze()
             y_test = np.array(targets[test_idx]).squeeze()
-
+            
             model = get_model(model_name, local_config)
-
             # --------- Train / Val / Test Model ---------
             # print("Training...")
             # device = torch.device("cpu")
@@ -159,6 +161,7 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
             model.fit(train_loader)
             train_pred = model.predict(train_loader)
             train_score = accuracy_score(y_train, train_pred)
+            # train_score = compute_metrics(y_train, train_pred)
             print(train_score)
 
             train_scores.append(train_score)
@@ -168,6 +171,7 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
             # print("Testing...")
             test_pred = model.predict(test_loader)
             test_score = accuracy_score(y_test, test_pred)
+            # test_score = compute_metrics(y_test, test_pred)
             print(test_score)
 
             test_scores.append(test_score)
@@ -176,12 +180,14 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
 
             summary["results"]["folds"][f"fold_{fold_idx+1}"] = {
                 "train": {
-                    "score": float(train_score),
+                    # "score": float(train_score),
+                    "score": train_score,
                     "predictions": train_pred.tolist(),
                     "targets": y_train.tolist(),
                 },
                 "test": {
-                    "score": float(test_score),
+                    # "score": float(test_score),
+                    "score": test_score,
                     "predictions": test_pred.tolist(),
                     "targets": y_test.tolist(),
                 },
@@ -193,12 +199,14 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
                     "model": model_name,
                     "fold": fold_idx,
                     "train": {
-                        "score": float(train_score),
+                        # "score": float(train_score),
+                        "score": train_score,
                         "predictions": train_pred.tolist(),
                         "targets": y_train.tolist(),
                     },
                     "test": {
-                        "score": float(test_score),
+                        # "score": float(test_score),
+                        "score": test_score,
                         "predictions": test_pred.tolist(),
                         "targets": y_test.tolist(),
                     },
@@ -227,7 +235,10 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
                 Path(results_path) / "analysis_results" / f"{run_id}_crashed.json",
             )
             raise
-
+    # summary["results"]["train_average_score"] = float(np.mean(train_scores["accuracy"]))
+    # summary["results"]["train_std_score"] = float(np.std(train_scores["accuracy"]))
+    # summary["results"]["test_average_score"] = float(np.mean(test_scores["accuracy"]))
+    # summary["results"]["test_std_score"] = float(np.std(test_scores["accuracy"]))
     summary["results"]["train_average_score"] = float(np.mean(train_scores))
     summary["results"]["train_std_score"] = float(np.std(train_scores))
     summary["results"]["test_average_score"] = float(np.mean(test_scores))
@@ -259,23 +270,23 @@ for model_name, run_id in results:
 
 
 # -------- PLOT PER FOLD PRED VS TARGETS --------
-for model_entry in models_to_run:
-    name = model_entry["name"]
-    plot_folds_predictions_vs_targets(
-        summary_path=Path(config["results_path"])
-        / "analysis_results"
-        / f"{name}_fold_results.json",
-        output_dir=Path(config["results_path"]) / "analysis_results" / "plots",
-    )
+# for model_entry in models_to_run:
+#     name = model_entry["name"]
+#     plot_folds_predictions_vs_targets(
+#         summary_path=Path(config["results_path"])
+#         / "analysis_results"
+#         / f"{name}_fold_results.json",
+#         output_dir=Path(config["results_path"]) / "analysis_results" / "plots",
+#     )
 
-    summarize_folds_to_csv(
-        fold_results_path=Path(config["results_path"])
-        / "analysis_results"
-        / f"{name}_fold_results.json",
-        output_csv_path=Path(config["results_path"])
-        / "analysis_results"
-        / f"{name}_score_stats.csv",
-    )
+#     summarize_folds_to_csv(
+#         fold_results_path=Path(config["results_path"])
+#         / "analysis_results"
+#         / f"{name}_fold_results.json",
+#         output_csv_path=Path(config["results_path"])
+#         / "analysis_results"
+#         / f"{name}_score_stats.csv",
+#     )
 
 
 ###### VERY EARLY IN TESTING
