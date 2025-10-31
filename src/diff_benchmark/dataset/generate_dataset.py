@@ -165,17 +165,29 @@ class CustomDataset(Dataset):
         """
         if not path.is_file():
             raise FileNotFoundError(f"File not found: {path}")
-        bvals_list = []
         with h5py.File(path, "r") as f:
-            for bval in f.keys():
-                vertex_list = []
-                grp = f[bval]
-                for vertex in grp.keys():
-                    vertex_data = grp[vertex]["attenuation"][:]
-                    vertex_list.append(vertex_data)
-                bvals_list.append(vertex_list)
-        data_array = np.array(bvals_list, dtype=np.float32)  # shape: (num_vertices, len_attenuation)
-        return torch.tensor(data_array, dtype=torch.float32)
+            # Load metadata
+            meta = f["metadata"]
+            bvals = list(meta.attrs["bvals"])
+
+            # Load embeddings
+            emb_grp = f["embeddings"]
+            embeddings_per_bval = []
+            
+            for bval in bvals:
+                bval_str = str(bval)
+                if bval_str not in emb_grp:
+                    raise KeyError(f"Missing embeddings for bval {bval_str} in file {path}")
+                data = emb_grp[bval_str][:]
+                embeddings_per_bval.append(data)
+
+            # Stack into a single numpy array
+            # embeddings_per_bval: list of [num_values, emb_dim] arrays
+            data_array = np.stack(embeddings_per_bval, axis=1)  # shape: (num_values, num_bvals, emb_dim)
+            
+            power = f["power"][:]
+        return {"embeddings": torch.tensor(data_array, dtype=torch.float32),
+                "power": torch.tensor(power, dtype=torch.float32)}
 
     def get_features_model(self):
         """
