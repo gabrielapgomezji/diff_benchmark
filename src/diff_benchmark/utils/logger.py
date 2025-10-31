@@ -1,13 +1,18 @@
-import json
 import csv
+import json
 from pathlib import Path
-import torch
 
-from sklearn.metrics import (
-    accuracy_score, precision_score, recall_score,
-    f1_score, confusion_matrix, roc_auc_score
-)
 import numpy as np
+import torch
+from sklearn.metrics import (
+    accuracy_score,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
+
 
 class MetricsManager:
     def __init__(self, average="binary"):
@@ -31,24 +36,24 @@ class MetricsManager:
         self.y_pred.extend(y_pred)
         if y_scores is not None:
             self.y_scores.extend(y_scores)
-    
+
     def compute_batch(self, y_true, y_pred, y_scores=None):
         """Compute metrics for a single batch only."""
         return self._compute_core(y_true, y_pred, y_scores)
-    
+
     def compute(self):
         """Compute metrics over ALL stored batches (epoch)."""
         return self._compute_core(self.y_true, self.y_pred, self.y_scores)
-            
+
     def _compute_core(self, y_true, y_pred, y_scores=None):
         """
         Compute a dictionary of metrics.
-        
+
         Args:
             y_true (array-like): Ground truth labels.
             y_pred (array-like): Predicted labels.
             y_scores (array-like, optional): Prediction scores or probabilities.
-        
+
         Returns:
             dict: Metrics results.
         """
@@ -58,10 +63,14 @@ class MetricsManager:
 
         metrics = {
             "accuracy": accuracy_score(y_true, y_pred),
-            "precision": precision_score(y_true, y_pred, average=self.average, zero_division="warn"),
-            "recall": recall_score(y_true, y_pred, average=self.average, zero_division="warn"),
+            "precision": precision_score(
+                y_true, y_pred, average=self.average, zero_division="warn"
+            ),
+            "recall": recall_score(
+                y_true, y_pred, average=self.average, zero_division="warn"
+            ),
             "f1": f1_score(y_true, y_pred, average=self.average, zero_division="warn"),
-            "confusion_matrix": confusion_matrix(y_true, y_pred).tolist()
+            "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
         }
         if y_scores is not None:
             try:
@@ -70,8 +79,16 @@ class MetricsManager:
                 metrics["roc_auc"] = None
         return metrics
 
+
 class TrainLogger:
-    def __init__(self, fold_idx, run_id="unnamed_run", save_dir="./data/results/logger", monitor="val_accuracy", mode="max"):
+    def __init__(
+        self,
+        fold_idx,
+        run_id="unnamed_run",
+        save_dir="./data/results/logger",
+        monitor="val_accuracy",
+        mode="max",
+    ):
         """
         Training logger and checkpoint saver.
 
@@ -90,13 +107,13 @@ class TrainLogger:
         self.val_scores = []
         self.waiting_candidate = None
         self.patience_window = 3  # number of epochs to average
-        self.tolerance = 0.005    # tolerance for next-epoch drop
+        self.tolerance = 0.005  # tolerance for next-epoch drop
         self.smoothed_best = float("-inf") if mode == "max" else float("inf")
         self.best_score = float("-inf") if mode == "max" else float("inf")
         self.history = {
             "train": {"epoch": [], "loss": [], "accuracy": []},
             "val": {"epoch": [], "loss": [], "accuracy": []},
-            "predictions": {"epoch": [], "y_true": [], "y_pred": [], "scores": []}
+            "predictions": {"epoch": [], "y_true": [], "y_pred": [], "scores": []},
         }
 
         # paths
@@ -104,39 +121,37 @@ class TrainLogger:
         self.models_path = self.save_dir / "models"
         self.logs_path.mkdir(parents=True, exist_ok=True)
         self.models_path.mkdir(parents=True, exist_ok=True)
-        self.best_path = self.models_path / f"{self.run_id}_fold{self.fold_idx}_best.pth"
-        self.last_path = self.models_path / f"{self.run_id}_fold{self.fold_idx}_last.pth"
-    
+        self.best_path = (
+            self.models_path / f"{self.run_id}_fold{self.fold_idx}_best.pth"
+        )
+        self.last_path = (
+            self.models_path / f"{self.run_id}_fold{self.fold_idx}_last.pth"
+        )
+
     # def log_batch(self, phase:str, epoch: int, loss: float, accuracy: float=None):
     #     self.history[phase]["epoch"].append(epoch)
     #     self.history[phase]["loss"].append(loss)
     #     if accuracy is not None:
     #         self.history[phase]["accuracy"].append(accuracy)
-    
+
     def log_batch(self, phase, epoch, batch, loss, metrics):
-        self.history["batch"].append({
-            "phase": phase,
-            "epoch": epoch,
-            "batch": batch,
-            "loss": loss,
-            **metrics
-        })
+        self.history["batch"].append(
+            {"phase": phase, "epoch": epoch, "batch": batch, "loss": loss, **metrics}
+        )
 
     def log_epoch(self, phase, epoch, metrics):
-        self.history["epoch"].append({
-            "phase": phase,
-            "epoch": epoch,
-            **metrics
-        })
-                
+        self.history["epoch"].append({"phase": phase, "epoch": epoch, **metrics})
+
     def log_predictions(self, epoch, y_true, y_pred, scores=None):
         self.history["predictions"]["epoch"].append(epoch)
         self.history["predictions"]["y_true"].append(y_true.to_list())
         self.history["predictions"]["y_pred"].append(y_pred.to_list())
         if scores is not None:
             self.history["predictions"]["scores"].append(scores.to_list())
-    
-    def log_metrics(self, phase:str, epoch:int, batch:int=None, metrics:dict=None):
+
+    def log_metrics(
+        self, phase: str, epoch: int, batch: int = None, metrics: dict = None
+    ):
         """
         Log metrics at batch or epoch level.
         Args:
@@ -161,7 +176,7 @@ class TrainLogger:
         elif self.mode == "min":
             return score < self.best_score
         raise ValueError("mode should be 'max' or 'min'")
-        
+
     def save_checkpoint(self, model, epoch, current_score, is_last=False):
         """
         Save model checkpoint if current score is the best.
@@ -176,22 +191,23 @@ class TrainLogger:
             if self._is_best(current_score):
                 self.best_score = current_score
                 torch.save(model.state_dict(), self.best_path)
-                print(f"[INFO] Saved best model at epoch {epoch} with {self.monitor}={current_score:.4f}")
+                print(
+                    f"[INFO] Saved best model at epoch {epoch} with {self.monitor}={current_score:.4f}"
+                )
         else:
             torch.save(model.state_dict(), self.last_path)
             print(f"[INFO] Saved last model at epoch {epoch}")
-    
+
     def save_logs(self):
         """Save history to JSON and CSV."""
         json_path = self.logs_path / f"{self.run_id}_log.json"
         # csv_path = self.logs_path / f"{self.run_id}_log.csv"
-        
-        with open(json_path, 'w', encoding="utf-8") as f:
+
+        with open(json_path, "w", encoding="utf-8") as f:
             json.dump(self.history, f, indent=4)
-        
-        
+
         print(f"[INFO] Logs saved at {json_path}")
-        
+
     def update_smooth_checkpoint(self, model, epoch, val_score):
         """
         Check 3-step smoothed validation accuracy and save checkpoint
@@ -202,7 +218,7 @@ class TrainLogger:
             return  # not enough epochs yet
 
         # Compute 3-step moving average
-        recent_avg = np.mean(self.val_scores[-self.patience_window:])
+        recent_avg = np.mean(self.val_scores[-self.patience_window :])
 
         # If this moving average is new best → candidate for saving
         is_improvement = (
@@ -217,7 +233,10 @@ class TrainLogger:
             print(f"[Epoch {epoch}] Candidate smoothed avg: {recent_avg:.4f}")
 
         # Confirm stability one epoch later
-        if self.waiting_candidate is not None and len(self.val_scores) > self.patience_window:
+        if (
+            self.waiting_candidate is not None
+            and len(self.val_scores) > self.patience_window
+        ):
             last_val = self.val_scores[-1]
             candidate_epoch, candidate_score, candidate_state = self.waiting_candidate
 
@@ -228,7 +247,11 @@ class TrainLogger:
                 else last_val <= candidate_score * (1 + self.tolerance)
             )
             if stable:
-                print(f"[INFO] Stable checkpoint saved (epoch {candidate_epoch}, smooth={candidate_score:.4f})")
-                self.save_checkpoint(model, candidate_epoch, candidate_score, is_last=False)
-                
+                print(
+                    f"[INFO] Stable checkpoint saved (epoch {candidate_epoch}, smooth={candidate_score:.4f})"
+                )
+                self.save_checkpoint(
+                    model, candidate_epoch, candidate_score, is_last=False
+                )
+
                 self.waiting_candidate = None

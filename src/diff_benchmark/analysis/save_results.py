@@ -48,12 +48,18 @@ def save_model_results(
     """
     run_id = summary.get("pipeline", {}).get("run_id", None)
     if run_id:
-        log_file = Path("./data/results") / f"{run_id}_training_log.json"
+        log_file = Path("./data/results/logs") / f"{run_id}_training_log.json"
         if log_file.exists():
-            with open(log_file, "r", encoding="utf-8") as f:
-                history = json.load(f)
-            summary["history"] = history
-            os.remove(log_file)  # cleanup
+            folds = summary.get("results", {}).get("folds", {})
+            if folds:
+                last_fold_name = sorted(
+                    folds.keys(), key=lambda x: int(x.split("_")[-1])
+                )[-1]
+                with open(log_file, "r", encoding="utf-8") as f:
+                    history = json.load(f)
+                # summary["history"] = history
+                folds[last_fold_name]["history"] = history
+                os.remove(log_file)  # cleanup
         else:
             summary["history"] = []
 

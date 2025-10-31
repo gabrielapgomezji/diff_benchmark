@@ -112,7 +112,11 @@ def plot_history_from_file(path="history.json", save_path="training_history.pdf"
         label="Validation",
     )
     ax.plot(
-        val_epochs, history["val"]["metrics"]["accuracy"], "rx", markersize=7, markeredgewidth=2
+        val_epochs,
+        history["val"]["metrics"]["accuracy"],
+        "rx",
+        markersize=7,
+        markeredgewidth=2,
     )
 
     ax.set_xlabel("Epochs")
