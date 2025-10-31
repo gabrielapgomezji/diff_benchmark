@@ -947,6 +947,8 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
                             n_members = len(embeddings_group.keys())
                             if n_members != 3:
                                 recompute = True
+                            elif embeddings_group["1000"].shape == (1, 3363, 10000): 
+                                recompute = True
 
                     if recompute:
                         print(f"[{subject_id}] Invalid embedding file (wrong #members) → recomputing.")
