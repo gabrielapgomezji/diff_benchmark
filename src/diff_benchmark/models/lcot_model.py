@@ -4,9 +4,10 @@ from tqdm import tqdm
 
 from diff_benchmark.models.utils_models.lcot_utils import dist_emb_circle_pairwise
 
+
 class KernelRidgeRegression(nn.Module):
     """
-    Implementation of a kernel ridge regression model. 
+    Implementation of a kernel ridge regression model.
     It uses a learned combination of kernel functions to perform regression on spherical embeddings.
     Attributes:
         epochs (int): Number of training epochs.
@@ -31,7 +32,17 @@ class KernelRidgeRegression(nn.Module):
                                            S is the number of spheres, and D is the dimensionality of each embedding.
             Returns:
                 torch.Tensor: Predicted target values of shape (N,)."""
-    def __init__(self, num_spheres:int, epochs:int=100, lmbd:float=0.1, lr:float=0.01, device:torch.device=None, dtype:torch.dtype=None, **kwargs):
+
+    def __init__(
+        self,
+        num_spheres: int,
+        epochs: int = 100,
+        lmbd: float = 0.1,
+        lr: float = 0.01,
+        device: torch.device = None,
+        dtype: torch.dtype = None,
+        **kwargs,
+    ):
         super().__init__()
         self.epochs = epochs
         self.lr = lr
@@ -45,84 +56,137 @@ class KernelRidgeRegression(nn.Module):
         self.device = device
         self.dtype = dtype
         self.std_distances = None
-        
+        self.bval_idx = 0
+
     def fit(self, dataloader):
         all_embeddings = []
         all_targets = []
         all_powers = []
 
-        for data, targets, _ in dataloader:
-            all_embeddings.append(data['embeddings'])
+        for i, (data, targets, _) in enumerate(dataloader):
+            print(f"Loading batch {i+1}/{len(dataloader)}")
+            all_embeddings.append(data["embeddings"])
             all_targets.append(targets)
-            all_powers.append(data['power'])
-
+            all_powers.append(data["power"])
+        print("All batches loaded. Concatenating tensors...")
         # --- Concatenate into single tensors ---
         embeddings = torch.cat(all_embeddings, dim=0).to(self.device).to(self.dtype)
         targets = torch.cat(all_targets, dim=0).to(self.device)
+        targets = targets * 2 - 1  # Convert to -1, 1
         power = torch.cat(all_powers, dim=0).to(self.device).to(self.dtype)
-
         # Remove batch dimension if needed
         embeddings = embeddings.squeeze(dim=1)
         power = power.squeeze(dim=1)
-
+        print("Tensors concatenated. Starting training...")
         # data, targets, _ = next(iter(dataloader))
         # targets = targets.to(self.device)
         # embeddings = data['embeddings'].to(self.device).to(self.dtype).squeeze(dim=1)
         # power = data['power'].to(self.device).to(self.dtype).squeeze(dim=1)
+        embeddings = embeddings[:, :, self.bval_idx, :][
+            :, :, None, :
+        ]  # Use only the first b-value for distance computation DEBUGGING
         self.embeddings = embeddings
         optimizer = torch.optim.Adam([self.alphas], lr=self.lr)
-        n_subjects, n_bval, n_spheres, dim_embedding = embeddings.shape
-        n_total_spheres = n_spheres * n_bval
-        dist_matrix = torch.zeros(n_total_spheres, n_subjects, n_subjects, device=self.device, dtype=self.dtype)
-        
-        for s in tqdm(range(n_spheres)):
-            for bval_idx in range(n_bval):
-                dist_matrix[s * n_bval + bval_idx] = dist_emb_circle_pairwise(embeddings[:, bval_idx, s, :], embeddings[:, bval_idx, s, :])
-        self.std_distances = dist_matrix.std()
-        dist_matrix_norm = dist_matrix / self.std_distances
-        id_mat = torch.eye(n_subjects, device=self.device, dtype=self.dtype)
+        print("Computing distance matrix...")
+        with torch.no_grad():
+            n_subjects, n_bval, n_spheres, dim_embedding = embeddings.shape
+            # n_total_spheres = n_spheres * n_bval
+            n_total_spheres = 1
 
-        for epoch in range(self.epochs):
+            allocated = torch.cuda.memory_allocated(self.device) / (1024**3)  # GB
+            print(f"GPU memory allocated: {allocated} GB")
+            reserved = torch.cuda.memory_reserved(self.device) / (1024**3)  # GB
+            print(f"GPU memory reserved: {reserved} GB")
+            max_allocated = torch.cuda.max_memory_allocated(self.device) / (1024**3)
+            print(f"Max GPU memory allocated: {max_allocated} GB")
+
+            dist_matrix = torch.zeros(
+                n_total_spheres,
+                n_subjects,
+                n_subjects,
+                device=self.device,
+                dtype=self.dtype,
+            )
+            print("Distance matrix computed. Starting optimization...")
+            for s in tqdm(range(n_spheres)):
+                dist_matrix[s] = dist_emb_circle_pairwise(
+                    embeddings[:, s, 0, :], embeddings[:, s, 0, :]
+                )
+            print("Distance matrix ready.")
+            self.std_distances = dist_matrix.std()
+            dist_matrix_norm = dist_matrix / self.std_distances
+            id_mat = torch.eye(n_subjects, device=self.device, dtype=self.dtype)
+
             weights = nn.functional.softmax(self.alphas, dim=0)
-            weights_expanded = weights.repeat_interleave(n_bval)
-            weights = weights_expanded
             K = torch.exp(-(weights[:, None, None] * dist_matrix_norm).sum(dim=0))
-            beta = (K + self.lmbd * id_mat).inverse() @ targets
-            loss = ((K @ beta - targets) ** 2).mean()
-            # breakpoint()
-            loss.backward()
-            print(loss.item())
-            optimizer.step()
-            optimizer.zero_grad()
-        self.beta = beta
-        return 
-    
+            print("K computed for train")
+
+            self.beta = (K + self.lmbd * id_mat).inverse() @ targets
+            print("Beta computed")
+
+        # for epoch in range(self.epochs):
+        #     weights = nn.functional.softmax(self.alphas, dim=0)
+        #     # weights_expanded = weights.repeat_interleave(n_bval) # If all bvals used
+
+        #     # weights = weights_expanded
+        #     breakpoint()
+        #     K = torch.exp(-(weights[:, None, None] * dist_matrix_norm).sum(dim=0))
+        #     beta = (K + self.lmbd * id_mat).inverse() @ targets
+        #     loss = ((K @ beta - targets) ** 2).mean()
+        #     # breakpoint()
+        #     loss.backward()
+        #     print(loss.item())
+        #     optimizer.step()
+        #     optimizer.zero_grad()
+        # self.beta = beta
+        return
+
     def predict(self, dataloader):
         # embedding:torch.Tensor
-        all_embeddings = []
+        all_predictions = []
 
         for data, _, _ in dataloader:
-            all_embeddings.append(data['embeddings'])
 
-        # --- Concatenate into single tensors ---
-        embeddings = torch.cat(all_embeddings, dim=0).to(self.device).to(self.dtype)
+            # --- Concatenate into single tensors ---
+            embeddings = (
+                data["embeddings"]
+                .squeeze(dim=1)[:, :, self.bval_idx, :][:, :, None, :]
+                .to(self.device)
+                .to(self.dtype)
+            )
 
-        # Remove batch dimension if needed
-        embeddings = embeddings.squeeze(dim=1)
-        
-        # data , _, _ = next(iter(dataloader))
-        # embeddings = data['embeddings'].to(self.device).to(self.dtype).squeeze(dim=1)
-        self_n_subjects, self_n_bval, self_n_spheres, self_dim_embedding = self.embeddings.shape
-        n_subjects, n_bval, n_spheres, dim_embedding = embeddings.shape
-        assert self_n_spheres * self_n_bval == n_spheres * n_bval, f"Number of spheres in the training set {self_n_spheres} does not match the number of spheres in the test set {n_spheres}"
-        dist_matrix = torch.zeros(self_n_spheres * self_n_bval, self_n_subjects, n_subjects, device=self.device, dtype=self.dtype)
-        for s in range(self_n_spheres):
-            for bval_idx in range(n_bval):
-                dist_matrix[s * n_bval + bval_idx] = dist_emb_circle_pairwise(self.embeddings[:, bval_idx, s, :], embeddings[:, bval_idx, s, :])
-        dist_matrix /= self.std_distances
-        with torch.no_grad():
-            weights = nn.functional.softmax(self.alphas, dim=0)
-            weights_expanded = weights.repeat_interleave(n_bval)
-            weights = weights_expanded
-            K = torch.exp(-(weights[:, None, None] * dist_matrix).sum(dim=0))
-            return K @ self.beta
+            # Remove batch dimension if needed
+            # data , _, _ = next(iter(dataloader))
+            # embeddings = data['embeddings'].to(self.device).to(self.dtype).squeeze(dim=1)
+            self_n_subjects, self_n_spheres, self_n_bval, self_dim_embedding = (
+                self.embeddings.shape
+            )
+            n_subjects, n_spheres, n_bval, dim_embedding = embeddings.shape
+            allocated = torch.cuda.memory_allocated(self.device) / (1024**3)  # GB
+            print(f"GPU memory allocated: {allocated} GB")
+            reserved = torch.cuda.memory_reserved(self.device) / (1024**3)  # GB
+            print(f"GPU memory reserved: {reserved} GB")
+            max_allocated = torch.cuda.max_memory_allocated(self.device) / (1024**3)
+            print(f"Max GPU memory allocated: {max_allocated} GB")
+
+            with torch.no_grad():
+                # assert self_n_spheres * self_n_bval == n_spheres * n_bval, f"Number of spheres in the training set {self_n_spheres} does not match the number of spheres in the test set {n_spheres}"
+                # dist_matrix = torch.zeros(self_n_spheres * self_n_bval, self_n_subjects, n_subjects, device=self.device, dtype=self.dtype)
+                dist_matrix = torch.zeros(
+                    self_n_spheres,
+                    n_subjects,
+                    self_n_subjects,
+                    device=self.device,
+                    dtype=self.dtype,
+                )
+                for s in range(self_n_spheres):
+                    dist_matrix[s] = dist_emb_circle_pairwise(
+                        embeddings[:, s, 0, :], self.embeddings[:, s, 0, :]
+                    )
+                dist_matrix /= self.std_distances
+                weights = nn.functional.softmax(self.alphas, dim=0)
+                K = torch.exp(-(weights[:, None, None] * dist_matrix).sum(dim=0))
+                print("K computed for prediction")
+                outputs = ((K @ self.beta) > 0).float()
+                all_predictions.append(outputs)
+        return torch.cat(all_predictions, dim=0).cpu()

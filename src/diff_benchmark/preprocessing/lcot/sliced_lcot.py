@@ -9,6 +9,7 @@ from .lcot import (
     linear_circular_ot,
 )
 
+
 def get_projections_sphere(d, n_projections, seed=None):
     """
     Sample great circles, i.e. matrices on the Stiefel manifold of size d x 2.
@@ -26,6 +27,7 @@ def get_projections_sphere(d, n_projections, seed=None):
     Z = torch.from_numpy(rng.normal(size=(n_projections, d, 2)))
     projections, _ = torch.linalg.qr(Z)
     return projections
+
 
 def projection_sphere_to_circle(x, projections):
     """
@@ -56,6 +58,7 @@ def projection_sphere_to_circle(x, projections):
     )
 
     return Xp_coords
+
 
 def sliced_lcot(
     X_s, X_t, a=None, b=None, n_projections=50, projections=None, seed=None
