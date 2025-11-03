@@ -69,7 +69,7 @@ class PreprocessedData:
             shuffle=False,
             num_workers=0,
             pin_memory=True,
-            collate_fn=self.safe_collate
+            collate_fn=self.safe_collate,
         )
         test_loader = DataLoader(
             Subset(dataset, test_idx),
@@ -77,7 +77,7 @@ class PreprocessedData:
             shuffle=False,
             num_workers=0,
             pin_memory=True,
-            collate_fn=self.safe_collate
+            collate_fn=self.safe_collate,
         )
 
         return train_loader, test_loader

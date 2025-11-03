@@ -8,27 +8,27 @@ import nibabel as nib
 import nilearn as ni
 import numpy as np
 import pandas as pd
+import torch
 from dipy.core.gradients import gradient_table
 from dipy.core.subdivide_octahedron import create_unit_sphere
 from dipy.reconst.mapmri import MapmriModel
-from nilearn import image as nimage
-import torch
-from tqdm import tqdm
 from joblib import Parallel, delayed
+from nilearn import image as nimage
+from tqdm import tqdm
 
 from diff_benchmark.preprocessing.lcot.sliced_lcot import EmbeddingCircleWeights
 from diff_benchmark.preprocessing.wrapper_brain_base import DataPreparationBrain
 from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
     average_per_parcel,
-    extract_region_data,
     compute_data,
     compute_md,
     compute_rtop,
     create_masks,
+    extract_region_data,
     extract_selected_labels,
+    load_vertexwise_attenuations,
     project_to_surface,
     resample_schaefer_onto_fs_lr,
-    load_vertexwise_attenuations,
     split_data,
 )
 
@@ -190,7 +190,7 @@ class DefaultHcpPipeline(DataPreparationBrain):
                 self.results[subject_id] = avg_data
             except Exception as e:
                 print(f"[{subject_id}] Error during analysis: {e}")
-    
+
     # def run_analysis_region(self):
     def run_analysis(self):
         scalar_files = sorted(
@@ -211,13 +211,17 @@ class DefaultHcpPipeline(DataPreparationBrain):
                 right_data = np.nan_to_num(nib.load(right_file).darrays[0].data).clip(
                     0, 7
                 )
-                
+
                 # target = "VisCent_Striate"
                 # target = self.config["region_name"]
                 target = self.config["models"][0]["params"]["region_name"]
                 # target = None
                 avg_data = extract_region_data(
-                    left_data, right_data, self.schaefer_resampled, target_substring=target, average=False
+                    left_data,
+                    right_data,
+                    self.schaefer_resampled,
+                    target_substring=target,
+                    average=False,
                 )
                 self.results[subject_id] = avg_data
             except Exception as e:
@@ -343,23 +347,23 @@ class ImageHcpPipeline(DataPreparationBrain):
                 self.results[subject_id] = file
             except Exception as e:
                 print(f"[{subject_id}] Error during analysis: {e}")
-                
+
     def run_analysis_region(self):
         img_files = sorted(
             self.results_root.glob(
                 f"derivatives/sub-*/dwi/*_param-{self.metric}_dwimap.nii.gz"
             )
         )
-        
+
         results = {}
-        
+
         for file in tqdm(img_files, desc="Running analysis"):
             try:
                 subject_id = file.stem.split("_")[0].replace("sub-", "")
                 self.results[subject_id] = file
             except Exception as e:
                 print(f"[{subject_id}] Error during analysis: {e}")
-                
+
     def extract_features(self):
         pass
 
@@ -402,8 +406,12 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
         self.schaefer_resampled = resample_schaefer_onto_fs_lr(scale=1000)
         self.big_delta = config["big_delta"]
         self.small_delta = config["small_delta"]
-        self.target_substring = "VisCent_ExStr" #config.get("region_name", "VisCent_Striate")
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # "cpu" #
+        self.target_substring = (
+            "VisCent_ExStr"  # config.get("region_name", "VisCent_Striate")
+        )
+        self.device = torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu"
+        )  # "cpu" #
         self.dtype = torch.float32
 
     def verify_subject_files(self, subject_id: str, metric: str) -> bool:
@@ -414,7 +422,7 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
         file = derivatives_dir / f"sub-{subject_id}_desc-{target_substring}_spheres.h5"
 
         return file.exists()
-    
+
     def verify_required_files(self, subject_id: str) -> bool:
         subject_dir = self.hcp_dir / subject_id
         diffusion_dir = subject_dir / "T1w" / "Diffusion"
@@ -465,7 +473,9 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
             )
             return False
 
-        print(f"[INFO] All required files found and non-empty for subject {subject_id}.")
+        print(
+            f"[INFO] All required files found and non-empty for subject {subject_id}."
+        )
         return True
 
     def extract_raw_data(self, subject_id: str):
@@ -621,9 +631,11 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
     def compute_microstructure(self, subject_id: str):
         """Compute microstructural features for LCOT embedding."""
         if not self.verify_required_files(subject_id):
-            print(f"[{subject_id}] Missing required files — cannot compute microstructure.")
+            print(
+                f"[{subject_id}] Missing required files — cannot compute microstructure."
+            )
             return
-        
+
         #  subject_id = '101006'
         schaefer = self.schaefer_resampled
 
@@ -660,7 +672,9 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
         full_parc = np.concatenate(list(hemi_data.values()))
 
         # Example: build mask for a target region
-        target_substring = self.target_substring #"VisCent_Striate"  # "17Networks_LH_VisCent_Striate_1" #
+        target_substring = (
+            self.target_substring
+        )  # "VisCent_Striate"  # "17Networks_LH_VisCent_Striate_1" #
         regions_of_interest = all_labels[
             all_labels["name"].str.contains(target_substring, case=False, na=False)
         ]
@@ -797,9 +811,9 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
             graph_ins=merged_graph,
             normalize_input=normalize_input,
         )
-        
+
         all_results = self.handle_nan_values(all_results)
-        
+
         print(f"[INFO] Saving computed features to {output_file}")
         with h5py.File(output_file, "w") as f:
             for bval, vertex_list in all_results.items():
@@ -808,7 +822,9 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
                     v = str(vdata["vertex"])
                     vgrp = grp.create_group(v)
                     vgrp.create_dataset("attenuation", data=vdata["attenuation"])
-                    vgrp.attrs["neighbors"] = json.dumps([int(n) for n in vdata["neighbors"]]) #json.dumps(vdata["neighbors"])
+                    vgrp.attrs["neighbors"] = json.dumps(
+                        [int(n) for n in vdata["neighbors"]]
+                    )  # json.dumps(vdata["neighbors"])
                     vgrp.attrs["label"] = vdata["label"]
                     vgrp.attrs["fit_status"] = vdata["fit_status"]
 
@@ -818,7 +834,7 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
             f.attrs["sphere_vertices"] = len(sphere.vertices)
 
         print(f"[INFO] Microstructure features saved to {output_file}")
-        
+
         return all_results
 
     def handle_nan_values(self, data):
@@ -840,19 +856,23 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
                         element["attenuation"] = np.nanmean(neighbor_atts, axis=0)
                         element["fit_status"] = "repaired"
         return data
-    
+
     def compute_embedding(self, subject_id: str):
         """Compute LCOT embedding for the given subject."""
         derivatives_dir = (
             self.results_root / "derivatives" / f"sub-{subject_id}" / "dwi"
         )
         spheres_file = (
-            derivatives_dir / f"sub-{subject_id}_desc-{self.target_substring}_spheres.h5"
+            derivatives_dir
+            / f"sub-{subject_id}_desc-{self.target_substring}_spheres.h5"
         )
         assert spheres_file.exists(), f"Spheres file not found for subject {subject_id}"
-        
-        output_file = (derivatives_dir / f"sub-{subject_id}_desc-{self.target_substring}_lcotembedding.h5")
-        
+
+        output_file = (
+            derivatives_dir
+            / f"sub-{subject_id}_desc-{self.target_substring}_lcotembedding.h5"
+        )
+
         data, _ = load_vertexwise_attenuations(spheres_file)
         power = (data**2).mean(axis=-1)
         self.sphere = create_unit_sphere(7)
@@ -861,24 +881,26 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
 
         embedding = EmbeddingCircleWeights(
             d=3,
-            n_projections=100,
+            n_projections=25,  # 100
             x_coords=coordinates,
-            num_ts=100,
+            num_ts=20,  # 100
             device=self.device,
             dtype=self.dtype,
             random_state=42,
         )
-        
+
         data_results_embeddings = [[], [], []]
         data_torch = torch.tensor(data, device=self.device, dtype=self.dtype)
         print(f"[INFO] Computing LCOT embedding for subject {subject_id}...")
         for i, data_split in tqdm(enumerate(split_data(data_torch, 5))):
-            data_split_torch = torch.tensor(data_split, device=self.device, dtype=self.dtype)
+            data_split_torch = torch.tensor(
+                data_split, device=self.device, dtype=self.dtype
+            )
             for s in range(3):
-                    result = embedding.get_features(data_split_torch[:, s]).to("cpu")
-                    data_results_embeddings[s].append(result)
+                result = embedding.get_features(data_split_torch[:, s]).to("cpu")
+                data_results_embeddings[s].append(result)
         print(f"[INFO] Saving LCOT embedding to {output_file}...")
-        bvals = [1000, 2000, 3000]       
+        bvals = [1000, 2000, 3000]
         with h5py.File(output_file, "w") as f:
             # Save embeddings
             grp = f.create_group("embeddings")
@@ -892,8 +914,7 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
             meta = f.create_group("metadata")
             meta.attrs["subject_id"] = subject_id
             meta.attrs["bvals"] = bvals
-        
-        
+
     # def run_analysis(self):
     #     target_substring = self.target_substring
     #     h5_files = sorted(
@@ -911,7 +932,7 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
     #             self.results[subject_id] = file
     #         except Exception as e:
     #             print(f"[{subject_id}] Error during analysis: {e}")
-    
+
     def run_analysis(self):
         target_substring = self.target_substring
         h5_files = sorted(
@@ -926,10 +947,15 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
                 derivatives_dir = (
                     self.results_root / "derivatives" / f"sub-{subject_id}" / "dwi"
                 )
-                embeddings_file = (derivatives_dir / f"sub-{subject_id}_desc-{self.target_substring}_lcotembedding.h5")
+                embeddings_file = (
+                    derivatives_dir
+                    / f"sub-{subject_id}_desc-{self.target_substring}_lcotembedding.h5"
+                )
 
                 if not embeddings_file.exists() or embeddings_file.stat().st_size == 0:
-                    print(f"[{subject_id}] Embedding file missing or empty → computing embedding.")
+                    print(
+                        f"[{subject_id}] Embedding file missing or empty → computing embedding."
+                    )
                     self.compute_embedding(subject_id)
                 else:
                     # embeddings_data = h5py.File(embeddings_file, "r")
@@ -937,8 +963,8 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
                     # if len(embeddings_dataset.keys()) != 3:
                     #     self.compute_embedding(subject_id)
                     # print(f"[{subject_id}] Embedding file already exists and is valid.")
-                    recompute = False
-                    
+                    recompute = False  # True # Change to false when it needs to recompute everything
+
                     with h5py.File(embeddings_file, "r") as embeddings_data:
                         if "embeddings" not in embeddings_data:
                             recompute = True
@@ -947,22 +973,25 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
                             n_members = len(embeddings_group.keys())
                             if n_members != 3:
                                 recompute = True
-                            elif embeddings_group["1000"].shape == (1, 3363, 10000): 
-                                recompute = True
+                            # elif embeddings_group["1000"].shape == (1, 3363, 10000):
+                            #     recompute = True
 
                     if recompute:
-                        print(f"[{subject_id}] Invalid embedding file (wrong #members) → recomputing.")
+                        print(
+                            f"[{subject_id}] Invalid embedding file (wrong #members) → recomputing."
+                        )
                         self.compute_embedding(subject_id)
                     else:
-                        print(f"[{subject_id}] Embedding file already exists and is valid.")
-
+                        print(
+                            f"[{subject_id}] Embedding file already exists and is valid."
+                        )
 
                 if file.stat().st_size == 0:
                     print(f"[{subject_id}] Warning: File is empty.")
                     return (subject_id, None)
-                
+
                 return (subject_id, embeddings_file)
-            
+
             except Exception as e:
                 print(f"[{subject_id}] Error during analysis: {e}")
                 return (subject_id, None)
@@ -980,6 +1009,7 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
 
     def extract_features(self):
         pass
+
 
 class DefaultWandPipeline(DataPreparationBrain):
     """
@@ -1016,7 +1046,16 @@ class DefaultWandPipeline(DataPreparationBrain):
         self.small_delta = config.get("small_delta_wand", 7e-3)
         self.big_delta_per_bvalue = config.get(
             "big_delta_per_bvalue",
-            {2200: 24, 4000: 30, 4400: 24, 8000: 30, 5800: 42, 7750: 55, 11600: 42, 15500: 55},
+            {
+                2200: 24,
+                4000: 30,
+                4400: 24,
+                8000: 30,
+                5800: 42,
+                7750: 55,
+                11600: 42,
+                15500: 55,
+            },
         )
 
     def verify_subject_files(self, subject_id: str, metric: str) -> bool:
@@ -1050,25 +1089,38 @@ class DefaultWandPipeline(DataPreparationBrain):
             # subject_dir = self.wand_dir / subject_id / "ses-02"
 
             # diffusion_dir = subject_dir / "dwi"
-            
-            aparcaseg_path = self.derivatives_in / f"smriprep/sub-{subject_id}/ses-02/anat/sub-{subject_id}_ses-02_desc-aparcaseg_dseg.nii.gz"
-            dwi_path = self.derivatives_in / f"preprocess/sub-{subject_id}/sub-{subject_id}_ses-02_acq-AxCaliberConcat_space-individualT1_desc-eddycorrected_bbreg_dwi.nii.gz"
-            bvals_path = self.wand_dir / f"sub-{subject_id}/ses-02/dwi/sub-{subject_id}_ses-02_acq-AxCaliberConcat_dwi.bval"
-            bvecs_path = self.derivatives_in / f"preprocess/sub-{subject_id}/ses-02/dwi/sub-{subject_id}_ses-02_acq-AxCaliberConcat_desc-rotated_dwi.bvec"
+
+            aparcaseg_path = (
+                self.derivatives_in
+                / f"smriprep/sub-{subject_id}/ses-02/anat/sub-{subject_id}_ses-02_desc-aparcaseg_dseg.nii.gz"
+            )
+            dwi_path = (
+                self.derivatives_in
+                / f"preprocess/sub-{subject_id}/sub-{subject_id}_ses-02_acq-AxCaliberConcat_space-individualT1_desc-eddycorrected_bbreg_dwi.nii.gz"
+            )
+            bvals_path = (
+                self.wand_dir
+                / f"sub-{subject_id}/ses-02/dwi/sub-{subject_id}_ses-02_acq-AxCaliberConcat_dwi.bval"
+            )
+            bvecs_path = (
+                self.derivatives_in
+                / f"preprocess/sub-{subject_id}/ses-02/dwi/sub-{subject_id}_ses-02_acq-AxCaliberConcat_desc-rotated_dwi.bvec"
+            )
             bvecs = np.loadtxt(bvecs_path).T
             bvals = np.loadtxt(bvals_path)
-            dwi_nib  = nib.load(dwi_path)
-            
+            dwi_nib = nib.load(dwi_path)
+
             parcellation_dwi = nimage.resample_img(
                 aparcaseg_path,
                 target_affine=dwi_nib.affine,
                 target_shape=dwi_nib.shape[:3],
-                interpolation='nearest',
-                force_resample=True, copy_header=True
+                interpolation="nearest",
+                force_resample=True,
+                copy_header=True,
             )
-            
+
             b0 = nimage.index_img(dwi_nib, 0)
-            
+
             # dwi_nib = nib.load(diffusion_dir / "data.nii.gz")
             # bvals, bvecs = diffusion_dir / "bvals", diffusion_dir / "bvecs"
             # bvals = np.loadtxt(bvals)
@@ -1163,7 +1215,7 @@ class DefaultWandPipeline(DataPreparationBrain):
                 self.results[subject_id] = avg_data
             except Exception as e:
                 print(f"[{subject_id}] Error during analysis: {e}")
-    
+
     # def run_analysis_region(self):
     def run_analysis(self):
         scalar_files = sorted(
@@ -1184,21 +1236,26 @@ class DefaultWandPipeline(DataPreparationBrain):
                 right_data = np.nan_to_num(nib.load(right_file).darrays[0].data).clip(
                     0, 7
                 )
-                
+
                 # target = "VisCent_Striate"
                 # target = self.config["region_name"]
                 target = self.config["models"][0]["params"]["region_name"]
                 # target = None
                 avg_data = extract_region_data(
-                    left_data, right_data, self.schaefer_resampled, target_substring=target, average=False
+                    left_data,
+                    right_data,
+                    self.schaefer_resampled,
+                    target_substring=target,
+                    average=False,
                 )
                 self.results[subject_id] = avg_data
             except Exception as e:
                 print(f"[{subject_id}] Error during analysis: {e}")
 
     def extract_features(self):
-        pass  
-    
+        pass
+
+
 # class DefaultCamcanPipeline(DataPreparationBrain):
 #     """
 #     DefaultCamcanPipeline is a class that extends the DataPreparationBrain class to handle
@@ -1356,7 +1413,7 @@ class DefaultWandPipeline(DataPreparationBrain):
 #                 self.results[subject_id] = avg_data
 #             except Exception as e:
 #                 print(f"[{subject_id}] Error during analysis: {e}")
-    
+
 #     # def run_analysis_region(self):
 #     def run_analysis(self):
 #         scalar_files = sorted(
@@ -1377,7 +1434,7 @@ class DefaultWandPipeline(DataPreparationBrain):
 #                 right_data = np.nan_to_num(nib.load(right_file).darrays[0].data).clip(
 #                     0, 7
 #                 )
-                
+
 #                 # target = "VisCent_Striate"
 #                 # target = self.config["region_name"]
 #                 target = self.config["models"][0]["params"]["region_name"]

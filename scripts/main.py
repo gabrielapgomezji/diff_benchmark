@@ -23,9 +23,9 @@ from diff_benchmark.preprocessing.preprocess_demographic_data import (
 )
 from diff_benchmark.preprocessing.wrapper_brain_data import (
     DefaultHcpPipeline,
+    DefaultWandPipeline,
     ImageHcpPipeline,
     LcotEmbedHcpPipeline,
-    DefaultWandPipeline,
 )
 from diff_benchmark.scores.scores import accuracy_score, compute_metrics
 from diff_benchmark.utils.job_manager import run_jobs
@@ -152,7 +152,7 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
             targets = dataset.targets.numpy()
             y_train = np.array(targets[train_idx]).squeeze()
             y_test = np.array(targets[test_idx]).squeeze()
-            
+
             model = get_model(model_name, local_config)
             # --------- Train / Val / Test Model ---------
             # print("Training...")

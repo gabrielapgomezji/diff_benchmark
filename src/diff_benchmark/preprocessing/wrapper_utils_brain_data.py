@@ -1,6 +1,8 @@
+import json
 from pathlib import Path
 from xml import etree
 
+import h5py
 import networkx as nx
 import nibabel as nib
 import nilearn as ni
@@ -16,8 +18,6 @@ from scipy.linalg import LinAlgError
 from scipy.spatial import cKDTree
 from templateflow import api as tflow
 from tqdm import tqdm
-import h5py
-import json
 
 
 def extract_selected_labels(nifti_path):
@@ -393,7 +393,10 @@ def average_per_parcel(hem_left, hem_right, schaefer_resampled):
         rtop_avg[i] = hem_right[mask].mean()
     return rtop_avg
 
-def extract_region_data(hem_left, hem_right, schaefer_resampled, target_substring=None, average=False):
+
+def extract_region_data(
+    hem_left, hem_right, schaefer_resampled, target_substring=None, average=False
+):
     """
     Average microstructure values across selected parcels in both hemispheres.
 
@@ -411,16 +414,16 @@ def extract_region_data(hem_left, hem_right, schaefer_resampled, target_substrin
     parc_right = schaefer_resampled["right.data"]
     labels_left = schaefer_resampled["left.labels"].copy()
     labels_right = schaefer_resampled["right.labels"].copy()
-    
+
     unique_left = np.unique(parc_left)
     unique_right = np.unique(parc_right)
 
-    labels_left["array_index"] = unique_left[:len(labels_left)]
-    labels_right["array_index"] = unique_right[:len(labels_right)]
+    labels_left["array_index"] = unique_left[: len(labels_left)]
+    labels_right["array_index"] = unique_right[: len(labels_right)]
     labels_left["hemi"] = "L"
     labels_right["hemi"] = "R"
     all_labels = pd.concat([labels_left, labels_right], ignore_index=True)
-    
+
     if target_substring:
         matched_labels = all_labels[
             all_labels["name"].str.contains(target_substring, case=False, na=False)
@@ -430,7 +433,7 @@ def extract_region_data(hem_left, hem_right, schaefer_resampled, target_substrin
 
     region_data = {}
     region_values = []
-    
+
     # --- Iterate through matched regions (each has unique hemi + name)
     for _, row in matched_labels.iterrows():
         hemi = row["hemi"]
@@ -449,14 +452,13 @@ def extract_region_data(hem_left, hem_right, schaefer_resampled, target_substrin
 
         if vals.size == 0:
             continue  # skip empty
-        
+
         region_data[region_name] = np.nanmean(vals) if average else vals
 
-    region_values = np.concatenate(
-        [np.atleast_1d(v) for v in region_values]
-    )
+    region_values = np.concatenate([np.atleast_1d(v) for v in region_values])
     # return region_data # returns dict and csv is a column per region with the corresponding arrays
     return region_values
+
 
 def normalize(data):
     """Normalizes the input data to have zero mean and unit variance."""
@@ -498,7 +500,7 @@ def compute_data(
             signal = attrs["signal"]
             if normalize_input:
                 signal = signal / np.linalg.norm(signal)
-            
+
             fit_success = True
 
             try:
@@ -528,7 +530,7 @@ def compute_data(
                     print(
                         f"Vertex {vertex} - Averaged neighbor signal also failed. Skipping."
                     )
-            
+
             if not fit_success:
                 attenuation = np.full(len(sphere.vertices), np.nan, dtype=np.float32)
                 b0_val = np.nan
@@ -543,13 +545,14 @@ def compute_data(
                 "attenuation": attenuation.astype(np.float32),
                 "neighbors": list(graph_ins.neighbors(vertex)),
                 "label": attrs["label"],
-                "fit_status": fit_status
+                "fit_status": fit_status,
             }
             subject_spheres.append(vertex_data)
 
         all_results[str(bval)] = subject_spheres
 
     return all_results
+
 
 def load_vertexwise_attenuations(file_path):
     """
@@ -587,6 +590,7 @@ def load_vertexwise_attenuations(file_path):
         }
 
     return data, metadata
+
 
 def split_data(data, num_splits):
     split_size = data.shape[0] // num_splits
