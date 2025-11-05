@@ -13,6 +13,7 @@ scripts/main_test_modular.py
 example_result.jsonl
 MedicalNet_pytorch_files2
 slurm_logs
+lightning_logs
 
 
 # Byte-compiled / optimized / DLL files
