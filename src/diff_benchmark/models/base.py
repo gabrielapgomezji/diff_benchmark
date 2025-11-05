@@ -148,17 +148,8 @@ class LightningModel(pl.LightningModule, ABC):
         self.log_dict({f"val_{k}": v for k, v in metrics.items()}, prog_bar=True)
         return {"val_loss": loss, **metrics}
 
-    # def test_step(self, batch, batch_idx):
-    #     x, y, _ = batch
-    #     logits = self(x)
-    #     y = y.long()
-    #     preds = torch.argmax(logits, dim=1)
-    #     metrics = self.compute_metrics(y.cpu(), preds.cpu())
-    #     self.log_dict({f"test_{k}": v for k, v in metrics.items()}, prog_bar=True)
-    #     return metrics
-
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
-        # Unpack batch safelyß
+        # Unpack batch safely
         x = batch[0] if isinstance(batch, (tuple, list)) else batch
         logits = self(x)
         preds = torch.argmax(logits, dim=1)

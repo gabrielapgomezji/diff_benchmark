@@ -56,7 +56,7 @@ class KernelRidgeRegression(nn.Module):
         self.device = device
         self.dtype = dtype
         self.std_distances = None
-        self.bval_idx = 0
+        self.bval_idx = 2
 
     def fit(self, dataloader):
         all_embeddings = []
@@ -68,7 +68,6 @@ class KernelRidgeRegression(nn.Module):
             all_embeddings.append(data["embeddings"])
             all_targets.append(targets)
             all_powers.append(data["power"])
-        print("All batches loaded. Concatenating tensors...")
         # --- Concatenate into single tensors ---
         embeddings = torch.cat(all_embeddings, dim=0).to(self.device).to(self.dtype)
         targets = torch.cat(all_targets, dim=0).to(self.device)
@@ -77,8 +76,6 @@ class KernelRidgeRegression(nn.Module):
         # Remove batch dimension if needed
         embeddings = embeddings.squeeze(dim=1)
         power = power.squeeze(dim=1)
-        print("Tensors concatenated. Starting training...")
-        # data, targets, _ = next(iter(dataloader))
         # targets = targets.to(self.device)
         # embeddings = data['embeddings'].to(self.device).to(self.dtype).squeeze(dim=1)
         # power = data['power'].to(self.device).to(self.dtype).squeeze(dim=1)
@@ -87,18 +84,10 @@ class KernelRidgeRegression(nn.Module):
         ]  # Use only the first b-value for distance computation DEBUGGING
         self.embeddings = embeddings
         optimizer = torch.optim.Adam([self.alphas], lr=self.lr)
-        print("Computing distance matrix...")
         with torch.no_grad():
             n_subjects, n_bval, n_spheres, dim_embedding = embeddings.shape
             # n_total_spheres = n_spheres * n_bval
             n_total_spheres = 1
-
-            allocated = torch.cuda.memory_allocated(self.device) / (1024**3)  # GB
-            print(f"GPU memory allocated: {allocated} GB")
-            reserved = torch.cuda.memory_reserved(self.device) / (1024**3)  # GB
-            print(f"GPU memory reserved: {reserved} GB")
-            max_allocated = torch.cuda.max_memory_allocated(self.device) / (1024**3)
-            print(f"Max GPU memory allocated: {max_allocated} GB")
 
             dist_matrix = torch.zeros(
                 n_total_spheres,
@@ -107,7 +96,6 @@ class KernelRidgeRegression(nn.Module):
                 device=self.device,
                 dtype=self.dtype,
             )
-            print("Distance matrix computed. Starting optimization...")
             for s in tqdm(range(n_spheres)):
                 dist_matrix[s] = dist_emb_circle_pairwise(
                     embeddings[:, s, 0, :], embeddings[:, s, 0, :]
@@ -162,13 +150,6 @@ class KernelRidgeRegression(nn.Module):
                 self.embeddings.shape
             )
             n_subjects, n_spheres, n_bval, dim_embedding = embeddings.shape
-            allocated = torch.cuda.memory_allocated(self.device) / (1024**3)  # GB
-            print(f"GPU memory allocated: {allocated} GB")
-            reserved = torch.cuda.memory_reserved(self.device) / (1024**3)  # GB
-            print(f"GPU memory reserved: {reserved} GB")
-            max_allocated = torch.cuda.max_memory_allocated(self.device) / (1024**3)
-            print(f"Max GPU memory allocated: {max_allocated} GB")
-
             with torch.no_grad():
                 # assert self_n_spheres * self_n_bval == n_spheres * n_bval, f"Number of spheres in the training set {self_n_spheres} does not match the number of spheres in the test set {n_spheres}"
                 # dist_matrix = torch.zeros(self_n_spheres * self_n_bval, self_n_subjects, n_subjects, device=self.device, dtype=self.dtype)

@@ -39,8 +39,8 @@ with open(config_path, "r") as f:
 json_path = (
     Path(__file__).parent.parent / "src/diff_benchmark/models/model_configurations.json"
 )
-with open(json_path, "r") as f:
-    model_configs = json.load(f)["models"]
+# with open(json_path, "r") as f:
+#     model_configs = json.load(f)["models"]
 
 # brain_preparator = ImageHcpPipeline(config)
 # brain_preparator = DefaultHcpPipeline(config)
