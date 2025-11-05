@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import h5py
 import nibabel as nib
 import numpy as np
 import torch
@@ -127,28 +128,76 @@ class CustomDataset(Dataset):
         if self.mode == "features":
             final_features = self.features[idx]
         if self.mode == "paths":
-            img = nib.load(Path(self.features[idx]))
-            # target_affine = np.diag([1.25, 1.25, 1.25, 1.0])
-            # target_shape = (180, 224, 224)
-            # resampled_img = resample_img(img, target_affine=target_affine, target_shape=target_shape, interpolation='continuous', copy_header=True, force_resample=True)
-            resampled_img = img
-            data = np.nan_to_num(resampled_img.get_fdata()).clip(0, 7)
-            data /= 7.0
-            final_features = torch.tensor(data, dtype=torch.float32)
-            # features = nib.Nifti1Image(data, affine=img.affine)
-            if self.transform is not None:
-                slices = []
-                for i in range(
-                    final_features.shape[0]
-                ):  # iterate through depth dimension
-                    slice_2d = final_features[i, :, :]  # .unsqueeze(0)  # (1,H,W)
-                    slice_2d = self.transform(slice_2d)
-                    slices.append(slice_2d)
-                final_features = torch.stack(slices, dim=0)  # (D,1,H,W)
-                final_features = final_features.permute(1, 0, 2, 3)  # (C=1,D,H,W)
-                # final_features = final_features.squeeze(0)  # (D,H,W)
+            try:
+                if Path(self.features[idx]).suffix == ".h5":
+                    final_features = self._load_h5(Path(self.features[idx]))
+                else:
+                    img = nib.load(Path(self.features[idx]))
+                    # target_affine = np.diag([1.25, 1.25, 1.25, 1.0])
+                    # target_shape = (180, 224, 224)
+                    # resampled_img = resample_img(img, target_affine=target_affine, target_shape=target_shape, interpolation='continuous', copy_header=True, force_resample=True)
+                    resampled_img = img
+                    data = np.nan_to_num(resampled_img.get_fdata()).clip(0, 7)
+                    data /= 7.0
+                    final_features = torch.tensor(data, dtype=torch.float32)
+                    # features = nib.Nifti1Image(data, affine=img.affine)
+                    if self.transform is not None:
+                        slices = []
+                        for i in range(
+                            final_features.shape[0]
+                        ):  # iterate through depth dimension
+                            slice_2d = final_features[
+                                i, :, :
+                            ]  # .unsqueeze(0)  # (1,H,W)
+                            slice_2d = self.transform(slice_2d)
+                            slices.append(slice_2d)
+                        final_features = torch.stack(slices, dim=0)  # (D,1,H,W)
+                        final_features = final_features.permute(
+                            1, 0, 2, 3
+                        )  # (C=1,D,H,W)
+                        # final_features = final_features.squeeze(0)  # (D,H,W)
+            except (OSError, FileNotFoundError) as e:
+                print(f"[Warning] Dropping subject {Path(self.features[idx])}: {e}")
+                return None
 
         return final_features, self.targets[idx], self.gender[idx]
+
+    def _load_h5(self, path):
+        """
+        Load the HDF5 file and convert it to a suitable tensor.
+        Combines all 'attenuation' datasets from all vertices and bvals into a single array.
+        """
+        if not path.is_file():
+            raise FileNotFoundError(f"File not found: {path}")
+        with h5py.File(path, "r") as f:
+            # Load metadata
+            meta = f["metadata"]
+            bvals = list(meta.attrs["bvals"])
+
+            # Load embeddings
+            emb_grp = f["embeddings"]
+            embeddings_per_bval = []
+
+            for bval in bvals:
+                bval_str = str(bval)
+                if bval_str not in emb_grp:
+                    raise KeyError(
+                        f"Missing embeddings for bval {bval_str} in file {path}"
+                    )
+                data = emb_grp[bval_str][:]
+                embeddings_per_bval.append(data)
+
+            # Stack into a single numpy array
+            # embeddings_per_bval: list of [num_values, emb_dim] arrays
+            data_array = np.stack(
+                embeddings_per_bval, axis=1
+            )  # shape: (num_values, num_bvals, emb_dim)
+
+            power = f["power"][:]
+        return {
+            "embeddings": torch.tensor(data_array, dtype=torch.float32),
+            "power": torch.tensor(power, dtype=torch.float32),
+        }
 
     def get_features_model(self):
         """

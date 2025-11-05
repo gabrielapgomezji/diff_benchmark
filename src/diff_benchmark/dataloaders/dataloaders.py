@@ -46,6 +46,11 @@ class PreprocessedData:
         indices = list(self.skf.split(np.zeros(len(self.genders)), self.genders))
         return indices
 
+    def safe_collate(self, batch):
+        # drop None samples
+        batch = [b for b in batch if b is not None]
+        return torch.utils.data.dataloader.default_collate(batch)
+
     def get_dataloader_fold(
         self,
         dataset,
@@ -64,6 +69,7 @@ class PreprocessedData:
             shuffle=False,
             num_workers=0,
             pin_memory=True,
+            collate_fn=self.safe_collate,
         )
         test_loader = DataLoader(
             Subset(dataset, test_idx),
@@ -71,6 +77,7 @@ class PreprocessedData:
             shuffle=False,
             num_workers=0,
             pin_memory=True,
+            collate_fn=self.safe_collate,
         )
 
         return train_loader, test_loader

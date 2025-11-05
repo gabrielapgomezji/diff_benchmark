@@ -93,14 +93,34 @@ def run_with_slurm(
     """
     submitit.slurm.slurm.SlurmJob.USE_SQUEUE = True
     executor = submitit.AutoExecutor(folder=slurm_cfg.get("log_folder", "./slurm_logs"))
-    executor.update_parameters(
-        mem_gb=slurm_cfg.get("mem_gb", 32),
-        gpus_per_node=slurm_cfg.get("gpus_per_node", 0),
-        tasks_per_node=1,
-        cpus_per_task=slurm_cfg.get("cpus_per_task", 4),
-        timeout_min=slurm_cfg.get("timeout_min", 120),
-        slurm_partition=slurm_cfg.get("partition", "cpu"),
-    )
+    if slurm_cfg["jean_zay"]:
+        executor.update_parameters(
+            tasks_per_node=1,
+            gpus_per_task=1,
+            cpus_per_task=slurm_cfg.get("cpus_per_task", 1),
+            timeout_min=slurm_cfg.get("timeout_min", 10),
+            slurm_additional_parameters={
+                "account": "qlr@v100",
+                "gres": "gpu:1",
+                "constraint": "v100-32g",
+            },
+            setup=["module purge", "module load pytorch-gpu/py3/2.4.0"],
+            slurm_setup=[
+                "export OMP_NUM_THREADS=1",
+                "export MKL_NUM_THREADS=1",
+                "export OPENBLAS_NUM_THREADS=1",
+                "export NUMEXPR_NUM_THREADS=1",
+            ],
+        )
+    else:
+        executor.update_parameters(
+            mem_gb=slurm_cfg.get("mem_gb", 32),
+            gpus_per_node=slurm_cfg.get("gpus_per_node", 0),
+            tasks_per_node=1,
+            cpus_per_task=slurm_cfg.get("cpus_per_task", 4),
+            timeout_min=slurm_cfg.get("timeout_min", 120),
+            slurm_partition=slurm_cfg.get("partition", "cpu"),
+        )
 
     jobs = []
     for model_entry in models_to_run:
