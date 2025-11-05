@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -61,3 +64,44 @@ def synthetic_demographics_csv(tmp_path):
     df.to_csv(csv_path, index=False)
 
     return csv_path
+
+
+@pytest.fixture
+def sample_all_results(tmp_path: Path):
+    """Fixture that creates a fake all_results.json file with multiple models."""
+    all_results = [
+        {
+            "model_name": "2dcnn",
+            "pipeline": {
+                "batch_size": 128,
+                "n_splits": 5,
+                "random_state": 42,
+                "run_id": "2dcnn_1f5f8fac",
+            },
+            "results": {
+                "train_average_score": 0.85,
+                "test_average_score": 0.80,
+            },
+            "history": {"loss": [0.9, 0.6, 0.3]},
+        },
+        {
+            "model_name": "mlp",
+            "pipeline": {
+                "batch_size": 64,
+                "n_splits": 5,
+                "random_state": 42,
+                "run_id": "mlp_a1b2c3d4",
+            },
+            "results": {
+                "train_average_score": 0.90,
+                "test_average_score": 0.82,
+            },
+            "history": {"loss": [1.0, 0.7, 0.4]},
+        },
+    ]
+
+    results_file = tmp_path / "all_results.json"
+    with open(results_file, "w", encoding="utf-8") as f:
+        json.dump(all_results, f)
+
+    return tmp_path  # return directory containing the file

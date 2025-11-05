@@ -142,12 +142,13 @@ class DataPreparationBrain(ABC):
             else:
                 print(f"[{subject_id}] All required files found.")
 
-        Parallel(n_jobs=20)(
+        Parallel(n_jobs=50)(
             delayed(process_subject)(subject_id)
             for subject_id in tqdm(subject_list, desc="Processing subjects")
         )
 
         # Once all files are ready, run the analysis
+        print("All required files are ready. Running analysis...")
         self.run_analysis()
         df = self.export_to_csv(Path(self.config["results_path"]) / "results.csv")
         return df

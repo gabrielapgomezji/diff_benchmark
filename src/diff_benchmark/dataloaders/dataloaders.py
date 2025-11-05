@@ -46,6 +46,11 @@ class PreprocessedData:
         indices = list(self.skf.split(np.zeros(len(self.genders)), self.genders))
         return indices
 
+    def safe_collate(self, batch):
+        # drop None samples
+        batch = [b for b in batch if b is not None]
+        return torch.utils.data.dataloader.default_collate(batch)
+
     def get_dataloader_fold(
         self,
         dataset,
@@ -59,10 +64,20 @@ class PreprocessedData:
         train_idx, test_idx = fold_indices[fold_idx]
 
         train_loader = DataLoader(
-            Subset(dataset, train_idx), batch_size=batch_size, shuffle=False
+            Subset(dataset, train_idx),
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=0,
+            pin_memory=True,
+            collate_fn=self.safe_collate,
         )
         test_loader = DataLoader(
-            Subset(dataset, test_idx), batch_size=batch_size, shuffle=False
+            Subset(dataset, test_idx),
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=0,
+            pin_memory=True,
+            collate_fn=self.safe_collate,
         )
 
         return train_loader, test_loader
@@ -72,7 +87,6 @@ class PreprocessedData:
         Given full arrays and fold index, return X, y, gender arrays for train/test sets.
         """
         train_idx, test_idx = fold_indices[fold_idx]
-
         features = dataset.features.numpy()
         targets = dataset.targets.numpy()
         genders = dataset.gender.numpy()

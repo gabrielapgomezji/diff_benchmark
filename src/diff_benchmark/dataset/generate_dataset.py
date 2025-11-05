@@ -1,8 +1,11 @@
 from pathlib import Path
 
+import h5py
+import nibabel as nib
 import numpy as np
 import torch
 from joblib import Parallel, delayed
+from nilearn.image import resample_img
 from torch.utils.data import Dataset
 
 # import pandas as pd
@@ -59,8 +62,6 @@ class PreprocessedData:
         Currently, this method is not implemented.
         """
 
-        pass
-
     def get_folds_as_dataloaders(self):
         """
         Retrieves the dataset folds as PyTorch DataLoader instances.
@@ -71,8 +72,6 @@ class PreprocessedData:
             List[DataLoader]: A list of DataLoader instances, each corresponding
             to a different fold of the dataset.
         """
-
-        pass
 
 
 class CustomDataset(Dataset):
@@ -88,10 +87,20 @@ class CustomDataset(Dataset):
         gender (torch.Tensor): A tensor representation of the gender information.
     """
 
-    def __init__(self, features, targets, gender):
-        self.features = torch.tensor(features, dtype=torch.float32)
+    def __init__(self, features, targets, gender, transform=None):
+        # self.features = torch.tensor(features, dtype=torch.float32)
+        self.features = features.drop(columns=["subject_id"])
         self.targets = torch.tensor(targets, dtype=torch.float32)
         self.gender = torch.tensor(gender, dtype=torch.int64)
+        self.transform = transform
+
+        self.mode = self.get_features_model()
+
+        if self.mode == "features":
+            self.features = self.features.to_numpy()
+            self.features = torch.tensor(self.features, dtype=torch.float32)
+        if self.mode == "paths":
+            self.features = self.features[0].tolist()
 
     def __len__(self):
         """
@@ -116,8 +125,95 @@ class CustomDataset(Dataset):
                    and the gender information (self.gender[idx])
                    corresponding to the specified index.
         """
+        if self.mode == "features":
+            final_features = self.features[idx]
+        if self.mode == "paths":
+            try:
+                if Path(self.features[idx]).suffix == ".h5":
+                    final_features = self._load_h5(Path(self.features[idx]))
+                else:
+                    img = nib.load(Path(self.features[idx]))
+                    # target_affine = np.diag([1.25, 1.25, 1.25, 1.0])
+                    # target_shape = (180, 224, 224)
+                    # resampled_img = resample_img(img, target_affine=target_affine, target_shape=target_shape, interpolation='continuous', copy_header=True, force_resample=True)
+                    resampled_img = img
+                    data = np.nan_to_num(resampled_img.get_fdata()).clip(0, 7)
+                    data /= 7.0
+                    final_features = torch.tensor(data, dtype=torch.float32)
+                    # features = nib.Nifti1Image(data, affine=img.affine)
+                    if self.transform is not None:
+                        slices = []
+                        for i in range(
+                            final_features.shape[0]
+                        ):  # iterate through depth dimension
+                            slice_2d = final_features[
+                                i, :, :
+                            ]  # .unsqueeze(0)  # (1,H,W)
+                            slice_2d = self.transform(slice_2d)
+                            slices.append(slice_2d)
+                        final_features = torch.stack(slices, dim=0)  # (D,1,H,W)
+                        final_features = final_features.permute(
+                            1, 0, 2, 3
+                        )  # (C=1,D,H,W)
+                        # final_features = final_features.squeeze(0)  # (D,H,W)
+            except (OSError, FileNotFoundError) as e:
+                print(f"[Warning] Dropping subject {Path(self.features[idx])}: {e}")
+                return None
 
-        return self.features[idx], self.targets[idx], self.gender[idx]
+        return final_features, self.targets[idx], self.gender[idx]
+
+    def _load_h5(self, path):
+        """
+        Load the HDF5 file and convert it to a suitable tensor.
+        Combines all 'attenuation' datasets from all vertices and bvals into a single array.
+        """
+        if not path.is_file():
+            raise FileNotFoundError(f"File not found: {path}")
+        with h5py.File(path, "r") as f:
+            # Load metadata
+            meta = f["metadata"]
+            bvals = list(meta.attrs["bvals"])
+
+            # Load embeddings
+            emb_grp = f["embeddings"]
+            embeddings_per_bval = []
+
+            for bval in bvals:
+                bval_str = str(bval)
+                if bval_str not in emb_grp:
+                    raise KeyError(
+                        f"Missing embeddings for bval {bval_str} in file {path}"
+                    )
+                data = emb_grp[bval_str][:]
+                embeddings_per_bval.append(data)
+
+            # Stack into a single numpy array
+            # embeddings_per_bval: list of [num_values, emb_dim] arrays
+            data_array = np.stack(
+                embeddings_per_bval, axis=1
+            )  # shape: (num_values, num_bvals, emb_dim)
+
+            power = f["power"][:]
+        return {
+            "embeddings": torch.tensor(data_array, dtype=torch.float32),
+            "power": torch.tensor(power, dtype=torch.float32),
+        }
+
+    def get_features_model(self):
+        """
+        Determines the mode of the features based on their data type.
+        This method checks if the first column of the features DataFrame, excluding
+        the 'subject_id' column, is of a numeric subtype. If it is numeric, the mode
+        is set to "features"; otherwise, it is set to "paths".
+        Returns:
+            str: The mode of the features, either "features" or "paths".
+        """
+
+        if np.issubdtype(self.features.dtypes[0], np.number):
+            self.mode = "features"
+        else:
+            self.mode = "paths"
+        return self.mode
 
 
 class CustomDatasetBuilder(DatasetBuilder):

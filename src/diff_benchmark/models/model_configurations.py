@@ -1,11 +1,37 @@
+import hashlib
+import json
+
+from diff_benchmark.models import cnn_with_base
 from diff_benchmark.models.cca import CanonicalCorrelationRegressor
+from diff_benchmark.models.classic_ml import PCARandomForestModel, PCASVMModel
+from diff_benchmark.models.cnn import ResNet3SliceModel
+from diff_benchmark.models.cnn_medicalnet import ResNet3DModel
 from diff_benchmark.models.dummy import DummyClassifier
+from diff_benchmark.models.lcot_model import KernelRidgeRegression
 from diff_benchmark.models.logistic_regression import (
     LogisticRegressionModel,
     PCALogisticRegressionModel,
 )
 
 # from diff_benchmark.models.mlp import MLPClassifier
+
+
+def make_run_id(name, params):
+    """
+    Generates a unique run identifier based on the provided name and parameters.
+    Parameters:
+        name (str): The name associated with the run.
+        params (dict): A dictionary of parameters that will be used to generate the run ID.
+    Returns:
+        str: A unique run ID formatted as 'name_hash', where 'hash' is the first 8 characters
+             of the MD5 hash of the sorted parameters.
+    """
+
+    # Sort params to keep consistency
+    params_str = json.dumps(params, sort_keys=True)
+    # Hash to avoid overly long filenames
+    run_hash = hashlib.md5(params_str.encode()).hexdigest()[:8]
+    return f"{name}_{run_hash}"
 
 
 def get_model(name: str, config: dict):
@@ -52,6 +78,26 @@ def get_model(name: str, config: dict):
 
     if name == "logistic_regression":
         return LogisticRegressionModel()
+
+    if name == "pca_forest":
+        return PCARandomForestModel()
+
+    if name == "pca_svm":
+        return PCASVMModel()
+
+    if name == "2dcnn":
+        # return ResNet3SliceModel(input_slices=config.get("input_slices", 145), num_classes=config.get("num_classes", 2), device=config.get("device", "cuda"))
+        return ResNet3SliceModel(**config)
+
+    if name == "2dcnn_lite":
+        return cnn_with_base.ResNet3SliceModel(**config)
+
+    if name == "3dcnn_medicalnet":
+        return ResNet3DModel(**config)
+
+    if name == "lcot":
+        return KernelRidgeRegression(**config)
+
     # elif name == "other_model":
     #     return OtherModelClass(param1=config["param1"], ...)
 
