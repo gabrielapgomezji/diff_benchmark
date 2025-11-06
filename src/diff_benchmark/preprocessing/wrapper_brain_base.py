@@ -117,7 +117,6 @@ class DataPreparationBrain(ABC):
             raise ValueError("No results to save.")
         df = pd.DataFrame.from_dict(self.results, orient="index")
         df.index.name = "subject_id"
-        df.to_csv(output_path)
         return df
 
     def run_pipeline(self) -> pd.DataFrame:
