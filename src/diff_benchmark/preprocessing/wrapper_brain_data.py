@@ -58,7 +58,7 @@ class DefaultHcpPipeline(DataPreparationBrain):
     def __init__(self, config):
         super().__init__(config)
         self.hcp_dir = Path(config["data_paths"]["hcp_base"])
-        self.results_root = Path(config["results_path"]) / "default"
+        self.results_root = Path(config["data_paths"]["hcp_results"]) / "default"
         self.metric = config["metric_to_compute"]
         # breakpoint()
         self.scale = config.get("scale", 1000)
@@ -256,7 +256,7 @@ class ImageHcpPipeline(DataPreparationBrain):
     def __init__(self, config):
         super().__init__(config)
         self.hcp_dir = Path(config["data_paths"]["hcp_base"])
-        self.results_root = Path(config["results_path"]) / "default"
+        self.results_root = Path(config["data_paths"]["hcp_results"]) / "default"
         self.metric = config["metric_to_compute"]
         self.scale = config.get("scale", 1000)
         self.schaefer_resampled = resample_schaefer_onto_fs_lr(scale=1000)
@@ -400,7 +400,7 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
     def __init__(self, config):
         super().__init__(config)
         self.hcp_dir = Path(config["data_paths"]["hcp_base"])
-        self.results_root = Path(config["results_path"]) / "lcotembed"
+        self.results_root = Path(config["data_paths"]["hcp_results"]) / "lcotembed"
         self.metric = config["metric_to_compute"]
         self.scale = config.get("scale", 1000)
         self.schaefer_resampled = resample_schaefer_onto_fs_lr(scale=1000)

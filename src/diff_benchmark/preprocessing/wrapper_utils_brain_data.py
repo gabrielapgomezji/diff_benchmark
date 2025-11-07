@@ -352,7 +352,7 @@ def load_rtop_data(config):
     Assumes filenames follow format *_rtop_cortex.L/R*.scalar.gii
     """
     subject_id = "100206"  # Test subject
-    subject_dir = Path(config["results_path"]) / subject_id / "processed"
+    subject_dir = Path(config["data_paths"]["hcp_results"]) / subject_id / "processed"
     rtop_left = (
         nib.load(subject_dir / f"{config['metric_to_compute']}.L.scalar.gii")
         .darrays[0]
