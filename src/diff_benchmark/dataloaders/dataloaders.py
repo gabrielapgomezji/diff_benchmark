@@ -67,16 +67,16 @@ class PreprocessedData:
             Subset(dataset, train_idx),
             batch_size=batch_size,
             shuffle=False,
-            num_workers=0,
-            pin_memory=True,
+            num_workers=10,
+            pin_memory=False,
             collate_fn=self.safe_collate,
         )
         test_loader = DataLoader(
             Subset(dataset, test_idx),
             batch_size=batch_size,
             shuffle=False,
-            num_workers=0,
-            pin_memory=True,
+            num_workers=10,
+            pin_memory=False,
             collate_fn=self.safe_collate,
         )
 

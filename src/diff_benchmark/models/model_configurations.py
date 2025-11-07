@@ -8,6 +8,7 @@ from diff_benchmark.models.cnn import ResNet3SliceModel
 from diff_benchmark.models.cnn_medicalnet import ResNet3DModel
 from diff_benchmark.models.dummy import DummyClassifier
 from diff_benchmark.models.lcot_model import KernelRidgeRegression
+from diff_benchmark.models.efficient_lcot_model import EfficientKernelRidgeRegression
 from diff_benchmark.models.logistic_regression import (
     LogisticRegressionModel,
     PCALogisticRegressionModel,
@@ -96,8 +97,8 @@ def get_model(name: str, config: dict):
         return ResNet3DModel(**config)
 
     if name == "lcot":
-        return KernelRidgeRegression(**config)
-
+        # return KernelRidgeRegression(**config)
+        return EfficientKernelRidgeRegression(**config)
     # elif name == "other_model":
     #     return OtherModelClass(param1=config["param1"], ...)
 
