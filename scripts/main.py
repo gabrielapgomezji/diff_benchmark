@@ -50,7 +50,7 @@ brain_df = brain_preparator.run_pipeline()
 brain_df = brain_df.reset_index()
 
 ##### NEXT TESTING STEPS
-preprocessor = DefaultDemographicsPreprocessor(config["csv_file"])
+preprocessor = DefaultDemographicsPreprocessor(config["data_paths"]["csv_file"])
 demographics_df = preprocessor.preprocess(config["target_columns"])
 
 common_subjects = set(brain_df["subject_id"].astype(str)) & set(
@@ -273,17 +273,17 @@ for model_name, run_id in results:
 # for model_entry in models_to_run:
 #     name = model_entry["name"]
 #     plot_folds_predictions_vs_targets(
-#         summary_path=Path(config["results_path"])
+#         summary_path=Path(config["data_paths"]["hcp_results"])
 #         / "analysis_results"
 #         / f"{name}_fold_results.json",
-#         output_dir=Path(config["results_path"]) / "analysis_results" / "plots",
+#         output_dir=Path(config["data_paths"]["hcp_results"]]) / "analysis_results" / "plots",
 #     )
 
 #     summarize_folds_to_csv(
-#         fold_results_path=Path(config["results_path"])
+#         fold_results_path=Path(config["data_paths"]["hcp_results"])
 #         / "analysis_results"
 #         / f"{name}_fold_results.json",
-#         output_csv_path=Path(config["results_path"])
+#         output_csv_path=Path(config["data_paths"]["hcp_results"])
 #         / "analysis_results"
 #         / f"{name}_score_stats.csv",
 #     )
