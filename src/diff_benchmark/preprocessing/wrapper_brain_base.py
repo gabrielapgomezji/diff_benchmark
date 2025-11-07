@@ -126,7 +126,7 @@ class DataPreparationBrain(ABC):
         subject_list = sorted(
             [
                 p.name
-                for p in Path(self.config["base_path"]).iterdir()
+                for p in Path(self.config["data_paths"]["hcp_base"]).iterdir()
                 if p.is_dir() and p.name.isdigit()
             ]
         )

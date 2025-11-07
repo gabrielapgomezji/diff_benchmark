@@ -57,7 +57,7 @@ class DefaultHcpPipeline(DataPreparationBrain):
 
     def __init__(self, config):
         super().__init__(config)
-        self.hcp_dir = Path(config["base_path"])
+        self.hcp_dir = Path(config["data_paths"]["hcp_base"])
         self.results_root = Path(config["results_path"]) / "default"
         self.metric = config["metric_to_compute"]
         # breakpoint()
@@ -255,7 +255,7 @@ class ImageHcpPipeline(DataPreparationBrain):
 
     def __init__(self, config):
         super().__init__(config)
-        self.hcp_dir = Path(config["base_path"])
+        self.hcp_dir = Path(config["data_paths"]["hcp_base"])
         self.results_root = Path(config["results_path"]) / "default"
         self.metric = config["metric_to_compute"]
         self.scale = config.get("scale", 1000)
@@ -399,7 +399,7 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
 
     def __init__(self, config):
         super().__init__(config)
-        self.hcp_dir = Path(config["base_path"])
+        self.hcp_dir = Path(config["data_paths"]["hcp_base"])
         self.results_root = Path(config["results_path"]) / "lcotembed"
         self.metric = config["metric_to_compute"]
         self.scale = config.get("scale", 1000)
@@ -1035,7 +1035,7 @@ class DefaultWandPipeline(DataPreparationBrain):
 
     def __init__(self, config):
         super().__init__(config)
-        self.wand_dir = Path(config["wand_base_path"])
+        self.wand_dir = Path(config["data_paths"]["wand_base"])
         self.derivatives_in = self.wand_dir / "derivatives"
         self.results_root = Path(config["wand_results_path"]) / "default"
         self.metric = config["metric_to_compute"]
@@ -1280,7 +1280,7 @@ class DefaultWandPipeline(DataPreparationBrain):
 
 #     def __init__(self, config):
 #         super().__init__(config)
-#         self.camcan_dir = Path(config["camcan_base_path"])
+#         self.camcan_dir = Path(config["data_paths"]["camcan_base"])
 #         self.results_root = Path(config["camcan_results_path"]) / "default"
 #         self.metric = config["metric_to_compute"]
 #         breakpoint()
