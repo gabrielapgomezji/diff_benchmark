@@ -105,7 +105,7 @@ class DataPreparationBrain(ABC):
         any operations and serves as a placeholder.
         """
 
-    def export_to_csv(self, output_path: Path) -> pd.DataFrame:
+    def export_to_csv(self) -> pd.DataFrame:
         """
         Exports the results to a CSV file.
         Parameters:
@@ -149,5 +149,5 @@ class DataPreparationBrain(ABC):
         # Once all files are ready, run the analysis
         print("All required files are ready. Running analysis...")
         self.run_analysis()
-        df = self.export_to_csv(Path(self.config["results_path"]) / "results.csv")
+        df = self.export_to_csv()
         return df
