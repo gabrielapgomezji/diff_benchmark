@@ -1,92 +1,95 @@
 import torch
 from torch import nn
 from tqdm import tqdm
+import math
 
-
-def dist_emb_circle_pairwise_chunked(emb_u, emb_v, chunk_size=100, compute_device=None):
-    """
-    Compute pairwise distance between embeddings with chunking to reduce memory.
-    Keeps embeddings on CPU and moves chunks to GPU for computation.
-    
-    Args:
-        emb_u: shape (n, d) - first set of embeddings (on CPU)
-        emb_v: shape (m, d) - second set of embeddings (on CPU)
-        chunk_size: number of rows to process at once
-        compute_device: device to use for computation (GPU if available)
-    
-    Returns:
-        dist: shape (n, m) - pairwise squared distances (on CPU)
-    """
-    n, d = emb_u.shape
-    m = emb_v.shape[0]
-    dtype = emb_u.dtype
-    
-    # Keep result on CPU
-    dist_matrix = torch.zeros(n, m, dtype=dtype)
-    
-    # Determine compute device - ensure it's always valid
-    if compute_device is None:
-        compute_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    elif compute_device is not None and not isinstance(compute_device, torch.device):
-        compute_device = torch.device(compute_device)
-
-    # Process in chunks to avoid memory issues
-    for i in range(0, n, chunk_size):
-        end_i = min(i + chunk_size, n)
-        
-        # Move chunk to device for computation
-        chunk_u = emb_u[i:end_i].to(compute_device)  # (chunk_size, d)
-        emb_v_device = emb_v.to(compute_device)  # (m, d)
-        
-        # Compute distance for this chunk
-        diff = torch.abs(chunk_u[:, None, :] - emb_v_device[None, :, :])  # (chunk_size, m, d)
-        dist_uv = torch.minimum(diff, 1 - diff)
-        chunk_dist = torch.mean(dist_uv ** 2, dim=-1)  # (chunk_size, m)
-        
-        # Move result back to CPU
-        dist_matrix[i:end_i] = chunk_dist.cpu()
-        
-        # Clean up memory
-        del chunk_u, emb_v_device, diff, dist_uv, chunk_dist
-        if compute_device.type == "cuda":
-            torch.cuda.empty_cache()
-    
-    return dist_matrix
 
 
 class EfficientKernelRidgeRegression(nn.Module):
     """
     Memory-efficient Kernel Ridge Regression for sphere embeddings.
     
-    Key optimizations:
-    1. Average sphere embeddings weighted by power (instead of per-sphere kernels)
-    2. Chunked distance computation to avoid OOM
-    3. No learnable alpha parameters (uniform weighting)
-    4. Direct kernel computation without storing large intermediate matrices
+    Key innovations:
+    1. **Flexible solving modes**:
+       - matrix_free=True: Conjugate gradient (O(n) memory, scalable)
+       - matrix_free=False: Direct Cholesky solve (O(n²) memory, faster for small n)
+    2. **Additive distance accumulation**: K = exp(-sum(distances) / bandwidth)
+       - Accumulates distances in float32, applies exp once at end
+       - Faster and more stable than multiplicative accumulation
+       - Fewer exp() calls (1 vs n_spheres * n_bvals per tile)
+       - Uses SUM of distances (not mean) for proper multi-view kernel interpretation
+    3. **Shared kernel computation**: Single _compute_kernel_tile() helper
+       - Used by both matrix formation and matvec operations
+       - Avoids code duplication, easier to maintain
+    4. **Tiled computation** over samples AND spheres
+       - Sample blocks: (n1_blk, n2_blk) kernel tiles
+       - Sphere blocks: process spheres in batches on GPU
+       - Only sphere batches moved to GPU, not full sample blocks
+    5. **Maximum GPU tensor**: (n1_blk, n2_blk, sphere_batch_size, d) during distance computation
+       - No full 4D broadcasted tensors across all spheres!
     
-    This reduces memory from O(n_spheres * n_subjects^2) to O(n_subjects^2).
+    Kernel formulation:
+    - For each (sphere, bval) pair: compute mean squared circular distance over embedding dim d
+    - Sum these distances across all n_spheres * n_bvals pairs → total_distance
+    - Kernel: K(x, y) = exp(-total_distance / bandwidth)
+    - Bandwidth is automatically scaled by n_spheres * n_bvals during estimation
+    
+    Memory requirements:
+    - CPU: O(n_train * n_spheres * n_bvals * d) for training embeddings
+    - CPU: O(n_train) for beta (matrix-free) or O(n_train²) for K (direct)
+    - GPU: O(n1_blk * n2_blk * sphere_batch_size * d) peak during computation
+    
+    Performance tuning:
+    - sphere_batch_size: Number of spheres processed together (default: 64)
+      * Larger = faster (more vectorization) but more GPU memory
+      * Smaller = slower but less GPU memory
+      * Recommended: 32-128 depending on GPU
+      * GPU memory per tile: ~(n1_blk * n2_blk * sphere_batch_size * d * 4) bytes
+    - sample_batch_size: Size of kernel tiles (n1_blk, n2_blk) (default: 50)
+      * Larger = faster (fewer CPU↔GPU transfers) but more GPU memory
+      * Smaller = slower but less GPU memory
+      * Recommended: 25-100 depending on GPU and n_spheres
+    
+    Trade-offs:
+    - matrix_free=True: O(n) memory, slower (multiple kernel-vector products in CG)
+      * Best for large n (hundreds to thousands of samples)
+      * Scalable to very large datasets
+    - matrix_free=False: O(n²) memory, faster (single Cholesky solve)
+      * Best for small n (< 100 samples) when you have enough RAM
+      * Easier to debug (can inspect kernel matrix)
+    
+    Lambda (regularization) tuning:
+    - Kernel values are typically in [0, 1] with diagonal ≈ 1
+    - Recommended lambda range: [kernel_std * 1e-3, kernel_std * 10]
+    - The fit() method prints kernel diagnostics to guide lambda selection
     
     Args:
-        lmbd: Regularization parameter
-        chunk_size: Batch size for chunked distance computation
-        use_power_weighting: Whether to weight spheres by their power values
-        device: Compute device
-        dtype: Data type for tensors
+        lmbd: Regularization parameter (default: 0.1)
+        use_power_weighting: Whether to weight sphere distances by power values
+        device: Deprecated, auto-detected
+        dtype: Data type for tensors (default: torch.float32)
+        sphere_batch_size: Number of spheres to process together (default: 64)
+        sample_batch_size: Size of sample tiles for kernel computation (default: 50)
+        matrix_free: Use matrix-free CG (True) or direct Cholesky (False) (default: True)
     """
     
     def __init__(
         self,
         lmbd: float = 0.1,
-        chunk_size: int = 64,
         use_power_weighting: bool = False,
         device: torch.device = None,
         dtype: torch.dtype = torch.float32,
+        sphere_batch_size: int = 64,  # Number of spheres to process together
+        sample_batch_size: int = 50,  # Number of samples to tile over (n1_blk, n2_blk)
+        matrix_free: bool = False,  # Use matrix-free CG solver vs full kernel matrix
         **kwargs,
     ):
         super().__init__()
         self.lmbd = lmbd
-        self.chunk_size = chunk_size
         self.use_power_weighting = use_power_weighting
+        self.sphere_batch_size = sphere_batch_size
+        self.sample_batch_size = sample_batch_size
+        self.matrix_free = matrix_free
         
         # Always set a valid device
         self.compute_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -96,75 +99,281 @@ class EfficientKernelRidgeRegression(nn.Module):
 
         # Training data storage (kept on CPU)
         self.train_embeddings = None
+        self.train_power = None
         self.beta = None
         self.kernel_bandwidth = None 
-        
-    def _aggregate_embeddings(self, embeddings, power=None):
+    
+    def _compute_kernel_tile(self, emb1_block, emb2_block, power1_block=None, power2_block=None, 
+                             bandwidth=None):
         """
-        Aggregate sphere embeddings into a single representation per subject.
+        Helper method to compute kernel values for a tile of samples.
+        
+        This method is shared by both _compute_kernel_matrix_tiled and _kernel_matvec
+        to avoid code duplication. It accumulates distances additively (faster and more
+        stable than multiplicative accumulation), then applies exp once at the end.
+        
+        Expects embeddings to be on CPU - will move sphere batches to GPU as needed.
         
         Args:
-            embeddings: shape (n_subjects, n_spheres, n_bvals, d)
-            power: shape (n_subjects, n_spheres, n_bvals) - optional power weights
+            emb1_block: shape (n1_blk, n_spheres, n_bvals, d) - first embeddings block (on CPU)
+            emb2_block: shape (n2_blk, n_spheres, n_bvals, d) - second embeddings block (on CPU)
+            power1_block: shape (n1_blk, n_spheres, n_bvals) - optional power weights (on CPU)
+            power2_block: shape (n2_blk, n_spheres, n_bvals) - optional power weights (on CPU)
+            bandwidth: kernel bandwidth
         
         Returns:
-            aggregated: shape (n_subjects, n_bvals, d) - one embedding per subject per bval
+            K_block: shape (n1_blk, n2_blk) - kernel values (on GPU, float64)
         """
-        n_subjects, n_spheres, n_bvals, d = embeddings.shape
+        bandwidth = bandwidth if bandwidth is not None else self.kernel_bandwidth
+        n1_blk, n_spheres, n_bvals, d = emb1_block.shape
+        n2_blk = emb2_block.shape[0]
+        total_sb = n_spheres * n_bvals
         
-        if power is None or not self.use_power_weighting:
-            # Simple average across spheres
-            return embeddings.mean(dim=1)  # (n_subjects, n_bvals, d)
-        else:
-            # Weighted average by power
-            # Normalize power to sum to 1 across spheres
-            power_weights = power / (power.sum(dim=1, keepdim=True) + 1e-8)  # (n_subjects, n_spheres, n_bvals)
-            power_weights = power_weights.unsqueeze(-1)  # (n_subjects, n_spheres, n_bvals, 1)
+        # Additive accumulation with float32 for speed and memory
+        sum_distances = torch.zeros(n1_blk, n2_blk, device=self.compute_device, dtype=torch.float32)
+        
+        # Tile over spheres and bvals - move only sphere batches to GPU
+        for sphere_start in range(0, n_spheres, self.sphere_batch_size):
+            sphere_end = min(sphere_start + self.sphere_batch_size, n_spheres)
             
-            # Weighted sum
-            weighted_emb = (embeddings * power_weights).sum(dim=1)  # (n_subjects, n_bvals, d)
-            return weighted_emb
-    
-    def _compute_kernel_matrix(self, emb1, emb2, bandwidth=None):
+            for bval_idx in range(n_bvals):
+                # Extract embeddings for this sphere block and bval - NOW move to GPU
+                # Shape: (n1_blk, n_spheres_batch, d)
+                emb1_sb = emb1_block[:, sphere_start:sphere_end, bval_idx, :].to(self.compute_device)
+                emb2_sb = emb2_block[:, sphere_start:sphere_end, bval_idx, :].to(self.compute_device)
+
+                # Apply power weighting if requested
+                if power1_block is not None and power2_block is not None and self.use_power_weighting:
+                    # Extract power for this sphere batch and bval - move to GPU
+                    p1 = power1_block[:, sphere_start:sphere_end, bval_idx].to(self.compute_device)
+                    p2 = power2_block[:, sphere_start:sphere_end, bval_idx].to(self.compute_device)
+
+                    emb1_sb *= p1.unsqueeze(-1)
+                    emb2_sb *= p2.unsqueeze(-1)
+                    del p1, p2
+
+                # Vectorized computation across all spheres in batch
+                # (n1_blk, 1, n_spheres_batch, d) - (1, n2_blk, n_spheres_batch, d)
+                # = (n1_blk, n2_blk, n_spheres_batch, d)
+                diff = torch.abs(emb1_sb.unsqueeze(1) - emb2_sb.unsqueeze(0))
+
+                # Circular distance: wrap around at 1
+                # Mean squared distance over dimension d: (n1_blk, n2_blk, n_spheres_batch)
+                msd = torch.mean(torch.minimum(diff, 1 - diff) ** 2, dim=-1)
+
+                # Additive accumulation: sum all distances, will exp once at end
+                # Sum over spheres in batch: (n1_blk, n2_blk, n_spheres_batch) -> (n1_blk, n2_blk)
+                sum_distances += torch.sum(msd, dim=-1)
+                del msd, emb1_sb, emb2_sb, diff
+        
+        # Apply exp once at the end (more efficient and stable than multiplicative accumulation)
+        # K = exp(-sum(distances) / bandwidth)
+        # Note: sum_distances already contains the sum of mean squared distances across all spheres and bvals
+        # We use sum of distances (not mean) to preserve multi-view kernel interpretation
+        K_block = torch.exp(-sum_distances.to(torch.float64) / bandwidth)
+        del sum_distances
+        
+        return K_block
+        
+    def _compute_kernel_matrix_tiled(self, emb1, emb2, power1=None, power2=None, bandwidth=None):
         """
-        Compute RBF kernel matrix between two sets of aggregated embeddings.
-        Keeps embeddings on CPU and computes in batches on GPU.
+        Compute RBF kernel matrix using additive accumulation with tiling.
+        
+        This avoids the memory-killer 4D broadcasted diff tensor by:
+        1. Tiling over samples (n1_blk × n2_blk blocks)
+        2. Using shared _compute_kernel_tile helper with additive accumulation
+        
+        Memory-efficient because:
+        - Max GPU tensor: (n1_blk, n2_blk, n_spheres_batch, d) during distance computation
+        - No large 4D tensors ever materialized
+        - Uses float32 for distance accumulation (faster, less memory)
         
         Args:
-            emb1: shape (n, n_bvals, d) - on CPU
-            emb2: shape (m, n_bvals, d) - on CPU
+            emb1: shape (n1, n_spheres, n_bvals, d) - on CPU
+            emb2: shape (n2, n_spheres, n_bvals, d) - on CPU
+            power1: shape (n1, n_spheres, n_bvals) - optional power weights
+            power2: shape (n2, n_spheres, n_bvals) - optional power weights
+            bandwidth: kernel bandwidth (if None, use self.kernel_bandwidth)
+        
+        Returns:
+            K: shape (n1, n2) - kernel matrix (on CPU)
+        """
+        bandwidth = bandwidth if bandwidth is not None else self.kernel_bandwidth
+        n1, n_spheres, n_bvals, d = emb1.shape
+        n2 = emb2.shape[0]
+        
+        # Result kernel matrix on CPU
+        K_full = torch.zeros(n1, n2, dtype=self.dtype)
+        
+        # Tile over samples (n1 and n2 dimensions)
+        for i1 in range(0, n1, self.sample_batch_size):
+            end_i1 = min(i1 + self.sample_batch_size, n1)
+            
+            for i2 in range(0, n2, self.sample_batch_size):
+                end_i2 = min(i2 + self.sample_batch_size, n2)
+                
+                # Extract sample blocks (keep on CPU - _compute_kernel_tile will move to GPU)
+                emb1_block = emb1[i1:end_i1]
+                emb2_block = emb2[i2:end_i2]
+                
+                power1_block = power1[i1:end_i1] if power1 is not None else None
+                power2_block = power2[i2:end_i2] if power2 is not None else None
+                
+                # Compute kernel tile using shared helper
+                K_block = self._compute_kernel_tile(
+                    emb1_block, emb2_block, power1_block, power2_block, bandwidth
+                )
+                
+                # Store result for this sample block
+                K_full[i1:end_i1, i2:end_i2] = K_block.cpu().to(self.dtype)
+                del K_block, emb1_block, emb2_block, power1_block, power2_block
+                
+                # Clean up GPU cache
+                if self.compute_device.type == "cuda":
+                    torch.cuda.empty_cache()
+        
+        return K_full
+    
+    def _compute_kernel_matrix(self, emb1, emb2, power1=None, power2=None, bandwidth=None):
+        """
+        Compute RBF kernel matrix between two sets of sphere embeddings.
+        Uses multiplicative tiled approach to avoid large intermediate tensors.
+        
+        Args:
+            emb1: shape (n, n_spheres, n_bvals, d) - on CPU
+            emb2: shape (m, n_spheres, n_bvals, d) - on CPU
+            power1: shape (n, n_spheres, n_bvals) - optional power weights
+            power2: shape (m, n_spheres, n_bvals) - optional power weights
             bandwidth: kernel bandwidth (if None, use self.kernel_bandwidth)
         
         Returns:
             K: shape (n, m) - kernel matrix (on CPU)
         """
-        if bandwidth is None:
-            bandwidth = self.kernel_bandwidth
+        return self._compute_kernel_matrix_tiled(emb1, emb2, power1, power2, bandwidth)
+    
+    def _kernel_matvec(self, v, emb1=None, emb2=None, power1=None, power2=None, bandwidth=None):
+        """
+        Matrix-free kernel-vector multiplication: compute K @ v without forming K.
+        
+        This computes the result using the same tiling strategy as kernel matrix computation,
+        but only materializes one row/column tile at a time.
+        
+        Args:
+            v: shape (n2,) - vector to multiply
+            emb1: shape (n1, n_spheres, n_bvals, d) - first embeddings (default: self.train_embeddings)
+            emb2: shape (n2, n_spheres, n_bvals, d) - second embeddings (default: self.train_embeddings)
+            power1: shape (n1, n_spheres, n_bvals) - optional power weights
+            power2: shape (n2, n_spheres, n_bvals) - optional power weights
+            bandwidth: kernel bandwidth (default: self.kernel_bandwidth)
+        
+        Returns:
+            result: shape (n1,) - K @ v
+        """
+        # Use defaults from training data
+        emb1 = self.train_embeddings if emb1 is None else emb1
+        emb2 = self.train_embeddings if emb2 is None else emb2
+        power1 = self.train_power if power1 is None else power1
+        power2 = self.train_power if power2 is None else power2
+        bandwidth = self.kernel_bandwidth if bandwidth is None else bandwidth
+        
+        assert emb1 is not None and emb2 is not None
+        n1, n_spheres, n_bvals, d = emb1.shape
+        n2 = emb2.shape[0]
+        
+        # Result vector
+        result = torch.zeros(n1, dtype=self.dtype)
+        
+        # Move v to GPU once
+        v_gpu = v.to(self.compute_device, dtype=torch.float64)
+        
+        # Tile over n1 dimension
+        for i1 in range(0, n1, self.sample_batch_size):
+            end_i1 = min(i1 + self.sample_batch_size, n1)
             
-        n = emb1.shape[0]
-        m = emb2.shape[0]
-        n_bvals = emb1.shape[1]
+            # Accumulator for this row block: (n1_blk,)
+            row_result = torch.zeros(end_i1 - i1, device=self.compute_device, dtype=torch.float64)
+            
+            # Tile over n2 dimension
+            for i2 in range(0, n2, self.sample_batch_size):
+                end_i2 = min(i2 + self.sample_batch_size, n2)
+                
+                # Extract sample blocks (keep on CPU - _compute_kernel_tile will move to GPU)
+                emb1_block = emb1[i1:end_i1]
+                emb2_block = emb2[i2:end_i2]
+                
+                power1_block = power1[i1:end_i1] if power1 is not None else None
+                power2_block = power2[i2:end_i2] if power2 is not None else None
+                
+                # Compute kernel tile using shared helper
+                K_block = self._compute_kernel_tile(
+                    emb1_block, emb2_block, power1_block, power2_block, bandwidth
+                )
+                
+                # Multiply this kernel tile by corresponding part of v and accumulate
+                # K_block shape: (n1_blk, n2_blk), v_gpu[i2:end_i2] shape: (n2_blk,)
+                row_result += K_block @ v_gpu[i2:end_i2]
+                del K_block, emb1_block, emb2_block, power1_block, power2_block
+            
+            # Store result for this row block
+            result[i1:end_i1] = row_result.cpu().to(self.dtype)
+            del row_result
         
-        # Flatten bvals dimension for distance computation
-        emb1_flat = emb1.reshape(n, -1)  # (n, n_bvals * d) - on CPU
-        emb2_flat = emb2.reshape(m, -1)  # (m, n_bvals * d) - on CPU
-        
-        # Compute distances in chunks (keeps data on CPU, computes on GPU)
-        dist_matrix = dist_emb_circle_pairwise_chunked(
-            emb1_flat, emb2_flat, chunk_size=self.chunk_size, compute_device=self.compute_device
-        )
-        
-        # Move to GPU for kernel computation
-        dist_matrix_gpu = dist_matrix.to(self.compute_device)
-        K_gpu = torch.exp(-dist_matrix_gpu / bandwidth)
-        K = K_gpu.cpu()
-        
-        # Clean up
-        del dist_matrix_gpu, K_gpu
+        del v_gpu
         if self.compute_device.type == "cuda":
             torch.cuda.empty_cache()
         
-        return K
+        return result
+    
+    def _conjugate_gradient(self, b, max_iter=None, tol=1e-5):
+        """
+        Solve (K + λI)β = b using conjugate gradient method.
+        
+        Args:
+            b: shape (n,) - right-hand side vector
+            max_iter: maximum iterations (default: n)
+            tol: convergence tolerance
+        
+        Returns:
+            beta: shape (n,) - solution vector
+        """
+        n = len(b)
+        if max_iter is None:
+            max_iter = n
+        
+        # Initial guess
+        x = torch.zeros_like(b)
+        
+        # Define A @ x = (K + λI) @ x
+        def matvec(v):
+            Kv = self._kernel_matvec(v)
+            return Kv + self.lmbd * v
+        
+        # Initial residual: r = b - A @ x = b (since x = 0)
+        r = b.clone()
+        p = r.clone()
+        rsold = torch.dot(r, r)
+        
+        print(f"Starting conjugate gradient (max_iter={max_iter}, tol={tol})...")
+        for i in range(max_iter):
+            Ap = matvec(p)
+            alpha = rsold / torch.dot(p, Ap)
+            x = x + alpha * p
+            r = r - alpha * Ap
+            rsnew = torch.dot(r, r)
+            
+            # Check convergence
+            if i % 10 == 0 or rsnew < tol:
+                print(f"  Iteration {i}: residual = {rsnew.item():.6e}")
+            
+            if rsnew < tol:
+                print(f"Converged after {i+1} iterations!")
+                break
+            
+            beta = rsnew / rsold
+            p = r + beta * p
+            rsold = rsnew
+        
+        return x
     
     def fit(self, dataloader):
         """
@@ -174,10 +383,11 @@ class EfficientKernelRidgeRegression(nn.Module):
             dataloader: DataLoader yielding (data, targets, _) where
                         data is dict with 'embeddings' and 'power'
         """
-        print("Loading training data in chunks...")
+        print("Loading training data in batches...")
         
-        # First pass: collect aggregated embeddings and targets in chunks
-        aggregated_chunks = []
+        # Collect embeddings, power, and targets in chunks
+        embeddings_chunks = []
+        power_chunks = []
         target_chunks = []
         
         for i, (data, targets_batch, _) in enumerate(dataloader):
@@ -193,92 +403,155 @@ class EfficientKernelRidgeRegression(nn.Module):
             if power.dim() == 4:
                 power = power.squeeze(1)
             
-            # Aggregate embeddings for this batch (CPU)
-            aggregated_emb = self._aggregate_embeddings(embeddings, power)
-            
-            # Store aggregated results (much smaller than raw embeddings)
-            aggregated_chunks.append(aggregated_emb)
+            # Store on CPU
+            embeddings_chunks.append(embeddings.cpu())
+            power_chunks.append(power.cpu())
             target_chunks.append(targets_batch.to(self.dtype))
             
-            # Clear the large raw embeddings from memory
+            # Clear from memory
             del embeddings, power, data
         
-        print("Concatenating aggregated embeddings...")
-        # Now concatenate only the aggregated embeddings (much smaller)
-        aggregated_emb = torch.cat(aggregated_chunks, dim=0)
+        print("Concatenating data...")
+        # Concatenate all batches
+        self.train_embeddings = torch.cat(embeddings_chunks, dim=0)  # (n_subjects, n_spheres, n_bvals, d)
+        self.train_power = torch.cat(power_chunks, dim=0)  # (n_subjects, n_spheres, n_bvals)
         targets = torch.cat(target_chunks, dim=0)
         
         # Clear chunks
-        del aggregated_chunks, target_chunks
+        del embeddings_chunks, power_chunks, target_chunks
         
-        print(f"Aggregated embeddings shape: {aggregated_emb.shape}")
+        print(f"Training embeddings shape: {self.train_embeddings.shape}")
+        print(f"Training power shape: {self.train_power.shape}")
         print(f"Targets shape: {targets.shape}")
         
         # Convert targets to {-1, 1}
         targets = targets * 2 - 1
         
-        # Store for prediction (on CPU)
-        self.train_embeddings = aggregated_emb
-        
         # Estimate kernel bandwidth from data
         print("Computing kernel bandwidth from data statistics...")
         with torch.no_grad():
-            # Sample a subset for bandwidth estimation to save memory
-            n_samples = min(100, aggregated_emb.shape[0])
-            sample_idx = torch.randperm(aggregated_emb.shape[0])[:n_samples]
-            sample_emb = aggregated_emb[sample_idx].reshape(n_samples, -1)
+            # Sample a small subset for bandwidth estimation to save memory
+            n_samples = min(10, self.train_embeddings.shape[0])
+            sample_idx = torch.randperm(self.train_embeddings.shape[0])[:n_samples]
+            sample_emb = self.train_embeddings[sample_idx]
+            sample_power = self.train_power[sample_idx]
             
-            # Compute pairwise distances on sample
-            sample_dist = dist_emb_circle_pairwise_chunked(
-                sample_emb, sample_emb, chunk_size=self.chunk_size
-            )
-            self.kernel_bandwidth = sample_dist.median().item()
-            print(f"Kernel bandwidth: {self.kernel_bandwidth:.6f}")
+            n_spheres = sample_emb.shape[1]
+            n_bvals = sample_emb.shape[2]
+            total_sb = n_spheres * n_bvals
+            
+            # Compute actual summed distances between sample pairs
+            # This matches what the kernel computation does
+            pairwise_distances = []
+            for i in range(n_samples):
+                for j in range(i+1, n_samples):
+                    # Compute sum of distances for this pair (matching _compute_kernel_tile logic)
+                    sum_dist = 0.0
+                    for s_idx in range(n_spheres):
+                        for b_idx in range(n_bvals):
+                            emb_i = sample_emb[i, s_idx, b_idx, :].to(self.compute_device)
+                            emb_j = sample_emb[j, s_idx, b_idx, :].to(self.compute_device)
+                            
+                            # Apply power weighting if used
+                            if self.use_power_weighting:
+                                p_i = sample_power[i, s_idx, b_idx].to(self.compute_device)
+                                p_j = sample_power[j, s_idx, b_idx].to(self.compute_device)
+                                emb_i = emb_i * p_i
+                                emb_j = emb_j * p_j
+                            
+                            diff = torch.abs(emb_i - emb_j)
+                            dist_circ = torch.minimum(diff, 1 - diff)
+                            msd = torch.mean(dist_circ ** 2)
+                            sum_dist += msd.item()
+                    
+                    pairwise_distances.append(sum_dist)
+            
+            # Use median of summed distances for robust bandwidth estimation
+            # Classic RBF: exp(-d^2 / (2σ^2)), so bandwidth = 2σ^2
+            median_sum_dist = torch.tensor(pairwise_distances).median().item()
+            self.kernel_bandwidth = 2.0 * median_sum_dist if median_sum_dist > 0 else 1e-3
+
+            print(f"Kernel bandwidth (estimated): {self.kernel_bandwidth}")
+            print(f"  Median summed distance: {median_sum_dist:.6f}")
+            print(f"  Total spheres × bvals: {total_sb}")
+            print(f"  Expected kernel at median distance: exp(-1) ≈ {math.exp(-1):.4f}")
         
-        # Compute kernel matrix
-        print("Computing kernel matrix...")
-        n_subjects = aggregated_emb.shape[0]
+        # Solve ridge regression
+        print(f"Solving ridge regression (matrix_free={self.matrix_free})...")
+        n_subjects = self.train_embeddings.shape[0]
         
         with torch.no_grad():
-            K = self._compute_kernel_matrix(aggregated_emb, aggregated_emb)  # K is on CPU
-            print(f"Kernel matrix shape: {K.shape}")
+            # Convert targets to {-1, 1} for better numerical properties
             
-            # Solve ridge regression: beta = (K + lambda*I)^{-1} * y
-            print("Solving ridge regression...")
-            
-            # Move to GPU for solving
-            K_gpu = K.to(self.compute_device)
-            targets_gpu = targets.to(self.compute_device)
-            I = torch.eye(n_subjects, device=self.compute_device, dtype=self.dtype)
-            K_reg = K_gpu + self.lmbd * I
-            
-            # Use Cholesky decomposition for numerical stability
-            try:
-                L = torch.linalg.cholesky(K_reg)
-                beta_gpu = torch.cholesky_solve(targets_gpu.unsqueeze(1), L).squeeze(1)
-            except RuntimeError:
-                print("Warning: Cholesky decomposition failed, using standard inverse")
-                beta_gpu = torch.linalg.solve(K_reg, targets_gpu)
-            
-            # Move beta back to CPU
-            self.beta = beta_gpu.cpu()
+            if self.matrix_free:
+                # Matrix-free approach: Use conjugate gradient
+                # Solves (K + λI)β = y using only K @ v operations
+                # Memory: O(n) - only stores β vector
+                print("Using matrix-free conjugate gradient solver...")
+                self.beta = self._conjugate_gradient(targets, max_iter=min(n_subjects, 100))
+            else:
+                # Direct approach: Form full kernel matrix and solve with Cholesky
+                # Memory: O(n²) - stores full kernel matrix
+                print("Forming full kernel matrix for direct solve...")
+                K = self._compute_kernel_matrix(
+                    self.train_embeddings, 
+                    self.train_embeddings,
+                    self.train_power,
+                    self.train_power
+                )
+                print(f"Kernel matrix shape: {K.shape}")
+                
+                # Kernel diagnostics to understand scaling and help tune lambda
+                print(f"\nKernel diagnostics:")
+                print(f"  Diagonal mean (should be ~1.0): {K.diag().mean():.6f}")
+                print(f"  Diagonal std: {K.diag().std():.6f}")
+                n = K.shape[0]
+                off_diag_mask = ~torch.eye(n, dtype=torch.bool)
+                off_diag = K[off_diag_mask]
+                print(f"  Off-diagonal mean: {off_diag.mean():.6f}")
+                print(f"  Off-diagonal std: {off_diag.std():.6f}")
+                print(f"  Off-diagonal min: {off_diag.min():.6f}")
+                print(f"  Off-diagonal max: {off_diag.max():.6f}")
+                print(f"  Kernel matrix range suggests lambda in [{off_diag.std().item()*1e-3:.2e}, {off_diag.std().item()*10:.2e}]")
+                
+                # Add regularization: K + λI
+                print(f"\nKernel matrix (mean abs value): {torch.abs(K).mean()}")
+                K_reg = K + self.lmbd * torch.eye(n_subjects, dtype=self.dtype)
+                del K
+                
+                # Solve via Cholesky decomposition (stable for positive definite matrices)
+                print("Solving with Cholesky decomposition...")
+                try:
+                    L = torch.linalg.cholesky(K_reg)
+                    # Solve L L^T β = y in two steps
+                    # targets_normalized is 1D, need to make it 2D for solve_triangular
+                    y_2d = targets.unsqueeze(-1)  # (n, 1)
+                    z = torch.linalg.solve_triangular(L, y_2d, upper=False)
+                    beta_2d = torch.linalg.solve_triangular(L.T, z, upper=True)
+                    self.beta = beta_2d.squeeze(-1)  # Back to 1D
+                    del L, z, y_2d, beta_2d
+                except Exception as e:
+                    print(f"Cholesky failed: {e}, falling back to least squares")
+                    self.beta = torch.linalg.lstsq(K_reg, targets).solution
+                
+                del K_reg
             
             print(f"Beta coefficients shape: {self.beta.shape}")
             print("Training complete!")
-            
+
             # Compute training accuracy
-            train_pred = (K_gpu @ beta_gpu) > 0
-            train_acc = (train_pred.float() == ((targets_gpu + 1) / 2)).float().mean()
-            print(f"Training accuracy: {train_acc.item():.4f}")
-            
-            # Clean up GPU memory
-            del K_gpu, targets_gpu, I, K_reg, beta_gpu, train_pred
-            if self.compute_device.type == "cuda":
-                torch.cuda.empty_cache()
+            print("Computing training accuracy...")
+            # train_pred_scores = self._kernel_matvec(self.beta)
+            # train_pred = (train_pred_scores > 0).float()
+            # train_acc = (train_pred == ((targets + 1) / 2)).float().mean()
+            # print(f"Training accuracy: {train_acc.item():.4f}")
     
     def predict(self, dataloader):
         """
         Predict on new data.
+        
+        Uses either matrix-free kernel-vector multiplication (if matrix_free=True)
+        or direct kernel matrix computation (if matrix_free=False).
         
         Args:
             dataloader: DataLoader yielding (data, _, _)
@@ -289,14 +562,14 @@ class EfficientKernelRidgeRegression(nn.Module):
         if self.train_embeddings is None or self.beta is None:
             raise RuntimeError("Model must be fitted before prediction")
         
-        print("Predicting on test data...")
+        print(f"Predicting on test data (matrix_free={self.matrix_free})...")
         all_predictions = []
         
         with torch.no_grad():
             for i, (data, _, _) in enumerate(dataloader):
                 print(f"  Batch {i+1}/{len(dataloader)}")
                 
-                # Load and aggregate test embeddings - keep on CPU
+                # Load test embeddings and power - keep on CPU
                 embeddings = data["embeddings"].to(self.dtype)
                 power = data["power"].to(self.dtype)
                 
@@ -306,26 +579,33 @@ class EfficientKernelRidgeRegression(nn.Module):
                 if power.dim() == 4:
                     power = power.squeeze(1)
                 
-                # Aggregate embeddings (on CPU)
-                aggregated_emb = self._aggregate_embeddings(embeddings, power)
+                if self.matrix_free:
+                    # Matrix-free approach: compute K_test @ beta without forming K_test
+                    # Memory: O(n_test + n_train)
+                    scores = self._kernel_matvec(
+                        self.beta, 
+                        emb1=embeddings,  # test samples
+                        emb2=self.train_embeddings,  # train samples
+                        power1=power,
+                        power2=self.train_power
+                    )
+                else:
+                    # Direct approach: form K_test matrix and multiply
+                    # Memory: O(n_test × n_train)
+                    K_test = self._compute_kernel_matrix(
+                        embeddings,
+                        self.train_embeddings,
+                        power,
+                        self.train_power
+                    )
+                    scores = K_test @ self.beta
+                    del K_test
                 
-                # Compute kernel with training data (computation happens on GPU in chunks)
-                K_test = self._compute_kernel_matrix(aggregated_emb, self.train_embeddings)
-                
-                # Move to GPU for prediction
-                K_test_gpu = K_test.to(self.compute_device)
-                beta_gpu = self.beta.to(self.compute_device)
-                
-                # Predict
-                scores = K_test_gpu @ beta_gpu
-                predictions = (scores > 0).float().cpu()
-                
+                predictions = (scores > 0).float()
                 all_predictions.append(predictions)
                 
-                # Clean up GPU memory
-                del K_test_gpu, beta_gpu, scores
-                if self.compute_device.type == "cuda":
-                    torch.cuda.empty_cache()
+                # Clean up
+                del embeddings, power, scores
         
         print("Prediction complete!")
-        return torch.cat(all_predictions, dim=0).cpu()
+        return torch.cat(all_predictions, dim=0)

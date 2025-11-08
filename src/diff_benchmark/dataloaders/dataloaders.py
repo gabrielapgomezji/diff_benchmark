@@ -67,7 +67,7 @@ class PreprocessedData:
             Subset(dataset, train_idx),
             batch_size=batch_size,
             shuffle=False,
-            num_workers=10,
+            num_workers=12,
             pin_memory=False,
             collate_fn=self.safe_collate,
         )
@@ -75,7 +75,7 @@ class PreprocessedData:
             Subset(dataset, test_idx),
             batch_size=batch_size,
             shuffle=False,
-            num_workers=10,
+            num_workers=12,
             pin_memory=False,
             collate_fn=self.safe_collate,
         )
