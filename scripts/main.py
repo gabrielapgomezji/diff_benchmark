@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import torch
 import yaml
+import argparse
 from joblib import Parallel, delayed
 
 from diff_benchmark.analysis.plot_history import plot_history_from_file
@@ -30,9 +31,19 @@ from diff_benchmark.preprocessing.wrapper_brain_data import (
 from diff_benchmark.scores.scores import accuracy_score, compute_metrics
 from diff_benchmark.utils.job_manager import run_jobs
 
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--method", type=str, default="lcot", help="Method to use")
+args = parser.parse_args()
+
+
 DEBUG = True
 
-config_path = Path(__file__).parent.parent / "configuration.yaml"
+if args.method == "lcot":
+    config_path = Path(__file__).parent.parent / f"config/configuration_{args.method}.yaml"
+else:
+    config_path = Path(__file__).parent.parent / "configuration.yaml"
+
 with open(config_path, "r") as f:
     config = yaml.safe_load(f)
 
