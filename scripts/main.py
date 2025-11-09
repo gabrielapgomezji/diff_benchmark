@@ -53,10 +53,13 @@ json_path = (
 # with open(json_path, "r") as f:
 #     model_configs = json.load(f)["models"]
 
+if args.method == "lcot":
+    brain_preparator = LcotEmbedHcpPipeline(config)
+
 # brain_preparator = ImageHcpPipeline(config)
 # brain_preparator = DefaultHcpPipeline(config)
-brain_preparator = LcotEmbedHcpPipeline(config)
 # brain_preparator = DefaultWandPipeline(config)
+
 brain_df = brain_preparator.run_pipeline()
 brain_df = brain_df.reset_index()
 
