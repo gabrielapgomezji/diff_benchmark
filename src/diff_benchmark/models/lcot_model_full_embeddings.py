@@ -4,8 +4,7 @@ from tqdm import tqdm
 import math
 
 
-
-class EfficientKernelRidgeRegression(nn.Module):
+class fullEmbeddingsKernelRidgeRegression(nn.Module):
     """
     Memory-efficient Kernel Ridge Regression for sphere embeddings.
     
@@ -103,8 +102,7 @@ class EfficientKernelRidgeRegression(nn.Module):
         self.beta = None
         self.kernel_bandwidth = None 
     
-    def _compute_kernel_tile(self, emb1_block, emb2_block, power1_block=None, power2_block=None, 
-                             bandwidth=None):
+    def _compute_kernel_tile(self, emb1_block, emb2_block, bandwidth=None):
         """
         Helper method to compute kernel values for a tile of samples.
         
@@ -117,8 +115,6 @@ class EfficientKernelRidgeRegression(nn.Module):
         Args:
             emb1_block: shape (n1_blk, n_spheres, n_bvals, d) - first embeddings block (on CPU)
             emb2_block: shape (n2_blk, n_spheres, n_bvals, d) - second embeddings block (on CPU)
-            power1_block: shape (n1_blk, n_spheres, n_bvals) - optional power weights (on CPU)
-            power2_block: shape (n2_blk, n_spheres, n_bvals) - optional power weights (on CPU)
             bandwidth: kernel bandwidth
         
         Returns:
@@ -127,11 +123,10 @@ class EfficientKernelRidgeRegression(nn.Module):
         bandwidth = bandwidth if bandwidth is not None else self.kernel_bandwidth
         n1_blk, n_spheres, n_bvals, d = emb1_block.shape
         n2_blk = emb2_block.shape[0]
-        total_sb = n_spheres * n_bvals
         
         # Additive accumulation with float32 for speed and memory
         sum_distances = torch.zeros(n1_blk, n2_blk, device=self.compute_device, dtype=torch.float32)
-        
+
         # Tile over spheres and bvals - move only sphere batches to GPU
         for sphere_start in range(0, n_spheres, self.sphere_batch_size):
             sphere_end = min(sphere_start + self.sphere_batch_size, n_spheres)
@@ -141,16 +136,6 @@ class EfficientKernelRidgeRegression(nn.Module):
                 # Shape: (n1_blk, n_spheres_batch, d)
                 emb1_sb = emb1_block[:, sphere_start:sphere_end, bval_idx, :].to(self.compute_device)
                 emb2_sb = emb2_block[:, sphere_start:sphere_end, bval_idx, :].to(self.compute_device)
-
-                # Apply power weighting if requested
-                if power1_block is not None and power2_block is not None and self.use_power_weighting:
-                    # Extract power for this sphere batch and bval - move to GPU
-                    p1 = power1_block[:, sphere_start:sphere_end, bval_idx].to(self.compute_device)
-                    p2 = power2_block[:, sphere_start:sphere_end, bval_idx].to(self.compute_device)
-
-                    emb1_sb *= p1.unsqueeze(-1)
-                    emb2_sb *= p2.unsqueeze(-1)
-                    del p1, p2
 
                 # Vectorized computation across all spheres in batch
                 # (n1_blk, 1, n_spheres_batch, d) - (1, n2_blk, n_spheres_batch, d)
@@ -175,7 +160,7 @@ class EfficientKernelRidgeRegression(nn.Module):
         
         return K_block
         
-    def _compute_kernel_matrix_tiled(self, emb1, emb2, power1=None, power2=None, bandwidth=None):
+    def _compute_kernel_matrix(self, emb1, emb2, bandwidth=None):
         """
         Compute RBF kernel matrix using additive accumulation with tiling.
         
@@ -191,8 +176,6 @@ class EfficientKernelRidgeRegression(nn.Module):
         Args:
             emb1: shape (n1, n_spheres, n_bvals, d) - on CPU
             emb2: shape (n2, n_spheres, n_bvals, d) - on CPU
-            power1: shape (n1, n_spheres, n_bvals) - optional power weights
-            power2: shape (n2, n_spheres, n_bvals) - optional power weights
             bandwidth: kernel bandwidth (if None, use self.kernel_bandwidth)
         
         Returns:
@@ -216,165 +199,21 @@ class EfficientKernelRidgeRegression(nn.Module):
                 emb1_block = emb1[i1:end_i1]
                 emb2_block = emb2[i2:end_i2]
                 
-                power1_block = power1[i1:end_i1] if power1 is not None else None
-                power2_block = power2[i2:end_i2] if power2 is not None else None
-                
                 # Compute kernel tile using shared helper
                 K_block = self._compute_kernel_tile(
-                    emb1_block, emb2_block, power1_block, power2_block, bandwidth
+                    emb1_block, emb2_block, bandwidth
                 )
                 
                 # Store result for this sample block
                 K_full[i1:end_i1, i2:end_i2] = K_block.cpu().to(self.dtype)
-                del K_block, emb1_block, emb2_block, power1_block, power2_block
+                del K_block, emb1_block, emb2_block
                 
                 # Clean up GPU cache
                 if self.compute_device.type == "cuda":
                     torch.cuda.empty_cache()
         
         return K_full
-    
-    def _compute_kernel_matrix(self, emb1, emb2, power1=None, power2=None, bandwidth=None):
-        """
-        Compute RBF kernel matrix between two sets of sphere embeddings.
-        Uses multiplicative tiled approach to avoid large intermediate tensors.
-        
-        Args:
-            emb1: shape (n, n_spheres, n_bvals, d) - on CPU
-            emb2: shape (m, n_spheres, n_bvals, d) - on CPU
-            power1: shape (n, n_spheres, n_bvals) - optional power weights
-            power2: shape (m, n_spheres, n_bvals) - optional power weights
-            bandwidth: kernel bandwidth (if None, use self.kernel_bandwidth)
-        
-        Returns:
-            K: shape (n, m) - kernel matrix (on CPU)
-        """
-        return self._compute_kernel_matrix_tiled(emb1, emb2, power1, power2, bandwidth)
-    
-    def _kernel_matvec(self, v, emb1=None, emb2=None, power1=None, power2=None, bandwidth=None):
-        """
-        Matrix-free kernel-vector multiplication: compute K @ v without forming K.
-        
-        This computes the result using the same tiling strategy as kernel matrix computation,
-        but only materializes one row/column tile at a time.
-        
-        Args:
-            v: shape (n2,) - vector to multiply
-            emb1: shape (n1, n_spheres, n_bvals, d) - first embeddings (default: self.train_embeddings)
-            emb2: shape (n2, n_spheres, n_bvals, d) - second embeddings (default: self.train_embeddings)
-            power1: shape (n1, n_spheres, n_bvals) - optional power weights
-            power2: shape (n2, n_spheres, n_bvals) - optional power weights
-            bandwidth: kernel bandwidth (default: self.kernel_bandwidth)
-        
-        Returns:
-            result: shape (n1,) - K @ v
-        """
-        # Use defaults from training data
-        emb1 = self.train_embeddings if emb1 is None else emb1
-        emb2 = self.train_embeddings if emb2 is None else emb2
-        power1 = self.train_power if power1 is None else power1
-        power2 = self.train_power if power2 is None else power2
-        bandwidth = self.kernel_bandwidth if bandwidth is None else bandwidth
-        
-        assert emb1 is not None and emb2 is not None
-        n1, n_spheres, n_bvals, d = emb1.shape
-        n2 = emb2.shape[0]
-        
-        # Result vector
-        result = torch.zeros(n1, dtype=self.dtype)
-        
-        # Move v to GPU once
-        v_gpu = v.to(self.compute_device, dtype=torch.float64)
-        
-        # Tile over n1 dimension
-        for i1 in range(0, n1, self.sample_batch_size):
-            end_i1 = min(i1 + self.sample_batch_size, n1)
-            
-            # Accumulator for this row block: (n1_blk,)
-            row_result = torch.zeros(end_i1 - i1, device=self.compute_device, dtype=torch.float64)
-            
-            # Tile over n2 dimension
-            for i2 in range(0, n2, self.sample_batch_size):
-                end_i2 = min(i2 + self.sample_batch_size, n2)
-                
-                # Extract sample blocks (keep on CPU - _compute_kernel_tile will move to GPU)
-                emb1_block = emb1[i1:end_i1]
-                emb2_block = emb2[i2:end_i2]
-                
-                power1_block = power1[i1:end_i1] if power1 is not None else None
-                power2_block = power2[i2:end_i2] if power2 is not None else None
-                
-                # Compute kernel tile using shared helper
-                K_block = self._compute_kernel_tile(
-                    emb1_block, emb2_block, power1_block, power2_block, bandwidth
-                )
-                
-                # Multiply this kernel tile by corresponding part of v and accumulate
-                # K_block shape: (n1_blk, n2_blk), v_gpu[i2:end_i2] shape: (n2_blk,)
-                row_result += K_block @ v_gpu[i2:end_i2]
-                del K_block, emb1_block, emb2_block, power1_block, power2_block
-            
-            # Store result for this row block
-            result[i1:end_i1] = row_result.cpu().to(self.dtype)
-            del row_result
-        
-        del v_gpu
-        if self.compute_device.type == "cuda":
-            torch.cuda.empty_cache()
-        
-        return result
-    
-    def _conjugate_gradient(self, b, max_iter=None, tol=1e-5):
-        """
-        Solve (K + λI)β = b using conjugate gradient method.
-        
-        Args:
-            b: shape (n,) - right-hand side vector
-            max_iter: maximum iterations (default: n)
-            tol: convergence tolerance
-        
-        Returns:
-            beta: shape (n,) - solution vector
-        """
-        n = len(b)
-        if max_iter is None:
-            max_iter = n
-        
-        # Initial guess
-        x = torch.zeros_like(b)
-        
-        # Define A @ x = (K + λI) @ x
-        def matvec(v):
-            Kv = self._kernel_matvec(v)
-            return Kv + self.lmbd * v
-        
-        # Initial residual: r = b - A @ x = b (since x = 0)
-        r = b.clone()
-        p = r.clone()
-        rsold = torch.dot(r, r)
-        
-        print(f"Starting conjugate gradient (max_iter={max_iter}, tol={tol})...")
-        for i in range(max_iter):
-            Ap = matvec(p)
-            alpha = rsold / torch.dot(p, Ap)
-            x = x + alpha * p
-            r = r - alpha * Ap
-            rsnew = torch.dot(r, r)
-            
-            # Check convergence
-            if i % 10 == 0 or rsnew < tol:
-                print(f"  Iteration {i}: residual = {rsnew.item():.6e}")
-            
-            if rsnew < tol:
-                print(f"Converged after {i+1} iterations!")
-                break
-            
-            beta = rsnew / rsold
-            p = r + beta * p
-            rsold = rsnew
-        
-        return x
-    
+
     def fit(self, dataloader):
         """
         Fit the kernel ridge regression model.
@@ -416,7 +255,7 @@ class EfficientKernelRidgeRegression(nn.Module):
         self.train_embeddings = torch.cat(embeddings_chunks, dim=0)  # (n_subjects, n_spheres, n_bvals, d)
         self.train_power = torch.cat(power_chunks, dim=0)  # (n_subjects, n_spheres, n_bvals)
         targets = torch.cat(target_chunks, dim=0)
-        
+
         # Clear chunks
         del embeddings_chunks, power_chunks, target_chunks
         
@@ -452,13 +291,6 @@ class EfficientKernelRidgeRegression(nn.Module):
                             emb_i = sample_emb[i, s_idx, b_idx, :].to(self.compute_device)
                             emb_j = sample_emb[j, s_idx, b_idx, :].to(self.compute_device)
                             
-                            # Apply power weighting if used
-                            if self.use_power_weighting:
-                                p_i = sample_power[i, s_idx, b_idx].to(self.compute_device)
-                                p_j = sample_power[j, s_idx, b_idx].to(self.compute_device)
-                                emb_i = emb_i * p_i
-                                emb_j = emb_j * p_j
-                            
                             diff = torch.abs(emb_i - emb_j)
                             dist_circ = torch.minimum(diff, 1 - diff)
                             msd = torch.mean(dist_circ ** 2)
@@ -482,59 +314,36 @@ class EfficientKernelRidgeRegression(nn.Module):
         
         with torch.no_grad():
             # Convert targets to {-1, 1} for better numerical properties
-            
-            if self.matrix_free:
-                # Matrix-free approach: Use conjugate gradient
-                # Solves (K + λI)β = y using only K @ v operations
-                # Memory: O(n) - only stores β vector
-                print("Using matrix-free conjugate gradient solver...")
-                self.beta = self._conjugate_gradient(targets, max_iter=min(n_subjects, 100))
-            else:
                 # Direct approach: Form full kernel matrix and solve with Cholesky
                 # Memory: O(n²) - stores full kernel matrix
-                print("Forming full kernel matrix for direct solve...")
-                K = self._compute_kernel_matrix(
-                    self.train_embeddings, 
-                    self.train_embeddings,
-                    self.train_power,
-                    self.train_power
-                )
-                print(f"Kernel matrix shape: {K.shape}")
+            print("Forming full kernel matrix for direct solve...")
+            K = self._compute_kernel_matrix(
+                self.train_embeddings, 
+                self.train_embeddings,
+            )
+            print(f"Kernel matrix shape: {K.shape}")
                 
-                # Kernel diagnostics to understand scaling and help tune lambda
-                print(f"\nKernel diagnostics:")
-                print(f"  Diagonal mean (should be ~1.0): {K.diag().mean():.6f}")
-                print(f"  Diagonal std: {K.diag().std():.6f}")
-                n = K.shape[0]
-                off_diag_mask = ~torch.eye(n, dtype=torch.bool)
-                off_diag = K[off_diag_mask]
-                print(f"  Off-diagonal mean: {off_diag.mean():.6f}")
-                print(f"  Off-diagonal std: {off_diag.std():.6f}")
-                print(f"  Off-diagonal min: {off_diag.min():.6f}")
-                print(f"  Off-diagonal max: {off_diag.max():.6f}")
-                print(f"  Kernel matrix range suggests lambda in [{off_diag.std().item()*1e-3:.2e}, {off_diag.std().item()*10:.2e}]")
-                
-                # Add regularization: K + λI
-                print(f"\nKernel matrix (mean abs value): {torch.abs(K).mean()}")
-                K_reg = K + self.lmbd * torch.eye(n_subjects, dtype=self.dtype)
-                del K
-                
-                # Solve via Cholesky decomposition (stable for positive definite matrices)
-                print("Solving with Cholesky decomposition...")
-                try:
-                    L = torch.linalg.cholesky(K_reg)
-                    # Solve L L^T β = y in two steps
-                    # targets_normalized is 1D, need to make it 2D for solve_triangular
-                    y_2d = targets.unsqueeze(-1)  # (n, 1)
-                    z = torch.linalg.solve_triangular(L, y_2d, upper=False)
-                    beta_2d = torch.linalg.solve_triangular(L.T, z, upper=True)
-                    self.beta = beta_2d.squeeze(-1)  # Back to 1D
-                    del L, z, y_2d, beta_2d
-                except Exception as e:
-                    print(f"Cholesky failed: {e}, falling back to least squares")
-                    self.beta = torch.linalg.lstsq(K_reg, targets).solution
-                
-                del K_reg
+            # Add regularization: K + λI
+            print(f"\nKernel matrix (mean abs value): {torch.abs(K).mean()}")
+            K_reg = K + self.lmbd * torch.eye(n_subjects, dtype=self.dtype)
+            del K
+
+            # Solve via Cholesky decomposition (stable for positive definite matrices)
+            print("Solving with Cholesky decomposition...")
+            try:
+                L = torch.linalg.cholesky(K_reg)
+                # Solve L L^T β = y in two steps
+                # targets_normalized is 1D, need to make it 2D for solve_triangular
+                y_2d = targets.unsqueeze(-1)  # (n, 1)
+                z = torch.linalg.solve_triangular(L, y_2d, upper=False)
+                beta_2d = torch.linalg.solve_triangular(L.T, z, upper=True)
+                self.beta = beta_2d.squeeze(-1)  # Back to 1D
+                del L, z, y_2d, beta_2d
+            except Exception as e:
+                print(f"Cholesky failed: {e}, falling back to least squares")
+                self.beta = torch.linalg.lstsq(K_reg, targets).solution
+            
+            del K_reg
             
             print(f"Beta coefficients shape: {self.beta.shape}")
             print("Training complete!")
@@ -578,28 +387,15 @@ class EfficientKernelRidgeRegression(nn.Module):
                     embeddings = embeddings.squeeze(1)
                 if power.dim() == 4:
                     power = power.squeeze(1)
-                
-                if self.matrix_free:
-                    # Matrix-free approach: compute K_test @ beta without forming K_test
-                    # Memory: O(n_test + n_train)
-                    scores = self._kernel_matvec(
-                        self.beta, 
-                        emb1=embeddings,  # test samples
-                        emb2=self.train_embeddings,  # train samples
-                        power1=power,
-                        power2=self.train_power
-                    )
-                else:
-                    # Direct approach: form K_test matrix and multiply
-                    # Memory: O(n_test × n_train)
-                    K_test = self._compute_kernel_matrix(
-                        embeddings,
-                        self.train_embeddings,
-                        power,
-                        self.train_power
-                    )
-                    scores = K_test @ self.beta
-                    del K_test
+        
+                # Direct approach: form K_test matrix and multiply
+                # Memory: O(n_test × n_train)
+                K_test = self._compute_kernel_matrix(
+                    embeddings,
+                    self.train_embeddings,
+                )
+                scores = K_test @ self.beta
+                del K_test
                 
                 predictions = (scores > 0).float()
                 all_predictions.append(predictions)
