@@ -36,8 +36,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--method", type=str, default="lcot", help="Method to use")
 args = parser.parse_args()
 
-
-# DEBUG = True
 args.method = "None"
 if args.method == "lcot":
     config_path = Path(__file__).parent.parent / f"config/configuration_{args.method}.yaml"
@@ -46,65 +44,69 @@ else:
 
 with open(config_path, "r") as f:
     config = yaml.safe_load(f)
-
-# json_path = (
-#     Path(__file__).parent.parent / "src/diff_benchmark/models/model_configurations.json"
-# )
-# with open(json_path, "r") as f:
-#     model_configs = json.load(f)["models"]
-
-if args.method == "lcot":
-    brain_preparator = LcotEmbedHcpPipeline(config)
-else:
-    # brain_preparator = LcotEmbedHcpPipeline(config)
-    brain_preparator = ImageHcpPipeline(config)
-    # brain_preparator = DefaultHcpPipeline(config)
-
-# brain_preparator = ImageHcpPipeline(config)
-# brain_preparator = DefaultHcpPipeline(config)
-# brain_preparator = DefaultWandPipeline(config)
-
-brain_df = brain_preparator.run_microstructure_pipeline()
-brain_df = brain_df.reset_index()
-
-breakpoint()
-
-##### NEXT TESTING STEPS
-preprocessor = DefaultDemographicsPreprocessor(config["data_paths"]["csv_file"])
-demographics_df = preprocessor.preprocess(config["target_columns"])
-
-common_subjects = set(brain_df["subject_id"].astype(str)) & set(
-    demographics_df["Subject"].astype(str)
-)
-demographics_filtered = demographics_df[
-    demographics_df["Subject"].astype(str).isin(common_subjects)
-]
-brain_filtered = brain_df[brain_df["subject_id"].astype(str).isin(common_subjects)]
-
-# DATASET GENERATION
-
-X = brain_filtered  # .drop(columns=["subject_id"]).to_numpy()
-y = np.array(demographics_filtered["Gender"])
-gender = np.array(demographics_filtered["Gender"])
-
-dataset = CustomDataset(X, y, gender)
-# features, target, gender = dataset[0]
-# features, target, gender = dataset[len(dataset)-1]
-# ----------- CROSS VALIDATION + TRAINING + TESTING -----------
-
-
-preprocessed = PreprocessedData(
-    X, y, gender, n_splits=config["n_splits"], random_state=config["random_state"]
-)
-
-specs = preprocessed.get_specs()
-print(specs)
-
-# folds = preprocessed.get_folds_as_dataloaders(batch_size=16)
-indices = preprocessed.get_fold_indices()
-
-
+        
 def run_single_model(model_name, config, dataset, preprocessed, indices, results_path):
+    # DEBUG = True
+
+
+    # json_path = (
+    #     Path(__file__).parent.parent / "src/diff_benchmark/models/model_configurations.json"
+    # )
+    # with open(json_path, "r") as f:
+    #     model_configs = json.load(f)["models"]
+
+    if args.method == "lcot":
+        brain_preparator = LcotEmbedHcpPipeline(config)
+    else:
+        brain_preparator = LcotEmbedHcpPipeline(config)
+        # brain_preparator = ImageHcpPipeline(config)
+        # brain_preparator = DefaultHcpPipeline(config)
+
+    # brain_preparator = ImageHcpPipeline(config)
+    # brain_preparator = DefaultHcpPipeline(config)
+    # brain_preparator = DefaultWandPipeline(config)
+
+    brain_df = brain_preparator.run_microstructure_pipeline()
+    brain_df = brain_df.reset_index()
+
+    breakpoint()
+
+    ##### NEXT TESTING STEPS
+    preprocessor = DefaultDemographicsPreprocessor(config["data_paths"]["csv_file"])
+    demographics_df = preprocessor.preprocess(config["target_columns"])
+
+    common_subjects = set(brain_df["subject_id"].astype(str)) & set(
+        demographics_df["Subject"].astype(str)
+    )
+    demographics_filtered = demographics_df[
+        demographics_df["Subject"].astype(str).isin(common_subjects)
+    ]
+    brain_filtered = brain_df[brain_df["subject_id"].astype(str).isin(common_subjects)]
+
+    # DATASET GENERATION
+
+    X = brain_filtered  # .drop(columns=["subject_id"]).to_numpy()
+    y = np.array(demographics_filtered["Gender"])
+    gender = np.array(demographics_filtered["Gender"])
+
+    dataset = CustomDataset(X, y, gender)
+    # features, target, gender = dataset[0]
+    # features, target, gender = dataset[len(dataset)-1]
+    # ----------- CROSS VALIDATION + TRAINING + TESTING -----------
+
+
+    preprocessed = PreprocessedData(
+        X, y, gender, n_splits=config["n_splits"], random_state=config["random_state"]
+    )
+
+    specs = preprocessed.get_specs()
+    print(specs)
+
+    # folds = preprocessed.get_folds_as_dataloaders(batch_size=16)
+    indices = preprocessed.get_fold_indices()
+
+
+# def run_single_model(model_name, config, dataset, preprocessed, indices, results_path):
     local_config = copy.deepcopy(config)
     local_config["model_name"] = model_name
     run_id = make_run_id(model_name, local_config)
@@ -278,7 +280,7 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
 models_to_run = config["models"]
 
 results = run_jobs(
-    run_single_model, models_to_run, dataset, preprocessed, indices, config
+    run_single_model, models_to_run, config
 )
 
 # results is a list of (model_name, per_fold_results)

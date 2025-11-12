@@ -7,9 +7,9 @@ from joblib import Parallel, delayed
 def run_single_process(
     run_fn: Callable,
     models_to_run: list,
-    dataset: any,
-    preprocessed: any,
-    indices: any,
+    # dataset: any,
+    # preprocessed: any,
+    # indices: any,
     results_path: str,
 ) -> list:
     results = []
@@ -18,9 +18,9 @@ def run_single_process(
             run_fn(
                 model["name"],
                 {**model["params"]},
-                dataset,
-                preprocessed,
-                indices,
+                # dataset,
+                # preprocessed,
+                # indices,
                 results_path,
             )
         )
@@ -30,9 +30,9 @@ def run_single_process(
 def run_with_joblib(
     run_fn: Callable,
     models_to_run: list,
-    dataset: any,
-    preprocessed: any,
-    indices: any,
+    # dataset: any,
+    # preprocessed: any,
+    # indices: any,
     results_path: str,
     n_jobs: int = 5,
 ) -> list:
@@ -53,9 +53,9 @@ def run_with_joblib(
         delayed(run_fn)(
             model_entry["name"],
             {**model_entry["params"]},
-            dataset,
-            preprocessed,
-            indices,
+            # dataset,
+            # preprocessed,
+            # indices,
             results_path,
         )
         for model_entry in models_to_run
@@ -66,9 +66,9 @@ def run_with_joblib(
 def run_with_slurm(
     run_fn: Callable,
     models_to_run: list,
-    dataset: any,
-    preprocessed: any,
-    indices: list,
+    # dataset: any,
+    # preprocessed: any,
+    # indices: list,
     results_path: str,
     slurm_cfg: dict,
 ) -> list:
@@ -128,9 +128,9 @@ def run_with_slurm(
             run_fn,
             model_entry["name"],
             {**model_entry["params"]},
-            dataset,
-            preprocessed,
-            indices,
+            # dataset,
+            # preprocessed,
+            # indices,
             results_path,
         )
         jobs.append(job)
@@ -143,9 +143,9 @@ def run_with_slurm(
 def run_jobs(
     run_fn: Callable,
     models_to_run: list,
-    dataset: any,
-    preprocessed: any,
-    indices: list,
+    # dataset: any,
+    # preprocessed: any,
+    # indices: list,
     config: dict,
 ) -> any:
     """
@@ -171,9 +171,9 @@ def run_jobs(
         return run_with_slurm(
             run_fn,
             models_to_run,
-            dataset,
-            preprocessed,
-            indices,
+            # dataset,
+            # preprocessed,
+            # indices,
             config.get("results_path_logs", "./data"),
             config.get("slurm", {}),
         )
@@ -183,9 +183,9 @@ def run_jobs(
         return run_with_joblib(
             run_fn,
             models_to_run,
-            dataset,
-            preprocessed,
-            indices,
+            # dataset,
+            # preprocessed,
+            # indices,
             config.get("results_path_logs", "./data"),
             config.get("n_jobs", 5),
         )
@@ -194,8 +194,8 @@ def run_jobs(
     return run_single_process(
         run_fn,
         models_to_run,
-        dataset,
-        preprocessed,
-        indices,
+        # dataset,
+        # preprocessed,
+        # indices,
         config.get("results_path_logs", "./data"),
     )
