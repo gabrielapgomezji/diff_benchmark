@@ -248,7 +248,16 @@ class PowerOnlyKernelRidgeRegression(nn.Module):
     def _grid_search_cv(self, features, targets, n_folds=5):
         """
         Perform grid search cross-validation to select optimal lambda.
-        Estimates bandwidth separately for each fold to avoid data leakage.
+        
+        OPTIMIZED VERSION: Computes the full kernel matrix ONCE, then reuses it for all folds
+        and all lambda values by indexing. This is much faster than recomputing kernels.
+        
+        Steps:
+        1. Estimate bandwidth on full dataset (bootstrap)
+        2. Compute full kernel matrix K (n × n) once
+        3. For each fold:
+           - Index K to get K_train (train × train) and K_val (val × train)
+           - For each lambda: solve and evaluate (fast, no kernel computation!)
         
         Args:
             features: shape (n_subjects, feature_dim)
@@ -257,8 +266,10 @@ class PowerOnlyKernelRidgeRegression(nn.Module):
         
         Returns:
             best_lambda: optimal regularization parameter
+            bandwidth: estimated bandwidth used for CV
         """
         print("\nPerforming grid search cross-validation for lambda...")
+        print("OPTIMIZED: Computing kernel matrix once and reusing for all folds/lambdas")
         
         # Define lambda grid (log scale from 1e-2 to 1e2)
         lambda_grid = np.logspace(-2, 2, num=20)
@@ -271,45 +282,81 @@ class PowerOnlyKernelRidgeRegression(nn.Module):
         torch.manual_seed(self.seed)
         indices = torch.randperm(n_subjects)
         
-        # Store results
+        # Step 1: Estimate bandwidth on full dataset using bootstrap
+        print(f"\nEstimating bandwidth on full dataset for CV...")
+        cv_bandwidth = self._estimate_bandwidth(
+            features, 
+            n_samples=min(self.n_samples, n_subjects), 
+            n_bootstrap=10
+        )
+        print(f"CV bandwidth: {cv_bandwidth:.6f}")
+        
+        # Step 2: Compute full kernel matrix ONCE - this is the expensive operation
+        print(f"\nComputing full kernel matrix ({n_subjects} × {n_subjects}) - this is done ONCE...")
+        K_full = self._compute_rbf_kernel_chunked(features, features, cv_bandwidth)
+        print(f"Kernel matrix computed! Shape: {K_full.shape}")
+        
+        # Step 3: For each fold, just INDEX into the kernel matrix
         cv_scores = {lmbd: [] for lmbd in lambda_grid}
         
-        print(f"\nRunning {n_folds}-fold cross-validation...")
+        print(f"\nRunning {n_folds}-fold cross-validation with pre-computed kernel...")
         
         for fold in range(n_folds):
             print(f"\n  Fold {fold + 1}/{n_folds}")
             
-            # Create train/val split
+            # Create train/val split indices
             val_start = fold * fold_size
             val_end = (fold + 1) * fold_size if fold < n_folds - 1 else n_subjects
             
             val_idx = indices[val_start:val_end]
             train_idx = torch.cat([indices[:val_start], indices[val_end:]])
             
-            train_features = features[train_idx]
-            train_targets = targets[train_idx]
-            val_features = features[val_idx]
-            val_targets = targets[val_idx]
+            train_targets_fold = targets[train_idx]
+            val_targets_fold = targets[val_idx]
             
             print(f"    Train size: {len(train_idx)}, Val size: {len(val_idx)}")
             
-            # Estimate bandwidth ONLY on training fold (no data leakage)
-            print(f"    Estimating bandwidth on training fold only...")
-            fold_bandwidth = self._estimate_bandwidth(
-                train_features, 
-                n_samples=min(self.n_samples, len(train_idx)), 
-                n_bootstrap=10
-            )
-            print(f"    Fold bandwidth: {fold_bandwidth:.6f}")
+            # INDEX into pre-computed kernel matrix (very fast!)
+            # K_train: kernel between training samples
+            K_train = K_full[train_idx.unsqueeze(1), train_idx.unsqueeze(0)]
+            # K_val: kernel between validation and training samples
+            K_val = K_full[val_idx.unsqueeze(1), train_idx.unsqueeze(0)]
             
-            # Test each lambda
+            # Test each lambda (now very fast since kernel is pre-computed)
+            print(f"    Testing {len(lambda_grid)} lambda values (fast - no kernel computation)...")
             for lmbd in lambda_grid:
-                val_acc = self._train_fold(
-                    train_features, train_targets, 
-                    val_features, val_targets, 
-                    lmbd, fold_bandwidth
-                )
-                cv_scores[lmbd].append(val_acc)
+                # Solve ridge regression: (K_train + λI)β = y_train
+                n_train = len(train_idx)
+                I = torch.eye(n_train, dtype=self.dtype)
+                K_reg = K_train + lmbd * I
+                
+                # Solve using Cholesky decomposition
+                try:
+                    L = torch.linalg.cholesky(K_reg)
+                    beta = torch.cholesky_solve(train_targets_fold.unsqueeze(-1), L).squeeze(-1)
+                except RuntimeError:
+                    beta = torch.linalg.lstsq(K_reg, train_targets_fold).solution
+                
+                # Predict on validation set: f(x_val) = K_val @ β
+                val_scores = K_val @ beta
+                val_pred = (val_scores > 0).float()
+                
+                # Compute accuracy
+                val_accuracy = (val_pred == ((val_targets_fold + 1) / 2)).float().mean().item()
+                cv_scores[lmbd].append(val_accuracy)
+                
+                # Clean up
+                del I, K_reg, beta, val_scores, val_pred
+            
+            # Clean up fold-specific data
+            del K_train, K_val
+            
+            print(f"    Fold {fold + 1} complete!")
+        
+        # Clean up full kernel matrix
+        del K_full
+        if self.compute_device.type == "cuda":
+            torch.cuda.empty_cache()
         
         # Compute mean CV score for each lambda
         mean_scores = {lmbd: np.mean(scores) for lmbd, scores in cv_scores.items()}
@@ -329,7 +376,7 @@ class PowerOnlyKernelRidgeRegression(nn.Module):
         print(f"\nBest lambda: {best_lambda:.6f} (CV accuracy: {best_score:.4f})")
         print("=" * 60)
         
-        return float(best_lambda)
+        return float(best_lambda), cv_bandwidth
     
     def fit(self, dataloader):
         """
@@ -387,18 +434,22 @@ class PowerOnlyKernelRidgeRegression(nn.Module):
         targets = targets * 2 - 1
         
         # Grid search cross-validation for lambda
-        # (bandwidth is estimated separately for each fold inside CV to avoid leakage)
-        optimal_lambda = self._grid_search_cv(features, targets, n_folds=5)
-        print(f"\nUsing optimal lambda from CV: {optimal_lambda:.6f}")
-        
-        # NOW estimate kernel bandwidth on FULL training set for final model
+        # OPTIMIZED: Computes kernel once, estimates bandwidth once, reuses for all folds/lambdas
         if self.bandwidth_init is None:
-            print("\nEstimating kernel bandwidth on full training set using bootstrap...")
-            self.kernel_bandwidth = self._estimate_bandwidth(features, n_samples=self.n_samples, n_bootstrap=10)
-            print(f"Final bandwidth (bootstrap mean): {self.kernel_bandwidth:.6f}")
+            optimal_lambda, cv_bandwidth = self._grid_search_cv(features, targets, n_folds=5)
+            print(f"\nUsing optimal lambda from CV: {optimal_lambda:.6f}")
+            print(f"Using bandwidth from CV: {cv_bandwidth:.6f}")
+            # Use the same bandwidth from CV for final model (already estimated on full dataset)
+            self.kernel_bandwidth = cv_bandwidth
         else:
+            # If bandwidth is provided, still do CV for lambda but use provided bandwidth
+            print(f"\nUsing provided bandwidth: {self.bandwidth_init:.6f}")
             self.kernel_bandwidth = self.bandwidth_init
-            print(f"Using provided bandwidth: {self.kernel_bandwidth:.6f}")
+            # Simplified CV with provided bandwidth
+            print(f"\nEstimating bandwidth on full dataset for CV...")
+            optimal_lambda, _ = self._grid_search_cv(features, targets, n_folds=5)
+            print(f"\nUsing optimal lambda from CV: {optimal_lambda:.6f}")
+
         
         # Store for prediction (on CPU)
         self.train_features = features

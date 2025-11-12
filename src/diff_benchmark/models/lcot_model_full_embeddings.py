@@ -1,17 +1,15 @@
+import numpy as np
 import torch
 from torch import nn
 from tqdm import tqdm
 import math
 
 
-class fullEmbeddingsKernelRidgeRegression(nn.Module):
+class FullEmbeddingsKernelRidgeRegression(nn.Module):
     """
     Memory-efficient Kernel Ridge Regression for sphere embeddings.
     
     Key innovations:
-    1. **Flexible solving modes**:
-       - matrix_free=True: Conjugate gradient (O(n) memory, scalable)
-       - matrix_free=False: Direct Cholesky solve (O(n²) memory, faster for small n)
     2. **Additive distance accumulation**: K = exp(-sum(distances) / bandwidth)
        - Accumulates distances in float32, applies exp once at end
        - Faster and more stable than multiplicative accumulation
@@ -49,14 +47,6 @@ class fullEmbeddingsKernelRidgeRegression(nn.Module):
       * Smaller = slower but less GPU memory
       * Recommended: 25-100 depending on GPU and n_spheres
     
-    Trade-offs:
-    - matrix_free=True: O(n) memory, slower (multiple kernel-vector products in CG)
-      * Best for large n (hundreds to thousands of samples)
-      * Scalable to very large datasets
-    - matrix_free=False: O(n²) memory, faster (single Cholesky solve)
-      * Best for small n (< 100 samples) when you have enough RAM
-      * Easier to debug (can inspect kernel matrix)
-    
     Lambda (regularization) tuning:
     - Kernel values are typically in [0, 1] with diagonal ≈ 1
     - Recommended lambda range: [kernel_std * 1e-3, kernel_std * 10]
@@ -69,18 +59,18 @@ class fullEmbeddingsKernelRidgeRegression(nn.Module):
         dtype: Data type for tensors (default: torch.float32)
         sphere_batch_size: Number of spheres to process together (default: 64)
         sample_batch_size: Size of sample tiles for kernel computation (default: 50)
-        matrix_free: Use matrix-free CG (True) or direct Cholesky (False) (default: True)
     """
     
     def __init__(
         self,
-        lmbd: float = 0.1,
+        lmbd: float = 1.,
         use_power_weighting: bool = False,
         device: torch.device = None,
         dtype: torch.dtype = torch.float32,
         sphere_batch_size: int = 64,  # Number of spheres to process together
         sample_batch_size: int = 50,  # Number of samples to tile over (n1_blk, n2_blk)
-        matrix_free: bool = False,  # Use matrix-free CG solver vs full kernel matrix
+        n_bootstrap: int = 10,  # Number of bootstrap iterations for bandwidth
+        seed: int = 42,  # Random seed for reproducibility
         **kwargs,
     ):
         super().__init__()
@@ -88,7 +78,8 @@ class fullEmbeddingsKernelRidgeRegression(nn.Module):
         self.use_power_weighting = use_power_weighting
         self.sphere_batch_size = sphere_batch_size
         self.sample_batch_size = sample_batch_size
-        self.matrix_free = matrix_free
+        self.n_bootstrap = n_bootstrap
+        self.seed = seed
         
         # Always set a valid device
         self.compute_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -106,6 +97,10 @@ class fullEmbeddingsKernelRidgeRegression(nn.Module):
         """
         Helper method to compute kernel values for a tile of samples.
         
+        OPTIMIZED: Uses one bandwidth per bvalue (3 bandwidths total). Each bvalue's
+        distances are normalized by its own bandwidth, allowing different spheres
+        to have different characteristic scales.
+        
         This method is shared by both _compute_kernel_matrix_tiled and _kernel_matvec
         to avoid code duplication. It accumulates distances additively (faster and more
         stable than multiplicative accumulation), then applies exp once at the end.
@@ -115,7 +110,7 @@ class fullEmbeddingsKernelRidgeRegression(nn.Module):
         Args:
             emb1_block: shape (n1_blk, n_spheres, n_bvals, d) - first embeddings block (on CPU)
             emb2_block: shape (n2_blk, n_spheres, n_bvals, d) - second embeddings block (on CPU)
-            bandwidth: kernel bandwidth
+            bandwidth: kernel bandwidths (array of length n_bvals or scalar for backward compatibility)
         
         Returns:
             K_block: shape (n1_blk, n2_blk) - kernel values (on GPU, float64)
@@ -124,8 +119,15 @@ class fullEmbeddingsKernelRidgeRegression(nn.Module):
         n1_blk, n_spheres, n_bvals, d = emb1_block.shape
         n2_blk = emb2_block.shape[0]
         
+        # Convert bandwidth to array if scalar (backward compatibility)
+        if np.isscalar(bandwidth):
+            bandwidth_array = np.array([bandwidth] * n_bvals)
+        else:
+            bandwidth_array = np.array(bandwidth)
+        
         # Additive accumulation with float32 for speed and memory
-        sum_distances = torch.zeros(n1_blk, n2_blk, device=self.compute_device, dtype=torch.float32)
+        # Now we'll accumulate normalized distances: sum(dist_bval / bw_bval)
+        sum_normalized_distances = torch.zeros(n1_blk, n2_blk, device=self.compute_device, dtype=torch.float32)
 
         # Tile over spheres and bvals - move only sphere batches to GPU
         for sphere_start in range(0, n_spheres, self.sphere_batch_size):
@@ -146,17 +148,18 @@ class fullEmbeddingsKernelRidgeRegression(nn.Module):
                 # Mean squared distance over dimension d: (n1_blk, n2_blk, n_spheres_batch)
                 msd = torch.mean(torch.minimum(diff, 1 - diff) ** 2, dim=-1)
 
-                # Additive accumulation: sum all distances, will exp once at end
-                # Sum over spheres in batch: (n1_blk, n2_blk, n_spheres_batch) -> (n1_blk, n2_blk)
-                sum_distances += torch.sum(msd, dim=-1)
-                del msd, emb1_sb, emb2_sb, diff
-        
-        # Apply exp once at the end (more efficient and stable than multiplicative accumulation)
-        # K = exp(-sum(distances) / bandwidth)
-        # Note: sum_distances already contains the sum of mean squared distances across all spheres and bvals
-        # We use sum of distances (not mean) to preserve multi-view kernel interpretation
-        K_block = torch.exp(-sum_distances.to(torch.float64) / bandwidth)
-        del sum_distances
+                # Sum over spheres and NORMALIZE by this bvalue's bandwidth
+                # (n1_blk, n2_blk, n_spheres_batch) -> (n1_blk, n2_blk)
+                dist_sum = torch.sum(msd, dim=-1)
+                sum_normalized_distances += dist_sum / bandwidth_array[bval_idx]
+                
+                del msd, emb1_sb, emb2_sb, diff, dist_sum
+
+        # Apply exp once at the end
+        # K = exp(-sum(dist_bval / bw_bval))
+        # This allows each bvalue to contribute with its own characteristic scale
+        K_block = torch.exp(-sum_normalized_distances.to(torch.float64))
+        del sum_normalized_distances
         
         return K_block
         
@@ -190,6 +193,7 @@ class fullEmbeddingsKernelRidgeRegression(nn.Module):
         
         # Tile over samples (n1 and n2 dimensions)
         for i1 in range(0, n1, self.sample_batch_size):
+            print(f"    Progress: sample block {i1+1}-{min(i1 + self.sample_batch_size, n1)} / {n1}")
             end_i1 = min(i1 + self.sample_batch_size, n1)
             
             for i2 in range(0, n2, self.sample_batch_size):
@@ -214,15 +218,253 @@ class fullEmbeddingsKernelRidgeRegression(nn.Module):
         
         return K_full
 
+    def _estimate_bandwidth_bootstrap(self, embeddings, n_bootstrap=None):
+        """
+        Bootstrap median heuristic with ONE bandwidth PER bvalue (3 total).
+        
+        OPTIMIZED: Samples self.sphere_batch_size spheres per bvalue, estimates bandwidth
+        for each bvalue independently. This eliminates the inner sphere loop and allows
+        different spheres to have different bandwidths based on their b-value characteristics.
+
+        Vectorized over a single sample block of size m = min(self.sample_batch_size, n).
+        Computes the full (m x m) pairwise distance matrix per bootstrap iteration,
+        sampling spheres per bvalue to control memory.
+
+        Args:
+            embeddings: (n, n_spheres, n_bvals, d) on CPU
+            n_bootstrap: int or None, number of bootstrap iterations (default: self.n_bootstrap)
+
+        Returns:
+            np.ndarray: Array of 3 bandwidths [bw_bval0, bw_bval1, bw_bval2]
+        """
+        n = embeddings.shape[0]
+        m = int(min(self.sample_batch_size, n))
+        if m < 2:
+            return np.array([1e-3, 1e-3, 1e-3])
+
+        n_bootstrap = int(n_bootstrap or self.n_bootstrap)
+        n_spheres = embeddings.shape[1]
+        n_bvals   = embeddings.shape[2]
+        
+        # Number of spheres to sample per bvalue (limited by sphere_batch_size)
+        n_spheres_sample = min(self.sphere_batch_size, n_spheres)
+
+        # Store bandwidths per bvalue: bandwidths_per_bval[bval_idx] = list of bootstrap estimates
+        bandwidths_per_bval = [[] for _ in range(n_bvals)]
+        
+        print(f"  Estimating {n_bvals} bandwidths (one per bvalue) with {n_bootstrap} bootstrap iterations...")
+        print(f"    Sampling {n_spheres_sample} spheres per bvalue per iteration")
+        
+        for b in range(n_bootstrap):
+            # different seed per bootstrap for reproducibility
+            torch.manual_seed(self.seed + b)
+            
+            # Sample subjects
+            idx = torch.randperm(n)[:m]
+            samp = embeddings[idx]  # (m, n_spheres, n_bvals, d) on CPU
+            
+            # Process each bvalue independently
+            for bval_idx in range(n_bvals):
+                # Sample spheres for this bvalue
+                sphere_idx = torch.randperm(n_spheres, generator=torch.Generator().manual_seed(self.seed + b + bval_idx))[:n_spheres_sample]
+                
+                # Extract sampled spheres for this bvalue: (m, n_spheres_sample, d)
+                samp_bval = samp[:, sphere_idx, bval_idx, :].to(self.compute_device)
+                
+                # Compute pairwise circular MSD across all sampled spheres
+                # shapes: (m,1,n_spheres_sample,d) - (1,m,n_spheres_sample,d) -> (m,m,n_spheres_sample,d)
+                diff = torch.abs(samp_bval.unsqueeze(1) - samp_bval.unsqueeze(0))
+                circ = torch.minimum(diff, 1 - diff)
+                msd  = (circ ** 2).mean(dim=-1)  # (m, m, n_spheres_sample)
+                
+                # Sum over spheres to get total distance per pair: (m, m)
+                pair_sum = msd.sum(dim=-1)
+                
+                # take strict upper triangle (i < j) once, then median
+                iu = torch.triu_indices(m, m, offset=1, device=pair_sum.device)
+                upp = pair_sum[iu[0], iu[1]].to("cpu")
+                
+                median_dist = torch.median(upp).item() if upp.numel() > 0 else 0.0
+                bw = 2.0 * median_dist if median_dist > 0 else 1e-3
+                bandwidths_per_bval[bval_idx].append(bw)
+                
+                del samp_bval, diff, circ, msd, pair_sum, upp
+                
+                if b < 3 or b == n_bootstrap - 1:
+                    print(f"    Bootstrap {b+1}/{n_bootstrap}, bval {bval_idx}: bandwidth = {bw}")
+
+            if self.compute_device.type == "cuda":
+                torch.cuda.empty_cache()
+
+        # Compute mean bandwidth for each bvalue
+        mean_bandwidths = np.array([np.mean(bw_list) for bw_list in bandwidths_per_bval])
+        std_bandwidths = np.array([np.std(bw_list) for bw_list in bandwidths_per_bval])
+
+        # NEW: scale by spheres ratio so distances are on the same scale
+        scale = embeddings.shape[1] / n_spheres_sample  # total_spheres / sampled_spheres
+        mean_bandwidths = mean_bandwidths * scale
+
+        print(f"  Final bandwidths per bvalue (mean±std):")
+        for i, (m, s) in enumerate(zip(mean_bandwidths, std_bandwidths)):
+            print(f"    bval {i}: {m} ± {s}")
+        return mean_bandwidths
+
+    def _report_kernel_stats(self, K):
+        with torch.no_grad():
+            n = K.shape[0]
+            diag = torch.diag(K)
+            off = K[~torch.eye(n, dtype=torch.bool)]
+            print(f"diag: mean={diag.mean():.6f}, min={diag.min():.6f}, max={diag.max():.6f}")
+            print(f"offdiag: mean={off.mean():.6f}, std={off.std():.6f}, "
+                f"min={off.min():.6f}, max={off.max():.6f}")
+            print(f"overall mean={K.mean():.6f}, "
+                f"expected 1/n ≈ {1.0/n:.6f} (if identity-like)")
+    
+    def _grid_search_cv(self, embeddings, targets, n_folds=5):
+        """
+        Perform grid search cross-validation to select optimal lambda.
+        
+        OPTIMIZED VERSION: Computes the full kernel matrix ONCE, then reuses it for all folds
+        and all lambda values by indexing. This is much faster than recomputing kernels.
+        
+        Steps:
+        1. Estimate bandwidth on full dataset (bootstrap)
+        2. Compute full kernel matrix K (n × n) once
+        3. For each fold:
+           - Index K to get K_train (train × train) and K_val (val × train)
+           - For each lambda: solve and evaluate (fast, no kernel computation!)
+        
+        Args:
+            embeddings: shape (n_subjects, n_spheres, n_bvals, d)
+            targets: shape (n_subjects,) - binary {-1, 1}
+            n_folds: number of cross-validation folds
+        
+        Returns:
+            best_lambda: optimal regularization parameter
+            bandwidth: estimated bandwidth used for CV
+            K_full: full kernel matrix (n × n) for reuse in training
+        """
+        print("\nPerforming grid search cross-validation for lambda...")
+        print("OPTIMIZED: Computing kernel matrix once and reusing for all folds/lambdas")
+
+        # Define lambda grid (log scale from 1e-2 to 1e2)
+        lambda_grid = np.logspace(-4, 0, num=20)
+        print(f"Lambda grid: {lambda_grid}")
+        
+        n_subjects = embeddings.shape[0]
+        fold_size = n_subjects // n_folds
+        
+        # Create fold indices
+        torch.manual_seed(self.seed)
+        indices = torch.randperm(n_subjects)
+        
+        # Step 1: Estimate bandwidth on full dataset using bootstrap
+        print(f"\nEstimating bandwidth on full dataset for CV...")
+        cv_bandwidth = self._estimate_bandwidth_bootstrap(
+            embeddings, 
+            n_bootstrap=self.n_bootstrap
+        )
+        print(f"CV bandwidths (per bvalue): {cv_bandwidth}")
+        
+        # Step 2: Compute full kernel matrix ONCE - this is the expensive operation
+        print(f"\nComputing full kernel matrix ({n_subjects} × {n_subjects}) - this is done ONCE...")
+        K_full = self._compute_kernel_matrix(embeddings, embeddings, cv_bandwidth)
+        self._report_kernel_stats(K_full)
+        print(f"Kernel matrix computed! Shape: {K_full.shape}")
+        
+        # Step 3: For each fold, just INDEX into the kernel matrix
+        cv_scores = {lmbd: [] for lmbd in lambda_grid}
+        
+        print(f"\nRunning {n_folds}-fold cross-validation with pre-computed kernel...")
+        
+        for fold in range(n_folds):
+            print(f"\n  Fold {fold + 1}/{n_folds}")
+            
+            # Create train/val split indices
+            val_start = fold * fold_size
+            val_end = (fold + 1) * fold_size if fold < n_folds - 1 else n_subjects
+            
+            val_idx = indices[val_start:val_end]
+            train_idx = torch.cat([indices[:val_start], indices[val_end:]])
+            
+            train_targets_fold = targets[train_idx]
+            val_targets_fold = targets[val_idx]
+            
+            print(f"    Train size: {len(train_idx)}, Val size: {len(val_idx)}")
+            
+            # INDEX into pre-computed kernel matrix (very fast!)
+            # K_train: kernel between training samples
+            K_train = K_full[train_idx.unsqueeze(1), train_idx.unsqueeze(0)]
+            # K_val: kernel between validation and training samples
+            K_val = K_full[val_idx.unsqueeze(1), train_idx.unsqueeze(0)]
+            
+            # Test each lambda (now very fast since kernel is pre-computed)
+            print(f"    Testing {len(lambda_grid)} lambda values (fast - no kernel computation)...")
+            for lmbd in lambda_grid:
+                # Solve ridge regression: (K_train + λI)β = y_train
+                n_train = len(train_idx)
+                I = torch.eye(n_train, dtype=self.dtype)
+                K_reg = K_train + lmbd * I
+                
+                # Solve using Cholesky decomposition
+                try:
+                    L = torch.linalg.cholesky(K_reg)
+                    beta = torch.cholesky_solve(train_targets_fold.unsqueeze(-1), L).squeeze(-1)
+                except RuntimeError:
+                    beta = torch.linalg.lstsq(K_reg, train_targets_fold).solution
+                
+                # Predict on validation set: f(x_val) = K_val @ β
+                val_scores = K_val @ beta
+                val_pred = (val_scores > 0).float()
+                
+                # Compute accuracy
+                val_accuracy = (val_pred == ((val_targets_fold + 1) / 2)).float().mean().item()
+                cv_scores[lmbd].append(val_accuracy)
+                
+                # Clean up
+                del I, K_reg, beta, val_scores, val_pred
+            
+            # Clean up fold-specific data
+            del K_train, K_val
+            
+            print(f"    Fold {fold + 1} complete!")
+        
+        # Compute mean CV score for each lambda
+        mean_scores = {lmbd: np.mean(scores) for lmbd, scores in cv_scores.items()}
+        std_scores = {lmbd: np.std(scores) for lmbd, scores in cv_scores.items()}
+        
+        # Find best lambda
+        best_lambda = max(mean_scores, key=mean_scores.get)
+        best_score = mean_scores[best_lambda]
+        
+        print("\n" + "=" * 60)
+        print("Cross-validation results:")
+        print("=" * 60)
+        for lmbd in lambda_grid:
+            marker = " <-- BEST" if lmbd == best_lambda else ""
+            print(f"  lambda={lmbd}: {mean_scores[lmbd]:.4f} ± {std_scores[lmbd]:.4f}{marker}")
+        
+        print(f"\nBest lambda: {best_lambda} (CV accuracy: {best_score:.4f})")
+        print("=" * 60)
+        
+        # Return K_full for reuse in training (IMPORTANT: don't delete it!)
+        return float(best_lambda), cv_bandwidth, K_full
+
     def fit(self, dataloader):
         """
         Fit the kernel ridge regression model.
+        Uses grid search CV to select optimal lambda and bootstrap for bandwidth.
         
         Args:
             dataloader: DataLoader yielding (data, targets, _) where
                         data is dict with 'embeddings' and 'power'
         """
-        print("Loading training data in batches...")
+        print("=" * 60)
+        print("FullEmbeddingsKernelRidgeRegression - Training")
+        print("=" * 60)
+        print(f"Initial regularization lambda: {self.lmbd}")
+        
+        print("\nLoading training data in batches...")
         
         # Collect embeddings, power, and targets in chunks
         embeddings_chunks = []
@@ -266,74 +508,34 @@ class fullEmbeddingsKernelRidgeRegression(nn.Module):
         # Convert targets to {-1, 1}
         targets = targets * 2 - 1
         
-        # Estimate kernel bandwidth from data
-        print("Computing kernel bandwidth from data statistics...")
-        with torch.no_grad():
-            # Sample a small subset for bandwidth estimation to save memory
-            n_samples = min(10, self.train_embeddings.shape[0])
-            sample_idx = torch.randperm(self.train_embeddings.shape[0])[:n_samples]
-            sample_emb = self.train_embeddings[sample_idx]
-            sample_power = self.train_power[sample_idx]
-            
-            n_spheres = sample_emb.shape[1]
-            n_bvals = sample_emb.shape[2]
-            total_sb = n_spheres * n_bvals
-            
-            # Compute actual summed distances between sample pairs
-            # This matches what the kernel computation does
-            pairwise_distances = []
-            for i in range(n_samples):
-                for j in range(i+1, n_samples):
-                    # Compute sum of distances for this pair (matching _compute_kernel_tile logic)
-                    sum_dist = 0.0
-                    for s_idx in range(n_spheres):
-                        for b_idx in range(n_bvals):
-                            emb_i = sample_emb[i, s_idx, b_idx, :].to(self.compute_device)
-                            emb_j = sample_emb[j, s_idx, b_idx, :].to(self.compute_device)
-                            
-                            diff = torch.abs(emb_i - emb_j)
-                            dist_circ = torch.minimum(diff, 1 - diff)
-                            msd = torch.mean(dist_circ ** 2)
-                            sum_dist += msd.item()
-                    
-                    pairwise_distances.append(sum_dist)
-            
-            # Use median of summed distances for robust bandwidth estimation
-            # Classic RBF: exp(-d^2 / (2σ^2)), so bandwidth = 2σ^2
-            median_sum_dist = torch.tensor(pairwise_distances).median().item()
-            self.kernel_bandwidth = 2.0 * median_sum_dist if median_sum_dist > 0 else 1e-3
-
-            print(f"Kernel bandwidth (estimated): {self.kernel_bandwidth}")
-            print(f"  Median summed distance: {median_sum_dist:.6f}")
-            print(f"  Total spheres × bvals: {total_sb}")
-            print(f"  Expected kernel at median distance: exp(-1) ≈ {math.exp(-1):.4f}")
+        # Grid search cross-validation for lambda
+        # OPTIMIZED: Computes kernel once, estimates bandwidth once, reuses for CV, training, and accuracy
+        print("\nPerforming CV and computing kernel matrix (done once)...")
+        optimal_lambda, cv_bandwidth, K_train_full = self._grid_search_cv(self.train_embeddings, targets, n_folds=5)
+        print(f"\nUsing optimal lambda from CV: {optimal_lambda}")
+        print(f"Using bandwidths from CV (per bvalue): {cv_bandwidth}")
         
-        # Solve ridge regression
-        print(f"Solving ridge regression (matrix_free={self.matrix_free})...")
+        # Use the same bandwidth from CV for final model (already estimated on full dataset)
+        self.kernel_bandwidth = cv_bandwidth
+        
+        # Solve ridge regression with optimal lambda using PRE-COMPUTED kernel
+        print(f"\nSolving ridge regression with optimal lambda (reusing kernel matrix)...")
         n_subjects = self.train_embeddings.shape[0]
         
         with torch.no_grad():
-            # Convert targets to {-1, 1} for better numerical properties
-                # Direct approach: Form full kernel matrix and solve with Cholesky
-                # Memory: O(n²) - stores full kernel matrix
-            print("Forming full kernel matrix for direct solve...")
-            K = self._compute_kernel_matrix(
-                self.train_embeddings, 
-                self.train_embeddings,
-            )
-            print(f"Kernel matrix shape: {K.shape}")
-                
+            # REUSE the kernel matrix from CV - no recomputation!
+            print(f"Reusing kernel matrix from CV: shape {K_train_full.shape}")
+
             # Add regularization: K + λI
-            print(f"\nKernel matrix (mean abs value): {torch.abs(K).mean()}")
-            K_reg = K + self.lmbd * torch.eye(n_subjects, dtype=self.dtype)
-            del K
+            print(f"Kernel matrix (mean abs value): {torch.abs(K_train_full).mean()}")
+            K_reg = K_train_full + optimal_lambda * torch.eye(n_subjects, dtype=self.dtype)
 
             # Solve via Cholesky decomposition (stable for positive definite matrices)
             print("Solving with Cholesky decomposition...")
             try:
                 L = torch.linalg.cholesky(K_reg)
                 # Solve L L^T β = y in two steps
-                # targets_normalized is 1D, need to make it 2D for solve_triangular
+                # targets is 1D, need to make it 2D for solve_triangular
                 y_2d = targets.unsqueeze(-1)  # (n, 1)
                 z = torch.linalg.solve_triangular(L, y_2d, upper=False)
                 beta_2d = torch.linalg.solve_triangular(L.T, z, upper=True)
@@ -346,21 +548,29 @@ class fullEmbeddingsKernelRidgeRegression(nn.Module):
             del K_reg
             
             print(f"Beta coefficients shape: {self.beta.shape}")
+            
+            # Compute training accuracy using SAME kernel matrix (third reuse!)
+            print("\nComputing final training accuracy (reusing kernel matrix)...")
+            train_scores = K_train_full @ self.beta
+            train_pred = (train_scores > 0).float()
+            train_acc = (train_pred == ((targets + 1) / 2)).float().mean()
+            del train_scores, train_pred
+            
+            # NOW we can delete the kernel matrix
+            del K_train_full
+            
+            print(f"\nFinal training accuracy: {train_acc.item():.4f}")
+            print(f"Final lambda used: {optimal_lambda}")
+            print("=" * 60)
             print("Training complete!")
-
-            # Compute training accuracy
-            print("Computing training accuracy...")
-            # train_pred_scores = self._kernel_matvec(self.beta)
-            # train_pred = (train_pred_scores > 0).float()
-            # train_acc = (train_pred == ((targets + 1) / 2)).float().mean()
-            # print(f"Training accuracy: {train_acc.item():.4f}")
+            
+            # Clean up GPU cache
+            if self.compute_device.type == "cuda":
+                torch.cuda.empty_cache()
     
     def predict(self, dataloader):
         """
         Predict on new data.
-        
-        Uses either matrix-free kernel-vector multiplication (if matrix_free=True)
-        or direct kernel matrix computation (if matrix_free=False).
         
         Args:
             dataloader: DataLoader yielding (data, _, _)
@@ -371,7 +581,6 @@ class fullEmbeddingsKernelRidgeRegression(nn.Module):
         if self.train_embeddings is None or self.beta is None:
             raise RuntimeError("Model must be fitted before prediction")
         
-        print(f"Predicting on test data (matrix_free={self.matrix_free})...")
         all_predictions = []
         
         with torch.no_grad():

@@ -7,13 +7,9 @@ from diff_benchmark.models.classic_ml import PCARandomForestModel, PCASVMModel
 from diff_benchmark.models.cnn import ResNet3SliceModel
 from diff_benchmark.models.cnn_medicalnet import ResNet3DModel
 from diff_benchmark.models.dummy import DummyClassifier
-from diff_benchmark.models.lcot_model import KernelRidgeRegression
-from diff_benchmark.models.efficient_lcot_model import EfficientKernelRidgeRegression
+from diff_benchmark.models.lcot_model_full_embeddings import FullEmbeddingsKernelRidgeRegression
 from diff_benchmark.models.power_krr_model import PowerOnlyKernelRidgeRegression
-from diff_benchmark.models.embedding_power_krr_variants import (
-    EmbeddingPowerConcatenationKRR,
-    EmbeddingPowerProductKRR
-)
+
 from diff_benchmark.models.logistic_regression import (
     LogisticRegressionModel,
     PCALogisticRegressionModel,
@@ -103,13 +99,11 @@ def get_model(name: str, config: dict):
 
     if name == "lcot":
         # return KernelRidgeRegression(**config)
-        return EfficientKernelRidgeRegression(**config)
+        return FullEmbeddingsKernelRidgeRegression(**config)
     
-    if name == "lcot_power_weighted":
+    if name == "lcot_power_only":
         # KRR with power-weighted embeddings
-        config_copy = config.copy()
-        config_copy['use_power_weighting'] = True
-        return EfficientKernelRidgeRegression(**config_copy)
+        return PowerOnlyKernelRidgeRegression(**config)
 
     # elif name == "other_model":
     #     return OtherModelClass(param1=config["param1"], ...)

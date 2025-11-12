@@ -50,7 +50,7 @@ models:
 - name: lcot
   params:
     name: lcot
-    comment: Lcot Debugging. Test with bval index 2
+    comment: Lcot full Debugging. v0.0.0.1
     region_name: VisCent_ExStr
     batch_size: 32
     num_spheres: 3363
