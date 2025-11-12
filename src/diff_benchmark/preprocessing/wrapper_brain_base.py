@@ -67,6 +67,13 @@ class DataPreparationBrain(ABC):
     def __init__(self, config: dict):
         self.config = config
         self.results = {}
+    
+    @abstractmethod
+    def verify_raw_files(self, subject_id: str) -> bool:
+        """
+        Verifies the existence of raw files for a given subject ID.
+        Args:
+            subject_id (str): The unique identifier for the subject whose raw files are to be verified."""
 
     @abstractmethod
     def verify_subject_files(self, subject_id: str, metric: str) -> bool:
@@ -119,7 +126,7 @@ class DataPreparationBrain(ABC):
         df.index.name = "subject_id"
         return df
 
-    def run_pipeline(self) -> pd.DataFrame:
+    def run_pipeline(self, recompute: bool = False) -> pd.DataFrame:
         """
         Main orchestration: ensures all required files exist before running analysis.
         """
@@ -133,13 +140,20 @@ class DataPreparationBrain(ABC):
 
         def process_subject(subject_id):
             """Processes a single subject by checking for required files"""
-            if not self.verify_subject_files(
+            # if not self.verify_subject_files(
+            if self.verify_raw_files(
                 subject_id, self.config["metric_to_compute"]
             ):
-                print(f"[{subject_id}] Missing files — computing microstructure.")
-                self.compute_microstructure(subject_id)
-            else:
-                print(f"[{subject_id}] All required files found.")
+                if self.verify_subject_files(
+                    subject_id, self.config["metric_to_compute"]
+                ) and recompute:
+                    print(f"[{subject_id}] Recomputing microstructure.")
+                    self.compute_microstructure(subject_id)
+                else:
+                    print(f"[{subject_id}] Missing files — computing microstructure.")
+                    self.compute_microstructure(subject_id)
+            # else:
+            #     print(f"[{subject_id}] All required files found.")
 
         Parallel(n_jobs=50)(
             delayed(process_subject)(subject_id)
@@ -147,7 +161,16 @@ class DataPreparationBrain(ABC):
         )
 
         # Once all files are ready, run the analysis
-        print("All required files are ready. Running analysis...")
+        print("All required files are ready. Now you can run analysis!")
+        # self.run_analysis()
+        # df = self.export_to_csv()
+        # return df
+    
+    def run_microstructure_pipeline(self) -> pd.DataFrame:
+        """
+        Main orchestration: ensures all required files exist before running analysis.
+        """
+        print("All data should be preprocessed already. Getting microstructure files...")
         self.run_analysis()
         df = self.export_to_csv()
         return df

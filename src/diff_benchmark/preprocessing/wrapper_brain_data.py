@@ -66,6 +66,37 @@ class DefaultHcpPipeline(DataPreparationBrain):
         self.big_delta = config["big_delta"]
         self.small_delta = config["small_delta"]
 
+    def verify_raw_files(self, subject_id: str) -> bool:
+        subject_dir = self.hcp_dir / subject_id
+        diffusion_dir = subject_dir / "T1w" / "Diffusion"
+
+        required_files = {
+            "DWI data": diffusion_dir / "data.nii.gz",
+            "bvals": diffusion_dir / "bvals",
+            "bvecs": diffusion_dir / "bvecs",
+            "nodif mask": diffusion_dir / "nodif_brain_mask.nii.gz",
+            "aparc+aseg": subject_dir / "T1w" / "aparc+aseg.nii.gz",
+        }
+
+        missing_or_empty = []
+        for name, path in required_files.items():
+            if not path.exists():
+                missing_or_empty.append(f"{name} (missing)")
+            elif path.is_file() and path.stat().st_size == 0:
+                missing_or_empty.append(f"{name} (empty)")
+
+        if missing_or_empty:
+            print(
+                f"[WARNING] Missing or empty files for subject {subject_id}: "
+                + ", ".join(missing_or_empty)
+            )
+            return False
+
+        print(
+            f"[INFO] All required files found and non-empty for subject {subject_id}."
+        )
+        return True
+    
     def verify_subject_files(self, subject_id: str, metric: str) -> bool:
         """
         Check if both hemispheres' .scalar.gii files exist for the given subject and metric.
@@ -262,6 +293,38 @@ class ImageHcpPipeline(DataPreparationBrain):
         self.schaefer_resampled = resample_schaefer_onto_fs_lr(scale=1000)
         self.big_delta = config["big_delta"]
         self.small_delta = config["small_delta"]
+        
+    def verify_raw_files(self, subject_id: str) -> bool:
+        subject_dir = self.hcp_dir / subject_id
+        diffusion_dir = subject_dir / "T1w" / "Diffusion"
+
+        required_files = {
+            "DWI data": diffusion_dir / "data.nii.gz",
+            "bvals": diffusion_dir / "bvals",
+            "bvecs": diffusion_dir / "bvecs",
+            "nodif mask": diffusion_dir / "nodif_brain_mask.nii.gz",
+            "aparc+aseg": subject_dir / "T1w" / "aparc+aseg.nii.gz",
+        }
+
+        missing_or_empty = []
+        for name, path in required_files.items():
+            if not path.exists():
+                missing_or_empty.append(f"{name} (missing)")
+            elif path.is_file() and path.stat().st_size == 0:
+                missing_or_empty.append(f"{name} (empty)")
+
+        if missing_or_empty:
+            print(
+                f"[WARNING] Missing or empty files for subject {subject_id}: "
+                + ", ".join(missing_or_empty)
+            )
+            return False
+
+        print(
+            f"[INFO] All required files found and non-empty for subject {subject_id}."
+        )
+        return True
+        
 
     def verify_subject_files(self, subject_id: str, metric: str) -> bool:
         """
@@ -422,8 +485,8 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
         file = derivatives_dir / f"sub-{subject_id}_desc-{target_substring}_spheres.h5"
 
         return file.exists()
-
-    def verify_required_files(self, subject_id: str) -> bool:
+    
+    def verify_raw_files(self, subject_id: str) -> bool:
         subject_dir = self.hcp_dir / subject_id
         diffusion_dir = subject_dir / "T1w" / "Diffusion"
 
@@ -447,18 +510,6 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
                 required_files[f"{h}-{s} surface"] = surf_file
 
         # Check all files and collect missing ones
-        # missing = [name for name, path in required_files.items() if not path.exists()]
-
-        # if missing:
-        #     print(
-        #         f"[WARNING] Missing files for subject {subject_id}: "
-        #         + ", ".join(missing)
-        #     )
-        #     return False
-
-        # print(f"[INFO] All required files found for subject {subject_id}.")
-        # return True
-        # Check all files and collect missing or empty ones
         missing_or_empty = []
         for name, path in required_files.items():
             if not path.exists():
@@ -473,9 +524,9 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
             )
             return False
 
-        print(
-            f"[INFO] All required files found and non-empty for subject {subject_id}."
-        )
+        # print(
+        #     f"[INFO] All required files found and non-empty for subject {subject_id}."
+        # )
         return True
 
     def extract_raw_data(self, subject_id: str):
@@ -630,11 +681,11 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
 
     def compute_microstructure(self, subject_id: str):
         """Compute microstructural features for LCOT embedding."""
-        if not self.verify_required_files(subject_id):
-            print(
-                f"[{subject_id}] Missing required files — cannot compute microstructure."
-            )
-            return
+        # if not self.verify_raw_files(subject_id):
+        #     print(
+        #         f"[{subject_id}] Missing raw files — cannot compute microstructure."
+        #     )
+        #     return
 
         #  subject_id = '101006'
         schaefer = self.schaefer_resampled
@@ -1058,6 +1109,9 @@ class DefaultWandPipeline(DataPreparationBrain):
             },
         )
 
+    def verify_raw_files(self, subject_id: str) -> bool:
+        pass
+    
     def verify_subject_files(self, subject_id: str, metric: str) -> bool:
         """
         Check if both hemispheres' .scalar.gii files exist for the given subject and metric.
@@ -1288,7 +1342,8 @@ class DefaultWandPipeline(DataPreparationBrain):
 #         self.schaefer_resampled = resample_schaefer_onto_fs_lr(scale=1000)
 #         self.big_delta = config["big_delta"]
 #         self.small_delta = config["small_delta"]
-
+#    def verify_raw_files(self, subject_id: str) -> bool:
+#        pass
 #     def verify_subject_files(self, subject_id: str, metric: str) -> bool:
 #         """
 #         Check if both hemispheres' .scalar.gii files exist for the given subject and metric.
