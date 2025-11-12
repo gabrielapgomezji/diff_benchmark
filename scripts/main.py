@@ -44,10 +44,10 @@ else:
 
 with open(config_path, "r") as f:
     config = yaml.safe_load(f)
-        
-def run_single_model(model_name, config, dataset, preprocessed, indices, results_path):
+CONFIG = config      
+def run_single_model(model_name, model_config, results_path):
     # DEBUG = True
-
+    config = CONFIG
 
     # json_path = (
     #     Path(__file__).parent.parent / "src/diff_benchmark/models/model_configurations.json"
@@ -55,21 +55,28 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
     # with open(json_path, "r") as f:
     #     model_configs = json.load(f)["models"]
 
-    if args.method == "lcot":
-        brain_preparator = LcotEmbedHcpPipeline(config)
-    else:
-        brain_preparator = LcotEmbedHcpPipeline(config)
+    
+    # if args.method == "lcot":
+    #     brain_preparator = LcotEmbedHcpPipeline(config)
+    # else:
+    #     brain_preparator = LcotEmbedHcpPipeline(config)
         # brain_preparator = ImageHcpPipeline(config)
         # brain_preparator = DefaultHcpPipeline(config)
-
-    # brain_preparator = ImageHcpPipeline(config)
-    # brain_preparator = DefaultHcpPipeline(config)
-    # brain_preparator = DefaultWandPipeline(config)
+        
+    model = get_model(model_name, model_config)
+    data_type = model.data_type
+    if data_type == "lcot_embed":
+        print("Using LCOT Embeddings Pipeline")
+        brain_preparator = LcotEmbedHcpPipeline(config)
+    elif data_type == "images":
+        print("Using Image Pipeline")
+        brain_preparator = ImageHcpPipeline(config)
+    elif data_type == "array":
+        print("Using Default Array Pipeline")
+        brain_preparator = DefaultHcpPipeline(config)
 
     brain_df = brain_preparator.run_microstructure_pipeline()
     brain_df = brain_df.reset_index()
-
-    breakpoint()
 
     ##### NEXT TESTING STEPS
     preprocessor = DefaultDemographicsPreprocessor(config["data_paths"]["csv_file"])
@@ -107,7 +114,7 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
 
 
 # def run_single_model(model_name, config, dataset, preprocessed, indices, results_path):
-    local_config = copy.deepcopy(config)
+    local_config = copy.deepcopy(model_config)
     local_config["model_name"] = model_name
     run_id = make_run_id(model_name, local_config)
     local_config["run_id"] = run_id
