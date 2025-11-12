@@ -189,7 +189,7 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
         fit(dataloader): Trains the model using the provided DataLoader.
         predict(dataloader): Generates predictions for the provided DataLoader.
     """
-
+    data_type = "images"
     def __init__(self, input_slices=145, num_classes=2, device="cuda", **kwargs):
         super(ResNet3SliceModel, self).__init__()
         self.device = device

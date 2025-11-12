@@ -32,7 +32,7 @@ class KernelRidgeRegression(nn.Module):
                                            S is the number of spheres, and D is the dimensionality of each embedding.
             Returns:
                 torch.Tensor: Predicted target values of shape (N,)."""
-
+    data_type = "lcot_embed"
     def __init__(
         self,
         num_spheres: int,

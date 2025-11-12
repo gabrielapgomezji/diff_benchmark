@@ -25,7 +25,7 @@ class DummyRegressor(NumpyAbstractModel):
             Returns:
                 A numpy array filled with the mean prediction value for each input sample.
     """
-
+    data_type = "array"
     def __init__(self):
         self.prediction_ = None
 
@@ -92,7 +92,7 @@ class DummyClassifier(NumpyAbstractModel):
     - fit(dataloader): Fits the model to the data by determining the most common class in the labels.
     - predict(dataloader): Predicts the class for the input data by returning the most common class for all samples.
     """
-
+    data_type = "array"
     def __init__(self):
         self.class_ = None
 
