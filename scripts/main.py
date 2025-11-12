@@ -31,18 +31,18 @@ from diff_benchmark.preprocessing.wrapper_brain_data import (
 from diff_benchmark.scores.scores import accuracy_score, compute_metrics
 from diff_benchmark.utils.job_manager import run_jobs
 
-
 parser = argparse.ArgumentParser()
-parser.add_argument("--method", type=str, default="lcot", help="Method to use")
+parser.add_argument("--method", type=str, default=None, help="Method to use (will look for configuration_{method}.yaml)")
 args = parser.parse_args()
-
 
 DEBUG = True
 
-if args.method == "lcot":
-    config_path = Path(__file__).parent.parent / f"config/configuration_{args.method}.yaml"
-else:
+if args.method is None:
     config_path = Path(__file__).parent.parent / "configuration.yaml"
+else:
+    config_path = Path(__file__).parent.parent / f"config/configuration_{args.method}.yaml"
+    if not config_path.exists():
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
 with open(config_path, "r") as f:
     config = yaml.safe_load(f)
@@ -53,7 +53,7 @@ json_path = (
 # with open(json_path, "r") as f:
 #     model_configs = json.load(f)["models"]
 
-if args.method == "lcot":
+if "lcot" in args.method:
     brain_preparator = LcotEmbedHcpPipeline(config)
 
 # brain_preparator = ImageHcpPipeline(config)
