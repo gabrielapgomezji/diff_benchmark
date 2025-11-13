@@ -7,6 +7,5 @@ models:
 - name: dummy_classifier
   params:
     name: dummy_classifier
-    comment: Dummy Classifier Debugging. Test with bval index 2. Test for config changes!
-    region_name: VisCent_ExStr
+    comment: Dummy Classifier. Removed functions
     batch_size: 32
