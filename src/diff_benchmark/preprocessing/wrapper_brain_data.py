@@ -243,10 +243,7 @@ class DefaultHcpPipeline(DataPreparationBrain):
                     0, 7
                 )
 
-                # target = "VisCent_Striate"
-                # target = self.config["region_name"]
-                target = self.config["models"][0]["params"]["region_name"]
-                # target = None
+                target = self.config["data_preparation"]["region"]
                 avg_data = extract_region_data(
                     left_data,
                     right_data,
