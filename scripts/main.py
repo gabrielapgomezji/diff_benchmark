@@ -30,39 +30,18 @@ from diff_benchmark.preprocessing.wrapper_brain_data import (
 )
 from diff_benchmark.scores.scores import accuracy_score, compute_metrics
 from diff_benchmark.utils.job_manager import run_jobs
+from diff_benchmark.utils.config_loader import load_configs
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--method", type=str, default="lcot", help="Method to use")
+parser.add_argument("--methods", nargs="+", type=str, default=["lcot"], help="Method to use")
 args = parser.parse_args()
-
-args.method = "None"
-if args.method == "lcot":
-    config_path = Path(__file__).parent.parent / f"config/configuration_{args.method}.yaml"
-else:
-    config_path = Path(__file__).parent.parent / "configuration_clean.yaml"
-
-with open(config_path, "r") as f:
-    config = yaml.safe_load(f)
-CONFIG = config      
-def run_single_model(model_name, model_config, results_path):
-    # DEBUG = True
-    config = CONFIG
-
-    # json_path = (
-    #     Path(__file__).parent.parent / "src/diff_benchmark/models/model_configurations.json"
-    # )
-    # with open(json_path, "r") as f:
-    #     model_configs = json.load(f)["models"]
-
     
-    # if args.method == "lcot":
-    #     brain_preparator = LcotEmbedHcpPipeline(config)
-    # else:
-    #     brain_preparator = LcotEmbedHcpPipeline(config)
-        # brain_preparator = ImageHcpPipeline(config)
-        # brain_preparator = DefaultHcpPipeline(config)
-        
+general_config, model_config = load_configs(args)
+
+def run_single_model(model_name, model_config, general_config, results_path):
+    config = general_config
+    
     model = get_model(model_name, model_config)
     data_type = model.data_type
     if data_type == "lcot_embed":
@@ -97,13 +76,11 @@ def run_single_model(model_name, model_config, results_path):
     gender = np.array(demographics_filtered["Gender"])
 
     dataset = CustomDataset(X, y, gender)
-    # features, target, gender = dataset[0]
-    # features, target, gender = dataset[len(dataset)-1]
     # ----------- CROSS VALIDATION + TRAINING + TESTING -----------
 
 
     preprocessed = PreprocessedData(
-        X, y, gender, n_splits=config["n_splits"], random_state=config["random_state"]
+        X, y, gender, config=config
     )
 
     specs = preprocessed.get_specs()
@@ -284,10 +261,10 @@ def run_single_model(model_name, model_config, results_path):
     return model_name, run_id
 
 
-models_to_run = config["models"]
+models_to_run = model_config["models"]
 
 results = run_jobs(
-    run_single_model, models_to_run, config
+    run_single_model, models_to_run, model_config, general_config
 )
 
 # results is a list of (model_name, per_fold_results)
