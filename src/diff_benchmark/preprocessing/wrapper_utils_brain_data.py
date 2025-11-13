@@ -429,6 +429,7 @@ def extract_region_data(
             all_labels["name"].str.contains(target_substring, case=False, na=False)
         ]
     else:
+        print("Using all regions.")
         matched_labels = all_labels
 
     region_data = {}
