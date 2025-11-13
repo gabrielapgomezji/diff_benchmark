@@ -32,59 +32,62 @@ def load_embeddings_and_power_from_h5(h5_path):
 
     return embeddings, power, metadata
 
+def _load_global_metadata(f):
+    """Extract global metadata and geometry arrays."""
+    metadata = {}
+    meta_grp = f["meta"]
+    for key in meta_grp.attrs:
+        metadata[key] = meta_grp.attrs[key]
+
+    metadata["bvals"] = f["bvals"][:]
+    metadata["bvecs"] = f["bvecs"][:]
+    metadata["sphere_vertices"] = f["sphere_vertices"][:]
+    metadata["sphere_faces"] = f["sphere_faces"][:]
+    metadata["sphere_edges"] = f["sphere_edges"][:]
+    return metadata
+
+
+def _load_bval_group(f, bval_grp_name):
+    """Load attenuation data for one b-value group."""
+    bval = int(bval_grp_name.split("_")[1])
+    vertex_group = f[bval_grp_name]
+
+    num_vertices = len(vertex_group)
+    sample_vertex = next(iter(vertex_group.values()))
+    num_directions = sample_vertex["attenuation"].shape[0]
+
+    attenuation_array = np.zeros((num_vertices, num_directions))
+    surface_vertices = np.zeros(num_vertices, dtype=np.int32)
+    labels = np.zeros(num_vertices, dtype=np.int32)
+    neighbors = []
+
+    for i, vgrp in enumerate(vertex_group.values()):
+        attenuation_array[i] = vgrp["attenuation"][:]
+        surface_vertices[i] = vgrp["surface_vertex"][()]
+        labels[i] = vgrp["deen_insula_label"][()]
+        neighbors.append(vgrp["mesh_neighbors"][:])
+
+    return bval, attenuation_array, surface_vertices, labels, neighbors
+
 
 def load_attenuation_from_h5(h5_path: Path):
-    """
-    Load attenuation data and associated metadata from the custom HDF5 file.
-
-    Returns:
-        attenuation_data (dict): Dictionary mapping b-value (int) to an array of shape [num_vertices, num_directions]
-        metadata (dict): Contains additional arrays such as surface_vertex, neighbors, deen_insula_label
-                         and global attributes like subject, hemisphere, surface, model, interpolation
-    """
+    """Load attenuation data and associated metadata from a custom HDF5 file."""
+    breakpoint()
     attenuation_data = {}
     metadata = {}
 
     with h5py.File(h5_path, "r") as f:
-        # Load global metadata
-        meta_grp = f["meta"]
-        for key in meta_grp.attrs:
-            metadata[key] = meta_grp.attrs[key]
+        metadata = _load_global_metadata(f)
 
-        # Load bvals and bvecs
-        metadata["bvals"] = f["bvals"][:]
-        metadata["bvecs"] = f["bvecs"][:]
-
-        # Sphere geometry
-        metadata["sphere_vertices"] = f["sphere_vertices"][:]
-        metadata["sphere_faces"] = f["sphere_faces"][:]
-        metadata["sphere_edges"] = f["sphere_edges"][:]
-
-        # Load attenuation data per b-value
         for bval_grp in f:
             if not bval_grp.startswith("bval_"):
                 continue
 
-            bval = int(bval_grp.split("_")[1])
-            vertex_group = f[bval_grp]
-            num_vertices = len(vertex_group)
-            sample_vertex = next(iter(vertex_group.values()))
-            num_directions = sample_vertex["attenuation"].shape[0]
+            bval, att_arr, surf_v, lbls, neigh = _load_bval_group(f, bval_grp)
 
-            attenuation_array = np.zeros((num_vertices, num_directions))
-            surface_vertices = np.zeros(num_vertices, dtype=np.int32)
-            labels = np.zeros(num_vertices, dtype=np.int32)
-            neighbors = []
-
-            for i, (_, vgrp) in enumerate(vertex_group.items()):
-                attenuation_array[i] = vgrp["attenuation"][:]
-                surface_vertices[i] = vgrp["surface_vertex"][()]
-                labels[i] = vgrp["deen_insula_label"][()]
-                neighbors.append(vgrp["mesh_neighbors"][:])
-
-            attenuation_data[bval] = attenuation_array
-            metadata[f"surface_vertices_b{bval}"] = surface_vertices
-            metadata[f"labels_b{bval}"] = labels
-            metadata[f"neighbors_b{bval}"] = neighbors
+            attenuation_data[bval] = att_arr
+            metadata[f"surface_vertices_b{bval}"] = surf_v
+            metadata[f"labels_b{bval}"] = lbls
+            metadata[f"neighbors_b{bval}"] = neigh
 
     return attenuation_data, metadata
