@@ -1,12 +1,8 @@
 import copy
-import json
 from pathlib import Path
 
 import numpy as np
-import torch
-import yaml
 import argparse
-from joblib import Parallel, delayed
 
 from diff_benchmark.analysis.plot_history import plot_history_from_file
 from diff_benchmark.analysis.plot_results import plot_folds_predictions_vs_targets
@@ -22,12 +18,7 @@ from diff_benchmark.models.model_configurations import get_model, make_run_id
 from diff_benchmark.preprocessing.preprocess_demographic_data import (
     DefaultDemographicsPreprocessor,
 )
-from diff_benchmark.preprocessing.wrapper_brain_data import (
-    DefaultHcpPipeline,
-    DefaultWandPipeline,
-    ImageHcpPipeline,
-    LcotEmbedHcpPipeline,
-)
+from diff_benchmark.utils.data_pipeline import get_data_pipeline
 from diff_benchmark.scores.scores import accuracy_score, compute_metrics
 from diff_benchmark.utils.job_manager import run_jobs
 from diff_benchmark.utils.config_loader import load_configs
@@ -44,16 +35,8 @@ def run_single_model(model_name, model_config, general_config, results_path):
     
     model = get_model(model_name, model_config)
     data_type = model.data_type
-    if data_type == "lcot_embed":
-        print("Using LCOT Embeddings Pipeline")
-        brain_preparator = LcotEmbedHcpPipeline(config)
-    elif data_type == "images":
-        print("Using Image Pipeline")
-        brain_preparator = ImageHcpPipeline(config)
-    elif data_type == "array":
-        print("Using Default Array Pipeline")
-        brain_preparator = DefaultHcpPipeline(config)
-
+    
+    brain_preparator = get_data_pipeline(data_type, config)
     brain_df = brain_preparator.run_microstructure_pipeline()
     brain_df = brain_df.reset_index()
 
@@ -70,7 +53,6 @@ def run_single_model(model_name, model_config, general_config, results_path):
     brain_filtered = brain_df[brain_df["subject_id"].astype(str).isin(common_subjects)]
 
     # DATASET GENERATION
-
     X = brain_filtered  # .drop(columns=["subject_id"]).to_numpy()
     y = np.array(demographics_filtered["Gender"])
     gender = np.array(demographics_filtered["Gender"])
@@ -89,8 +71,6 @@ def run_single_model(model_name, model_config, general_config, results_path):
     # folds = preprocessed.get_folds_as_dataloaders(batch_size=16)
     indices = preprocessed.get_fold_indices()
 
-
-# def run_single_model(model_name, config, dataset, preprocessed, indices, results_path):
     local_config = copy.deepcopy(model_config)
     local_config["model_name"] = model_name
     run_id = make_run_id(model_name, local_config)
@@ -116,18 +96,6 @@ def run_single_model(model_name, model_config, general_config, results_path):
         "pipeline": {
             "run_id": run_id,
             "comment": local_config.get("comment", ""),
-            "region_name": local_config.get("region_name", ""),
-            "input_slices": local_config.get("input_slices"),
-            "num_classes": local_config.get("num_classes"),
-            "device": local_config.get("device"),
-            "learning_rate": local_config.get("learning_rate"),
-            "pretrained": local_config.get("pretrained"),
-            "freeze_backbone": local_config.get("freeze_backbone"),
-            "batch_size": local_config.get("batch_size"),
-            "epochs": local_config.get("epochs"),
-            "dropout": local_config.get("dropout"),
-            "weight_decay": local_config.get("weight_decay"),
-            "trainable_blocks": local_config.get("trainable_blocks", None),
         },
         "results": {
             "train_average_score": None,  # will fill after loop
@@ -138,6 +106,11 @@ def run_single_model(model_name, model_config, general_config, results_path):
             "folds": {},  # will fill inside loop
         },
     }
+    exclude_keys = {"comment", "name", "model_name"}
+    for key, value in local_config.items():
+        if key not in exclude_keys:
+            summary["pipeline"][key] = value
+            
     save_model_results(
         summary, Path(results_path) / "analysis_results" / f"{run_id}_partial.json"
     )
