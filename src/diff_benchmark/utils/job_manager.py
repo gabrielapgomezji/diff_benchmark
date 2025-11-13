@@ -151,31 +151,30 @@ def run_jobs(
         Any: The result of the job execution, which depends on the implementation of
         run_with_slurm or run_with_joblib.
     """
-
-    if config.get("use_slurm", False):
+    if general_config.get("use_slurm", False):
         print("Running with SLURM...")
         return run_with_slurm(
             run_fn,
             models_to_run,
-            config.get("results_path_logs", "./data"),
-            config.get("slurm", {}),
+            general_config.get("results_path_logs", "./data"),
+            general_config.get("slurm", {}),
             general_config
         )
 
-    if config.get("use_joblib", False):
+    if general_config.get("use_joblib", False):
         print("Running with Joblib...")
         return run_with_joblib(
             run_fn,
             models_to_run,
-            config.get("results_path_logs", "./data"),
+            general_config.get("results_path_logs", "./data"),
             general_config,
-            config.get("n_jobs", 5),
+            general_config.get("n_jobs", 5),
         )
 
     print("Running in a single process...")
     return run_single_process(
         run_fn,
         models_to_run,
-        config.get("results_path_logs", "./data"),
+        general_config.get("results_path_logs", "./data"),
         general_config,
     )
