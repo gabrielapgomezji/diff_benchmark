@@ -158,7 +158,7 @@ def run_jobs(
             models_to_run,
             general_config.get("results_path_logs", "./data"),
             general_config.get("slurm", {}),
-            general_config
+            general_config,
         )
 
     if general_config.get("use_joblib", False):

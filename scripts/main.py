@@ -1,8 +1,8 @@
+import argparse
 import copy
 from pathlib import Path
 
 import numpy as np
-import argparse
 
 from diff_benchmark.analysis.plot_history import plot_history_from_file
 from diff_benchmark.analysis.plot_results import plot_folds_predictions_vs_targets
@@ -18,24 +18,26 @@ from diff_benchmark.models.model_configurations import get_model, make_run_id
 from diff_benchmark.preprocessing.preprocess_demographic_data import (
     DefaultDemographicsPreprocessor,
 )
-from diff_benchmark.utils.data_pipeline import get_data_pipeline
 from diff_benchmark.scores.scores import accuracy_score, compute_metrics
-from diff_benchmark.utils.job_manager import run_jobs
 from diff_benchmark.utils.config_loader import load_configs
-
+from diff_benchmark.utils.data_pipeline import get_data_pipeline
+from diff_benchmark.utils.job_manager import run_jobs
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--methods", nargs="+", type=str, default=["lcot"], help="Method to use")
+parser.add_argument(
+    "--methods", nargs="+", type=str, default=["lcot"], help="Method to use"
+)
 args = parser.parse_args()
-    
+
 general_config, model_config = load_configs(args)
+
 
 def run_single_model(model_name, model_config, general_config, results_path):
     config = general_config
-    
+
     model = get_model(model_name, model_config)
     data_type = model.data_type
-    
+
     brain_preparator = get_data_pipeline(data_type, config)
     brain_df = brain_preparator.run_microstructure_pipeline()
     brain_df = brain_df.reset_index()
@@ -60,10 +62,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
     dataset = CustomDataset(X, y, gender)
     # ----------- CROSS VALIDATION + TRAINING + TESTING -----------
 
-
-    preprocessed = PreprocessedData(
-        X, y, gender, config=config
-    )
+    preprocessed = PreprocessedData(X, y, gender, config=config)
 
     specs = preprocessed.get_specs()
     print(specs)
@@ -110,7 +109,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
     for key, value in local_config.items():
         if key not in exclude_keys:
             summary["pipeline"][key] = value
-            
+
     save_model_results(
         summary, Path(results_path) / "analysis_results" / f"{run_id}_partial.json"
     )
@@ -236,9 +235,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
 
 models_to_run = model_config["models"]
 
-results = run_jobs(
-    run_single_model, models_to_run, model_config, general_config
-)
+results = run_jobs(run_single_model, models_to_run, model_config, general_config)
 
 # results is a list of (model_name, per_fold_results)
 for model_name, run_id in results:

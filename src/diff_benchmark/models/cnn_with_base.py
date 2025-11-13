@@ -170,7 +170,9 @@ class ResNet3SliceModel(LightningModel):
     Retains the same API as the original TorchAbstractModel (fit, predict),
     but runs fully under the PyTorch Lightning training framework.
     """
+
     data_type = "images"
+
     def __init__(self, input_slices=145, num_classes=2, device="cuda", **kwargs):
         super().__init__(
             learning_rate=kwargs.get("learning_rate", 1e-5),

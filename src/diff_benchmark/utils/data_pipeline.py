@@ -1,9 +1,9 @@
-from diff_benchmark.preprocessing.wrapper_brain_data import (
+from diff_benchmark.preprocessing.wrapper_brain_data import (  # DefaultWandPipeline,
     DefaultHcpPipeline,
-    # DefaultWandPipeline,
     ImageHcpPipeline,
     LcotEmbedHcpPipeline,
 )
+
 
 def get_data_pipeline(data_type, config):
     if data_type == "lcot_embed":
@@ -15,5 +15,5 @@ def get_data_pipeline(data_type, config):
     elif data_type == "array":
         print("Using Default Array Pipeline")
         brain_preparator = DefaultHcpPipeline(config)
-    
+
     return brain_preparator

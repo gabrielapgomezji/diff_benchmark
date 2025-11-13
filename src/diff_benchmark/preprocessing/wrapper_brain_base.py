@@ -67,13 +67,14 @@ class DataPreparationBrain(ABC):
     def __init__(self, config: dict):
         self.config = config
         self.results = {}
-    
+
     @abstractmethod
     def verify_raw_files(self, subject_id: str) -> bool:
         """
         Verifies the existence of raw files for a given subject ID.
         Args:
-            subject_id (str): The unique identifier for the subject whose raw files are to be verified."""
+            subject_id (str): The unique identifier for the subject whose raw files are to be verified.
+        """
 
     @abstractmethod
     def verify_subject_files(self, subject_id: str, metric: str) -> bool:
@@ -141,12 +142,13 @@ class DataPreparationBrain(ABC):
         def process_subject(subject_id):
             """Processes a single subject by checking for required files"""
             # if not self.verify_subject_files(
-            if self.verify_raw_files(
-                subject_id, self.config["metric_to_compute"]
-            ):
-                if self.verify_subject_files(
-                    subject_id, self.config["metric_to_compute"]
-                ) and recompute:
+            if self.verify_raw_files(subject_id, self.config["metric_to_compute"]):
+                if (
+                    self.verify_subject_files(
+                        subject_id, self.config["metric_to_compute"]
+                    )
+                    and recompute
+                ):
                     print(f"[{subject_id}] Recomputing microstructure.")
                     self.compute_microstructure(subject_id)
                 else:
@@ -165,12 +167,14 @@ class DataPreparationBrain(ABC):
         # self.run_analysis()
         # df = self.export_to_csv()
         # return df
-    
+
     def run_microstructure_pipeline(self) -> pd.DataFrame:
         """
         Main orchestration: ensures all required files exist before running analysis.
         """
-        print("All data should be preprocessed already. Getting microstructure files...")
+        print(
+            "All data should be preprocessed already. Getting microstructure files..."
+        )
         self.run_analysis()
         df = self.export_to_csv()
         return df

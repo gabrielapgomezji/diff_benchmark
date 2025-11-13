@@ -96,7 +96,7 @@ class DefaultHcpPipeline(DataPreparationBrain):
             f"[INFO] All required files found and non-empty for subject {subject_id}."
         )
         return True
-    
+
     def verify_subject_files(self, subject_id: str, metric: str) -> bool:
         """
         Check if both hemispheres' .scalar.gii files exist for the given subject and metric.
@@ -290,7 +290,7 @@ class ImageHcpPipeline(DataPreparationBrain):
         self.schaefer_resampled = resample_schaefer_onto_fs_lr(scale=1000)
         self.big_delta = config["big_delta"]
         self.small_delta = config["small_delta"]
-        
+
     def verify_raw_files(self, subject_id: str) -> bool:
         subject_dir = self.hcp_dir / subject_id
         diffusion_dir = subject_dir / "T1w" / "Diffusion"
@@ -321,7 +321,6 @@ class ImageHcpPipeline(DataPreparationBrain):
             f"[INFO] All required files found and non-empty for subject {subject_id}."
         )
         return True
-        
 
     def verify_subject_files(self, subject_id: str, metric: str) -> bool:
         """
@@ -482,7 +481,7 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
         file = derivatives_dir / f"sub-{subject_id}_desc-{target_substring}_spheres.h5"
 
         return file.exists()
-    
+
     def verify_raw_files(self, subject_id: str) -> bool:
         subject_dir = self.hcp_dir / subject_id
         diffusion_dir = subject_dir / "T1w" / "Diffusion"
@@ -1108,7 +1107,7 @@ class DefaultWandPipeline(DataPreparationBrain):
 
     def verify_raw_files(self, subject_id: str) -> bool:
         pass
-    
+
     def verify_subject_files(self, subject_id: str, metric: str) -> bool:
         """
         Check if both hemispheres' .scalar.gii files exist for the given subject and metric.

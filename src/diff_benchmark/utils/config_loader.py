@@ -1,11 +1,15 @@
 from pathlib import Path
+
 import yaml
+
 
 def load_configs(args):
     # =====================
     # Load general config
     # =====================
-    general_config_path = Path(__file__).parent.parent.parent.parent / "config/configuration_general.yaml"
+    general_config_path = (
+        Path(__file__).parent.parent.parent.parent / "config/configuration_general.yaml"
+    )
     with open(general_config_path, "r") as f:
         general_config = yaml.safe_load(f)
 
@@ -14,9 +18,14 @@ def load_configs(args):
     # =====================
     model_config = {"models": []}
     for method in args.methods:  # list of model names
-        model_config_path = Path(__file__).parent.parent.parent.parent / f"config/configuration_{method}.yaml"
+        model_config_path = (
+            Path(__file__).parent.parent.parent.parent
+            / f"config/configuration_{method}.yaml"
+        )
         if not model_config_path.exists():
-            raise FileNotFoundError(f"Configuration file not found for method '{method}' at {model_config_path}")
+            raise FileNotFoundError(
+                f"Configuration file not found for method '{method}' at {model_config_path}"
+            )
 
         with open(model_config_path, "r") as f:
             tmp_config = yaml.safe_load(f)
