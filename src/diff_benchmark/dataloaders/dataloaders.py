@@ -33,13 +33,14 @@ class PreprocessedData:
             target count, and gender distribution.
     """
 
-    def __init__(self, features, targets, genders, n_splits=5, random_state=42):
+    def __init__(self, features, targets, genders, config):
         self.features = features
         self.targets = targets
         self.genders = genders
         self.skf = StratifiedKFold(
-            n_splits=n_splits, shuffle=True, random_state=random_state
+            n_splits=config["data_partition"]["n_splits"], shuffle=True, random_state=config["random_state"]
         )
+        self.config = config
 
     def get_fold_indices(self):
         """Returns the indices for each fold in the stratified K-Folds."""
@@ -67,14 +68,14 @@ class PreprocessedData:
             Subset(dataset, train_idx),
             batch_size=batch_size,
             shuffle=False,
-            num_workers=0, #10,
+            num_workers=self.config["dataloaders"]["num_workers"],
             collate_fn=self.safe_collate,
         )
         test_loader = DataLoader(
             Subset(dataset, test_idx),
             batch_size=batch_size,
             shuffle=False,
-            num_workers=0, #10,
+            num_workers=self.config["dataloaders"]["num_workers"],
             collate_fn=self.safe_collate,
         )
 
