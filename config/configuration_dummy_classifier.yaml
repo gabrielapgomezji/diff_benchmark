@@ -4,15 +4,9 @@
 pretrain_path: /data/parietal/store3/work/ggomezji/projects/diff_benchmark/MedicalNet_pytorch_files2/pretrain/resnet_10.pth
 
 models:
-- name: lcot
+- name: dummy_classifier
   params:
-    name: lcot
-    comment: Lcot Debugging. Test with bval index 2. Test for config changes
+    name: dummy_classifier
+    comment: Dummy Classifier Debugging. Test with bval index 2. Test for config changes!
     region_name: VisCent_ExStr
     batch_size: 32
-    num_spheres: 3363
-    epochs: 1
-    device: None
-    dtype: None
-    lmbd: 100
-    lr: 0.0001
