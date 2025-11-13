@@ -2,10 +2,10 @@ import hashlib
 import json
 
 from diff_benchmark.models import cnn_with_base
-from diff_benchmark.models.cca import CanonicalCorrelationRegressor
+# from diff_benchmark.models.cca import CanonicalCorrelationRegressor
 from diff_benchmark.models.classic_ml import PCARandomForestModel, PCASVMModel
 from diff_benchmark.models.cnn import ResNet3SliceModel
-from diff_benchmark.models.cnn_medicalnet import ResNet3DModel
+# from diff_benchmark.models.cnn_medicalnet import ResNet3DModel
 from diff_benchmark.models.dummy import DummyClassifier
 from diff_benchmark.models.lcot_model import KernelRidgeRegression
 from diff_benchmark.models.logistic_regression import (
@@ -57,8 +57,8 @@ def get_model(name: str, config: dict):
 
     name = name.lower()
 
-    if name == "cca":
-        return CanonicalCorrelationRegressor(n_components=config["n_components"])
+    # if name == "cca":
+    #     return CanonicalCorrelationRegressor(n_components=config["n_components"])
 
     if name == "dummy_classifier":
         return DummyClassifier()
@@ -92,8 +92,8 @@ def get_model(name: str, config: dict):
     if name == "2dcnn_lite":
         return cnn_with_base.ResNet3SliceModel(**config)
 
-    if name == "3dcnn_medicalnet":
-        return ResNet3DModel(**config)
+    # if name == "3dcnn_medicalnet":
+    #     return ResNet3DModel(**config)
 
     if name == "lcot":
         return KernelRidgeRegression(**config)

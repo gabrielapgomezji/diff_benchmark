@@ -14,6 +14,7 @@ from diff_benchmark.models.utils import create_trainer
 
 
 def collate_with_augmentation(batch, transform=None):
+    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
     xs, ys, gs = zip(*batch)  # separate batch components
     xs_aug = []
     for x in xs:  # x shape: (D,H,W)
@@ -311,6 +312,7 @@ class ResNet3SliceModel(LightningModel):
         )
 
     def x_only_loader(self, dl):
+        """Utility to create a dataloader that yields only inputs (no labels)."""
         for x, _, _ in dl:
             if isinstance(x, list):
                 x = torch.stack(x)

@@ -10,7 +10,7 @@ from sklearn.metrics import (
     f1_score,
     precision_score,
     recall_score,
-    roc_auc_score,
+    # roc_auc_score,
 )
 from sklearn.model_selection import train_test_split
 from torch import nn
@@ -19,10 +19,11 @@ from torchvision import models, transforms
 from tqdm import tqdm
 
 from diff_benchmark.models.base import TorchAbstractModel
-from diff_benchmark.utils.logger import MetricsManager, TrainLogger
+from diff_benchmark.utils.logger import TrainLogger #MetricsManager
 
 
 def collate_with_augmentation(batch, transform=None):
+    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
     xs, ys, gs = zip(*batch)  # separate batch components
     xs_aug = []
     for x in xs:  # x shape: (D,H,W)
@@ -193,7 +194,7 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
     data_type = "images"
 
     def __init__(self, input_slices=145, num_classes=2, device="cuda", **kwargs):
-        super(ResNet3SliceModel, self).__init__()
+        super().__init__()
         self.device = device
         self.run_id = kwargs.get("run_id", "unnamed_run")
         self.fold_idx = kwargs.get("fold_idx", -1)
@@ -229,6 +230,7 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
                 "batch_train_idx": [],
             },
         }
+        self.logger = None
 
     def _dataloader_to_numpy(self, dataloader):
         x, y, g = [], [], []
@@ -319,7 +321,7 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
             monitor="val_accuracy",
             mode="max",
         )
-        print(f"Dataloaders created")
+        print("Dataloaders created")
         for epoch in tqdm(range(self.epochs)):
 
             print(f"Epoch {epoch}")
@@ -431,6 +433,7 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
 
 
 class AttentionPool(nn.Module):
+    """AttentionPool implements an attention-based pooling mechanism for aggregating feature vectors."""
     def __init__(self, feature_dim, hidden_dim=128):
         super().__init__()
         self.attn = nn.Sequential(
@@ -438,6 +441,7 @@ class AttentionPool(nn.Module):
         )
 
     def forward(self, feats):
+        """Forward pass of the AttentionPool."""
         # feats: (B, num_subvols, 512)
         attn_weights = torch.softmax(self.attn(feats), dim=1)  # (B, num_subvols, 1)
         pooled = torch.sum(attn_weights * feats, dim=1)  # (B, 512)

@@ -10,6 +10,7 @@ def run_single_process(
     results_path: str,
     general_config: dict,
 ) -> list:
+    """Runs a specified function in a single process for multiple models."""
     results = []
     for model in models_to_run:
         results.append(

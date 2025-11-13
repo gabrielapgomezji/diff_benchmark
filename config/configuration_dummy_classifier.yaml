@@ -7,5 +7,5 @@ models:
 - name: dummy_classifier
   params:
     name: dummy_classifier
-    comment: Dummy Classifier. Removed functions
+    comment: Dummy Classifier. Testing new dataloader
     batch_size: 32

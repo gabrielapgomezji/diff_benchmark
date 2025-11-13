@@ -50,6 +50,9 @@ class PreprocessedData:
         return indices
 
     def safe_collate(self, batch):
+        """
+        Collate function that filters out None samples from the batch.
+        """
         # drop None samples
         batch = [b for b in batch if b is not None]
         return torch.utils.data.dataloader.default_collate(batch)
@@ -101,36 +104,23 @@ class PreprocessedData:
             genders[test_idx],
         )
 
+    def _create_dataset(self, idx):
+        """Create a TensorDataset for the given indices."""
+        return TensorDataset(
+            torch.tensor(self.features[idx], dtype=torch.float32),
+            torch.tensor(self.targets[idx], dtype=torch.float32),
+            torch.tensor(self.genders[idx], dtype=torch.int64),
+        )
+
     def get_folds_as_dataloaders(self, batch_size=32, shuffle=True):
         """Generates and returns DataLoaders for all folds."""
         folds = []
 
         for train_idx, val_idx in self.skf.split(self.features, self.genders):
-            features_train, targets_train, genders_train = (
-                self.features[train_idx],
-                self.targets[train_idx],
-                self.genders[train_idx],
-            )
-            features_val, targets_val, genders_val = (
-                self.features[val_idx],
-                self.targets[val_idx],
-                self.genders[val_idx],
-            )
+            train_dataset = self._create_dataset(train_idx)
+            val_dataset = self._create_dataset(val_idx)
 
-            train_dataset = TensorDataset(
-                torch.tensor(features_train, dtype=torch.float32),
-                torch.tensor(targets_train, dtype=torch.float32),
-                torch.tensor(genders_train, dtype=torch.int64),
-            )
-            val_dataset = TensorDataset(
-                torch.tensor(features_val, dtype=torch.float32),
-                torch.tensor(targets_val, dtype=torch.float32),
-                torch.tensor(genders_val, dtype=torch.int64),
-            )
-
-            train_loader = DataLoader(
-                train_dataset, batch_size=batch_size, shuffle=shuffle
-            )
+            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle)
             val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
             folds.append((train_loader, val_loader))

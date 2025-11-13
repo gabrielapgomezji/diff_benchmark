@@ -41,7 +41,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
     brain_preparator = get_data_pipeline(data_type, config)
     brain_df = brain_preparator.run_microstructure_pipeline()
     brain_df = brain_df.reset_index()
-
+    breakpoint()
     ##### NEXT TESTING STEPS
     preprocessor = DefaultDemographicsPreprocessor(config["data_paths"]["csv_file"])
     demographics_df = preprocessor.preprocess(config["target_columns"])

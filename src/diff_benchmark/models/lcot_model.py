@@ -61,6 +61,7 @@ class KernelRidgeRegression(nn.Module):
         self.bval_idx = 2
 
     def fit(self, dataloader):
+        """Fit the Kernel Ridge Regression model using the provided dataloader."""
         all_embeddings = []
         all_targets = []
         all_powers = []
@@ -132,6 +133,7 @@ class KernelRidgeRegression(nn.Module):
         return
 
     def predict(self, dataloader):
+        """Predict using the trained Kernel Ridge Regression model."""
         # embedding:torch.Tensor
         all_predictions = []
 

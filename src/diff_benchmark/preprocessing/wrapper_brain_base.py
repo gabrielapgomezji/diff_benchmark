@@ -142,7 +142,7 @@ class DataPreparationBrain(ABC):
         def process_subject(subject_id):
             """Processes a single subject by checking for required files"""
             # if not self.verify_subject_files(
-            if self.verify_raw_files(subject_id, self.config["metric_to_compute"]):
+            if self.verify_raw_files(subject_id):
                 if (
                     self.verify_subject_files(
                         subject_id, self.config["metric_to_compute"]

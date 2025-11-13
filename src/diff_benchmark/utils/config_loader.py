@@ -4,13 +4,14 @@ import yaml
 
 
 def load_configs(args):
+    """Load general and model-specific configurations based on provided arguments."""
     # =====================
     # Load general config
     # =====================
     general_config_path = (
         Path(__file__).parent.parent.parent.parent / "config/configuration_general.yaml"
     )
-    with open(general_config_path, "r") as f:
+    with open(general_config_path, "r", encoding="utf-8") as f:
         general_config = yaml.safe_load(f)
 
     # =====================
@@ -27,7 +28,7 @@ def load_configs(args):
                 f"Configuration file not found for method '{method}' at {model_config_path}"
             )
 
-        with open(model_config_path, "r") as f:
+        with open(model_config_path, "r", encoding="utf-8") as f:
             tmp_config = yaml.safe_load(f)
 
         # merge the model(s) from this file

@@ -1,4 +1,5 @@
-import os
+from dataclasses import dataclass
+from typing import Any
 
 import h5py
 import networkx as nx
@@ -116,7 +117,36 @@ def normalize(data):
     normalized_data = (data - mean) / std
     return normalized_data
 
+@dataclass
+class ComputationConfig:
+    bvals_to_compute: list
+    sphere: Any
+    model: Any
+    gtab0: Any
+    graph_ins: nx.Graph
+    normalize_input: bool
+    
+def _fit_signal_with_fallback(model, signal, vertex, data, graph_ins, normalize_input):
+    """Try fitting signal, fall back to neighbor averaging if SVD fails."""
+    try:
+        return model.fit(signal)
+    except LinAlgError:
+        print(f"Vertex {vertex} - SVD did not converge. Using neighbor average.")
+        neighbors = list(nx.neighbors(graph_ins, vertex))
+        if not neighbors:
+            print(f"Vertex {vertex} has no neighbors. Skipping.")
+            return None
 
+        neighbor_signals = np.array([data["dwi_signal"][n] for n in neighbors])
+        avg_signal = np.mean(neighbor_signals, axis=0)
+        if normalize_input:
+            avg_signal = normalize(avg_signal)
+        try:
+            return model.fit(avg_signal)
+        except LinAlgError:
+            print(f"Vertex {vertex} - Averaged neighbor signal also failed. Skipping.")
+            return None
+        
 def compute_data(
     data, bvals_to_compute, sphere, model, gtab0, graph_ins, normalize_input
 ):
@@ -152,32 +182,35 @@ def compute_data(
                 else data["dwi_signal"][vertex]
             )
 
-            try:
-                fit = model.fit(signal)
-            except LinAlgError:
-                print(
-                    f"Vertex {vertex} - SVD did not converge. Using neighbor average."
-                )
+            # try:
+            #     fit = model.fit(signal)
+            # except LinAlgError:
+            #     print(
+            #         f"Vertex {vertex} - SVD did not converge. Using neighbor average."
+            #     )
 
-                neighbors = list(nx.neighbors(graph_ins, vertex))
-                if not neighbors:
-                    print(f"Vertex {vertex} has no neighbors. Skipping.")
-                    continue
+            #     neighbors = list(nx.neighbors(graph_ins, vertex))
+            #     if not neighbors:
+            #         print(f"Vertex {vertex} has no neighbors. Skipping.")
+            #         continue
 
-                neighbor_signals = np.array([data["dwi_signal"][n] for n in neighbors])
-                avg_signal = np.mean(neighbor_signals, axis=0)
+            #     neighbor_signals = np.array([data["dwi_signal"][n] for n in neighbors])
+            #     avg_signal = np.mean(neighbor_signals, axis=0)
 
-                if normalize_input:
-                    avg_signal = normalize(avg_signal)
+            #     if normalize_input:
+            #         avg_signal = normalize(avg_signal)
 
-                try:
-                    fit = model.fit(avg_signal)
-                except LinAlgError:
-                    print(
-                        f"Vertex {vertex} - Averaged neighbor signal also failed. Skipping."
-                    )
-                    continue
-
+            #     try:
+            #         fit = model.fit(avg_signal)
+            #     except LinAlgError:
+            #         print(
+            #             f"Vertex {vertex} - Averaged neighbor signal also failed. Skipping."
+            #         )
+            #         continue
+            fit = _fit_signal_with_fallback(model, signal, vertex, data, graph_ins, normalize_input)
+            if fit is None:
+                continue
+            
             b0_val = fit.predict(gtab0)
             attenuation = fit.predict(gtab_sphere) / b0_val
 
@@ -193,50 +226,49 @@ def compute_data(
 
     return all_results
 
+# def save_output(all_results, save_path, name, sphere, data, sub):
+#     """
+#     Saves the computed results to an HDF5 file.
 
-def save_output(all_results, save_path, name, sphere, data, sub):
-    """
-    Saves the computed results to an HDF5 file.
+#     Args:
+#         all_results (dict): Computed results for all b-values.
+#         save_path (Path): Path to save the output file.
+#         name (str): Name of the output file.
+#         sphere (object): Sphere object with vertices and edges.
+#         data (dict): Input data containing bvals and bvecs.
+#         sub (str): Subject identifier.
+#     """
+#     out_file = save_path / f"{name}_all_bvals.h5"
+#     os.makedirs(save_path, exist_ok=True)
 
-    Args:
-        all_results (dict): Computed results for all b-values.
-        save_path (Path): Path to save the output file.
-        name (str): Name of the output file.
-        sphere (object): Sphere object with vertices and edges.
-        data (dict): Input data containing bvals and bvecs.
-        sub (str): Subject identifier.
-    """
-    out_file = save_path / f"{name}_all_bvals.h5"
-    os.makedirs(save_path, exist_ok=True)
+#     with h5py.File(out_file, "w") as f:
+#         # Save sphere geometry once
+#         f.create_dataset("sphere_vertices", data=sphere.vertices)
+#         f.create_dataset("sphere_faces", data=sphere.faces)
+#         f.create_dataset("sphere_edges", data=sphere.edges)
 
-    with h5py.File(out_file, "w") as f:
-        # Save sphere geometry once
-        f.create_dataset("sphere_vertices", data=sphere.vertices)
-        f.create_dataset("sphere_faces", data=sphere.faces)
-        f.create_dataset("sphere_edges", data=sphere.edges)
+#         # Save original bvals and bvecs
+#         f.create_dataset("bvals", data=data["bvals"])
+#         f.create_dataset("bvecs", data=data["bvecs"])
 
-        # Save original bvals and bvecs
-        f.create_dataset("bvals", data=data["bvals"])
-        f.create_dataset("bvecs", data=data["bvecs"])
+#         # Metadata
+#         meta = f.create_group("meta")
+#         meta.attrs["subject"] = sub
+#         meta.attrs["surface"] = "MSMAll.32k_fs_LR"
+#         meta.attrs["hemisphere"] = "left"
+#         meta.attrs["model"] = "MAPMRI"
+#         meta.attrs["interpolation"] = "linear"
 
-        # Metadata
-        meta = f.create_group("meta")
-        meta.attrs["subject"] = sub
-        meta.attrs["surface"] = "MSMAll.32k_fs_LR"
-        meta.attrs["hemisphere"] = "left"
-        meta.attrs["model"] = "MAPMRI"
-        meta.attrs["interpolation"] = "linear"
+#         # Save per-bvalue results
+#         for bval_str, vertices in all_results.items():
+#             grp = f.create_group(f"bval_{bval_str}")
+#             for i, vdata in enumerate(vertices):
+#                 vgrp = grp.create_group(f"vertex_{i}")
+#                 vgrp.create_dataset("attenuation", data=vdata["attenuation"])
+#                 vgrp.create_dataset("surface_vertex", data=vdata["vertex"])
+#                 vgrp.create_dataset(
+#                     "mesh_neighbors", data=np.array(vdata["neighbors"], dtype=np.int32)
+#                 )
+#                 vgrp.create_dataset("deen_insula_label", data=vdata["label"])
 
-        # Save per-bvalue results
-        for bval_str, vertices in all_results.items():
-            grp = f.create_group(f"bval_{bval_str}")
-            for i, vdata in enumerate(vertices):
-                vgrp = grp.create_group(f"vertex_{i}")
-                vgrp.create_dataset("attenuation", data=vdata["attenuation"])
-                vgrp.create_dataset("surface_vertex", data=vdata["vertex"])
-                vgrp.create_dataset(
-                    "mesh_neighbors", data=np.array(vdata["neighbors"], dtype=np.int32)
-                )
-                vgrp.create_dataset("deen_insula_label", data=vdata["label"])
-
-    print(f"Saved full output with all b-values to:\n{out_file}")
+#     print(f"Saved full output with all b-values to:\n{out_file}")

@@ -72,7 +72,6 @@ def _load_bval_group(f, bval_grp_name):
 
 def load_attenuation_from_h5(h5_path: Path):
     """Load attenuation data and associated metadata from a custom HDF5 file."""
-    breakpoint()
     attenuation_data = {}
     metadata = {}
 
