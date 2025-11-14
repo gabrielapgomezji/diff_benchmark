@@ -1,7 +1,8 @@
-import nibabel as nib
-from pathlib import Path
-import numpy as np
 import json
+from pathlib import Path
+
+import nibabel as nib
+import numpy as np
 
 # def load_surface_coordinates(subject_dir, hemisphere="L", surface="pial"):
 #     """
@@ -56,8 +57,10 @@ def load_surface_coordinates(subject_dir, hemisphere="L", surface="pial"):
     subject_dir = Path(subject_dir)
 
     surf_path = (
-        subject_dir / "T1w" / "fsaverage_LR32k" /
-        f"{subject_dir.name}.{hemisphere}.{surface}.32k_fs_LR.surf.gii"
+        subject_dir
+        / "T1w"
+        / "fsaverage_LR32k"
+        / f"{subject_dir.name}.{hemisphere}.{surface}.32k_fs_LR.surf.gii"
     )
 
     if not surf_path.exists():
@@ -71,6 +74,7 @@ def load_surface_coordinates(subject_dir, hemisphere="L", surface="pial"):
 
     return coords, coord_dict
 
+
 # -------------------------
 # Example usage
 # -------------------------
@@ -81,8 +85,12 @@ if __name__ == "__main__":
     breakpoint()
     # coords_L = load_surface_coordinates(subject_dir, hemisphere="L", surface="pial")
     # coords_R = load_surface_coordinates(subject_dir, hemisphere="R", surface="pial")
-    coords_L, dict_L = load_surface_coordinates(subject_dir, hemisphere="L", surface="pial")
-    coords_R, dict_R = load_surface_coordinates(subject_dir, hemisphere="R", surface="pial")
+    coords_L, dict_L = load_surface_coordinates(
+        subject_dir, hemisphere="L", surface="pial"
+    )
+    coords_R, dict_R = load_surface_coordinates(
+        subject_dir, hemisphere="R", surface="pial"
+    )
 
     print("Left hemisphere coordinates:", coords_L.shape)
     print("Right hemisphere coordinates:", coords_R.shape)
