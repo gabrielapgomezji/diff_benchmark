@@ -945,7 +945,7 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
                     print(
                         f"[{subject_id}] Embedding file missing or empty → computing embedding."
                     )
-                    self.compute_embedding(subject_id)
+                    # self.compute_embedding(subject_id)
                 else:
                     # embeddings_data = h5py.File(embeddings_file, "r")
                     # embeddings_dataset = embeddings_data["embeddings"]
