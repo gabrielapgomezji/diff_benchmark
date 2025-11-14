@@ -941,42 +941,27 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
                     / f"sub-{subject_id}_desc-{self.target_substring}_lcotembedding.h5"
                 )
 
+                # --- 1. Missing or empty embedding file → discard ---
                 if not embeddings_file.exists() or embeddings_file.stat().st_size == 0:
                     print(
-                        f"[{subject_id}] Embedding file missing or empty → computing embedding."
+                        f"[{subject_id}] Embedding file missing or empty → discarding."
                     )
-                    # self.compute_embedding(subject_id)
-                else:
-                    # embeddings_data = h5py.File(embeddings_file, "r")
-                    # embeddings_dataset = embeddings_data["embeddings"]
-                    # if len(embeddings_dataset.keys()) != 3:
-                    #     self.compute_embedding(subject_id)
-                    # print(f"[{subject_id}] Embedding file already exists and is valid.")
-                    recompute = False  # True # Change to false when it needs to recompute everything
-
-                    with h5py.File(embeddings_file, "r") as embeddings_data:
-                        if "embeddings" not in embeddings_data:
-                            recompute = True
-                        else:
-                            embeddings_group = embeddings_data["embeddings"]
-                            n_members = len(embeddings_group.keys())
-                            if n_members != 3:
-                                recompute = True
-
-                    if recompute:
-                        print(
-                            f"[{subject_id}] Invalid embedding file (wrong #members) → recomputing."
-                        )
-                        self.compute_embedding(subject_id)
-                    else:
-                        print(
-                            f"[{subject_id}] Embedding file already exists and is valid."
-                        )
-
-                if file.stat().st_size == 0:
-                    print(f"[{subject_id}] Warning: File is empty.")
                     return (subject_id, None)
 
+                # --- 2. Validate embedding file ---
+                with h5py.File(embeddings_file, "r") as embeddings_data:
+                    if "embeddings" not in embeddings_data:
+                        print(f"[{subject_id}] Embedding group missing → discarding.")
+                        return (subject_id, None)
+
+                    embeddings_group = embeddings_data["embeddings"]
+                    if len(embeddings_group.keys()) != 3:
+                        print(
+                            f"[{subject_id}] Invalid embedding (#members != 3) → discarding."
+                        )
+                        return (subject_id, None)
+
+                print(f"[{subject_id}] Embedding file exists and is valid.")
                 return (subject_id, embeddings_file)
 
             except (OSError, FileNotFoundError, KeyError) as e:
