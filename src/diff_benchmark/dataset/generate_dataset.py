@@ -4,15 +4,14 @@ import h5py
 import nibabel as nib
 import numpy as np
 import torch
-from joblib import Parallel, delayed
-from nilearn.image import resample_img
+
+# from joblib import Parallel, delayed
 from torch.utils.data import Dataset
 
-# import pandas as pd
-from tqdm import tqdm
+# from tqdm import tqdm
 
-from diff_benchmark.dataset.base import DatasetBuilder
-from diff_benchmark.dataset.read_save_dataset import save_dataset
+# from diff_benchmark.dataset.base import DatasetBuilder
+# from diff_benchmark.dataset.read_save_dataset import save_dataset
 
 # class CustomDataset(Dataset):
 
@@ -216,172 +215,172 @@ class CustomDataset(Dataset):
         return self.mode
 
 
-class CustomDatasetBuilder(DatasetBuilder):
-    """
-    Initializes the dataset generator.
-    Parameters:
-        base_path (str): The base path for the dataset.
-        loading_strategy (str): The strategy to use for loading the dataset.
-        df_targets (DataFrame): The DataFrame containing target values.
-        h5_filename (str, optional): The name of the HDF5 file for embeddings. Defaults to "mapmri_default_embeddings.h5".
-        output_dataset_filename (str, optional): The name of the output dataset file. Defaults to "dataset.h5".
-    """
+# class CustomDatasetBuilder(DatasetBuilder):
+#     """
+#     Initializes the dataset generator.
+#     Parameters:
+#         base_path (str): The base path for the dataset.
+#         loading_strategy (str): The strategy to use for loading the dataset.
+#         df_targets (DataFrame): The DataFrame containing target values.
+#         h5_filename (str, optional): The name of the HDF5 file for embeddings. Defaults to "mapmri_default_embeddings.h5".
+#         output_dataset_filename (str, optional): The name of the output dataset file. Defaults to "dataset.h5".
+#     """
 
-    def __init__(
-        self,
-        base_path,
-        loading_strategy,
-        df_targets,
-        h5_filename="mapmri_default_embeddings.h5",
-        output_dataset_filename="dataset.h5",
-    ):
-        super().__init__(base_path, h5_filename, output_dataset_filename)
-        self.df_targets = df_targets
-        self.strategy = loading_strategy
+#     def __init__(
+#         self,
+#         base_path,
+#         loading_strategy,
+#         df_targets,
+#         h5_filename="mapmri_default_embeddings.h5",
+#         output_dataset_filename="dataset.h5",
+#     ):
+#         super().__init__(base_path, h5_filename, output_dataset_filename)
+#         self.df_targets = df_targets
+#         self.strategy = loading_strategy
 
-    def verify_files(self, subject_dir: Path) -> bool:
-        """
-        Verifies the existence of a specific HDF5 file and checks if the subject directory name is present in the DataFrame of targets.
-        Args:
-            subject_dir (Path): The directory path of the subject to verify.
-        Returns:
-            bool: True if the HDF5 file exists and the subject directory name is in the DataFrame, False otherwise.
-        """
+#     def verify_files(self, subject_dir: Path) -> bool:
+#         """
+#         Verifies the existence of a specific HDF5 file and checks if the subject directory name is present in the DataFrame of targets.
+#         Args:
+#             subject_dir (Path): The directory path of the subject to verify.
+#         Returns:
+#             bool: True if the HDF5 file exists and the subject directory name is in the DataFrame, False otherwise.
+#         """
 
-        h5_path = subject_dir / "processed" / self.h5_filename
+#         h5_path = subject_dir / "processed" / self.h5_filename
 
-        return (
-            h5_path.exists()
-            and int(subject_dir.name) in self.df_targets["Subject"].astype(int).tolist()
-        )
+#         return (
+#             h5_path.exists()
+#             and int(subject_dir.name) in self.df_targets["Subject"].astype(int).tolist()
+#         )
 
-    def filter_features(self, features: np.array) -> bool:
-        """
-        Filters features based on their shape.
-        This method checks if the number of columns in the features array
-        is equal to 536. It returns True if the condition is met,
-        indicating that the features are valid, and False otherwise.
-        Args:
-            features (numpy.ndarray): The input features to be checked.
-        Returns:
-            bool: True if the number of columns is 536, False otherwise.
-        """
+#     def filter_features(self, features: np.array) -> bool:
+#         """
+#         Filters features based on their shape.
+#         This method checks if the number of columns in the features array
+#         is equal to 536. It returns True if the condition is met,
+#         indicating that the features are valid, and False otherwise.
+#         Args:
+#             features (numpy.ndarray): The input features to be checked.
+#         Returns:
+#             bool: True if the number of columns is 536, False otherwise.
+#         """
 
-        return features.shape[1] == 536
+#         return features.shape[1] == 536
 
-    def extract_information(self, subject_dir: Path) -> tuple:
-        """
-        Extracts information from the dataset for a given subject directory.
-        Args:
-            subject_dir (Path): The path to the subject directory containing the dataset.
-        Returns:
-            tuple: A tuple containing the extracted features, target values, subject ID, and gender of the subject.
-                   Returns None if data loading fails, if the data is invalid, or if the subject ID is not found in the targets.
-        Raises:
-            Exception: If there is an error loading the data from the specified h5_path.
-        """
+#     def extract_information(self, subject_dir: Path) -> tuple:
+#         """
+#         Extracts information from the dataset for a given subject directory.
+#         Args:
+#             subject_dir (Path): The path to the subject directory containing the dataset.
+#         Returns:
+#             tuple: A tuple containing the extracted features, target values, subject ID, and gender of the subject.
+#                    Returns None if data loading fails, if the data is invalid, or if the subject ID is not found in the targets.
+#         Raises:
+#             Exception: If there is an error loading the data from the specified h5_path.
+#         """
 
-        subject_id = subject_dir.name
-        h5_path = subject_dir / "processed" / self.h5_filename
+#         subject_id = subject_dir.name
+#         h5_path = subject_dir / "processed" / self.h5_filename
 
-        try:
-            data = self.strategy.load_data(h5_path)
-            if not self.strategy.is_valid(data):
-                return None
-        except Exception as e:
-            print(f"Failed to load data for subject {subject_id}: {e}")
-            return None
+#         try:
+#             data = self.strategy.load_data(h5_path)
+#             if not self.strategy.is_valid(data):
+#                 return None
+#         except Exception as e:
+#             print(f"Failed to load data for subject {subject_id}: {e}")
+#             return None
 
-        features = self.strategy.to_features(data)
+#         features = self.strategy.to_features(data)
 
-        if int(subject_id) not in self.df_targets["Subject"].astype(int).tolist():
-            return None
+#         if int(subject_id) not in self.df_targets["Subject"].astype(int).tolist():
+#             return None
 
-        target = (
-            self.df_targets.loc[self.df_targets["Subject"] == int(subject_id)]
-            .drop(columns=["Subject"])
-            .values.astype(float)
-        )
+#         target = (
+#             self.df_targets.loc[self.df_targets["Subject"] == int(subject_id)]
+#             .drop(columns=["Subject"])
+#             .values.astype(float)
+#         )
 
-        gender_subject = self.df_targets.loc[
-            self.df_targets["Subject"] == int(subject_id), "Gender"
-        ].values[0]
+#         gender_subject = self.df_targets.loc[
+#             self.df_targets["Subject"] == int(subject_id), "Gender"
+#         ].values[0]
 
-        return features, target, subject_id, gender_subject
+#         return features, target, subject_id, gender_subject
 
-    def save_dataset(self, features, targets, genders) -> None:
-        """
-        Saves the dataset to a specified output file.
-        Parameters:
-            features (array-like): The input features of the dataset.
-            targets (array-like): The target labels corresponding to the input features.
-            genders (array-like): The gender information associated with the dataset.
-        This method calls the save_dataset function to write the dataset to the
-        output file defined by self.output_dataset_filename.
-        """
+#     def save_dataset(self, features, targets, genders) -> None:
+#         """
+#         Saves the dataset to a specified output file.
+#         Parameters:
+#             features (array-like): The input features of the dataset.
+#             targets (array-like): The target labels corresponding to the input features.
+#             genders (array-like): The gender information associated with the dataset.
+#         This method calls the save_dataset function to write the dataset to the
+#         output file defined by self.output_dataset_filename.
+#         """
 
-        save_dataset(
-            features, targets, genders, output_file=self.output_dataset_filename
-        )
+#         save_dataset(
+#             features, targets, genders, output_file=self.output_dataset_filename
+#         )
 
-    def create_dataset(self, n_jobs: int = 8) -> tuple:
-        """
-        Creates a dataset by processing subject directories in parallel.
-        This method iterates through subject directories in the base path, extracts
-        features and targets from the files, filters the features, and stacks the
-        results into arrays. It utilizes parallel processing to speed up the
-        information extraction.
-        Parameters:
-            n_jobs (int): The number of jobs to run in parallel. Default is 8.
-        Returns:
-            tuple: A tuple containing:
-                - features (np.ndarray): Stacked features array.
-                - targets (np.ndarray): Stacked targets array.
-                - subject_ids (list): List of subject IDs.
-                - genders (list): List of genders.
-        Raises:
-            Exception: If there is an error stacking the arrays.
-            None: If no valid data is found or if an error occurs during processing.
-        """
+#     def create_dataset(self, n_jobs: int = 8) -> tuple:
+#         """
+#         Creates a dataset by processing subject directories in parallel.
+#         This method iterates through subject directories in the base path, extracts
+#         features and targets from the files, filters the features, and stacks the
+#         results into arrays. It utilizes parallel processing to speed up the
+#         information extraction.
+#         Parameters:
+#             n_jobs (int): The number of jobs to run in parallel. Default is 8.
+#         Returns:
+#             tuple: A tuple containing:
+#                 - features (np.ndarray): Stacked features array.
+#                 - targets (np.ndarray): Stacked targets array.
+#                 - subject_ids (list): List of subject IDs.
+#                 - genders (list): List of genders.
+#         Raises:
+#             Exception: If there is an error stacking the arrays.
+#             None: If no valid data is found or if an error occurs during processing.
+#         """
 
-        subject_dirs = [
-            d for d in self.base_path.iterdir() if d.is_dir() and self.verify_files(d)
-        ]
+#         subject_dirs = [
+#             d for d in self.base_path.iterdir() if d.is_dir() and self.verify_files(d)
+#         ]
 
-        print(f"Processing {len(subject_dirs)} subjects in parallel...")
+#         print(f"Processing {len(subject_dirs)} subjects in parallel...")
 
-        def process(subject_dir):
-            result = self.extract_information(subject_dir)
-            if result is None:
-                return None
-            features, target, subject_id, gender = result
-            if not self.filter_features(features):
-                return None
-            return features, target, subject_id, gender
+#         def process(subject_dir):
+#             result = self.extract_information(subject_dir)
+#             if result is None:
+#                 return None
+#             features, target, subject_id, gender = result
+#             if not self.filter_features(features):
+#                 return None
+#             return features, target, subject_id, gender
 
-        results = Parallel(n_jobs=n_jobs)(
-            delayed(process)(d) for d in tqdm(subject_dirs)
-        )
+#         results = Parallel(n_jobs=n_jobs)(
+#             delayed(process)(d) for d in tqdm(subject_dirs)
+#         )
 
-        # Filter out failed entries
-        results = [r for r in results if r is not None]
+#         # Filter out failed entries
+#         results = [r for r in results if r is not None]
 
-        if not results:
-            print("No valid data found.")
-            return None
+#         if not results:
+#             print("No valid data found.")
+#             return None
 
-        features_list, targets_list, subject_ids, genders = zip(*results)
+#         features_list, targets_list, subject_ids, genders = zip(*results)
 
-        try:
-            features = np.stack(features_list)
-            targets = (
-                np.stack(targets_list).squeeze(1)
-                if targets_list[0].ndim == 2 and targets_list[0].shape[1] == 1
-                else np.stack(targets_list)
-            )
-        except Exception as e:
-            print(f"Error stacking arrays: {e}")
-            return None
+#         try:
+#             features = np.stack(features_list)
+#             targets = (
+#                 np.stack(targets_list).squeeze(1)
+#                 if targets_list[0].ndim == 2 and targets_list[0].shape[1] == 1
+#                 else np.stack(targets_list)
+#             )
+#         except Exception as e:
+#             print(f"Error stacking arrays: {e}")
+#             return None
 
-        self.save_dataset(features, targets, genders)
-        return features, targets, subject_ids, genders
+#         self.save_dataset(features, targets, genders)
+#         return features, targets, subject_ids, genders
