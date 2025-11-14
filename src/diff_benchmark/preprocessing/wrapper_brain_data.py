@@ -943,7 +943,9 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
 
                 # --- 1. Missing or empty embedding file → discard ---
                 if not embeddings_file.exists() or embeddings_file.stat().st_size == 0:
-                    print(f"[{subject_id}] Embedding file missing or empty → discarding.")
+                    print(
+                        f"[{subject_id}] Embedding file missing or empty → discarding."
+                    )
                     return (subject_id, None)
 
                 # --- 2. Validate embedding file ---
@@ -954,7 +956,9 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
 
                     embeddings_group = embeddings_data["embeddings"]
                     if len(embeddings_group.keys()) != 3:
-                        print(f"[{subject_id}] Invalid embedding (#members != 3) → discarding.")
+                        print(
+                            f"[{subject_id}] Invalid embedding (#members != 3) → discarding."
+                        )
                         return (subject_id, None)
 
                 print(f"[{subject_id}] Embedding file exists and is valid.")
