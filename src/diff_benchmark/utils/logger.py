@@ -15,6 +15,7 @@ from sklearn.metrics import (
 
 class MetricsManager:
     """Compute and store metrics for classification tasks."""
+
     def __init__(self, average="binary"):
         """
         Compute and store metrics for classification tasks.
@@ -84,6 +85,7 @@ class MetricsManager:
 
 class TrainLogger:
     """Logger for training process, metrics, and model checkpoints."""
+
     def __init__(
         self,
         fold_idx,
@@ -148,7 +150,7 @@ class TrainLogger:
         self.history["epoch"].append({"phase": phase, "epoch": epoch, **metrics})
 
     def log_predictions(self, epoch, y_true, y_pred, scores=None):
-        """Log predictions for an epoch."""        
+        """Log predictions for an epoch."""
         self.history["predictions"]["epoch"].append(epoch)
         self.history["predictions"]["y_true"].append(y_true.to_list())
         self.history["predictions"]["y_pred"].append(y_pred.to_list())

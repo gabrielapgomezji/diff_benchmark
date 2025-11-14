@@ -120,7 +120,9 @@ class PreprocessedData:
             train_dataset = self._create_dataset(train_idx)
             val_dataset = self._create_dataset(val_idx)
 
-            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle)
+            train_loader = DataLoader(
+                train_dataset, batch_size=batch_size, shuffle=shuffle
+            )
             val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
             folds.append((train_loader, val_loader))

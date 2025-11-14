@@ -4,13 +4,12 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from sklearn.metrics import (
+from sklearn.metrics import (  # roc_auc_score,
     accuracy_score,
     confusion_matrix,
     f1_score,
     precision_score,
     recall_score,
-    # roc_auc_score,
 )
 from sklearn.model_selection import train_test_split
 from torch import nn
@@ -19,7 +18,7 @@ from torchvision import models, transforms
 from tqdm import tqdm
 
 from diff_benchmark.models.base import TorchAbstractModel
-from diff_benchmark.utils.logger import TrainLogger #MetricsManager
+from diff_benchmark.utils.logger import TrainLogger  # MetricsManager
 
 
 def collate_with_augmentation(batch, transform=None):
@@ -434,6 +433,7 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
 
 class AttentionPool(nn.Module):
     """AttentionPool implements an attention-based pooling mechanism for aggregating feature vectors."""
+
     def __init__(self, feature_dim, hidden_dim=128):
         super().__init__()
         self.attn = nn.Sequential(

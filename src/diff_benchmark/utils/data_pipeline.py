@@ -17,6 +17,8 @@ def get_data_pipeline(data_type, config):
         print("Using Default Array Pipeline")
         brain_preparator = DefaultHcpPipeline(config)
     else:
-        raise ValueError(f"Unknown data_type '{data_type}'. Must be one of ['lcot_embed', 'images', 'array'].")
+        raise ValueError(
+            f"Unknown data_type '{data_type}'. Must be one of ['lcot_embed', 'images', 'array']."
+        )
 
     return brain_preparator

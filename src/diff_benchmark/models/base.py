@@ -2,13 +2,11 @@ from abc import ABC, abstractmethod
 
 import pytorch_lightning as pl
 import torch
-from sklearn.metrics import (
+from sklearn.metrics import (  # confusion_matrix,; roc_auc_score,
     accuracy_score,
-    # confusion_matrix,
     f1_score,
     precision_score,
     recall_score,
-    # roc_auc_score,
 )
 
 
@@ -64,7 +62,7 @@ class TorchAbstractModel(ABC):
         """
 
 
-class LightningModel(pl.LightningModule, ABC): # pylint: disable=too-many-ancestors
+class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ancestors
     """
     Abstract Lightning-based deep learning model class.
     Provides:
@@ -184,9 +182,7 @@ class LightningModel(pl.LightningModule, ABC): # pylint: disable=too-many-ancest
             scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
             return {"optimizer": optimizer, "lr_scheduler": scheduler}
 
-        scheduler = torch.optim.lr_scheduler.StepLR(
-            optimizer, step_size=10, gamma=0.5
-        )
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
         return {
             "optimizer": optimizer,
             "lr_scheduler": {"scheduler": scheduler, "monitor": "val_loss"},

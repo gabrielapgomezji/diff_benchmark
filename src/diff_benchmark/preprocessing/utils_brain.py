@@ -117,6 +117,7 @@ def normalize(data):
     normalized_data = (data - mean) / std
     return normalized_data
 
+
 @dataclass
 class ComputationConfig:
     bvals_to_compute: list
@@ -125,7 +126,8 @@ class ComputationConfig:
     gtab0: Any
     graph_ins: nx.Graph
     normalize_input: bool
-    
+
+
 def _fit_signal_with_fallback(model, signal, vertex, data, graph_ins, normalize_input):
     """Try fitting signal, fall back to neighbor averaging if SVD fails."""
     try:
@@ -146,7 +148,8 @@ def _fit_signal_with_fallback(model, signal, vertex, data, graph_ins, normalize_
         except LinAlgError:
             print(f"Vertex {vertex} - Averaged neighbor signal also failed. Skipping.")
             return None
-        
+
+
 def compute_data(
     data, bvals_to_compute, sphere, model, gtab0, graph_ins, normalize_input
 ):
@@ -207,10 +210,12 @@ def compute_data(
             #             f"Vertex {vertex} - Averaged neighbor signal also failed. Skipping."
             #         )
             #         continue
-            fit = _fit_signal_with_fallback(model, signal, vertex, data, graph_ins, normalize_input)
+            fit = _fit_signal_with_fallback(
+                model, signal, vertex, data, graph_ins, normalize_input
+            )
             if fit is None:
                 continue
-            
+
             b0_val = fit.predict(gtab0)
             attenuation = fit.predict(gtab_sphere) / b0_val
 
@@ -225,6 +230,7 @@ def compute_data(
         all_results[str(bval)] = subject_spheres
 
     return all_results
+
 
 # def save_output(all_results, save_path, name, sphere, data, sub):
 #     """

@@ -32,6 +32,7 @@ def load_embeddings_and_power_from_h5(h5_path):
 
     return embeddings, power, metadata
 
+
 def _load_global_metadata(f):
     """Extract global metadata and geometry arrays."""
     metadata = {}
