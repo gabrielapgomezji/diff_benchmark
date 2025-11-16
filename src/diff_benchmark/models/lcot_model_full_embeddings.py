@@ -64,6 +64,8 @@ class FullEmbeddingsKernelRidgeRegression(nn.Module):
         use_l2_norm: Whether to use L2 norm instead of circular distance (default: False)
     """
 
+    data_type = "lcot_embed"
+
     def __init__(
         self,
         lmbd: float = 1.,
