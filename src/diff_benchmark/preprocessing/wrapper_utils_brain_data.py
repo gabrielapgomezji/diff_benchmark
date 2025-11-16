@@ -3,7 +3,6 @@ from pathlib import Path
 from xml import etree
 
 import h5py
-import networkx as nx
 import nibabel as nib
 import nilearn as ni
 import numpy as np
@@ -352,7 +351,7 @@ def load_rtop_data(config):
     Assumes filenames follow format *_rtop_cortex.L/R*.scalar.gii
     """
     subject_id = "100206"  # Test subject
-    subject_dir = Path(config["results_path"]) / subject_id / "processed"
+    subject_dir = Path(config["data_paths"]["hcp_results"]) / subject_id / "processed"
     rtop_left = (
         nib.load(subject_dir / f"{config['metric_to_compute']}.L.scalar.gii")
         .darrays[0]
@@ -561,8 +560,10 @@ def load_vertexwise_attenuations(file_path):
     """
     with h5py.File(file_path, "r") as f:
         # Sort bvals and vertices to ensure consistent order
-        bvals = sorted(f.keys(), key=lambda x: float(x))
-        vertices = sorted(f[bvals[0]].keys(), key=lambda x: int(x))
+        # bvals = sorted(f.keys(), key=lambda x: float(x))
+        # vertices = sorted(f[bvals[0]].keys(), key=lambda x: int(x))
+        bvals = sorted(f.keys(), key=float)
+        vertices = sorted(f[bvals[0]].keys(), key=int)
 
         num_bvals = len(bvals)
         num_vertices = len(vertices)
@@ -593,6 +594,7 @@ def load_vertexwise_attenuations(file_path):
 
 
 def split_data(data, num_splits):
+    """Splits data into specified number of splits."""
     split_size = data.shape[0] // num_splits
     return [
         data[i * split_size : (i + 1) * split_size] for i in range(num_splits - 1)

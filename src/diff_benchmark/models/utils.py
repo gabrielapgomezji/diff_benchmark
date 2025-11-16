@@ -11,6 +11,7 @@ def create_trainer(
     devices="auto",
     save_dir="./data/results/checkpoints",
 ):
+    """Creates a PyTorch Lightning Trainer with early stopping and model checkpointing."""
     early_stop = EarlyStopping(
         monitor=monitor, mode=mode, patience=patience, verbose=True
     )

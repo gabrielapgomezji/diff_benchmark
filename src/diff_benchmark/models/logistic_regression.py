@@ -25,6 +25,8 @@ class PCALogisticRegressionModel(NumpyAbstractModel):
             Transforms the input data using PCA and predicts the class labels using the logistic regression model.
     """
 
+    data_type = "array"
+
     def __init__(self):
         pipeline = Pipeline(
             [

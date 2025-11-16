@@ -33,13 +33,16 @@ class PreprocessedData:
             target count, and gender distribution.
     """
 
-    def __init__(self, features, targets, genders, n_splits=5, random_state=42):
+    def __init__(self, features, targets, genders, config):
         self.features = features
         self.targets = targets
         self.genders = genders
         self.skf = StratifiedKFold(
-            n_splits=n_splits, shuffle=True, random_state=random_state
+            n_splits=config["data_partition"]["n_splits"],
+            shuffle=True,
+            random_state=config["random_state"],
         )
+        self.config = config
 
     def get_fold_indices(self):
         """Returns the indices for each fold in the stratified K-Folds."""
@@ -47,6 +50,9 @@ class PreprocessedData:
         return indices
 
     def safe_collate(self, batch):
+        """
+        Collate function that filters out None samples from the batch.
+        """
         # drop None samples
         batch = [b for b in batch if b is not None]
         return torch.utils.data.dataloader.default_collate(batch)
@@ -67,16 +73,14 @@ class PreprocessedData:
             Subset(dataset, train_idx),
             batch_size=batch_size,
             shuffle=False,
-            num_workers=12,
-            pin_memory=False,
+            num_workers=self.config["dataloaders"]["num_workers"],
             collate_fn=self.safe_collate,
         )
         test_loader = DataLoader(
             Subset(dataset, test_idx),
             batch_size=batch_size,
             shuffle=False,
-            num_workers=12,
-            pin_memory=False,
+            num_workers=self.config["dataloaders"]["num_workers"],
             collate_fn=self.safe_collate,
         )
 
@@ -100,32 +104,21 @@ class PreprocessedData:
             genders[test_idx],
         )
 
+    def _create_dataset(self, idx):
+        """Create a TensorDataset for the given indices."""
+        return TensorDataset(
+            torch.tensor(self.features[idx], dtype=torch.float32),
+            torch.tensor(self.targets[idx], dtype=torch.float32),
+            torch.tensor(self.genders[idx], dtype=torch.int64),
+        )
+
     def get_folds_as_dataloaders(self, batch_size=32, shuffle=True):
         """Generates and returns DataLoaders for all folds."""
         folds = []
 
         for train_idx, val_idx in self.skf.split(self.features, self.genders):
-            features_train, targets_train, genders_train = (
-                self.features[train_idx],
-                self.targets[train_idx],
-                self.genders[train_idx],
-            )
-            features_val, targets_val, genders_val = (
-                self.features[val_idx],
-                self.targets[val_idx],
-                self.genders[val_idx],
-            )
-
-            train_dataset = TensorDataset(
-                torch.tensor(features_train, dtype=torch.float32),
-                torch.tensor(targets_train, dtype=torch.float32),
-                torch.tensor(genders_train, dtype=torch.int64),
-            )
-            val_dataset = TensorDataset(
-                torch.tensor(features_val, dtype=torch.float32),
-                torch.tensor(targets_val, dtype=torch.float32),
-                torch.tensor(genders_val, dtype=torch.int64),
-            )
+            train_dataset = self._create_dataset(train_idx)
+            val_dataset = self._create_dataset(val_idx)
 
             train_loader = DataLoader(
                 train_dataset, batch_size=batch_size, shuffle=shuffle

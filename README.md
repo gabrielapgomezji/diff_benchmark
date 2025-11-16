@@ -74,3 +74,5 @@ Steps:
 There you will see 3 abstract classes that you will be able to create your model from: `NumpyAbstractModel` for classical and `sklearn` pipelines, `TorchAbstractModel` for Deep Learning moodels where you have to specifically define the training in the fit function and `LightningModel` for Deep Learning models where the training, testing and validation is handled by lightning (RECOOMMENDED for deep learning).
 - Create a script with your model with the mandatory functions
 These are mainly `fit`,  `predict` and `_dataloader_to_numpy`(which is a function to ensure the correct functioning of the main script for all models classical and deep learning).
+
+That's all for the moment :)
