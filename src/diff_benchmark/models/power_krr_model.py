@@ -169,7 +169,7 @@ class PowerOnlyKernelRidgeRegression(nn.Module):
             # Compute all pairwise distances
             diffs = sample_features_cpu.unsqueeze(0) - sample_features_cpu.unsqueeze(1)  # (n_s, n_s, d)
             dist_sq = (diffs ** 2).sum(dim=2)  # (n_s, n_s)
-            
+
             # Get upper triangular part (excluding diagonal)
             triu_indices = torch.triu_indices(n_s, n_s, offset=1)
             dist_sq_upper = dist_sq[triu_indices[0], triu_indices[1]]
@@ -187,63 +187,6 @@ class PowerOnlyKernelRidgeRegression(nn.Module):
         print(f"  Individual estimates: {[f'{b:.6f}' for b in bandwidths]}")
         
         return mean_bandwidth
-    
-    def _train_fold(self, train_features, train_targets, val_features, val_targets, lmbd, bandwidth):
-        """
-        Train KRR on training fold and evaluate on validation fold.
-        
-        Args:
-            train_features: shape (n_train, feature_dim)
-            train_targets: shape (n_train,) - binary {-1, 1}
-            val_features: shape (n_val, feature_dim)
-            val_targets: shape (n_val,) - binary {-1, 1}
-            lmbd: regularization parameter
-            bandwidth: kernel bandwidth for this fold
-        
-        Returns:
-            val_accuracy: validation accuracy
-        """
-        n_train = train_features.shape[0]
-        
-        with torch.no_grad():
-            # Compute training kernel matrix
-            K_train = self._compute_rbf_kernel_chunked(
-                train_features, train_features, bandwidth
-            )
-            
-            # Solve ridge regression
-            K_train_gpu = K_train.to(self.compute_device)
-            train_targets_gpu = train_targets.to(self.compute_device)
-            I = torch.eye(n_train, device=self.compute_device, dtype=self.dtype)
-            K_reg = K_train_gpu + lmbd * I
-            
-            # Solve using Cholesky decomposition
-            try:
-                L = torch.linalg.cholesky(K_reg)
-                beta = torch.cholesky_solve(train_targets_gpu.unsqueeze(1), L).squeeze(1)
-            except RuntimeError:
-                beta = torch.linalg.solve(K_reg, train_targets_gpu)
-            
-            # Compute validation kernel matrix
-            K_val = self._compute_rbf_kernel_chunked(
-                val_features, train_features, bandwidth
-            )
-            
-            # Predict on validation set
-            K_val_gpu = K_val.to(self.compute_device)
-            val_scores = K_val_gpu @ beta
-            val_pred = (val_scores > 0).float()
-            
-            # Compute accuracy
-            val_targets_gpu = val_targets.to(self.compute_device)
-            val_accuracy = (val_pred == ((val_targets_gpu + 1) / 2)).float().mean().item()
-            
-            # Clean up GPU memory
-            del K_train_gpu, train_targets_gpu, I, K_reg, beta, K_val_gpu, val_scores, val_pred, val_targets_gpu
-            if self.compute_device.type == "cuda":
-                torch.cuda.empty_cache()
-        
-        return val_accuracy
     
     def _grid_search_cv(self, features, targets, n_folds=5):
         """

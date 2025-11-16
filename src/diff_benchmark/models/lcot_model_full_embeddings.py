@@ -26,7 +26,9 @@ class FullEmbeddingsKernelRidgeRegression(nn.Module):
        - No full 4D broadcasted tensors across all spheres!
     
     Kernel formulation:
-    - For each (sphere, bval) pair: compute mean squared circular distance over embedding dim d
+    - For each (sphere, bval) pair: compute mean distance over embedding dim d
+      * Circular distance (default): min(|x-y|, 1-|x-y|) wraps around at 1
+      * L2 norm (if use_l2_norm=True): standard Euclidean squared distance (x-y)²
     - Sum these distances across all n_spheres * n_bvals pairs → total_distance
     - Kernel: K(x, y) = exp(-total_distance / bandwidth)
     - Bandwidth is automatically scaled by n_spheres * n_bvals during estimation
@@ -59,8 +61,9 @@ class FullEmbeddingsKernelRidgeRegression(nn.Module):
         dtype: Data type for tensors (default: torch.float32)
         sphere_batch_size: Number of spheres to process together (default: 64)
         sample_batch_size: Size of sample tiles for kernel computation (default: 50)
+        use_l2_norm: Whether to use L2 norm instead of circular distance (default: False)
     """
-    
+
     def __init__(
         self,
         lmbd: float = 1.,
@@ -71,6 +74,7 @@ class FullEmbeddingsKernelRidgeRegression(nn.Module):
         sample_batch_size: int = 50,  # Number of samples to tile over (n1_blk, n2_blk)
         n_bootstrap: int = 10,  # Number of bootstrap iterations for bandwidth
         seed: int = 42,  # Random seed for reproducibility
+        use_l2_norm: bool = False,  # Use L2 norm instead of circular distance
         **kwargs,
     ):
         super().__init__()
@@ -80,6 +84,7 @@ class FullEmbeddingsKernelRidgeRegression(nn.Module):
         self.sample_batch_size = sample_batch_size
         self.n_bootstrap = n_bootstrap
         self.seed = seed
+        self.use_l2_norm = use_l2_norm
         
         # Always set a valid device
         self.compute_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -104,6 +109,10 @@ class FullEmbeddingsKernelRidgeRegression(nn.Module):
         This method is shared by both _compute_kernel_matrix_tiled and _kernel_matvec
         to avoid code duplication. It accumulates distances additively (faster and more
         stable than multiplicative accumulation), then applies exp once at the end.
+        
+        Distance metric: Uses either circular distance (default) or L2 norm based on
+        self.use_l2_norm flag. Circular distance wraps around at 1, while L2 is standard
+        Euclidean distance.
         
         Expects embeddings to be on CPU - will move sphere batches to GPU as needed.
         
@@ -142,11 +151,17 @@ class FullEmbeddingsKernelRidgeRegression(nn.Module):
                 # Vectorized computation across all spheres in batch
                 # (n1_blk, 1, n_spheres_batch, d) - (1, n2_blk, n_spheres_batch, d)
                 # = (n1_blk, n2_blk, n_spheres_batch, d)
-                diff = torch.abs(emb1_sb.unsqueeze(1) - emb2_sb.unsqueeze(0))
+                diff = emb1_sb.unsqueeze(1) - emb2_sb.unsqueeze(0)
 
-                # Circular distance: wrap around at 1
-                # Mean squared distance over dimension d: (n1_blk, n2_blk, n_spheres_batch)
-                msd = torch.mean(torch.minimum(diff, 1 - diff) ** 2, dim=-1)
+                if self.use_l2_norm:
+                    # L2 norm: mean squared Euclidean distance
+                    # (n1_blk, n2_blk, n_spheres_batch)
+                    msd = torch.mean(diff ** 2, dim=-1)
+                else:
+                    # Circular distance: wrap around at 1
+                    # Mean absolute circular distance over dimension d: (n1_blk, n2_blk, n_spheres_batch)
+                    diff_abs = torch.abs(diff)
+                    msd = torch.mean(torch.minimum(diff_abs, 1 - diff_abs), dim=-1)
 
                 # Sum over spheres and NORMALIZE by this bvalue's bandwidth
                 # (n1_blk, n2_blk, n_spheres_batch) -> (n1_blk, n2_blk)
@@ -158,7 +173,7 @@ class FullEmbeddingsKernelRidgeRegression(nn.Module):
         # Apply exp once at the end
         # K = exp(-sum(dist_bval / bw_bval))
         # This allows each bvalue to contribute with its own characteristic scale
-        K_block = torch.exp(-sum_normalized_distances.to(torch.float64))
+        K_block = torch.exp(-sum_normalized_distances)
         del sum_normalized_distances
         
         return K_block
@@ -229,6 +244,9 @@ class FullEmbeddingsKernelRidgeRegression(nn.Module):
         Vectorized over a single sample block of size m = min(self.sample_batch_size, n).
         Computes the full (m x m) pairwise distance matrix per bootstrap iteration,
         sampling spheres per bvalue to control memory.
+        
+        Distance metric: Uses either circular distance (default) or L2 norm based on
+        self.use_l2_norm flag.
 
         Args:
             embeddings: (n, n_spheres, n_bvals, d) on CPU
@@ -271,11 +289,17 @@ class FullEmbeddingsKernelRidgeRegression(nn.Module):
                 # Extract sampled spheres for this bvalue: (m, n_spheres_sample, d)
                 samp_bval = samp[:, sphere_idx, bval_idx, :].to(self.compute_device)
                 
-                # Compute pairwise circular MSD across all sampled spheres
+                # Compute pairwise distances across all sampled spheres
                 # shapes: (m,1,n_spheres_sample,d) - (1,m,n_spheres_sample,d) -> (m,m,n_spheres_sample,d)
-                diff = torch.abs(samp_bval.unsqueeze(1) - samp_bval.unsqueeze(0))
-                circ = torch.minimum(diff, 1 - diff)
-                msd  = (circ ** 2).mean(dim=-1)  # (m, m, n_spheres_sample)
+                diff = samp_bval.unsqueeze(1) - samp_bval.unsqueeze(0)
+                
+                if self.use_l2_norm:
+                    # L2 norm: mean squared Euclidean distance
+                    msd = (diff ** 2).mean(dim=-1)
+                else:
+                    # Circular distance: wrap around at 1
+                    diff_abs = torch.abs(diff)
+                    msd = torch.minimum(diff_abs, 1 - diff_abs).mean(dim=-1)
                 
                 # Sum over spheres to get total distance per pair: (m, m)
                 pair_sum = msd.sum(dim=-1)
@@ -287,9 +311,9 @@ class FullEmbeddingsKernelRidgeRegression(nn.Module):
                 median_dist = torch.median(upp).item() if upp.numel() > 0 else 0.0
                 bw = 2.0 * median_dist if median_dist > 0 else 1e-3
                 bandwidths_per_bval[bval_idx].append(bw)
-                
-                del samp_bval, diff, circ, msd, pair_sum, upp
-                
+
+                del samp_bval, diff, msd, pair_sum, upp
+
                 if b < 3 or b == n_bootstrap - 1:
                     print(f"    Bootstrap {b+1}/{n_bootstrap}, bval {bval_idx}: bandwidth = {bw}")
 

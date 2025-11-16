@@ -8,6 +8,7 @@ from diff_benchmark.models.cnn import ResNet3SliceModel
 from diff_benchmark.models.cnn_medicalnet import ResNet3DModel
 from diff_benchmark.models.dummy import DummyClassifier
 from diff_benchmark.models.lcot_model_full_embeddings import FullEmbeddingsKernelRidgeRegression
+from diff_benchmark.models.lcot_pca_logreg import EmbeddingsPCALogisticRegression
 from diff_benchmark.models.power_krr_model import PowerOnlyKernelRidgeRegression
 
 from diff_benchmark.models.logistic_regression import (
@@ -104,6 +105,10 @@ def get_model(name: str, config: dict):
     if name == "lcot_power_only":
         # KRR with power-weighted embeddings
         return PowerOnlyKernelRidgeRegression(**config)
+    
+    if name == "lcot_pca_logreg":
+        # Simple PCA + LogReg baseline for embeddings
+        return EmbeddingsPCALogisticRegression(**config)
 
     # elif name == "other_model":
     #     return OtherModelClass(param1=config["param1"], ...)
