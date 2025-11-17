@@ -7,9 +7,12 @@ from diff_benchmark.models import cnn_with_base
 from diff_benchmark.models.classic_ml import PCARandomForestModel, PCASVMModel
 from diff_benchmark.models.cnn import ResNet3SliceModel
 
-# from diff_benchmark.models.cnn_medicalnet import ResNet3DModel
+from diff_benchmark.models.cnn_medicalnet import ResNet3DModel
 from diff_benchmark.models.dummy import DummyClassifier
-from diff_benchmark.models.lcot_model import KernelRidgeRegression
+from diff_benchmark.models.lcot_model_full_embeddings import FullEmbeddingsKernelRidgeRegression
+from diff_benchmark.models.lcot_pca_logreg import EmbeddingsPCALogisticRegression
+from diff_benchmark.models.power_krr_model import PowerOnlyKernelRidgeRegression
+
 from diff_benchmark.models.logistic_regression import (
     LogisticRegressionModel,
     PCALogisticRegressionModel,
@@ -94,11 +97,20 @@ def get_model(name: str, config: dict):
     if name == "2dcnn_lite":
         return cnn_with_base.ResNet3SliceModel(**config)
 
-    # if name == "3dcnn_medicalnet":
-    #     return ResNet3DModel(**config)
+    if name == "3dcnn_medicalnet":
+        return ResNet3DModel(**config)
 
     if name == "lcot":
-        return KernelRidgeRegression(**config)
+        # return KernelRidgeRegression(**config)
+        return FullEmbeddingsKernelRidgeRegression(**config)
+    
+    if name == "lcot_power_only":
+        # KRR with power-weighted embeddings
+        return PowerOnlyKernelRidgeRegression(**config)
+    
+    if name == "lcot_pca_logreg":
+        # Simple PCA + LogReg baseline for embeddings
+        return EmbeddingsPCALogisticRegression(**config)
 
     # elif name == "other_model":
     #     return OtherModelClass(param1=config["param1"], ...)

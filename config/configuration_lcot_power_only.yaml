@@ -1,0 +1,14 @@
+pretrain_path: /data/parietal/store3/work/ggomezji/projects/diff_benchmark/MedicalNet_pytorch_files2/pretrain/resnet_10.pth
+models:
+- name: lcot_power_only
+  params:
+    name: lcot_power_only
+    comment: Power-only KRR baseline - v0.0.0.3
+    region_name: VisCent_ExStr
+    batch_size: 32
+    lmbd: 1.0
+    bandwidth: null  # Will be auto-estimated using median heuristic
+    aggregate_method: 'raw'  # Use raw power values (no aggregation)
+    chunk_size: 64
+    device: null
+    dtype: null
