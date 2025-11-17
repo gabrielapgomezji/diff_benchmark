@@ -30,7 +30,7 @@ class EmbeddingsPCALogisticRegression(NumpyAbstractModel):
     
     This provides a quick sanity check on whether the embeddings are informative.
     """
-
+    data_type = "lcot_embed"
     def __init__(self, dtype=torch.float32, n_jobs=1, 
                  reducer='truncated_svd',  # 'incremental_pca', 'truncated_svd', or 'pca'
                  pca_batch_size=100, 
