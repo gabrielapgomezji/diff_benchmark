@@ -181,6 +181,22 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
         if self.scheduler_type == "exponential":
             scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
             return {"optimizer": optimizer, "lr_scheduler": scheduler}
+        if self.scheduler_type == "onecycle":
+            scheduler = torch.optim.lr_scheduler.OneCycleLR(
+                optimizer,
+                max_lr=self.lr,
+                total_steps=self.trainer.estimated_stepping_batches,
+                pct_start=0.3,
+                anneal_strategy="cos",
+                final_div_factor=1e4,
+            )
+            return {
+                "optimizer": optimizer,
+                "lr_scheduler": {
+                    "scheduler": scheduler,
+                    "interval": "step",  # OneCycleLR MUST be per-step
+                },
+            }
 
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
         return {
