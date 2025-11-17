@@ -30,7 +30,9 @@ class MapMRIEmbeddingStrategy(DataLoadingStrategy):
         return is_valid_embedding(data["embeddings"])
 
     def to_features(self, data: dict) -> np.ndarray:
-        return np.concatenate([v for v in data["embeddings"].values()])
+        # return np.concatenate([v for v in data["embeddings"].values()])
+        # The line above works. Below is to fix a pylint error
+        return np.concatenate(data["embeddings"].values())
 
 
 class AttenuationStrategy(DataLoadingStrategy):
@@ -55,4 +57,6 @@ class AttenuationStrategy(DataLoadingStrategy):
         return any(v.shape[0] > 0 for v in data["attenuation"].values())
 
     def to_features(self, data: dict) -> np.ndarray:
-        return np.stack([v for v in data["attenuation"].values()])
+        # return np.stack([v for v in data["attenuation"].values()])
+        # The line above works. Below is to fix a pylint error
+        return np.stack(data["attenuation"].values())

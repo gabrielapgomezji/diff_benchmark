@@ -1,4 +1,3 @@
-import csv
 import json
 from pathlib import Path
 
@@ -15,6 +14,8 @@ from sklearn.metrics import (
 
 
 class MetricsManager:
+    """Compute and store metrics for classification tasks."""
+
     def __init__(self, average="binary"):
         """
         Compute and store metrics for classification tasks.
@@ -27,11 +28,13 @@ class MetricsManager:
         self.reset()
 
     def reset(self):
+        """Reset stored predictions."""
         self.y_true = []
         self.y_pred = []
         self.y_scores = []
 
     def update(self, y_true, y_pred, y_scores=None):
+        """Update stored predictions with new batch results."""
         self.y_true.extend(y_true)
         self.y_pred.extend(y_pred)
         if y_scores is not None:
@@ -81,6 +84,8 @@ class MetricsManager:
 
 
 class TrainLogger:
+    """Logger for training process, metrics, and model checkpoints."""
+
     def __init__(
         self,
         fold_idx,
@@ -135,14 +140,17 @@ class TrainLogger:
     #         self.history[phase]["accuracy"].append(accuracy)
 
     def log_batch(self, phase, epoch, batch, loss, metrics):
+        """Log metrics for a batch."""
         self.history["batch"].append(
             {"phase": phase, "epoch": epoch, "batch": batch, "loss": loss, **metrics}
         )
 
     def log_epoch(self, phase, epoch, metrics):
+        """Log metrics for an epoch."""
         self.history["epoch"].append({"phase": phase, "epoch": epoch, **metrics})
 
     def log_predictions(self, epoch, y_true, y_pred, scores=None):
+        """Log predictions for an epoch."""
         self.history["predictions"]["epoch"].append(epoch)
         self.history["predictions"]["y_true"].append(y_true.to_list())
         self.history["predictions"]["y_pred"].append(y_pred.to_list())
@@ -173,7 +181,7 @@ class TrainLogger:
     def _is_best(self, score):
         if self.mode == "max":
             return score > self.best_score
-        elif self.mode == "min":
+        if self.mode == "min":
             return score < self.best_score
         raise ValueError("mode should be 'max' or 'min'")
 
@@ -238,7 +246,7 @@ class TrainLogger:
             and len(self.val_scores) > self.patience_window
         ):
             last_val = self.val_scores[-1]
-            candidate_epoch, candidate_score, candidate_state = self.waiting_candidate
+            candidate_epoch, candidate_score, _ = self.waiting_candidate
 
             # Stable if score hasn't dropped too much
             stable = (

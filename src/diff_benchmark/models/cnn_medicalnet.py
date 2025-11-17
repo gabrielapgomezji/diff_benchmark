@@ -1,3 +1,5 @@
+import os
+
 import csv
 import json
 from functools import partial
@@ -85,10 +87,46 @@ class BasicBlock(nn.Module):
 
 
 class Bottleneck(nn.Module):
+    """
+    Bottleneck block for a 3D convolutional neural network.
+    This class implements a bottleneck block, which is a building block for 
+    deep residual networks. It uses three convolutional layers with Batch 
+    Normalization and ReLU activation. The block supports downsampling and 
+    dilated convolutions.
+    Attributes:
+        expansion (int): Expansion factor for the output channels of the third 
+            convolutional layer. Default is 4.
+        conv1 (nn.Conv3d): First 1x1x1 convolutional layer.
+        bn1 (nn.BatchNorm3d): Batch normalization for the first convolutional layer.
+        conv2 (nn.Conv3d): Second 3x3x3 convolutional layer.
+        bn2 (nn.BatchNorm3d): Batch normalization for the second convolutional layer.
+        conv3 (nn.Conv3d): Third 1x1x1 convolutional layer.
+        bn3 (nn.BatchNorm3d): Batch normalization for the third convolutional layer.
+        relu (nn.ReLU): ReLU activation function.
+        downsample (callable, optional): Downsampling layer to match the dimensions 
+            of the input and output. Default is None.
+        stride (int): Stride for the second convolutional layer. Default is 1.
+        dilation (int): Dilation rate for the second convolutional layer. Default is 1.
+    Methods:
+        forward(x):
+            Performs the forward pass of the bottleneck block. Applies three 
+            convolutional layers with Batch Normalization and ReLU activation, 
+            adds the residual connection, and applies the final ReLU activation.
+    Args:
+        inplanes (int): Number of input channels.
+        planes (int): Number of output channels for the first and second 
+            convolutional layers. The third convolutional layer outputs 
+            `planes * expansion` channels.
+        stride (int, optional): Stride for the second convolutional layer. Default is 1.
+        dilation (int, optional): Dilation rate for the second convolutional layer. Default is 1.
+        downsample (callable, optional): Downsampling layer to match the dimensions 
+            of the input and output. Default is None.
+    """
+    
     expansion = 4
 
     def __init__(self, inplanes, planes, stride=1, dilation=1, downsample=None):
-        super(Bottleneck, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv3d(inplanes, planes, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm3d(planes)
         self.conv2 = nn.Conv3d(
@@ -109,6 +147,7 @@ class Bottleneck(nn.Module):
         self.dilation = dilation
 
     def forward(self, x):
+        """Forward pass of the Bottleneck block."""
         residual = x
 
         out = self.conv1(x)
@@ -132,11 +171,44 @@ class Bottleneck(nn.Module):
 
 
 class ResNet(nn.Module):
-
+    """
+    ResNet is a 3D convolutional neural network model designed for processing volumetric data. 
+    It is based on the ResNet architecture and supports custom configurations for the number 
+    of layers, blocks, and other parameters.
+    Args:
+        block (nn.Module): A block class that defines the building block of the ResNet model.
+        layers (list of int): A list specifying the number of blocks in each layer of the network.
+        num_classes (int): The number of output classes for the final fully connected layer.
+        shortcut_type (str, optional): The type of shortcut connection to use ("A" or "B"). 
+            Defaults to "B".
+        no_cuda (bool, optional): If True, disables the use of CUDA for the model. Defaults to False.
+    Attributes:
+        conv1 (nn.Conv3d): The initial 3D convolutional layer.
+        bn1 (nn.BatchNorm3d): Batch normalization layer for the initial convolutional layer.
+        relu (nn.ReLU): ReLU activation function.
+        maxpool (nn.MaxPool3d): Max pooling layer after the initial convolution.
+        layer1 (nn.Sequential): The first residual layer.
+        layer2 (nn.Sequential): The second residual layer.
+        layer3 (nn.Sequential): The third residual layer with dilation.
+        layer4 (nn.Sequential): The fourth residual layer with increased dilation.
+        avgpool (nn.AdaptiveAvgPool3d): Adaptive average pooling layer to reduce spatial dimensions.
+        fc (nn.Linear): Fully connected layer for classification.
+    Methods:
+        forward(x):
+            Defines the forward pass of the ResNet model.
+            Args:
+                x (torch.Tensor): Input tensor of shape (N, C, D, H, W), where N is the batch size, 
+                    C is the number of channels, and D, H, W are the depth, height, and width of the 
+                    input volume.
+            Returns:
+                torch.Tensor: Output tensor of shape (N, num_classes), where N is the batch size and 
+                    num_classes is the number of output classes.
+    """
+    
     def __init__(self, block, layers, num_classes, shortcut_type="B", no_cuda=False):
         self.inplanes = 64
         self.no_cuda = no_cuda
-        super(ResNet, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv3d(
             1, 64, kernel_size=7, stride=(2, 2, 2), padding=(3, 3, 3), bias=False
         )
@@ -197,12 +269,13 @@ class ResNet(nn.Module):
             )
         )
         self.inplanes = planes * block.expansion
-        for i in range(1, blocks):
+        for _ in range(1, blocks):
             layers.append(block(self.inplanes, planes, dilation=dilation))
 
         return nn.Sequential(*layers)
 
     def forward(self, x):
+        """Forward pass of the ResNet model."""
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -261,6 +334,7 @@ def resnet200(**kwargs):
 
 
 def generate_model(opt):
+    """Generate model"""
     assert opt.model in ["resnet"]
 
     if opt.model == "resnet":
@@ -336,8 +410,6 @@ def generate_model(opt):
             model = nn.DataParallel(model, device_ids=opt.gpu_id)
             net_dict = model.state_dict()
         else:
-            import os
-
             os.environ["CUDA_VISIBLE_DEVICES"] = str(opt.gpu_id[0])
             model = model.cuda()
             model = nn.DataParallel(model, device_ids=None)
@@ -378,12 +450,36 @@ def generate_model(opt):
 
 
 class ResNet3DModel(TorchAbstractModel, nn.Module):
+    """
+    ResNet3DModel
+    A wrapper around a 3D ResNet (resnet10) for medical-volume classification built on PyTorch.
+    This class combines model construction, optional pretrained-weight loading, training (with
+    a simple inner-loop validation and early stopping), prediction, and lightweight logging.
+    - input_volumes: int, default 1
+        Kept for API compatibility; currently unused. The implementation expects input volumes
+        as 3D tensors and will add a channel dimension before forwarding (unsqueeze(1)).
+    - num_classes: int, default 2
+        Number of output classes for classification (final linear layer output dimension).
+    - device: str or torch.device, default "cuda"
+        Device used for model and tensor transfers.
+    - **kwargs: optional keyword arguments
+        - run_id: str, default "unnamed_run" -- identifier used to name saved model & logs.
+        - epochs: int, default 100 -- number of training epochs to iterate (outer loop).
+        - pretrain_path: str or Path, optional -- path to a checkpoint file; if provided, the
+          checkpoint is loaded (torch.load) and, if it contains a "state_dict" key that mapping
+          is used. load_state_dict(..., strict=False) is used to allow partial matches.
+        - learning_rate: float, default 1e-5 -- Adam optimizer learning rate.
+        - weight_decay: float, default 1e-4 -- Adam optimizer weight decay (L2).
+        (Other kwargs are ignored by the implementation.)
+    """
+    
     def __init__(self, input_volumes=1, num_classes=2, device="cuda", **kwargs):
-        super(ResNet3DModel, self).__init__()
+        super().__init__()
         self.device = device
         self.run_id = kwargs.get("run_id", "unnamed_run")
         self.epochs = kwargs.get("epochs", 100)
-
+        _ = input_volumes  # currently not used, kept for compatibility
+        # REMOVE INPUT_VOLUMES IF NOT NEEDED IN THE FUTURE
         self.model = resnet10(num_classes=num_classes).to(device)
 
         # Load pretrained if provided

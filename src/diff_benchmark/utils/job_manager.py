@@ -7,20 +7,17 @@ from joblib import Parallel, delayed
 def run_single_process(
     run_fn: Callable,
     models_to_run: list,
-    dataset: any,
-    preprocessed: any,
-    indices: any,
     results_path: str,
+    general_config: dict,
 ) -> list:
+    """Runs a specified function in a single process for multiple models."""
     results = []
     for model in models_to_run:
         results.append(
             run_fn(
                 model["name"],
                 {**model["params"]},
-                dataset,
-                preprocessed,
-                indices,
+                general_config,
                 results_path,
             )
         )
@@ -30,10 +27,8 @@ def run_single_process(
 def run_with_joblib(
     run_fn: Callable,
     models_to_run: list,
-    dataset: any,
-    preprocessed: any,
-    indices: any,
     results_path: str,
+    general_config: dict,
     n_jobs: int = 5,
 ) -> list:
     """
@@ -53,9 +48,7 @@ def run_with_joblib(
         delayed(run_fn)(
             model_entry["name"],
             {**model_entry["params"]},
-            dataset,
-            preprocessed,
-            indices,
+            general_config,
             results_path,
         )
         for model_entry in models_to_run
@@ -66,11 +59,9 @@ def run_with_joblib(
 def run_with_slurm(
     run_fn: Callable,
     models_to_run: list,
-    dataset: any,
-    preprocessed: any,
-    indices: list,
     results_path: str,
     slurm_cfg: dict,
+    general_config: dict,
 ) -> list:
     """
     Runs a function with SLURM job scheduling for multiple models.
@@ -128,9 +119,7 @@ def run_with_slurm(
             run_fn,
             model_entry["name"],
             {**model_entry["params"]},
-            dataset,
-            preprocessed,
-            indices,
+            general_config,
             results_path,
         )
         jobs.append(job)
@@ -143,10 +132,8 @@ def run_with_slurm(
 def run_jobs(
     run_fn: Callable,
     models_to_run: list,
-    dataset: any,
-    preprocessed: any,
-    indices: list,
     config: dict,
+    general_config: dict,
 ) -> any:
     """
     Runs jobs using either SLURM or Joblib based on the configuration provided.
@@ -165,37 +152,30 @@ def run_jobs(
         Any: The result of the job execution, which depends on the implementation of
         run_with_slurm or run_with_joblib.
     """
-
-    if config.get("use_slurm", False):
+    if general_config.get("use_slurm", False):
         print("Running with SLURM...")
         return run_with_slurm(
             run_fn,
             models_to_run,
-            dataset,
-            preprocessed,
-            indices,
-            config.get("results_path_logs", "./data"),
-            config.get("slurm", {}),
+            general_config.get("results_path_logs", "./data"),
+            general_config.get("slurm", {}),
+            general_config,
         )
 
-    if config.get("use_joblib", False):
+    if general_config.get("use_joblib", False):
         print("Running with Joblib...")
         return run_with_joblib(
             run_fn,
             models_to_run,
-            dataset,
-            preprocessed,
-            indices,
-            config.get("results_path_logs", "./data"),
-            config.get("n_jobs", 5),
+            general_config.get("results_path_logs", "./data"),
+            general_config,
+            general_config.get("n_jobs", 5),
         )
 
     print("Running in a single process...")
     return run_single_process(
         run_fn,
         models_to_run,
-        dataset,
-        preprocessed,
-        indices,
-        config.get("results_path_logs", "./data"),
+        general_config.get("results_path_logs", "./data"),
+        general_config,
     )

@@ -1,12 +1,8 @@
+import argparse
 import copy
-import json
 from pathlib import Path
 
 import numpy as np
-import torch
-import yaml
-import argparse
-from joblib import Parallel, delayed
 
 from diff_benchmark.analysis.plot_history import plot_history_from_file
 from diff_benchmark.analysis.plot_results import plot_folds_predictions_vs_targets
@@ -22,84 +18,59 @@ from diff_benchmark.models.model_configurations import get_model, make_run_id
 from diff_benchmark.preprocessing.preprocess_demographic_data import (
     DefaultDemographicsPreprocessor,
 )
-from diff_benchmark.preprocessing.wrapper_brain_data import (
-    DefaultHcpPipeline,
-    DefaultWandPipeline,
-    ImageHcpPipeline,
-    LcotEmbedHcpPipeline,
-)
 from diff_benchmark.scores.scores import accuracy_score, compute_metrics
+from diff_benchmark.utils.config_loader import load_configs
+from diff_benchmark.utils.data_pipeline import get_data_pipeline
 from diff_benchmark.utils.job_manager import run_jobs
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--method", type=str, default=None, help="Method to use (will look for configuration_{method}.yaml)")
+parser.add_argument(
+    "--methods", nargs="+", type=str, default=["lcot"], help="Method to use"
+)
 args = parser.parse_args()
 
-DEBUG = True
-
-if args.method is None:
-    config_path = Path(__file__).parent.parent / "configuration.yaml"
-else:
-    config_path = Path(__file__).parent.parent / f"config/configuration_{args.method}.yaml"
-    if not config_path.exists():
-        raise FileNotFoundError(f"Configuration file not found: {config_path}")
-
-with open(config_path, "r") as f:
-    config = yaml.safe_load(f)
-
-json_path = (
-    Path(__file__).parent.parent / "src/diff_benchmark/models/model_configurations.json"
-)
-# with open(json_path, "r") as f:
-#     model_configs = json.load(f)["models"]
-
-if "lcot" in args.method:
-    brain_preparator = LcotEmbedHcpPipeline(config)
-
-# brain_preparator = ImageHcpPipeline(config)
-# brain_preparator = DefaultHcpPipeline(config)
-# brain_preparator = DefaultWandPipeline(config)
-
-brain_df = brain_preparator.run_pipeline()
-brain_df = brain_df.reset_index()
-
-##### NEXT TESTING STEPS
-preprocessor = DefaultDemographicsPreprocessor(config["csv_file"])
-demographics_df = preprocessor.preprocess(config["target_columns"])
-
-common_subjects = set(brain_df["subject_id"].astype(str)) & set(
-    demographics_df["Subject"].astype(str)
-)
-demographics_filtered = demographics_df[
-    demographics_df["Subject"].astype(str).isin(common_subjects)
-]
-brain_filtered = brain_df[brain_df["subject_id"].astype(str).isin(common_subjects)]
-
-# DATASET GENERATION
-
-X = brain_filtered  # .drop(columns=["subject_id"]).to_numpy()
-y = np.array(demographics_filtered["Gender"])
-gender = np.array(demographics_filtered["Gender"])
-
-dataset = CustomDataset(X, y, gender)
-# features, target, gender = dataset[0]
-# features, target, gender = dataset[len(dataset)-1]
-# ----------- CROSS VALIDATION + TRAINING + TESTING -----------
+general_config, model_config = load_configs(args)
 
 
-preprocessed = PreprocessedData(
-    X, y, gender, n_splits=config["n_splits"], random_state=config["random_state"]
-)
+def run_single_model(model_name, model_config, general_config, results_path):
+    config = general_config
 
-specs = preprocessed.get_specs()
-print(specs)
+    model = get_model(model_name, model_config)
+    data_type = model.data_type
 
-# folds = preprocessed.get_folds_as_dataloaders(batch_size=16)
-indices = preprocessed.get_fold_indices()
+    brain_preparator = get_data_pipeline(data_type, config)
+    brain_df = brain_preparator.run_microstructure_pipeline()
+    brain_df = brain_df.reset_index()
 
+    ##### NEXT TESTING STEPS
+    preprocessor = DefaultDemographicsPreprocessor(config["data_paths"]["csv_file"])
+    demographics_df = preprocessor.preprocess(config["target_columns"])
 
-def run_single_model(model_name, config, dataset, preprocessed, indices, results_path):
-    local_config = copy.deepcopy(config)
+    common_subjects = set(brain_df["subject_id"].astype(str)) & set(
+        demographics_df["Subject"].astype(str)
+    )
+    demographics_filtered = demographics_df[
+        demographics_df["Subject"].astype(str).isin(common_subjects)
+    ]
+    brain_filtered = brain_df[brain_df["subject_id"].astype(str).isin(common_subjects)]
+
+    # DATASET GENERATION
+    X = brain_filtered  # .drop(columns=["subject_id"]).to_numpy()
+    y = np.array(demographics_filtered["Gender"])
+    gender = np.array(demographics_filtered["Gender"])
+
+    dataset = CustomDataset(X, y, gender)
+    # ----------- CROSS VALIDATION + TRAINING + TESTING -----------
+
+    preprocessed = PreprocessedData(X, y, gender, config=config)
+
+    specs = preprocessed.get_specs()
+    print(specs)
+
+    # folds = preprocessed.get_folds_as_dataloaders(batch_size=16)
+    indices = preprocessed.get_fold_indices()
+
+    local_config = copy.deepcopy(model_config)
     local_config["model_name"] = model_name
     run_id = make_run_id(model_name, local_config)
     local_config["run_id"] = run_id
@@ -124,18 +95,6 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
         "pipeline": {
             "run_id": run_id,
             "comment": local_config.get("comment", ""),
-            "region_name": local_config.get("region_name", ""),
-            "input_slices": local_config.get("input_slices"),
-            "num_classes": local_config.get("num_classes"),
-            "device": local_config.get("device"),
-            "learning_rate": local_config.get("learning_rate"),
-            "pretrained": local_config.get("pretrained"),
-            "freeze_backbone": local_config.get("freeze_backbone"),
-            "batch_size": local_config.get("batch_size"),
-            "epochs": local_config.get("epochs"),
-            "dropout": local_config.get("dropout"),
-            "weight_decay": local_config.get("weight_decay"),
-            "trainable_blocks": local_config.get("trainable_blocks", None),
         },
         "results": {
             "train_average_score": None,  # will fill after loop
@@ -146,6 +105,11 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
             "folds": {},  # will fill inside loop
         },
     }
+    exclude_keys = {"comment", "name", "model_name"}
+    for key, value in local_config.items():
+        if key not in exclude_keys:
+            summary["pipeline"][key] = value
+
     save_model_results(
         summary, Path(results_path) / "analysis_results" / f"{run_id}_partial.json"
     )
@@ -269,11 +233,9 @@ def run_single_model(model_name, config, dataset, preprocessed, indices, results
     return model_name, run_id
 
 
-models_to_run = config["models"]
+models_to_run = model_config["models"]
 
-results = run_jobs(
-    run_single_model, models_to_run, dataset, preprocessed, indices, config
-)
+results = run_jobs(run_single_model, models_to_run, model_config, general_config)
 
 # results is a list of (model_name, per_fold_results)
 for model_name, run_id in results:
@@ -287,17 +249,17 @@ for model_name, run_id in results:
 # for model_entry in models_to_run:
 #     name = model_entry["name"]
 #     plot_folds_predictions_vs_targets(
-#         summary_path=Path(config["results_path"])
+#         summary_path=Path(config["data_paths"]["hcp_results"])
 #         / "analysis_results"
 #         / f"{name}_fold_results.json",
-#         output_dir=Path(config["results_path"]) / "analysis_results" / "plots",
+#         output_dir=Path(config["data_paths"]["hcp_results"]]) / "analysis_results" / "plots",
 #     )
 
 #     summarize_folds_to_csv(
-#         fold_results_path=Path(config["results_path"])
+#         fold_results_path=Path(config["data_paths"]["hcp_results"])
 #         / "analysis_results"
 #         / f"{name}_fold_results.json",
-#         output_csv_path=Path(config["results_path"])
+#         output_csv_path=Path(config["data_paths"]["hcp_results"])
 #         / "analysis_results"
 #         / f"{name}_score_stats.csv",
 #     )

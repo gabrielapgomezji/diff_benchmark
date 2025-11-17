@@ -25,7 +25,7 @@ class PowerOnlyKernelRidgeRegression(nn.Module):
         device: Compute device
         dtype: Data type for tensors
     """
-    
+    data_type = "lcot_embed"
     def __init__(
         self,
         lmbd: float = 0.1,
