@@ -1,0 +1,104 @@
+# ==============================
+# MODEL CONFIGURATION
+# ==============================
+pretrain_path: /data/parietal/store3/work/ggomezji/projects/diff_benchmark/MedicalNet_pytorch_files2/pretrain/resnet_10.pth
+
+models:
+- name: medicalnet
+  params:
+    name: medicalnet
+    comment: Medicalnet. Depth 10
+    region_name: VisCent_ExStr
+    batch_size: 32
+    epochs: 50
+    device: cuda
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    scheduler_type: plateau
+    num_classes: 2
+    input_channels: 1
+    model_depth: 10
+- name: medicalnet
+  params:
+    name: medicalnet
+    comment: Medicalnet. Depth 18
+    region_name: VisCent_ExStr
+    batch_size: 32
+    epochs: 50
+    device: cuda
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    scheduler_type: plateau
+    num_classes: 2
+    input_channels: 1
+    model_depth: 18
+- name: medicalnet
+  params:
+    name: medicalnet
+    comment: Medicalnet. Depth 34
+    region_name: VisCent_ExStr
+    batch_size: 32
+    epochs: 50
+    device: cuda
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    scheduler_type: plateau
+    num_classes: 2
+    input_channels: 1
+    model_depth: 34
+- name: medicalnet
+  params:
+    name: medicalnet
+    comment: Medicalnet. Depth 50
+    region_name: VisCent_ExStr
+    batch_size: 32
+    epochs: 50
+    device: cuda
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    scheduler_type: plateau
+    num_classes: 2
+    input_channels: 1
+    model_depth: 50
+- name: medicalnet
+  params:
+    name: medicalnet
+    comment: Medicalnet. Depth 101
+    region_name: VisCent_ExStr
+    batch_size: 32
+    epochs: 50
+    device: cuda
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    scheduler_type: plateau
+    num_classes: 2
+    input_channels: 1
+    model_depth: 101
+- name: medicalnet
+  params:
+    name: medicalnet
+    comment: Medicalnet. Depth 152
+    region_name: VisCent_ExStr
+    batch_size: 32
+    epochs: 50
+    device: cuda
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    scheduler_type: plateau
+    num_classes: 2
+    input_channels: 1
+    model_depth: 152
+- name: medicalnet
+  params:
+    name: medicalnet
+    comment: Medicalnet. Depth 200
+    region_name: VisCent_ExStr
+    batch_size: 32
+    epochs: 50
+    device: cuda
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    scheduler_type: plateau
+    num_classes: 2
+    input_channels: 1
+    model_depth: 200
