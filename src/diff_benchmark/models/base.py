@@ -77,6 +77,7 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
         weight_decay=1e-4,
         average="binary",
         scheduler_type="plateau",
+        optimizer_type="adamw",
         **kwargs,
     ):
         super().__init__()
@@ -85,6 +86,7 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
         self.weight_decay = weight_decay
         self.average = average
         self.scheduler_type = scheduler_type
+        self.optimizer_type = optimizer_type
 
         # Subclasses must define self.model and self.criterion
         self.model = None
@@ -157,9 +159,14 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
         return preds
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(
-            self.parameters(), lr=self.lr, weight_decay=self.weight_decay
-        )
+        if self.optimizer_type == "adamw":
+            optimizer = torch.optim.AdamW(
+                self.parameters(), lr=self.lr, weight_decay=self.weight_decay
+            )
+        else:
+            optimizer = torch.optim.Adam(
+                self.parameters(), lr=self.lr, weight_decay=self.weight_decay
+            )
         if self.scheduler_type == "plateau":
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
                 optimizer, mode="min", factor=0.5, patience=10
