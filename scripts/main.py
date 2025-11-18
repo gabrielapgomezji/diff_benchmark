@@ -34,7 +34,7 @@ general_config, model_config = load_configs(args)
 
 def run_single_model(model_name, model_config, general_config, results_path):
     config = general_config
-
+    
     model = get_model(model_name, model_config)
     data_type = model.data_type
 
