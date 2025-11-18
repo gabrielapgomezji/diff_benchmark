@@ -1,7 +1,6 @@
-import os
-
 import csv
 import json
+import os
 from functools import partial
 from pathlib import Path
 
@@ -11,11 +10,10 @@ import torch.nn.functional as F
 from sklearn.model_selection import train_test_split
 from torch import nn
 from torch.utils.data import DataLoader, Subset
-from tqdm import tqdm
 from torchvision import transforms
-from diff_benchmark.models.utils import create_trainer
 
 from diff_benchmark.models.base import LightningModel
+from diff_benchmark.models.utils import create_trainer
 
 __all__ = [
     "ResNet",
@@ -27,6 +25,7 @@ __all__ = [
     "resnet152",
     "resnet200",
 ]
+
 
 def collate_with_augmentation(batch, transform=None):
     """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
@@ -64,7 +63,9 @@ val_transforms = transforms.Compose(
     ]
 )
 
+
 def conv3x3x3(in_planes, out_planes, stride=1, dilation=1):
+    """3D convolution with padding"""
     # 3x3x3 convolution with padding
     return nn.Conv3d(
         in_planes,
@@ -78,12 +79,14 @@ def conv3x3x3(in_planes, out_planes, stride=1, dilation=1):
 
 
 def downsample_basic_block(x, planes, stride, no_cuda=False):
+    """Downsample the input tensor `x` using average pooling 
+    and zero-padding to match the desired number of output planes."""
     out = F.avg_pool3d(x, kernel_size=1, stride=stride)
     zero_pads = torch.Tensor(
         out.size(0), planes - out.size(1), out.size(2), out.size(3), out.size(4)
     ).zero_()
     if not no_cuda:
-        if isinstance(out.data, torch.cuda.FloatTensor):
+        if out.is_cuda and out.dtype == torch.float32:
             zero_pads = zero_pads.cuda()
 
     out = torch.cat([out.data, zero_pads], dim=1)
@@ -92,6 +95,13 @@ def downsample_basic_block(x, planes, stride, no_cuda=False):
 
 
 class BasicBlock(nn.Module):
+    """
+    A BasicBlock module for a 3D convolutional neural network.
+    This block is a fundamental building block for constructing residual networks. 
+    It consists of two 3D convolutional layers, each followed by batch normalization 
+    and a ReLU activation. The block also supports downsampling and dilation for 
+    adjusting the spatial dimensions of the input.
+    """    
     expansion = 1
 
     def __init__(self, inplanes, planes, stride=1, dilation=1, downsample=None):
@@ -127,12 +137,12 @@ class BasicBlock(nn.Module):
 class Bottleneck(nn.Module):
     """
     Bottleneck block for a 3D convolutional neural network.
-    This class implements a bottleneck block, which is a building block for 
-    deep residual networks. It uses three convolutional layers with Batch 
-    Normalization and ReLU activation. The block supports downsampling and 
+    This class implements a bottleneck block, which is a building block for
+    deep residual networks. It uses three convolutional layers with Batch
+    Normalization and ReLU activation. The block supports downsampling and
     dilated convolutions.
     Attributes:
-        expansion (int): Expansion factor for the output channels of the third 
+        expansion (int): Expansion factor for the output channels of the third
             convolutional layer. Default is 4.
         conv1 (nn.Conv3d): First 1x1x1 convolutional layer.
         bn1 (nn.BatchNorm3d): Batch normalization for the first convolutional layer.
@@ -141,26 +151,26 @@ class Bottleneck(nn.Module):
         conv3 (nn.Conv3d): Third 1x1x1 convolutional layer.
         bn3 (nn.BatchNorm3d): Batch normalization for the third convolutional layer.
         relu (nn.ReLU): ReLU activation function.
-        downsample (callable, optional): Downsampling layer to match the dimensions 
+        downsample (callable, optional): Downsampling layer to match the dimensions
             of the input and output. Default is None.
         stride (int): Stride for the second convolutional layer. Default is 1.
         dilation (int): Dilation rate for the second convolutional layer. Default is 1.
     Methods:
         forward(x):
-            Performs the forward pass of the bottleneck block. Applies three 
-            convolutional layers with Batch Normalization and ReLU activation, 
+            Performs the forward pass of the bottleneck block. Applies three
+            convolutional layers with Batch Normalization and ReLU activation,
             adds the residual connection, and applies the final ReLU activation.
     Args:
         inplanes (int): Number of input channels.
-        planes (int): Number of output channels for the first and second 
-            convolutional layers. The third convolutional layer outputs 
+        planes (int): Number of output channels for the first and second
+            convolutional layers. The third convolutional layer outputs
             `planes * expansion` channels.
         stride (int, optional): Stride for the second convolutional layer. Default is 1.
         dilation (int, optional): Dilation rate for the second convolutional layer. Default is 1.
-        downsample (callable, optional): Downsampling layer to match the dimensions 
+        downsample (callable, optional): Downsampling layer to match the dimensions
             of the input and output. Default is None.
     """
-    
+
     expansion = 4
 
     def __init__(self, inplanes, planes, stride=1, dilation=1, downsample=None):
@@ -210,14 +220,14 @@ class Bottleneck(nn.Module):
 
 class ResNet(nn.Module):
     """
-    ResNet is a 3D convolutional neural network model designed for processing volumetric data. 
-    It is based on the ResNet architecture and supports custom configurations for the number 
+    ResNet is a 3D convolutional neural network model designed for processing volumetric data.
+    It is based on the ResNet architecture and supports custom configurations for the number
     of layers, blocks, and other parameters.
     Args:
         block (nn.Module): A block class that defines the building block of the ResNet model.
         layers (list of int): A list specifying the number of blocks in each layer of the network.
         num_classes (int): The number of output classes for the final fully connected layer.
-        shortcut_type (str, optional): The type of shortcut connection to use ("A" or "B"). 
+        shortcut_type (str, optional): The type of shortcut connection to use ("A" or "B").
             Defaults to "B".
         no_cuda (bool, optional): If True, disables the use of CUDA for the model. Defaults to False.
     Attributes:
@@ -235,14 +245,14 @@ class ResNet(nn.Module):
         forward(x):
             Defines the forward pass of the ResNet model.
             Args:
-                x (torch.Tensor): Input tensor of shape (N, C, D, H, W), where N is the batch size, 
-                    C is the number of channels, and D, H, W are the depth, height, and width of the 
+                x (torch.Tensor): Input tensor of shape (N, C, D, H, W), where N is the batch size,
+                    C is the number of channels, and D, H, W are the depth, height, and width of the
                     input volume.
             Returns:
-                torch.Tensor: Output tensor of shape (N, num_classes), where N is the batch size and 
+                torch.Tensor: Output tensor of shape (N, num_classes), where N is the batch size and
                     num_classes is the number of output classes.
     """
-    
+
     def __init__(self, block, layers, num_classes, shortcut_type="B", no_cuda=False):
         self.inplanes = 64
         self.no_cuda = no_cuda
@@ -457,7 +467,7 @@ def generate_model(opt):
 
     # load pretrain
     if opt.phase != "test" and opt.pretrain_path:
-        print("loading pretrained model {}".format(opt.pretrain_path))
+        print(f"loading pretrained model {opt.pretrain_path}")
         pretrain = torch.load(opt.pretrain_path)
         pretrain_dict = {
             k: v for k, v in pretrain["state_dict"].items() if k in net_dict.keys()
@@ -510,11 +520,17 @@ class ResNet3DModel(LightningModel, nn.Module):
         - weight_decay: float, default 1e-4 -- Adam optimizer weight decay (L2).
         (Other kwargs are ignored by the implementation.)
     """
+
     data_type = "images"
-    def __init__(self, device, num_classes=2, input_channels=1, model_depth=10, **kwargs):
-        super().__init__(learning_rate=kwargs.get("learning_rate", 1e-5),
+
+    def __init__(
+        self, device, num_classes=2, input_channels=1, model_depth=10, **kwargs
+    ):
+        super().__init__(
+            learning_rate=kwargs.get("learning_rate", 1e-5),
             weight_decay=kwargs.get("weight_decay", 1e-4),
-            scheduler_type=kwargs.get("weight_decay", "plateau"),
+            scheduler_type=kwargs.get("scheduler_type", "plateau"),
+            optimizer_type=kwargs.get("optimizer_type", "adamw"),
         )
         self.run_id = kwargs.get("run_id", "unnamed_run")
         self.num_classes = num_classes
@@ -523,12 +539,12 @@ class ResNet3DModel(LightningModel, nn.Module):
         self.device_str = device
         self.fold_idx = kwargs.get("fold_idx", -1)
         self.epochs = kwargs.get("epochs", 100)
-        
+
         self.save_hyperparameters()
 
         self.build_model()  # required by parent
         # criterion already set in LightningModel
-    
+
     def build_model(self):
         if self.model_depth == 10:
             self.model = resnet10(num_classes=self.num_classes)
@@ -598,7 +614,7 @@ class ResNet3DModel(LightningModel, nn.Module):
                 writer.writerows(history)
         else:
             raise ValueError("Save path must end with .json or .csv")
-    
+
     def _save_logs(self, history, save_path):
         """Utility for saving training logs as JSON or CSV."""
         path = Path(save_path)
@@ -644,7 +660,7 @@ class ResNet3DModel(LightningModel, nn.Module):
         print(
             f"[INFO] Training finished. Best model: {trainer.checkpoint_callback.best_model_path}"
         )
-        
+
     def predict(self, dataloader):
         """
         Lightning-based predict function to preserve the old API.
