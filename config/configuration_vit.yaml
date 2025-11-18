@@ -1,0 +1,17 @@
+# ==============================
+# MODEL CONFIGURATION
+# ==============================
+pretrain_path: /data/parietal/store3/work/ggomezji/projects/diff_benchmark/MedicalNet_pytorch_files2/pretrain/resnet_10.pth
+
+models:
+- name: vit
+  params:
+    name: vit
+    comment: Vit Debugging. Test with bval index 2. Test for config changes
+    region_name: VisCent_ExStr
+    batch_size: 32
+    device: cuda
+    epochs: 1
+    optimizer_type: adamw
+    learning_rate: 0.001
+    weight_decay: 0.0001
