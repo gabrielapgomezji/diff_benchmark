@@ -14,6 +14,7 @@ from diff_benchmark.models.logistic_regression import (
     LogisticRegressionModel,
     PCALogisticRegressionModel,
 )
+from diff_benchmark.models.vit import ViTBase
 
 # from diff_benchmark.models.mlp import MLPClassifier
 
@@ -99,6 +100,9 @@ def get_model(name: str, config: dict):
 
     if name == "lcot":
         return KernelRidgeRegression(**config)
+    
+    if name == "vit":
+        return ViTBase(**config)
 
     # elif name == "other_model":
     #     return OtherModelClass(param1=config["param1"], ...)
