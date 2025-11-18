@@ -14,6 +14,7 @@ from diff_benchmark.models.logistic_regression import (
     LogisticRegressionModel,
     PCALogisticRegressionModel,
 )
+from diff_benchmark.models.cnn_torch_train import CNNTorchTrainModel
 
 # from diff_benchmark.models.mlp import MLPClassifier
 
@@ -90,6 +91,9 @@ def get_model(name: str, config: dict):
     if name == "2dcnn":
         # return ResNet3SliceModel(input_slices=config.get("input_slices", 145), num_classes=config.get("num_classes", 2), device=config.get("device", "cuda"))
         return ResNet3SliceModel(**config)
+    
+    if name == "2dcnn_torch":
+        return CNNTorchTrainModel(**config)
 
     if name == "2dcnn_lite":
         return cnn_with_base.ResNet3SliceModel(**config)
