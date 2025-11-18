@@ -19,3 +19,5 @@ models:
     dropout: 0.1
     learning_rate: 1.0e-05
     weight_decay: 1.0e-05
+    scheduler_type: plateau
+    optimizer_type: adamw
