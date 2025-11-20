@@ -13,6 +13,7 @@ data_preparation:
   region: VisCent_ExStr #null # If we want all regions, set to null
   # - VisCent_ExStr
   # - VisCent_Striate
+  type: spheres # embeddings # null # 
 
 # ==============================
 # LABEL DEFINITIONS

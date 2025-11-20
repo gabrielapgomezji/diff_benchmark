@@ -7,7 +7,7 @@ models:
 - name: lcot
   params:
     name: lcot
-    comment: Lcot Debugging. Test with bval index 2. Test for config changes
+    comment: Lcot Debugging. Test with bval index 2. Test for vertex positions
     region_name: VisCent_ExStr
     batch_size: 32
     num_spheres: 3363
