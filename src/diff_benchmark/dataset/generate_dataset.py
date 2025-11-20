@@ -172,7 +172,6 @@ class CustomDataset(Dataset):
             # Load metadata
             meta = f["metadata"]
             bvals = list(meta.attrs["bvals"])
-
             # Load embeddings
             emb_grp = f["embeddings"]
             embeddings_per_bval = []
