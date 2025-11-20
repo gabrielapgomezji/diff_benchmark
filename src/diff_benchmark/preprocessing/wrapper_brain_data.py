@@ -861,7 +861,7 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
             derivatives_dir
             / f"sub-{subject_id}_desc-{self.target_substring}_lcotembedding.h5"
         )
-
+        breakpoint()
         data, _ = load_vertexwise_attenuations(spheres_file)
         power = (data**2).mean(axis=-1)
         self.sphere = create_unit_sphere(7)
