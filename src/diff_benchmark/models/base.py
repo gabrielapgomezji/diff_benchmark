@@ -18,8 +18,10 @@ from torchvision import transforms
 from diff_benchmark.utils.logger import TrainLogger
 from sklearn.model_selection import train_test_split
 from pathlib import Path
+import json, csv
 
 from torch.profiler import profile, tensorboard_trace_handler, ProfilerActivity, schedule, record_function
+from torch.cuda.amp import autocast, GradScaler
 
 
 def collate_with_augmentation(batch, transform=None):
@@ -139,6 +141,21 @@ class TorchPipeline:
     def _build_model(self, **kwargs):
         raise NotImplementedError("_build_model must be implemented and return a torch model.")
 
+    def _save_logs(self, history, save_path):
+        path = Path(save_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.suffix == ".json":
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(history, f)
+        elif path.suffix == ".csv":
+            keys = history[0].keys()
+            with open(path, "w", encoding="utf-8", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=keys)
+                writer.writeheader()
+                writer.writerows(history)
+        else:
+            raise ValueError("Save path must end with .json or .csv")
+        
     def _train_val_loader_split(self, train_loader, val_ratio=0.3):
         
         dataset = train_loader.dataset
@@ -191,6 +208,8 @@ class TorchPipeline:
             mode="max",
         )
 
+        scaler = GradScaler()
+        
         prof =  profile(
             activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
             schedule=schedule(wait=1, warmup=1, active=5, repeat=1),
@@ -213,14 +232,22 @@ class TorchPipeline:
                     xb, yb = xb.to(self.device, non_blocking=True), yb.long().to(self.device, non_blocking=True)
 
                     # print("Moved to device")
-                    with record_function("optimizer zero grad"): self.optimizer.zero_grad()
-                    with record_function("inference"): preds = self.model(xb)
-                    with record_function("loss function"): loss = self.criterion(preds, yb)
+                    # with record_function("optimizer zero grad"): self.optimizer.zero_grad()
+                    # with record_function("inference"): preds = self.model(xb)
+                    # with record_function("loss function"): loss = self.criterion(preds, yb)
 
-                    with record_function("backward"): loss.backward()
-
+                    # with record_function("backward"): loss.backward()
+                    
                     # print("Forward + Bakcward done")
-                    self.optimizer.step()
+                    # self.optimizer.step()
+                    
+                    self.optimizer.zero_grad()
+                    preds = self.model(xb)
+                    loss = self.criterion(preds, yb)
+                    scaler.scale(loss).backward()
+                    scaler.step(self.optimizer)
+                    scaler.update()
+                    
 
                     # y_true = yb.cpu().detach().numpy()
                     # y_pred = preds.argmax(dim=1).cpu().detach().numpy()
@@ -256,8 +283,11 @@ class TorchPipeline:
                             for batch_val_idx, (xb, yb, _) in enumerate(val_loader):
                                 print(f"Val: batch {batch_val_idx}")
                                 xb, yb = xb.to(self.device, non_blocking=True), yb.long().to(self.device, non_blocking=True)
-                                preds = self.model(xb)
-                                loss = self.criterion(preds, yb)
+                                with autocast():
+                                    preds = self.model(xb)
+                                    loss = self.criterion(preds, yb)
+                                # preds = self.model(xb)
+                                # loss = self.criterion(preds, yb)
                                 val_loss += loss.item()
 
                                 y_true.append(yb.cpu().numpy())
