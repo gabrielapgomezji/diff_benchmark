@@ -232,21 +232,21 @@ class TorchPipeline:
                     xb, yb = xb.to(self.device, non_blocking=True), yb.long().to(self.device, non_blocking=True)
 
                     # print("Moved to device")
-                    # with record_function("optimizer zero grad"): self.optimizer.zero_grad()
-                    # with record_function("inference"): preds = self.model(xb)
-                    # with record_function("loss function"): loss = self.criterion(preds, yb)
+                    with record_function("optimizer zero grad"): self.optimizer.zero_grad()
+                    with record_function("inference"): preds = self.model(xb)
+                    with record_function("loss function"): loss = self.criterion(preds, yb)
 
-                    # with record_function("backward"): loss.backward()
+                    with record_function("backward"): loss.backward()
                     
                     # print("Forward + Bakcward done")
-                    # self.optimizer.step()
-                    
-                    self.optimizer.zero_grad()
-                    preds = self.model(xb)
-                    loss = self.criterion(preds, yb)
-                    scaler.scale(loss).backward()
-                    scaler.step(self.optimizer)
-                    scaler.update()
+                    self.optimizer.step()
+                    # self.optimizer.zero_grad()
+                    # with autocast():
+                    #     preds = self.model(xb)
+                    #     loss = self.criterion(preds, yb)
+                    # scaler.scale(loss).backward()
+                    # scaler.step(self.optimizer)
+                    # scaler.update()
                     
 
                     # y_true = yb.cpu().detach().numpy()
@@ -283,11 +283,9 @@ class TorchPipeline:
                             for batch_val_idx, (xb, yb, _) in enumerate(val_loader):
                                 print(f"Val: batch {batch_val_idx}")
                                 xb, yb = xb.to(self.device, non_blocking=True), yb.long().to(self.device, non_blocking=True)
-                                with autocast():
-                                    preds = self.model(xb)
-                                    loss = self.criterion(preds, yb)
-                                # preds = self.model(xb)
-                                # loss = self.criterion(preds, yb)
+
+                                preds = self.model(xb)
+                                loss = self.criterion(preds, yb)
                                 val_loss += loss.item()
 
                                 y_true.append(yb.cpu().numpy())
