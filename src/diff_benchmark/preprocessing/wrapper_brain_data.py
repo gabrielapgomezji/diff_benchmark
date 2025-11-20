@@ -861,7 +861,7 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
             derivatives_dir
             / f"sub-{subject_id}_desc-{self.target_substring}_lcotembedding.h5"
         )
-        breakpoint()
+        
         data, _ = load_vertexwise_attenuations(spheres_file)
         power = (data**2).mean(axis=-1)
         self.sphere = create_unit_sphere(7)
@@ -929,40 +929,72 @@ class LcotEmbedHcpPipeline(DataPreparationBrain):
                 f"derivatives/sub-*/dwi/*_desc-{target_substring}_spheres.h5"
             )
         )
-
         def process_file(file):
             try:
                 subject_id = file.stem.split("_")[0].replace("sub-", "")
                 derivatives_dir = (
                     self.results_root / "derivatives" / f"sub-{subject_id}" / "dwi"
                 )
-                embeddings_file = (
-                    derivatives_dir
-                    / f"sub-{subject_id}_desc-{self.target_substring}_lcotembedding.h5"
-                )
-
-                # --- 1. Missing or empty embedding file → discard ---
-                if not embeddings_file.exists() or embeddings_file.stat().st_size == 0:
-                    print(
-                        f"[{subject_id}] Embedding file missing or empty → discarding."
+                data_type = self.config["data_preparation"].get("type", None)
+                if data_type == "embeddings":
+                    embeddings_file = (
+                        derivatives_dir
+                        / f"sub-{subject_id}_desc-{self.target_substring}_lcotembedding.h5"
                     )
-                    return (subject_id, None)
 
-                # --- 2. Validate embedding file ---
-                with h5py.File(embeddings_file, "r") as embeddings_data:
-                    if "embeddings" not in embeddings_data:
-                        print(f"[{subject_id}] Embedding group missing → discarding.")
-                        return (subject_id, None)
-
-                    embeddings_group = embeddings_data["embeddings"]
-                    if len(embeddings_group.keys()) != 3:
+                    # --- 1. Missing or empty embedding file → discard ---
+                    if not embeddings_file.exists() or embeddings_file.stat().st_size == 0:
                         print(
-                            f"[{subject_id}] Invalid embedding (#members != 3) → discarding."
+                            f"[{subject_id}] Embedding file missing or empty → discarding."
                         )
                         return (subject_id, None)
 
-                print(f"[{subject_id}] Embedding file exists and is valid.")
-                return (subject_id, embeddings_file)
+                    # --- 2. Validate embedding file ---
+                    with h5py.File(embeddings_file, "r") as embeddings_data:
+                        if "embeddings" not in embeddings_data:
+                            print(f"[{subject_id}] Embedding group missing → discarding.")
+                            return (subject_id, None)
+
+                        embeddings_group = embeddings_data["embeddings"]
+                        if len(embeddings_group.keys()) != 3:
+                            print(
+                                f"[{subject_id}] Invalid embedding (#members != 3) → discarding."
+                            )
+                            return (subject_id, None)
+
+                    print(f"[{subject_id}] Embedding file exists and is valid.")
+                    return (subject_id, embeddings_file)
+                
+                elif data_type == "spheres":
+                    spheres_file = (
+                        derivatives_dir
+                        / f"sub-{subject_id}_desc-{self.target_substring}_spheres.h5"
+                    )
+                    # --- 1. Missing or empty spheres file → discard ---
+                    if not spheres_file.exists() or spheres_file.stat().st_size == 0:
+                        print(
+                            f"[{subject_id}] Spheres file missing or empty → discarding."
+                        )
+                        return (subject_id, None)
+
+                    # --- 2. Validate embedding file ---
+                    with h5py.File(spheres_file, "r") as spheres_data:
+                        if len(spheres_data) != 3:
+                            print(f"[{subject_id}] Spheres group missing or incomplete → discarding.")
+                            return (subject_id, None)
+
+                        # embeddings_group = embeddings_data["embeddings"]
+                        # if len(embeddings_group.keys()) != 3:
+                        #     print(
+                        #         f"[{subject_id}] Invalid embedding (#members != 3) → discarding."
+                        #     )
+                        #     return (subject_id, None)
+                    print(f"[{subject_id}] Spheres file exists and is valid.")
+                    return (subject_id, spheres_file)
+                else:
+                    raise ValueError(
+                        f"Unknown data_type '{data_type}' in configuration."
+                    )
 
             except (OSError, FileNotFoundError, KeyError) as e:
                 print(f"[{subject_id}] Error during analysis: {e}")
