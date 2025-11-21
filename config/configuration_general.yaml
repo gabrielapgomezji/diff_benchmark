@@ -13,7 +13,7 @@ data_preparation:
   region: VisCent_ExStr #null # If we want all regions, set to null
   # - VisCent_ExStr
   # - VisCent_Striate
-  type: spheres # embeddings # null # 
+  type: spheres # embeddings # null # # Set only when working with spheres or embeddings
 
 # ==============================
 # LABEL DEFINITIONS
@@ -30,10 +30,24 @@ label_dict:
 # ==============================
 # DATA CONFIGURATION
 # ==============================
+# data_paths:
+#   hcp_base: /data/parietal/store4/data/HCP
+#   hcp_results: /data/parietal/store3/work/ggomezji/benchmark/HCP900
+#   # data_path == (hcp_results): /data/parietal/store2/work/ggomezji/HCP900
+#   camcan_base: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/camcan/derivatives
+#   camcan_results: /data/parietal/store3/work/ggomezji/benchmark/CamCAN
+#   wand_base: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/WAND-concat
+#   wand_results: /data/parietal/store3/work/ggomezji/benchmark/WAND
+#   # FUTURE FEATURE: Indicate mask paths
+#   # deen_left: /data/parietal/store2/work/ggomezji/projects/graph_dmri/deen_parcellation_left.func.gii
+#   # deen_right: /data/parietal/store2/work/ggomezji/projects/graph_dmri/deen_parcellation_right.func.gii
+  
+#   csv_file: /data/parietal/store2/work/ggomezji/Merged_HCP_Demographics.csv
+
+# ====== FOR JEAN ZAY RUNS ======
 data_paths:
-  hcp_base: /data/parietal/store4/data/HCP
-  hcp_results: /data/parietal/store3/work/ggomezji/benchmark/HCP900
-  # data_path == (hcp_results): /data/parietal/store2/work/ggomezji/HCP900
+  hcp_base: /lustre/fswork/projects/rech/qlr/commun/HCP900 
+  hcp_results: /lustre/fswork/projects/rech/qlr/commun/HCP900
   camcan_base: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/camcan/derivatives
   camcan_results: /data/parietal/store3/work/ggomezji/benchmark/CamCAN
   wand_base: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/WAND-concat
@@ -42,7 +56,7 @@ data_paths:
   # deen_left: /data/parietal/store2/work/ggomezji/projects/graph_dmri/deen_parcellation_left.func.gii
   # deen_right: /data/parietal/store2/work/ggomezji/projects/graph_dmri/deen_parcellation_right.func.gii
   
-  csv_file: /data/parietal/store2/work/ggomezji/Merged_HCP_Demographics.csv
+  csv_file: /lustre/fswork/projects/rech/qlr/commun/HCP900/Merged_HCP_Demographics.csv
 
 target_columns:
 - Gender
@@ -58,7 +72,7 @@ data_partition:
   n_splits: 5
 
 dataloaders:
-  num_workers: 10 # If using joblib use 0
+  num_workers: 0 # If using joblib use 0
 
 # ==============================
 # SLURM CONFIGURATION
