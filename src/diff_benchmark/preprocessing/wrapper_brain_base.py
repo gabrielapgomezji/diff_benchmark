@@ -113,12 +113,12 @@ class DataPreparationBrain(ABC):
         any operations and serves as a placeholder.
         """
         
-    def compute_embedding(self, subject_id: str):
-        """
-        Compute the embedding for a given subject.
-        Parameters:
-            subject_id (str): The unique identifier for the subject whose embedding is to be computed.
-        """
+    # def compute_embedding(self, subject_id: str):
+    #     """
+    #     Compute the embedding for a given subject.
+    #     Parameters:
+    #         subject_id (str): The unique identifier for the subject whose embedding is to be computed.
+    #     """
     
     def export_to_csv(self) -> pd.DataFrame:
         """
@@ -157,15 +157,15 @@ class DataPreparationBrain(ABC):
                     and recompute
                 ):
                     print(f"[{subject_id}] Recomputing microstructure.")
-                    # self.compute_microstructure(subject_id)
-                    self.compute_embedding(subject_id)
+                    self.compute_microstructure(subject_id)
+                    # self.compute_embedding(subject_id)
                 else:
                     print(f"[{subject_id}] Missing files — computing microstructure.")
                     self.compute_microstructure(subject_id)
             # else:
             #     print(f"[{subject_id}] All required files found.")
 
-        Parallel(n_jobs=1)(
+        Parallel(n_jobs=50)(
             delayed(process_subject)(subject_id)
             for subject_id in tqdm(subject_list, desc="Processing subjects")
         )
