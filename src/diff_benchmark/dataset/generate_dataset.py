@@ -283,11 +283,13 @@ class CustomDataset(Dataset):
             raise KeyError(
                 f"Coordinate files do not contain coordinates for these vertices: {sorted(missing)}"
             )
+        vertex_ids = list(coords_common.keys())
+        coords_tensor = torch.tensor([coords_common[v] for v in vertex_ids], dtype=torch.float32)
         return {
             "attenuations": torch.tensor(att_array, dtype=torch.float32),
             "power": torch.tensor(power, dtype=torch.float32),
-            # "vertices": common_vertices,
-            "coords": coords_common, 
+            "vertices": vertex_ids,
+            "coords": coords_tensor, 
             # "bvals": bvals,
         }
 
