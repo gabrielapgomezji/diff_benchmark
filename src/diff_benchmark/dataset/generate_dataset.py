@@ -7,6 +7,7 @@ import torch
 
 # from joblib import Parallel, delayed
 from torch.utils.data import Dataset
+from diff_benchmark.dataset.utils_dataset import load_precomputed_coordinates
 
 # from tqdm import tqdm
 
@@ -212,9 +213,14 @@ class CustomDataset(Dataset):
             - Uses the intersection of vertices present in all bvals to ensure consistent ordering.
             - Pads attenuation vectors with NaN when lengths differ, so sum uses nan-safe reduction.
         """
+        try:
+            coords_L, coords_R = load_precomputed_coordinates()
+        except FileNotFoundError as e:
+            exit(f"[Error] Cannot load precomputed coordinates: {e}")
+            
         if not path.is_file():
             raise FileNotFoundError(f"File not found: {path}")
-
+        merged_coords = {**coords_L, **coords_R}
         with h5py.File(path, "r") as f:
             candidate_bvals = [str(k) for k in f.keys() if isinstance(f[k], (h5py.Group,))]
 
@@ -270,11 +276,18 @@ class CustomDataset(Dataset):
 
             # compute power per vertex and bval: sum of squared attenuation across att_dim
             power = np.nansum(att_array * att_array, axis=2).astype(np.float32)
-
+  
+        coords_common = {v: merged_coords[v] for v in common_vertices if v in merged_coords}
+        if len(coords_common) != len(common_vertices):
+            missing = set(common_vertices) - set(coords_common.keys())
+            raise KeyError(
+                f"Coordinate files do not contain coordinates for these vertices: {sorted(missing)}"
+            )
         return {
             "attenuations": torch.tensor(att_array, dtype=torch.float32),
             "power": torch.tensor(power, dtype=torch.float32),
-            "vertices": common_vertices,
+            # "vertices": common_vertices,
+            "coords": coords_common, 
             # "bvals": bvals,
         }
 
