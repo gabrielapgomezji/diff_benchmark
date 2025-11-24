@@ -7,6 +7,8 @@ import torch
 
 # from joblib import Parallel, delayed
 from torch.utils.data import Dataset
+from diff_benchmark.dataset.utils_dataset import load_precomputed_coordinates
+import time
 
 # from tqdm import tqdm
 
@@ -128,8 +130,10 @@ class CustomDataset(Dataset):
             final_features = self.features[idx]
         if self.mode == "paths":
             try:
-                if Path(self.features[idx]).suffix == ".h5":
+                if Path(self.features[idx]).name.endswith("_lcotembedding.h5"):
                     final_features = self._load_h5(Path(self.features[idx]))
+                if Path(self.features[idx]).name.endswith("_spheres.h5"):
+                    final_features = self._load_h5_spheres(Path(self.features[idx]))
                 else:
                     img = nib.load(Path(self.features[idx]))
                     # target_affine = np.diag([1.25, 1.25, 1.25, 1.0])
@@ -172,7 +176,6 @@ class CustomDataset(Dataset):
             # Load metadata
             meta = f["metadata"]
             bvals = list(meta.attrs["bvals"])
-
             # Load embeddings
             emb_grp = f["embeddings"]
             embeddings_per_bval = []
@@ -193,9 +196,105 @@ class CustomDataset(Dataset):
             )  # shape: (num_values, num_bvals, emb_dim)
 
             power = f["power"][:]
+        breakpoint()
         return {
             "embeddings": torch.tensor(data_array, dtype=torch.float32),
             "power": torch.tensor(power, dtype=torch.float32),
+        }
+
+    def _load_h5_spheres(self, path):
+        """
+        Load an HDF5 file where embeddings are stored per-bval and per-vertex:
+        f["embeddings"]["1000"][vertex_id]["attenuation"], f["embeddings"]["2000"][...], ...
+        Returns dict with:
+            "attenuations": torch.tensor shape (num_vertices, num_bvals, att_dim)
+            "power": torch.tensor shape (num_vertices, num_bvals)  # sum of attenuation**2 across att_dim
+            "vertices": list of vertex ids (strings) in the order used
+        Behavior:
+            - Uses the intersection of vertices present in all bvals to ensure consistent ordering.
+            - Pads attenuation vectors with NaN when lengths differ, so sum uses nan-safe reduction.
+        """
+        start = time.time()
+        try:
+            coords_L, coords_R = load_precomputed_coordinates()
+        except FileNotFoundError as e:
+            exit(f"[Error] Cannot load precomputed coordinates: {e}")
+            
+        if not path.is_file():
+            raise FileNotFoundError(f"File not found: {path}")
+        merged_coords = {**coords_L, **coords_R}
+        with h5py.File(path, "r") as f:
+            candidate_bvals = [str(k) for k in f.keys() if isinstance(f[k], (h5py.Group,))]
+
+            if not candidate_bvals:
+                raise KeyError(f"No b-value groups found in file {path}")
+
+            # sort bvals numerically when possible (keeps deterministic order)
+            try:
+                bvals = sorted(candidate_bvals, key=lambda x: int(x))
+            except Exception:
+                bvals = sorted(candidate_bvals)
+
+            # collect vertex id sets per bval
+            vertex_sets = []
+            for bstr in bvals:
+                grp = f[bstr]
+                # convert keys to str (h5py may return bytes)
+                vertex_sets.append({str(k) for k in grp.keys()})
+
+            # use intersection to ensure consistent vertices across bvals
+            common_vertices = sorted(
+                set.intersection(*vertex_sets),
+                key=lambda x: int(x) if x.isdigit() else x,
+            )
+
+            if len(common_vertices) == 0:
+                raise KeyError(f"No common vertices across bvals in {path}")
+
+            # determine maximum attenuation vector length across chosen vertices and bvals
+            max_len = 0
+            for bstr in bvals:
+                grp = f[bstr]
+                for v in common_vertices:
+                    node = grp.get(v)
+                    if node is None or "attenuation" not in node:
+                        raise KeyError(f"Missing attenuation for vertex {v} under bval {bstr} in {path}")
+                    arr = np.asarray(node["attenuation"][:]).reshape(-1)
+                    if arr.size > max_len:
+                        max_len = arr.size
+
+            num_vertices = len(common_vertices)
+            num_bvals = len(bvals)
+            att_array = np.full((num_vertices, num_bvals, max_len), np.nan, dtype=np.float32)
+
+            # fill attenuation array
+            for i, bstr in enumerate(bvals):
+                grp = f[bstr]
+                for j, v in enumerate(common_vertices):
+                    node = grp.get(v)
+                    # previous checks guarantee node exists and has 'attenuation'
+                    arr = np.asarray(node["attenuation"][:]).reshape(-1).astype(np.float32)
+                    att_array[j, i, : arr.size] = arr
+
+            # compute power per vertex and bval: sum of squared attenuation across att_dim
+            power = np.nansum(att_array * att_array, axis=2).astype(np.float32)
+  
+        coords_common = {v: merged_coords[v] for v in common_vertices if v in merged_coords}
+        if len(coords_common) != len(common_vertices):
+            missing = set(common_vertices) - set(coords_common.keys())
+            raise KeyError(
+                f"Coordinate files do not contain coordinates for these vertices: {sorted(missing)}"
+            )
+        vertex_ids = list(coords_common.keys())
+        coords_tensor = torch.tensor([coords_common[v] for v in vertex_ids], dtype=torch.float32)
+        end = time.time()
+        print(f"Took {end - start} seconds to load a subject")
+        return {
+            "attenuations": torch.tensor(att_array, dtype=torch.float32),
+            "power": torch.tensor(power, dtype=torch.float32),
+            "vertices": vertex_ids,
+            "coords": coords_tensor, 
+            # "bvals": bvals,
         }
 
     def get_features_model(self):

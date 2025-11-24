@@ -112,7 +112,14 @@ class DataPreparationBrain(ABC):
         specific feature extraction logic. It currently does not perform
         any operations and serves as a placeholder.
         """
-
+        
+    # def compute_embedding(self, subject_id: str):
+    #     """
+    #     Compute the embedding for a given subject.
+    #     Parameters:
+    #         subject_id (str): The unique identifier for the subject whose embedding is to be computed.
+    #     """
+    
     def export_to_csv(self) -> pd.DataFrame:
         """
         Exports the results to a CSV file.
@@ -151,6 +158,7 @@ class DataPreparationBrain(ABC):
                 ):
                     print(f"[{subject_id}] Recomputing microstructure.")
                     self.compute_microstructure(subject_id)
+                    # self.compute_embedding(subject_id)
                 else:
                     print(f"[{subject_id}] Missing files — computing microstructure.")
                     self.compute_microstructure(subject_id)
