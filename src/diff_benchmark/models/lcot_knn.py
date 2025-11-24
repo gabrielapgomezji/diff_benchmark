@@ -47,10 +47,6 @@ class kNNLCOT(nn.Module):
         """
         Helper method to compute kernel values for a tile of samples.
         
-        OPTIMIZED: Uses one bandwidth per bvalue (3 bandwidths total). Each bvalue's
-        distances are normalized by its own bandwidth, allowing different spheres
-        to have different characteristic scales.
-        
         This method is shared by both _compute_kernel_matrix_tiled and _kernel_matvec
         to avoid code duplication. It accumulates distances additively (faster and more
         stable than multiplicative accumulation), then applies exp once at the end.
@@ -64,7 +60,6 @@ class kNNLCOT(nn.Module):
         Args:
             emb1_block: shape (n1_blk, n_spheres, n_bvals, d) - first embeddings block (on CPU)
             emb2_block: shape (n2_blk, n_spheres, n_bvals, d) - second embeddings block (on CPU)
-            bandwidth: kernel bandwidths (array of length n_bvals or scalar for backward compatibility)
         
         Returns:
             K_block: shape (n1_blk, n2_blk) - kernel values (on GPU, float64)
@@ -101,7 +96,6 @@ class kNNLCOT(nn.Module):
                     diff_abs = torch.abs(diff)
                     msd = torch.mean(torch.minimum(diff_abs, 1 - diff_abs), dim=-1)
 
-                # Sum over spheres and NORMALIZE by this bvalue's bandwidth
                 # (n1_blk, n2_blk, n_spheres_batch) -> (n1_blk, n2_blk)
                 dist_sum = torch.sum(msd, dim=-1)
                 sum_normalized_distances += dist_sum
@@ -111,7 +105,7 @@ class kNNLCOT(nn.Module):
         return sum_normalized_distances
 
 
-    def _compute_dist_matrix(self, emb1, emb2, bandwidth=None):
+    def _compute_dist_matrix(self, emb1, emb2):
         """
         Compute distance matrix using additive accumulation with tiling.
         
@@ -127,12 +121,10 @@ class kNNLCOT(nn.Module):
         Args:
             emb1: shape (n1, n_spheres, n_bvals, d) - on CPU
             emb2: shape (n2, n_spheres, n_bvals, d) - on CPU
-            bandwidth: kernel bandwidth (if None, use self.kernel_bandwidth)
         
         Returns:
             K: shape (n1, n2) - kernel matrix (on CPU)
         """
-        bandwidth = bandwidth if bandwidth is not None else self.kernel_bandwidth
         n1, n_spheres, n_bvals, d = emb1.shape
         n2 = emb2.shape[0]
         
@@ -153,7 +145,7 @@ class kNNLCOT(nn.Module):
                 
                 # Compute kernel tile using shared helper
                 K_block = self._compute_dist_tile(
-                    emb1_block, emb2_block, bandwidth
+                    emb1_block, emb2_block
                 )
                 
                 # Store result for this sample block
