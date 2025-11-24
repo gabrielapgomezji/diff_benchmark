@@ -252,7 +252,7 @@ class kNNLCOT(nn.Module):
                 dist_test = self._compute_dist_matrix(self.train_embeddings, embeddings)
 
                 predictions = self.model.predict(dist_test.numpy().T)
-                all_predictions.append(predictions)
+                all_predictions.append(torch.from_numpy(predictions))
                 
                 # Clean up
                 del embeddings, power
