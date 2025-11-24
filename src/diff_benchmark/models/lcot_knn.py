@@ -255,7 +255,7 @@ class kNNLCOT(nn.Module):
                 all_predictions.append(predictions)
                 
                 # Clean up
-                del embeddings, power, scores
+                del embeddings, power
         
         print("Prediction complete!")
         return torch.cat(all_predictions, dim=0)
