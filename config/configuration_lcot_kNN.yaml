@@ -4,9 +4,9 @@
 pretrain_path: /data/parietal/store3/work/ggomezji/projects/diff_benchmark/MedicalNet_pytorch_files2/pretrain/resnet_10.pth
 
 models:
-- name: lcot_kNN
+- name: lcot_knn
   params:
-    name: lcot_kNN
+    name: lcot_knn
     comment: Lcot kNN test
     region_name: VisCent_ExStr
     batch_size: 32

@@ -113,7 +113,7 @@ def get_model(name: str, config: dict):
         # Simple PCA + LogReg baseline for embeddings
         return EmbeddingsPCALogisticRegression(**config)
     
-    if name == "lcot_kNN":
+    if name == "lcot_knn":
         # Simple kNN on LCOT embedding
         return kNNLCOT(**config)
 
