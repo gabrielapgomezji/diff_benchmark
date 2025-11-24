@@ -251,8 +251,7 @@ class kNNLCOT(nn.Module):
 
                 dist_test = self._compute_dist_matrix(self.train_embeddings, embeddings)
 
-                print("??", dist_test.shape)
-                predictions = self.model.predict(dist_test.numpy())
+                predictions = self.model.predict(dist_test.numpy().T)
                 all_predictions.append(predictions)
                 
                 # Clean up
