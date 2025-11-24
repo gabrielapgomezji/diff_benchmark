@@ -250,6 +250,8 @@ class kNNLCOT(nn.Module):
                     power = power.squeeze(1)
 
                 dist_test = self._compute_dist_matrix(self.train_embeddings, embeddings)
+
+                print("??", dist_test.shape)
                 predictions = self.model.predict(dist_test.numpy())
                 all_predictions.append(predictions)
                 
