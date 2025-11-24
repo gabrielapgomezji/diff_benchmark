@@ -1,0 +1,15 @@
+# ==============================
+# MODEL CONFIGURATION
+# ==============================
+pretrain_path: /data/parietal/store3/work/ggomezji/projects/diff_benchmark/MedicalNet_pytorch_files2/pretrain/resnet_10.pth
+
+models:
+- name: lcot_kNN
+  params:
+    name: lcot_kNN
+    comment: Lcot kNN test
+    region_name: VisCent_ExStr
+    batch_size: 32
+    num_spheres: 3363
+    device: None
+    dtype: None
