@@ -8,6 +8,7 @@ import torch
 # from joblib import Parallel, delayed
 from torch.utils.data import Dataset
 from diff_benchmark.dataset.utils_dataset import load_precomputed_coordinates
+import time
 
 # from tqdm import tqdm
 
@@ -213,6 +214,7 @@ class CustomDataset(Dataset):
             - Uses the intersection of vertices present in all bvals to ensure consistent ordering.
             - Pads attenuation vectors with NaN when lengths differ, so sum uses nan-safe reduction.
         """
+        start = time.time()
         try:
             coords_L, coords_R = load_precomputed_coordinates()
         except FileNotFoundError as e:
@@ -285,6 +287,8 @@ class CustomDataset(Dataset):
             )
         vertex_ids = list(coords_common.keys())
         coords_tensor = torch.tensor([coords_common[v] for v in vertex_ids], dtype=torch.float32)
+        end = time.time()
+        print(f"Took {end - start} seconds to load a subject")
         return {
             "attenuations": torch.tensor(att_array, dtype=torch.float32),
             "power": torch.tensor(power, dtype=torch.float32),
