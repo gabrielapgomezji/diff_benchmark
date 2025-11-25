@@ -136,6 +136,15 @@ class TorchPipeline:
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             self.optimizer, mode="min", factor=0.5, patience=10
         )
+        self.history = {
+            "train": {"epoch": [], "batch": [], "loss": [], "metrics": []},
+            "val": {
+                "epoch": [],
+                "loss": [],
+                "metrics": [],
+                "batch_train_idx": [],
+            },
+        }
 
     @abstractmethod
     def _build_model(self, **kwargs):
@@ -207,8 +216,6 @@ class TorchPipeline:
             monitor="val_accuracy",
             mode="max",
         )
-
-        scaler = GradScaler()
         
         prof =  profile(
             activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
@@ -239,36 +246,28 @@ class TorchPipeline:
                     with record_function("backward"): loss.backward()
                     
                     # print("Forward + Bakcward done")
-                    self.optimizer.step()
-                    # self.optimizer.zero_grad()
-                    # with autocast():
-                    #     preds = self.model(xb)
-                    #     loss = self.criterion(preds, yb)
-                    # scaler.scale(loss).backward()
-                    # scaler.step(self.optimizer)
-                    # scaler.update()
-                    
+                    self.optimizer.step()                    
 
-                    # y_true = yb.cpu().detach().numpy()
-                    # y_pred = preds.argmax(dim=1).cpu().detach().numpy()
+                    y_true = yb.cpu().detach().numpy()
+                    y_pred = preds.argmax(dim=1).cpu().detach().numpy()
 
-                    # metrics = {
-                    #     "accuracy": accuracy_score(y_true, y_pred),
-                    #     "precision": precision_score(
-                    #         y_true, y_pred, average=self.average, zero_division="warn"
-                    #     ),
-                    #     "recall": recall_score(
-                    #         y_true, y_pred, average=self.average, zero_division="warn"
-                    #     ),
-                    #     "f1": f1_score(
-                    #         y_true, y_pred, average=self.average, zero_division="warn"
-                    #     ),
-                    #     # "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
-                    # }
-                    # self.history["train"]["epoch"].append(epoch)
-                    # self.history["train"]["batch"].append(batch_train_idx)
-                    # self.history["train"]["loss"].append(loss.item())
-                    # self.history["train"]["metrics"].append(metrics)
+                    metrics = {
+                        "accuracy": accuracy_score(y_true, y_pred),
+                        "precision": precision_score(
+                            y_true, y_pred, average=self.average, zero_division="warn"
+                        ),
+                        "recall": recall_score(
+                            y_true, y_pred, average=self.average, zero_division="warn"
+                        ),
+                        "f1": f1_score(
+                            y_true, y_pred, average=self.average, zero_division="warn"
+                        ),
+                        # "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
+                    }
+                    self.history["train"]["epoch"].append(epoch)
+                    self.history["train"]["batch"].append(batch_train_idx)
+                    self.history["train"]["loss"].append(loss.item())
+                    self.history["train"]["metrics"].append(metrics)
 
                     prof.step()
 
@@ -296,23 +295,23 @@ class TorchPipeline:
                         y_true = np.concatenate(y_true)
                         y_pred = np.concatenate(y_pred)
 
-                        # metrics = {
-                        #     "accuracy": accuracy_score(y_true, y_pred),
-                        #     "precision": precision_score(
-                        #         y_true, y_pred, average=self.average, zero_division="warn"
-                        #     ),
-                        #     "recall": recall_score(
-                        #         y_true, y_pred, average=self.average, zero_division="warn"
-                        #     ),
-                        #     "f1": f1_score(
-                        #         y_true, y_pred, average=self.average, zero_division="warn"
-                        #     ),
-                        #     # "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
-                        # }
-                        # self.history["val"]["epoch"].append(epoch)
-                        # self.history["val"]["batch_train_idx"].append(batch_train_idx)
-                        # self.history["val"]["loss"].append(val_loss)
-                        # self.history["val"]["metrics"].append(metrics)
+                        metrics = {
+                            "accuracy": accuracy_score(y_true, y_pred),
+                            "precision": precision_score(
+                                y_true, y_pred, average=self.average, zero_division="warn"
+                            ),
+                            "recall": recall_score(
+                                y_true, y_pred, average=self.average, zero_division="warn"
+                            ),
+                            "f1": f1_score(
+                                y_true, y_pred, average=self.average, zero_division="warn"
+                            ),
+                            # "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
+                        }
+                        self.history["val"]["epoch"].append(epoch)
+                        self.history["val"]["batch_train_idx"].append(batch_train_idx)
+                        self.history["val"]["loss"].append(val_loss)
+                        self.history["val"]["metrics"].append(metrics)
 
                         # # self.logger.save_checkpoint(self.model, epoch, metrics["accuracy"])
                         # self.logger.update_smooth_checkpoint(
@@ -323,9 +322,9 @@ class TorchPipeline:
 
         self.logger.save_checkpoint(self.model, self.epochs, 0, is_last=True)
         self.logger.save_logs()
-        # self._save_logs(
-        #     self.history, f"./data/results/logs/{self.run_id}_training_log.json"
-        # )
+        self._save_logs(
+            self.history, f"./data/results/logs/{self.run_id}_training_log.json"
+        )
     
     def predict(self, dataloader):
         checkpoint_path = Path(self.logger.best_path)
@@ -333,6 +332,9 @@ class TorchPipeline:
             state_dict = torch.load(checkpoint_path, map_location=self.device)
             self.model.load_state_dict(state_dict)
             print(f"[INFO] Loaded checkpoint from {checkpoint_path}")
+        else:
+            print(f"Checkpoint {checkpoint_path} does not exist. Using current model weights.")
+            
 
         self.model.eval()
         preds_all = []
