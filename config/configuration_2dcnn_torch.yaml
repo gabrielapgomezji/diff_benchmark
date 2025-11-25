@@ -7,16 +7,16 @@ models:
 - name: 2dcnn_torch
   params:
     name: 2dcnn_torch
-    comment: Test changes made in the file
+    comment: Reproducing with new pipeline
     input_slices: 145
     num_classes: 2
     device: cuda
     dtype: none
     pretrained: true
     freeze_backbone: true
-    trainable_blocks: 0
-    epochs: 3
+    trainable_blocks: 1
+    epochs: 50
     batch_size: 128
-    dropout: 0.1
+    dropout: 0.5
     learning_rate: 1.0e-05
-    weight_decay: 1.0e-05
+    weight_decay: 0.01

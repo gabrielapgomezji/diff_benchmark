@@ -62,7 +62,7 @@ dataloaders:
 # ==============================
 # SLURM CONFIGURATION
 # ==============================
-use_slurm: false
+use_slurm: true
 use_joblib: false # If joblib true, use num_workers = 0
 n_jobs: 3
 results_path: /data/parietal/store3/work/ggomezji/benchmark/HCP900
