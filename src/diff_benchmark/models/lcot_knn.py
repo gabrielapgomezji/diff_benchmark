@@ -211,16 +211,18 @@ class kNNLCOT(nn.Module):
 
         d_train = self._compute_dist_matrix(self.train_embeddings, self.train_embeddings)
 
-        knn = KNeighborsClassifier(metric="precomputed")
+        knn = KNeighborsClassifier(n_neightbors=5, metric="precomputed")
 
-        param_grid = {"n_neighbors": np.arange(1, 25)}
-        knn_gscv = GridSearchCV(knn, param_grid, cv=5)
-        knn_gscv.fit(d_train, self.targets)
+        # param_grid = {"n_neighbors": np.arange(1, 25)}
+        # knn_gscv = GridSearchCV(knn, param_grid, cv=5)
+        # knn_gscv.fit(d_train, self.targets)
+        # self.model = knn_gscv
+        # print(f"Best parameters:", knn_gscv.best_params_)
 
-        self.model = knn_gscv
-        print(f"Best parameters:", knn_gscv.best_params_)
-
+        knn.fit(d_train, self.targets)
+        self.model = knn
         
+
     def predict(self, dataloader):
         """
         Predict on new data.
