@@ -218,6 +218,7 @@ class kNNLCOT(nn.Module):
         knn_gscv.fit(d_train, self.targets)
 
         self.model = knn_gscv
+        print(f"Best parameters:", knn_gscv.best_params_)
 
         
     def predict(self, dataloader):
