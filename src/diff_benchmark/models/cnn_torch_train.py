@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+from torchvision import models
 
 from diff_benchmark.models.base import TorchPipeline
 
@@ -139,10 +140,15 @@ class CNNTorchTrainModel(TorchPipeline):
     def _build_model(
         self, input_slices, num_classes, freeze_backbone, dropout, **kwargs
     ):
+        pretrained = kwargs.get("pretrained", False)
+        trainable_blocks = kwargs.get("trainable_blocks", None)
         model = ResNet3SliceClassifier(
             input_slices=input_slices,
             num_classes=num_classes,
             freeze_backbone=freeze_backbone,
             dropout=dropout,
+            pretrained=pretrained,
+            trainable_blocks=trainable_blocks,
         )
+
         return model
