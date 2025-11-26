@@ -1,27 +1,24 @@
+import csv
+import json
 from abc import ABC, abstractmethod
-from typing import Optional
-from tqdm import tqdm
+from pathlib import Path
 
-import os
 import numpy as np
 import pytorch_lightning as pl
 import torch
-import torch.nn as nn
+from torch import nn
 from sklearn.metrics import (  # confusion_matrix,; roc_auc_score,
     accuracy_score,
     f1_score,
     precision_score,
     recall_score,
 )
+from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, Subset
 from torchvision import transforms
-from diff_benchmark.utils.logger import TrainLogger
-from sklearn.model_selection import train_test_split
-from pathlib import Path
-import json, csv
+from tqdm import tqdm
 
-from torch.profiler import profile, tensorboard_trace_handler, ProfilerActivity, schedule, record_function
-from torch.cuda.amp import autocast, GradScaler
+from diff_benchmark.utils.logger import TrainLogger
 
 
 def collate_with_augmentation(batch, transform=None):
@@ -59,6 +56,7 @@ val_transforms = transforms.Compose(
         transforms.Normalize(mean=[0.5], std=[0.5]),
     ]
 )
+
 
 class NumpyAbstractModel(ABC):
     """
@@ -111,6 +109,7 @@ class TorchAbstractModel(ABC):
         Predict using the fitted model.
         """
 
+
 class TorchPipeline:
     """
     Abstract base class for Torch models that require training.
@@ -120,7 +119,11 @@ class TorchPipeline:
     def __init__(self, num_workers=10, device=None, dtype=None, **kwargs):
 
         self.num_workers = num_workers
-        self.device = device if device is not None else torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = (
+            device
+            if device is not None
+            else torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        )
         self.dtype = dtype if dtype is not None else torch.float32
 
         self.model = self._build_model(**kwargs).to(self.device)
@@ -132,13 +135,18 @@ class TorchPipeline:
 
         self.learning_rate = kwargs.get("learning_rate", 1e-4)
         self.weight_decay = kwargs.get("weight_decay", 1e-2)
-        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
+        self.optimizer = torch.optim.AdamW(
+            self.model.parameters(),
+            lr=self.learning_rate,
+            weight_decay=self.weight_decay,
+        )
         # self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
         self.criterion = nn.CrossEntropyLoss()
 
         self.max_lr = kwargs.get("max_lr", 1e-4)
         self.pct_start = kwargs.get("pct_start", 0.2)
-    
+        self.scheduler = None # Defined later
+        self.logger = None # Defined later
         # self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         #     self.optimizer, mode="min", factor=0.5, patience=10
         # )
@@ -154,7 +162,9 @@ class TorchPipeline:
 
     @abstractmethod
     def _build_model(self, **kwargs):
-        raise NotImplementedError("_build_model must be implemented and return a torch model.")
+        raise NotImplementedError(
+            "_build_model must be implemented and return a torch model."
+        )
 
     def _save_logs(self, history, save_path):
         path = Path(save_path)
@@ -170,9 +180,9 @@ class TorchPipeline:
                 writer.writerows(history)
         else:
             raise ValueError("Save path must end with .json or .csv")
-        
+
     def _train_val_loader_split(self, train_loader, val_ratio=0.3):
-        
+
         dataset = train_loader.dataset
         n = len(dataset)
         genders = np.asarray(dataset.dataset.gender[dataset.indices])
@@ -206,9 +216,9 @@ class TorchPipeline:
             ),
         )
         return train_loader_new, val_loader_new
-    
-    def fit(self, dataloader):
 
+    def fit(self, dataloader):
+        """Fit the model to the training data."""
         print(f"Device: {self.device}")
         self.model.train()
 
@@ -228,12 +238,12 @@ class TorchPipeline:
             max_lr=self.max_lr,
             epochs=self.epochs,
             steps_per_epoch=len(train_loader),
-            anneal_strategy='cos',
+            anneal_strategy="cos",
             pct_start=self.pct_start,
-            div_factor=3, #1.0e3, #10,
-            final_div_factor=1.0e3, #1.0e4,
+            div_factor=3,  # 1.0e3, #10,
+            final_div_factor=1.0e3,  # 1.0e4,
         )
-        
+
         print("Dataloaders created")
         for epoch in tqdm(range(self.epochs)):
 
@@ -241,7 +251,9 @@ class TorchPipeline:
             for batch_train_idx, (xb, yb, _) in enumerate(train_loader):
 
                 # print("Batch loaded")
-                xb, yb = xb.to(self.device, non_blocking=True), yb.long().to(self.device, non_blocking=True)
+                xb, yb = xb.to(self.device, non_blocking=True), yb.long().to(
+                    self.device, non_blocking=True
+                )
 
                 # print("Moved to device")
                 self.optimizer.zero_grad()
@@ -249,9 +261,9 @@ class TorchPipeline:
                 loss = self.criterion(preds, yb)
 
                 loss.backward()
-                
+
                 # print("Forward + Bakcward done")
-                self.optimizer.step()                    
+                self.optimizer.step()
 
                 y_true = yb.cpu().detach().numpy()
                 y_pred = preds.argmax(dim=1).cpu().detach().numpy()
@@ -284,7 +296,9 @@ class TorchPipeline:
                     with torch.no_grad():
                         for batch_val_idx, (xb, yb, _) in enumerate(val_loader):
                             print(f"Val: batch {batch_val_idx}")
-                            xb, yb = xb.to(self.device, non_blocking=True), yb.long().to(self.device, non_blocking=True)
+                            xb, yb = xb.to(
+                                self.device, non_blocking=True
+                            ), yb.long().to(self.device, non_blocking=True)
 
                             preds = self.model(xb)
                             loss = self.criterion(preds, yb)
@@ -321,8 +335,8 @@ class TorchPipeline:
                     #     self.model, epoch, metrics["accuracy"]
                     # )
                     self.model.train()
-            
-                self.scheduler.step() #For one cycle scheduler
+
+                self.scheduler.step()  # For one cycle scheduler
             # self.scheduler.step(val_loss)
         plot_history_from_file(self.history, self.fold_idx, self.run_id)
         self.logger.save_checkpoint(self.model, self.epochs, 0, is_last=True)
@@ -332,14 +346,16 @@ class TorchPipeline:
         )
 
     def predict(self, dataloader):
+        """Prediction step using last model checkpoint."""
         checkpoint_path = Path(self.logger.best_path)
         if checkpoint_path.exists():
             state_dict = torch.load(checkpoint_path, map_location=self.device)
             self.model.load_state_dict(state_dict)
             print(f"[INFO] Loaded checkpoint from {checkpoint_path}")
         else:
-            print(f"Checkpoint {checkpoint_path} does not exist. Using current model weights.")
-            
+            print(
+                f"Checkpoint {checkpoint_path} does not exist. Using current model weights."
+            )
 
         self.model.eval()
         preds_all = []
@@ -354,7 +370,7 @@ class TorchPipeline:
                 logits = self.model(xb)
                 preds = torch.argmax(logits, dim=1)
                 preds_all.append(preds.cpu())
-        return torch.cat(preds_all).numpy()  
+        return torch.cat(preds_all).numpy()
 
 
 class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ancestors
@@ -486,14 +502,14 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
 
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MultipleLocator
+
+
 # def plot_history_from_file(path="history.json", save_path="training_history.pdf"):
 def plot_history_from_file(history, fold_idx, run_id):
     """
     Plots training and validation curves (loss + accuracy) with epochs on the x-axis.
     Infers steps_per_epoch and validation interval automatically from history.
     """
-    history = history
-
     # os.makedirs(os.path.dirname('history.png'), exist_ok=True)
 
     # LOSS
@@ -723,4 +739,3 @@ def plot_history_from_file(history, fold_idx, run_id):
     plt.tight_layout()
     plt.savefig(f"history_{fold_idx}_{run_id}.png")
     plt.show()
-

@@ -120,6 +120,7 @@ def normalize(data):
 
 @dataclass
 class ComputationConfig:
+    """Configuration for data computation."""
     bvals_to_compute: list
     sphere: Any
     model: Any

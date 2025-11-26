@@ -1,24 +1,7 @@
-import csv
-import json
-from pathlib import Path
-
-import numpy as np
 import torch
-from sklearn.metrics import (  # roc_auc_score,
-    accuracy_score,
-    confusion_matrix,
-    f1_score,
-    precision_score,
-    recall_score,
-)
-from sklearn.model_selection import train_test_split
 from torch import nn
-from torch.utils.data import DataLoader, Subset
-from torchvision import models, transforms
-from tqdm import tqdm
 
 from diff_benchmark.models.base import TorchPipeline
-from diff_benchmark.utils.logger import TrainLogger  # MetricsManager
 
 
 class ResNet18Backbone(nn.Module):
@@ -104,7 +87,9 @@ class ResNet3SliceClassifier(nn.Module):
         # self.fc = nn.Linear(self.num_subvols * self.backbone.out_dim, num_classes)
         # Aggregate subvolume embeddings into a single embedding (B, 512)
         # learnable per-subvolume scalar weights (will be normalized via softmax in forward)
-        self.aggregate_weights = nn.Parameter(torch.ones(self.num_subvols, dtype=torch.float32))
+        self.aggregate_weights = nn.Parameter(
+            torch.ones(self.num_subvols, dtype=torch.float32)
+        )
         self.fc = nn.Linear(self.backbone.out_dim, num_classes)
 
         if freeze_backbone:
@@ -119,7 +104,7 @@ class ResNet3SliceClassifier(nn.Module):
         # assert S % 3 == 0, "Slice dimension must be divisible by 3"
         x = x.squeeze(1)
 
-        subvols = x.unfold(dimension=1, size=3, step=3)  
+        subvols = x.unfold(dimension=1, size=3, step=3)
         subvols = subvols.permute(0, 1, 4, 2, 3)  # (B, num_subvols, 3, H, W)
 
         B, N, C, H, W = subvols.shape  # N = num_subvols
@@ -145,17 +130,13 @@ class ResNet3SliceClassifier(nn.Module):
         out = self.fc(feats)  # (B, num_classes)
         return out
 
+
 class CNNTorchTrainModel(TorchPipeline):
-    
+    """CNN Torch Train Model class inheriting from TorchPipeline."""
     data_type = "images"
 
     def _build_model(
-        self,
-        input_slices,
-        num_classes,
-        freeze_backbone,
-        dropout,
-        **kwargs
+        self, input_slices, num_classes, freeze_backbone, dropout, **kwargs
     ):
         model = ResNet3SliceClassifier(
             input_slices=input_slices,
