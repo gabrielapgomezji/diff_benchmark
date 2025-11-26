@@ -145,8 +145,8 @@ class TorchPipeline:
 
         self.max_lr = kwargs.get("max_lr", 1e-4)
         self.pct_start = kwargs.get("pct_start", 0.2)
-        self.scheduler = None # Defined later
-        self.logger = None # Defined later
+        self.scheduler = None  # Defined later
+        self.logger = None  # Defined later
         # self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         #     self.optimizer, mode="min", factor=0.5, patience=10
         # )

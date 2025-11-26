@@ -133,6 +133,7 @@ class ResNet3SliceClassifier(nn.Module):
 
 class CNNTorchTrainModel(TorchPipeline):
     """CNN Torch Train Model class inheriting from TorchPipeline."""
+
     data_type = "images"
 
     def _build_model(

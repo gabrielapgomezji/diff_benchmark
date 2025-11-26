@@ -150,9 +150,7 @@ class KernelRidgeRegression(nn.Module):
             # Remove batch dimension if needed
             # data , _, _ = next(iter(dataloader))
             # embeddings = data['embeddings'].to(self.device).to(self.dtype).squeeze(dim=1)
-            self_n_subjects, self_n_spheres, _, _ = (
-                self.embeddings.shape
-            )
+            self_n_subjects, self_n_spheres, _, _ = self.embeddings.shape
             n_subjects, _, _, _ = embeddings.shape
             with torch.no_grad():
                 # assert self_n_spheres * self_n_bval == n_spheres * n_bval, f"Number of spheres in the training set {self_n_spheres} does not match the number of spheres in the test set {n_spheres}"

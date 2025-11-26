@@ -193,6 +193,7 @@ def embedding_slcot_batch(
 
 class LSSOT:
     """LSSOT distance and embedding computation."""
+
     def __init__(
         self,
         d,
@@ -234,6 +235,7 @@ class LSSOT:
 
 class EmbeddingCircle:
     """Embedding and distance computation on the circle using linear circular OT."""
+
     def __init__(
         self,
         d,
@@ -316,8 +318,9 @@ class EmbeddingCircle:
 
 
 class EmbeddingCircleWeights:
-    """Embedding and distance computation on the circle using linear 
+    """Embedding and distance computation on the circle using linear
     circular OT with fixed projections."""
+
     def __init__(
         self,
         d,
