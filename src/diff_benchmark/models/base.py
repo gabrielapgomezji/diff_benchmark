@@ -131,13 +131,19 @@ class TorchPipeline:
         self.average = kwargs.get("average", "binary")
 
         self.learning_rate = kwargs.get("learning_rate", 1e-4)
-        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.learning_rate)
+        self.weight_decay = kwargs.get("weight_decay", 1e-2)
+        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
+        # self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
         self.criterion = nn.CrossEntropyLoss()
-        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            self.optimizer, mode="min", factor=0.5, patience=10
-        )
+
+        self.max_lr = kwargs.get("max_lr", 1e-4)
+        self.pct_start = kwargs.get("pct_start", 0.2)
+    
+        # self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        #     self.optimizer, mode="min", factor=0.5, patience=10
+        # )
         self.history = {
-            "train": {"epoch": [], "batch": [], "loss": [], "metrics": []},
+            "train": {"epoch": [], "batch": [], "loss": [], "metrics": [], "lr": []},
             "val": {
                 "epoch": [],
                 "loss": [],
@@ -192,7 +198,7 @@ class TorchPipeline:
         val_loader_new = DataLoader(
             val_subset,
             batch_size=128,
-            shuffle=True,
+            shuffle=False,
             num_workers=self.num_workers,
             pin_memory=True,
             collate_fn=lambda batch: collate_with_augmentation(
@@ -216,40 +222,81 @@ class TorchPipeline:
             monitor="val_accuracy",
             mode="max",
         )
-        
-        prof =  profile(
-            activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
-            schedule=schedule(wait=1, warmup=1, active=5, repeat=1),
-            on_trace_ready=tensorboard_trace_handler('./profiler/test_cnn'),
-            profile_memory=True,
-            record_shapes=False, 
-            with_stack=False,
-            with_flops=False
+
+        self.scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            self.optimizer,
+            max_lr=self.max_lr,
+            epochs=self.epochs,
+            steps_per_epoch=len(train_loader),
+            anneal_strategy='cos',
+            pct_start=self.pct_start,
+            div_factor=3, #1.0e3, #10,
+            final_div_factor=1.0e3, #1.0e4,
         )
+        
+        print("Dataloaders created")
+        for epoch in tqdm(range(self.epochs)):
 
-        with prof:
+            print(f"Epoch {epoch}")
+            for batch_train_idx, (xb, yb, _) in enumerate(train_loader):
 
-            print("Dataloaders created")
-            for epoch in tqdm(range(self.epochs)):
+                # print("Batch loaded")
+                xb, yb = xb.to(self.device, non_blocking=True), yb.long().to(self.device, non_blocking=True)
 
-                print(f"Epoch {epoch}")
-                for batch_train_idx, (xb, yb, _) in enumerate(train_loader):
+                # print("Moved to device")
+                self.optimizer.zero_grad()
+                preds = self.model(xb)
+                loss = self.criterion(preds, yb)
 
-                    # print("Batch loaded")
-                    xb, yb = xb.to(self.device, non_blocking=True), yb.long().to(self.device, non_blocking=True)
+                loss.backward()
+                
+                # print("Forward + Bakcward done")
+                self.optimizer.step()                    
 
-                    # print("Moved to device")
-                    with record_function("optimizer zero grad"): self.optimizer.zero_grad()
-                    with record_function("inference"): preds = self.model(xb)
-                    with record_function("loss function"): loss = self.criterion(preds, yb)
+                y_true = yb.cpu().detach().numpy()
+                y_pred = preds.argmax(dim=1).cpu().detach().numpy()
 
-                    with record_function("backward"): loss.backward()
-                    
-                    # print("Forward + Bakcward done")
-                    self.optimizer.step()                    
+                metrics = {
+                    "accuracy": accuracy_score(y_true, y_pred),
+                    "precision": precision_score(
+                        y_true, y_pred, average=self.average, zero_division="warn"
+                    ),
+                    "recall": recall_score(
+                        y_true, y_pred, average=self.average, zero_division="warn"
+                    ),
+                    "f1": f1_score(
+                        y_true, y_pred, average=self.average, zero_division="warn"
+                    ),
+                    # "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
+                }
+                self.history["train"]["epoch"].append(epoch)
+                self.history["train"]["batch"].append(batch_train_idx)
+                self.history["train"]["loss"].append(loss.item())
+                self.history["train"]["metrics"].append(metrics)
 
-                    y_true = yb.cpu().detach().numpy()
-                    y_pred = preds.argmax(dim=1).cpu().detach().numpy()
+                # ############### VALIDATION ##############
+                # print(f"Epoch {epoch+1}, Loss: {total_loss/len(train_loader):.4f}")
+                if batch_train_idx % 10 == 0:
+                    self.model.eval()
+                    y_true = []
+                    y_pred = []
+                    val_loss = 0
+                    with torch.no_grad():
+                        for batch_val_idx, (xb, yb, _) in enumerate(val_loader):
+                            print(f"Val: batch {batch_val_idx}")
+                            xb, yb = xb.to(self.device, non_blocking=True), yb.long().to(self.device, non_blocking=True)
+
+                            preds = self.model(xb)
+                            loss = self.criterion(preds, yb)
+                            val_loss += loss.item()
+
+                            y_true.append(yb.cpu().numpy())
+                            y_pred.append(preds.argmax(dim=1).cpu().numpy())
+
+                    val_loss /= len(val_loader)
+
+                    y_true = np.concatenate(y_true)
+                    y_pred = np.concatenate(y_pred)
 
                     metrics = {
                         "accuracy": accuracy_score(y_true, y_pred),
@@ -264,68 +311,26 @@ class TorchPipeline:
                         ),
                         # "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
                     }
-                    self.history["train"]["epoch"].append(epoch)
-                    self.history["train"]["batch"].append(batch_train_idx)
-                    self.history["train"]["loss"].append(loss.item())
-                    self.history["train"]["metrics"].append(metrics)
+                    self.history["val"]["epoch"].append(epoch)
+                    self.history["val"]["batch_train_idx"].append(batch_train_idx)
+                    self.history["val"]["loss"].append(val_loss)
+                    self.history["val"]["metrics"].append(metrics)
 
-                    prof.step()
-
-                    ############### VALIDATION ##############
-                    # print(f"Epoch {epoch+1}, Loss: {total_loss/len(train_loader):.4f}")
-                    if batch_train_idx % 10 == 0:
-                        self.model.eval()
-                        y_true = []
-                        y_pred = []
-                        val_loss = 0
-                        with torch.no_grad():
-                            for batch_val_idx, (xb, yb, _) in enumerate(val_loader):
-                                print(f"Val: batch {batch_val_idx}")
-                                xb, yb = xb.to(self.device, non_blocking=True), yb.long().to(self.device, non_blocking=True)
-
-                                preds = self.model(xb)
-                                loss = self.criterion(preds, yb)
-                                val_loss += loss.item()
-
-                                y_true.append(yb.cpu().numpy())
-                                y_pred.append(preds.argmax(dim=1).cpu().numpy())
-
-                        val_loss /= len(val_loader)
-
-                        y_true = np.concatenate(y_true)
-                        y_pred = np.concatenate(y_pred)
-
-                        metrics = {
-                            "accuracy": accuracy_score(y_true, y_pred),
-                            "precision": precision_score(
-                                y_true, y_pred, average=self.average, zero_division="warn"
-                            ),
-                            "recall": recall_score(
-                                y_true, y_pred, average=self.average, zero_division="warn"
-                            ),
-                            "f1": f1_score(
-                                y_true, y_pred, average=self.average, zero_division="warn"
-                            ),
-                            # "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
-                        }
-                        self.history["val"]["epoch"].append(epoch)
-                        self.history["val"]["batch_train_idx"].append(batch_train_idx)
-                        self.history["val"]["loss"].append(val_loss)
-                        self.history["val"]["metrics"].append(metrics)
-
-                        # # self.logger.save_checkpoint(self.model, epoch, metrics["accuracy"])
-                        # self.logger.update_smooth_checkpoint(
-                        #     self.model, epoch, metrics["accuracy"]
-                        # )
-                        self.model.train()
-                self.scheduler.step(val_loss)
-
+                    # # self.logger.save_checkpoint(self.model, epoch, metrics["accuracy"])
+                    # self.logger.update_smooth_checkpoint(
+                    #     self.model, epoch, metrics["accuracy"]
+                    # )
+                    self.model.train()
+            
+                self.scheduler.step() #For one cycle scheduler
+            # self.scheduler.step(val_loss)
+        plot_history_from_file(self.history, self.fold_idx, self.run_id)
         self.logger.save_checkpoint(self.model, self.epochs, 0, is_last=True)
         self.logger.save_logs()
         self._save_logs(
             self.history, f"./data/results/logs/{self.run_id}_training_log.json"
         )
-    
+
     def predict(self, dataloader):
         checkpoint_path = Path(self.logger.best_path)
         if checkpoint_path.exists():
@@ -477,3 +482,245 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
             "optimizer": optimizer,
             "lr_scheduler": {"scheduler": scheduler, "monitor": "val_loss"},
         }
+
+
+from matplotlib import pyplot as plt
+from matplotlib.ticker import MultipleLocator
+# def plot_history_from_file(path="history.json", save_path="training_history.pdf"):
+def plot_history_from_file(history, fold_idx, run_id):
+    """
+    Plots training and validation curves (loss + accuracy) with epochs on the x-axis.
+    Infers steps_per_epoch and validation interval automatically from history.
+    """
+    history = history
+
+    # os.makedirs(os.path.dirname('history.png'), exist_ok=True)
+
+    # LOSS
+    # --- Training steps/epochs ---
+    steps_per_epoch = len(set(history["train"]["batch"]))  # ~19
+    train_x = [
+        e + b / steps_per_epoch
+        for e, b in zip(history["train"]["epoch"], history["train"]["batch"])
+    ]
+
+    # --- Validation steps/epochs ---
+    val_x = [
+        e + i / steps_per_epoch
+        for e, i in zip(history["val"]["epoch"], history["val"]["batch_train_idx"])
+    ]
+
+    # METRICS
+    # --- Accuracy ---
+    train_acc = [m["accuracy"] for m in history["train"]["metrics"]]
+    val_acc = [m["accuracy"] for m in history["val"]["metrics"]]
+
+    train_prec = [m["precision"] for m in history["train"]["metrics"]]
+    val_prec = [m["precision"] for m in history["val"]["metrics"]]
+    train_rec = [m["recall"] for m in history["train"]["metrics"]]
+    val_rec = [m["recall"] for m in history["val"]["metrics"]]
+
+    train_f1 = [m["f1"] for m in history["train"]["metrics"]]
+    val_f1 = [m["f1"] for m in history["val"]["metrics"]]
+
+    epochs = sorted(set(history["train"]["epoch"]))
+
+    train_epoch_acc = [
+        np.mean(
+            [acc for e, acc in zip(history["train"]["epoch"], train_acc) if e == ep]
+        )
+        for ep in epochs
+    ]
+    val_epoch_acc = [
+        np.mean([acc for e, acc in zip(history["val"]["epoch"], val_acc) if e == ep])
+        for ep in epochs
+    ]
+
+    train_epoch_prec = [
+        np.mean(
+            [acc for e, acc in zip(history["train"]["epoch"], train_prec) if e == ep]
+        )
+        for ep in epochs
+    ]
+    val_epoch_prec = [
+        np.mean([acc for e, acc in zip(history["val"]["epoch"], val_prec) if e == ep])
+        for ep in epochs
+    ]
+    train_epoch_rec = [
+        np.mean(
+            [acc for e, acc in zip(history["train"]["epoch"], train_rec) if e == ep]
+        )
+        for ep in epochs
+    ]
+    val_epoch_rec = [
+        np.mean([acc for e, acc in zip(history["val"]["epoch"], val_rec) if e == ep])
+        for ep in epochs
+    ]
+
+    train_epoch_f1 = [
+        np.mean([acc for e, acc in zip(history["train"]["epoch"], train_f1) if e == ep])
+        for ep in epochs
+    ]
+    val_epoch_f1 = [
+        np.mean([acc for e, acc in zip(history["val"]["epoch"], val_f1) if e == ep])
+        for ep in epochs
+    ]
+
+    # --- Create figure with 2 subplots ---
+    _, axes = plt.subplots(2, 2, figsize=(20, 10))
+
+    ax = axes[0, 0]
+    ax.plot(
+        train_x,
+        history["train"]["loss"],
+        "b-",
+        alpha=0.7,
+        linewidth=1.5,
+        label="Training",
+    )
+
+    ax.plot(
+        val_x,
+        history["val"]["loss"],
+        "r-",
+        alpha=0.7,
+        linewidth=2,
+        label="Validation",
+    )
+
+    ax.set_xlabel("Epochs")
+    ax.set_ylabel("Loss")
+    ax.set_title(f"Loss\n({steps_per_epoch} steps/epoch, validation every 10 steps)")
+    ax.legend()
+    num_epochs = max(history["train"]["epoch"]) + 1
+    ax.set_xlim(0, num_epochs)
+
+    ax = axes[0, 1]
+    # ax.plot(
+    #     train_x,
+    #     train_acc,
+    #     "b-",
+    #     alpha=0.7,
+    #     linewidth=1.5,
+    #     label="Training",
+    # )
+    ax.plot(
+        epochs,
+        train_epoch_acc,
+        "b-",
+        markersize=5,
+        markeredgewidth=1.5,
+        label="Training",
+    )
+
+    # ax.plot(
+    #     val_x,
+    #     val_acc,
+    #     "r-",
+    #     alpha=0.7,
+    #     linewidth=2,
+    #     label="Validation",
+    # )
+    ax.plot(
+        epochs,
+        val_epoch_acc,
+        "r-",
+        markersize=5,
+        markeredgewidth=1.5,
+        label="Validation",
+    )
+
+    ax.set_xlabel("Epochs")
+    ax.set_ylabel("Accuracy")
+    ax.set_title(
+        f"Accuracy\n({steps_per_epoch} steps/epoch, validation every 10 steps)"
+    )
+    ax.legend()
+    ax.set_xlim(0, num_epochs)
+    ax.set_ylim(0, 1)
+    ax.xaxis.set_major_locator(MultipleLocator(2))
+    ax.yaxis.set_major_locator(MultipleLocator(0.05))
+    ax.grid(True)
+
+    ax = axes[1, 0]
+    ax.plot(
+        epochs,
+        train_epoch_prec,
+        "b-",
+        alpha=0.7,
+        linewidth=1.5,
+        label="Training precision",
+    )
+    ax.plot(
+        epochs,
+        train_epoch_rec,
+        "b--",
+        alpha=0.7,
+        linewidth=1.5,
+        label="Training recall",
+    )
+
+    ax.plot(
+        epochs,
+        val_epoch_prec,
+        "r-",
+        alpha=0.7,
+        linewidth=2,
+        label="Validation precision",
+    )
+    ax.plot(
+        epochs,
+        val_epoch_rec,
+        "r--",
+        alpha=0.7,
+        linewidth=2,
+        label="Validation recall",
+    )
+
+    ax.set_xlabel("Epochs")
+    ax.set_ylabel("Precision/Recall")
+    ax.set_title(
+        f"Precision/Recall\n({steps_per_epoch} steps/epoch, validation every 10 steps)"
+    )
+    ax.legend()
+    ax.set_xlim(0, num_epochs)
+    ax.set_ylim(0, 1)
+    ax.xaxis.set_major_locator(MultipleLocator(2))
+    ax.yaxis.set_major_locator(MultipleLocator(0.05))
+    ax.grid(True)
+
+    ax = axes[1, 1]
+    ax.plot(
+        epochs,
+        train_epoch_f1,
+        "b-",
+        alpha=0.7,
+        linewidth=1.5,
+        label="Training",
+    )
+
+    ax.plot(
+        epochs,
+        val_epoch_f1,
+        "r-",
+        alpha=0.7,
+        linewidth=2,
+        label="Validation",
+    )
+
+    ax.set_xlabel("Epochs")
+    ax.set_ylabel("F1 score")
+    ax.set_title(
+        f"F1 score\n({steps_per_epoch} steps/epoch, validation every 10 steps)"
+    )
+    ax.legend()
+    ax.set_xlim(0, num_epochs)
+    ax.set_ylim(0, 1)
+    ax.xaxis.set_major_locator(MultipleLocator(2))
+    ax.yaxis.set_major_locator(MultipleLocator(0.05))
+    ax.grid(True)
+
+    plt.tight_layout()
+    plt.savefig(f"history_{fold_idx}_{run_id}.png")
+    plt.show()
+
