@@ -6,7 +6,6 @@ from pathlib import Path
 import numpy as np
 import pytorch_lightning as pl
 import torch
-from torch import nn
 from sklearn.metrics import (  # confusion_matrix,; roc_auc_score,
     accuracy_score,
     f1_score,
@@ -14,6 +13,7 @@ from sklearn.metrics import (  # confusion_matrix,; roc_auc_score,
     recall_score,
 )
 from sklearn.model_selection import train_test_split
+from torch import nn
 from torch.utils.data import DataLoader, Subset
 from torchvision import transforms
 from tqdm import tqdm
