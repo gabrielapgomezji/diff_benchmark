@@ -88,7 +88,7 @@ class KernelRidgeRegression(nn.Module):
         self.embeddings = embeddings
         optimizer = torch.optim.Adam([self.alphas], lr=self.lr)
         with torch.no_grad():
-            n_subjects, n_bval, n_spheres, dim_embedding = embeddings.shape
+            n_subjects, _, n_spheres, _ = embeddings.shape
             # n_total_spheres = n_spheres * n_bval
             n_total_spheres = 1
 
@@ -150,10 +150,8 @@ class KernelRidgeRegression(nn.Module):
             # Remove batch dimension if needed
             # data , _, _ = next(iter(dataloader))
             # embeddings = data['embeddings'].to(self.device).to(self.dtype).squeeze(dim=1)
-            self_n_subjects, self_n_spheres, self_n_bval, self_dim_embedding = (
-                self.embeddings.shape
-            )
-            n_subjects, n_spheres, n_bval, dim_embedding = embeddings.shape
+            self_n_subjects, self_n_spheres, _, _ = self.embeddings.shape
+            n_subjects, _, _, _ = embeddings.shape
             with torch.no_grad():
                 # assert self_n_spheres * self_n_bval == n_spheres * n_bval, f"Number of spheres in the training set {self_n_spheres} does not match the number of spheres in the test set {n_spheres}"
                 # dist_matrix = torch.zeros(self_n_spheres * self_n_bval, self_n_subjects, n_subjects, device=self.device, dtype=self.dtype)
