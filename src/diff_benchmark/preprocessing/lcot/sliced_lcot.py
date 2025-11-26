@@ -85,9 +85,7 @@ def sliced_lcot(
 
     if X_s.shape[1] != X_t.shape[1]:
         raise ValueError(
-            "X_s and X_t must have the same number of dimensions {} and {} respectively given".format(
-                X_s.shape[1], X_t.shape[1]
-            )
+            f"X_s and X_t must have the same number of dimensions {X_s.shape[1]} and {X_t.shape[1]} respectively given"
         )
 
     if torch.any(torch.abs(torch.sum(X_s**2, axis=-1) - 1) > 10 ** (-4)):
@@ -194,6 +192,8 @@ def embedding_slcot_batch(
 
 
 class LSSOT:
+    """LSSOT distance and embedding computation."""
+
     def __init__(
         self,
         d,
@@ -214,11 +214,13 @@ class LSSOT:
         self.device = device
 
     def lssot(self, Xs, Xt, u_weights=None, v_weights=None):
+        """Compute the LSSOT distance between two sets of points on the sphere."""
         return sliced_lcot(
             Xs, Xt, a=u_weights, b=v_weights, projections=self.projections
         )
 
     def get_features(self, x, weights=None):
+        """Compute embedding of x on the sphere."""
         return embedding_slcot(
             x.type(self.dtype).to(self.projections.device),
             (
@@ -232,6 +234,8 @@ class LSSOT:
 
 
 class EmbeddingCircle:
+    """Embedding and distance computation on the circle using linear circular OT."""
+
     def __init__(
         self,
         d,
@@ -314,6 +318,9 @@ class EmbeddingCircle:
 
 
 class EmbeddingCircleWeights:
+    """Embedding and distance computation on the circle using linear
+    circular OT with fixed projections."""
+
     def __init__(
         self,
         d,

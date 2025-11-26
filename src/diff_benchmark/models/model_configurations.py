@@ -6,6 +6,7 @@ from diff_benchmark.models import cnn_with_base
 # from diff_benchmark.models.cca import CanonicalCorrelationRegressor
 from diff_benchmark.models.classic_ml import PCARandomForestModel, PCASVMModel
 from diff_benchmark.models.cnn import ResNet3SliceModel
+from diff_benchmark.models.cnn_torch_train import CNNTorchTrainModel
 
 # from diff_benchmark.models.cnn_medicalnet import ResNet3DModel
 from diff_benchmark.models.cnn_medicalnet_with_base import ResNet3DModel
@@ -90,6 +91,9 @@ def get_model(name: str, config: dict):
 
     if name == "2dcnn":
         return ResNet3SliceModel(**config)
+
+    if name == "2dcnn_torch":
+        return CNNTorchTrainModel(**config)
 
     if name == "2dcnn_lite":
         return cnn_with_base.ResNet3SliceModel(**config)
