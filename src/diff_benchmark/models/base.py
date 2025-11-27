@@ -21,25 +21,25 @@ from tqdm import tqdm
 from diff_benchmark.utils.logger import TrainLogger
 
 
-def collate_with_augmentation(batch, transform=None):
-    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
-    xs, ys, gs = zip(*batch)  # separate batch components
-    xs_aug = []
-    for x in xs:  # x shape: (D,H,W)
-        slices = []
-        for i in range(x.shape[0]):
-            slice_2d = x[i, :, :].unsqueeze(0)  # (1,H,W)
-            if transform:
-                slice_2d = transform(slice_2d)
-            slices.append(slice_2d)
-        x_aug = torch.stack(slices, dim=0)  # (D,1,H,W)
-        x_aug = x_aug.permute(1, 0, 2, 3)  # (C=1,D,H,W)
-        xs_aug.append(x_aug)
+# def collate_with_augmentation(batch, transform=None):
+#     """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
+#     xs, ys, gs = zip(*batch)  # separate batch components
+#     xs_aug = []
+#     for x in xs:  # x shape: (D,H,W)
+#         slices = []
+#         for i in range(x.shape[0]):
+#             slice_2d = x[i, :, :].unsqueeze(0)  # (1,H,W)
+#             if transform:
+#                 slice_2d = transform(slice_2d)
+#             slices.append(slice_2d)
+#         x_aug = torch.stack(slices, dim=0)  # (D,1,H,W)
+#         x_aug = x_aug.permute(1, 0, 2, 3)  # (C=1,D,H,W)
+#         xs_aug.append(x_aug)
 
-    xs_aug = torch.stack(xs_aug, dim=0)
-    ys = torch.stack(ys)
-    gs = torch.stack(gs)
-    return xs_aug, ys, gs
+#     xs_aug = torch.stack(xs_aug, dim=0)
+#     ys = torch.stack(ys)
+#     gs = torch.stack(gs)
+#     return xs_aug, ys, gs
 
 
 train_transforms = transforms.Compose(
@@ -195,25 +195,28 @@ class TorchPipeline:
         train_subset = Subset(dataset, train_idx)
         val_subset = Subset(dataset, val_idx)
 
+        collate_train = self.model.collate_with_augmentation
+        collate_val = self.model.collate_with_augmentation
+
         train_loader_new = DataLoader(
             train_subset,
             batch_size=train_loader.batch_size,
             shuffle=True,
             num_workers=self.num_workers,
-            pin_memory=True,
-            collate_fn=lambda batch: collate_with_augmentation(
-                batch, transform=train_transforms
-            ),
+            # collate_fn=lambda batch: collate_with_augmentation(
+            #     batch, transform=train_transforms
+            # ),
+            collate_fn=lambda batch: collate_train(batch, transform=train_transforms),
         )
         val_loader_new = DataLoader(
             val_subset,
             batch_size=128,
             shuffle=False,
             num_workers=self.num_workers,
-            pin_memory=True,
-            collate_fn=lambda batch: collate_with_augmentation(
-                batch, transform=val_transforms
-            ),
+            # collate_fn=lambda batch: collate_with_augmentation(
+            #     batch, transform=val_transforms
+            # ),
+            collate_fn=lambda batch: collate_val(batch, transform=val_transforms),
         )
         return train_loader_new, val_loader_new
 
@@ -360,12 +363,15 @@ class TorchPipeline:
         self.model.eval()
         preds_all = []
 
-        mean = 0.5
-        std = 0.5
+        # mean = 0.5
+        # std = 0.5
+        mean = self.model.mean
+        std = self.model.std
 
         with torch.no_grad():
             for xb, _, _ in dataloader:
                 xb = (xb - mean) / std
+                # xb = xb.unsqueeze(1) # REMOVE FOR THE 2DCNN
                 xb = xb.to(self.device)
                 logits = self.model(xb)
                 preds = torch.argmax(logits, dim=1)
