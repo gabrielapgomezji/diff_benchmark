@@ -13,7 +13,7 @@ from torch import nn
 from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 
-from diff_benchmark.models.base import TorchAbstractModel
+from diff_benchmark.models.base import TorchPipeline
 
 __all__ = [
     "ResNet",
@@ -277,6 +277,8 @@ class ResNet(nn.Module):
 
     def forward(self, x):
         """Forward pass of the ResNet model."""
+        if x.dim() == 4:   # missing the channel dimension
+            x = x.unsqueeze(1)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -449,8 +451,21 @@ def generate_model(opt):
 
     return model, model.parameters()
 
+def collate_with_augmentation(batch, transform=None):
+        mean = 0.5
+        std = 0.5
+        xs, ys, gs = zip(*batch)
+        # xs = torch.stack(xs, dim=0)   # default stacking: (B, 1, D, H, W)
+        xs = torch.stack([x.unsqueeze(0) for x in xs], dim=0)
+        ys = torch.stack(ys)
+        gs = torch.stack(gs)
 
-class ResNet3DModel(TorchPiepline):
+        # Normalize: (x - mean) / std
+        xs = (xs - mean) / std
+
+        return xs, ys, gs
+
+class ResNet3DModel(TorchPipeline):
     """
     ResNet3DModel
     A wrapper around a 3D ResNet (resnet10) for medical-volume classification built on PyTorch.
@@ -492,6 +507,9 @@ class ResNet3DModel(TorchPiepline):
         #     model = resnet50(num_classes=num_classes)
         # else:
         #     raise ValueError(f"Unsupported ResNet depth: {model_depth}")
+        model.collate_with_augmentation = collate_with_augmentation
+        model.mean = 0.5
+        model.std = 0.5
         return model
     
     # def __init__(self, input_volumes=1, num_classes=2, device="cuda", **kwargs):

@@ -103,7 +103,7 @@ class ResNet3SliceClassifier(nn.Module):
         """
         # batch, slice, height, width = x.shape
         # assert S % 3 == 0, "Slice dimension must be divisible by 3"
-        x = x.squeeze(1)
+        # x = x.squeeze(1)
 
         subvols = x.unfold(dimension=1, size=3, step=3)
         subvols = subvols.permute(0, 1, 4, 2, 3)  # (B, num_subvols, 3, H, W)
@@ -131,7 +131,26 @@ class ResNet3SliceClassifier(nn.Module):
         out = self.fc(feats)  # (B, num_classes)
         return out
 
+def collate_with_augmentation(batch, transform=None):
+        """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
+        xs, ys, gs = zip(*batch)  # separate batch components
+        xs_aug = []
+        for x in xs:  # x shape: (D,H,W)
+            slices = []
+            for i in range(x.shape[0]):
+                slice_2d = x[i, :, :].unsqueeze(0)  # (1,H,W)
+                if transform:
+                    slice_2d = transform(slice_2d)
+                slices.append(slice_2d)
+            x_aug = torch.stack(slices, dim=0)  # (D,1,H,W)
+            x_aug = x_aug.permute(1, 0, 2, 3)  # (C=1,D,H,W)
+            xs_aug.append(x_aug)
 
+        xs_aug = torch.stack(xs_aug, dim=0)
+        ys = torch.stack(ys)
+        gs = torch.stack(gs)
+        return xs_aug.squeeze(1), ys, gs
+    
 class CNNTorchTrainModel(TorchPipeline):
     """CNN Torch Train Model class inheriting from TorchPipeline."""
 
@@ -150,5 +169,7 @@ class CNNTorchTrainModel(TorchPipeline):
             pretrained=pretrained,
             trainable_blocks=trainable_blocks,
         )
-
+        model.collate_with_augmentation = collate_with_augmentation
+        model.std = 0.5
+        model.mean = 0.5
         return model
