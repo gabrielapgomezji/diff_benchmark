@@ -15,7 +15,7 @@ models:
     pretrained: true
     freeze_backbone: true
     trainable_blocks: 1
-    epochs: 50
+    epochs: 2
     batch_size: 32
     dropout: 0 #0.5
     learning_rate: 1.0e-03
