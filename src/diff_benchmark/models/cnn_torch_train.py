@@ -85,17 +85,23 @@ class ResNet3SliceClassifier(nn.Module):
         self.backbone = ResNet18Backbone(**kwargs)
         self.num_subvols = input_slices // 3
         self.dropout = nn.Dropout(p=dropout) if dropout > 0 else nn.Identity()
-        # self.fc = nn.Linear(self.num_subvols * self.backbone.out_dim, num_classes)
-        # Aggregate subvolume embeddings into a single embedding (B, 512)
-        # learnable per-subvolume scalar weights (will be normalized via softmax in forward)
-        self.aggregate_weights = nn.Parameter(
-            torch.ones(self.num_subvols, dtype=torch.float32)
-        )
-        self.fc = nn.Linear(self.backbone.out_dim, num_classes)
+        self.fc = nn.Linear(self.num_subvols * self.backbone.out_dim, num_classes)
+        # # Aggregate subvolume embeddings into a single embedding (B, 512)
+        # # learnable per-subvolume scalar weights (will be normalized via softmax in forward)
+        # self.aggregate_weights = nn.Parameter(
+        #     torch.ones(self.num_subvols, dtype=torch.float32)
+        # )
+        # self.fc = nn.Linear(self.backbone.out_dim, num_classes)
 
         if freeze_backbone:
             for param in self.backbone.parameters():
                 param.requires_grad = False
+        
+        self.attention = nn.Sequential(
+            nn.Linear(512, 128),
+            nn.ReLU(),
+            nn.Linear(128, 1)
+        )
 
     def forward(self, x):
         """
@@ -120,12 +126,14 @@ class ResNet3SliceClassifier(nn.Module):
         feats = feats.reshape(B, N, -1)
 
         # Concatenate subvolume features: (B, N*512)
-        # feats = feats.reshape(B, -1)
-        w = torch.softmax(self.aggregate_weights, dim=0)  # (N,)
-        w = w.view(1, N, 1)  # (1, N, 1)
-        # print(w)
-        feats = (feats * w).sum(dim=1)  # (B, 512)
-        # print(feats)
+        feats = feats.reshape(B, -1)
+        # w = torch.softmax(self.aggregate_weights, dim=0)  # (N,)
+        # w = w.view(1, N, 1)  # (1, N, 1)
+        # feats = (feats * w).sum(dim=1)  # (B, 512)
+        # att = torch.softmax(self.attention(feats), dim=1)  # (B, N, 1)
+        # print(att, att.shape)
+        # feats = (feats * att).sum(dim=1)
+        # print(feats, feats.shape)
         # feats scalar product with weights. 1 embedding per features (B, 512).
         feats = self.dropout(feats)
         out = self.fc(feats)  # (B, num_classes)

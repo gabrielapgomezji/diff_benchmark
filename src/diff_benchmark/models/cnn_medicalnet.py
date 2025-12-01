@@ -496,17 +496,23 @@ class ResNet3DModel(TorchPipeline):
         model_depth=10,
         **kwargs
     ):
-        model = resnet10(num_classes=num_classes)
-        # if model_depth == 10:
-        #     model = resnet10(num_classes=num_classes)
-        # elif model_depth == 18:
-        #     model = resnet18(num_classes=num_classes)
-        # elif model_depth == 34:
-        #     model = resnet34(num_classes=num_classes)
-        # elif model_depth == 50:
-        #     model = resnet50(num_classes=num_classes)
-        # else:
-        #     raise ValueError(f"Unsupported ResNet depth: {model_depth}")
+        # model = resnet10(num_classes=num_classes)
+        if model_depth == 10:
+            model = resnet10(num_classes=num_classes)
+        elif model_depth == 18:
+            model = resnet18(num_classes=num_classes)
+        elif model_depth == 34:
+            model = resnet34(num_classes=num_classes)
+        elif model_depth == 50:
+            model = resnet50(num_classes=num_classes)
+        elif model_depth == 101:
+            model = resnet101(num_classes=num_classes)
+        elif model_depth == 152:
+            model = resnet152(num_classes=num_classes)
+        elif model_depth == 200:
+            model = resnet200(num_classes=num_classes)
+        else:
+            raise ValueError(f"Unsupported ResNet depth: {model_depth}")
         model.collate_with_augmentation = collate_with_augmentation
         model.mean = 0.5
         model.std = 0.5
