@@ -210,7 +210,7 @@ class TorchPipeline:
         )
         val_loader_new = DataLoader(
             val_subset,
-            batch_size=128,
+            batch_size=64,
             shuffle=False,
             num_workers=self.num_workers,
             # collate_fn=lambda batch: collate_with_augmentation(
@@ -244,7 +244,7 @@ class TorchPipeline:
             anneal_strategy="cos",
             pct_start=self.pct_start,
             div_factor=3,  # 1.0e3, #10,
-            final_div_factor=1.0e3,  # 1.0e4,
+            final_div_factor=1.0e5,  # 1.0e4,
         )
 
         print("Dataloaders created")
@@ -639,6 +639,7 @@ def plot_history_from_file(history, fold_idx, run_id):
     ax.legend()
     num_epochs = max(history["train"]["epoch"]) + 1
     ax.set_xlim(0, num_epochs)
+    ax.set_ylim(0, 1)
 
     ax = axes[0, 1]
     # ax.plot(
