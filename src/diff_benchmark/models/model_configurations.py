@@ -9,7 +9,7 @@ from diff_benchmark.models.cnn import ResNet3SliceModel
 from diff_benchmark.models.cnn_torch_train import CNNTorchTrainModel
 
 # from diff_benchmark.models.cnn_medicalnet import ResNet3DModel
-from diff_benchmark.models.dummy import DummyClassifier
+from diff_benchmark.models.dummy import DummyClassifier, DummyRegressor
 from diff_benchmark.models.lcot_model import KernelRidgeRegression
 from diff_benchmark.models.logistic_regression import (
     LogisticRegressionModel,
@@ -65,6 +65,9 @@ def get_model(name: str, config: dict):
 
     if name == "dummy_classifier":
         return DummyClassifier()
+    
+    if name == "dummy_regressor":
+        return DummyRegressor()
 
     # if name == "mlp_classifier":
     #     return MLPClassifier(
