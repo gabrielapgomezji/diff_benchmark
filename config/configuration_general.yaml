@@ -44,7 +44,8 @@ data_paths:
   csv_file: /data/parietal/store2/work/ggomezji/Merged_HCP_Demographics.csv
 
 target_columns:
-- Gender
+# - Gender
+- Age_in_Yrs
 
 # ==============================
 # DATA SPLITS
@@ -62,7 +63,7 @@ dataloaders:
 # ==============================
 # SLURM CONFIGURATION
 # ==============================
-use_slurm: true
+use_slurm: false
 use_joblib: false # If joblib true, use num_workers = 0
 n_jobs: 5
 results_path: /data/parietal/store3/work/ggomezji/benchmark/HCP900
