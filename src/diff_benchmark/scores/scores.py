@@ -13,7 +13,7 @@ from sklearn.metrics import (
 __all__ = ["accuracy_score"]
 
 
-def compute_metrics(y_true, y_pred, average="binary", zero_division="warn"):
+def compute_metrics_old(y_true, y_pred, average="binary", zero_division="warn"):
     """Compute standard classification metrics."""
     return {
         "accuracy": accuracy_score(y_true, y_pred),
@@ -27,14 +27,30 @@ def compute_metrics(y_true, y_pred, average="binary", zero_division="warn"):
         "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
     }
 
-def compute_metrics_regression(y_true, y_pred, average="binary", zero_division="warn"):
+def compute_metrics(y_true, y_pred, prediction_task, average="binary", zero_division="warn"):
     """Compute standard classification metrics."""
-    return {
-        "mse": mean_squared_error(y_true, y_pred),
-        "r2": r2_score(y_true, y_pred),
-        "explained_variance": explained_variance_score(y_true, y_pred),
-        "mape": mean_absolute_percentage_error(y_true, y_pred),
-    }
+    if prediction_task == "classification":
+        return {
+            "accuracy": accuracy_score(y_true, y_pred),
+            "precision": precision_score(
+                y_true, y_pred, average=average, zero_division=zero_division
+            ),
+            "recall": recall_score(
+                y_true, y_pred, average=average, zero_division=zero_division
+            ),
+            "f1": f1_score(y_true, y_pred, average=average, zero_division=zero_division),
+            "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
+        }
+        
+    elif prediction_task == "regression":
+        return {
+            "mse": mean_squared_error(y_true, y_pred),
+            "r2": r2_score(y_true, y_pred),
+            "explained_variance": explained_variance_score(y_true, y_pred),
+            "mape": mean_absolute_percentage_error(y_true, y_pred),
+        }
+    else:
+        raise ValueError("Invalid prediction_task. Choose either 'classification' or 'regression'.")
 
 
 # def accuracy_score(y_true, y_pred):
