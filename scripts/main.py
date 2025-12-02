@@ -129,8 +129,8 @@ def run_single_model(model_name, model_config, general_config, results_path):
             y_train = np.array(targets[train_idx]).squeeze()
             y_test = np.array(targets[test_idx]).squeeze()
 
+            local_config["prediction_task"] = config.get("prediction_task", "regression")
             model = get_model(model_name, local_config)
-            model.prediction_task = general_config["prediction_task"]
             # --------- Train / Val / Test Model ---------
             # print("Training...")
             # device = torch.device("cpu")
