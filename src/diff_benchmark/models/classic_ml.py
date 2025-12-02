@@ -23,7 +23,7 @@ class PCARandomForestModel(NumpyAbstractModel):
         if self.prediction_task == "classification":
             rf_head = RandomForestClassifier(random_state=42)
             scoring = "accuracy"
-        elif self.prediction_task == "regression":
+        else: #if self.prediction_task == "regression":
             rf_head = RandomForestRegressor(random_state=42)
             scoring = "neg_mean_squared_error"   # scikit-learn convention
             
@@ -95,7 +95,7 @@ class PCASVMModel(NumpyAbstractModel):
             scoring = "accuracy"
             svm_gamma = ["scale", "auto"]
 
-        elif self.prediction_task == "regression":  # regression
+        else:  # regression
             svm_head = SVR()
             scoring = "neg_mean_squared_error"
             svm_gamma = ["scale"]

@@ -95,7 +95,7 @@ class PCALinearModel(NumpyAbstractModel):
                 "linear__penalty": ["l2"],
             }
 
-        elif self.prediction_task == "regression":  # regression
+        else: #if self.prediction_task == "regression":  # regression
             head = Ridge()  # or LinearRegression()
             scoring = "neg_mean_squared_error"
 
