@@ -14,6 +14,7 @@ from diff_benchmark.models.lcot_model import KernelRidgeRegression
 from diff_benchmark.models.logistic_regression import (
     LogisticRegressionModel,
     PCALogisticRegressionModel,
+    PCALinearModel,
 )
 
 # from diff_benchmark.models.mlp import MLPClassifier
@@ -81,6 +82,9 @@ def get_model(name: str, config: dict):
 
     if name == "pca_logistic":
         return PCALogisticRegressionModel()
+    
+    if name == "pca_linear":
+        return PCALinearModel()
 
     if name == "logistic_regression":
         return LogisticRegressionModel()
