@@ -124,15 +124,13 @@ def run_single_model(model_name, model_config, general_config, results_path):
             train_loader, test_loader = preprocessed.get_dataloader_fold(
                 dataset, fold_idx, indices, batch_size=local_config["batch_size"]
             )
-            # _, y_train, _, _, y_test, _ = preprocessed.get_arrays_from_indices(
-            #     dataset, fold_idx, indices
-            # )
             train_idx, test_idx = indices[fold_idx]
             targets = dataset.targets.numpy()
             y_train = np.array(targets[train_idx]).squeeze()
             y_test = np.array(targets[test_idx]).squeeze()
 
             model = get_model(model_name, local_config)
+            model.prediction_task = general_config["prediction_task"]
             # --------- Train / Val / Test Model ---------
             # print("Training...")
             # device = torch.device("cpu")
