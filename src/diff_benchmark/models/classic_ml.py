@@ -15,9 +15,9 @@ class PCARandomForestModel(NumpyAbstractModel):
     with a Random Forest classifier for classification tasks.
     """
     data_type = "array"
-    prediction_task = None
     
-    def __init__(self):
+    def __init__(self, **kwargs):
+        self.prediction_task = kwargs.get("prediction_task", None)
         # Define pipeline: standardization -> PCA -> RandomForest
         # Choose RF head depending on task
         if self.prediction_task == "classification":
@@ -87,9 +87,9 @@ class PCASVMModel(NumpyAbstractModel):
     with a Support Vector Machine classifier.
     """
     data_type = "array"
-    prediction_task = None
 
-    def __init__(self):
+    def __init__(self, **kwargs):
+        self.prediction_task = kwargs.get("prediction_task", None)
         if self.prediction_task == "classification":
             svm_head = SVC(probability=True)
             scoring = "accuracy"

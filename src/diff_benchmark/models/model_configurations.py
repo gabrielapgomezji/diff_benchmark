@@ -85,16 +85,16 @@ def get_model(name: str, config: dict):
         return PCALogisticRegressionModel()
     
     if name == "pca_linear":
-        return PCALinearModel()
+        return PCALinearModel(**config)
 
     if name == "logistic_regression":
         return LogisticRegressionModel()
 
     if name == "pca_forest":
-        return PCARandomForestModel()
+        return PCARandomForestModel(**config)
 
     if name == "pca_svm":
-        return PCASVMModel()
+        return PCASVMModel(**config)
 
     if name == "2dcnn":
         return ResNet3SliceModel(**config)

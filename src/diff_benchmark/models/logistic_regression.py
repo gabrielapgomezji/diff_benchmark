@@ -81,16 +81,16 @@ class PCALogisticRegressionModel(NumpyAbstractModel):
 class PCALinearModel(NumpyAbstractModel):
     
     data_type = "array"
-    prediction_task = None
 
-    def __init__(self):
+    def __init__(self, **kwargs):
+        self.prediction_task = kwargs.get("prediction_task", None)
         if self.prediction_task == "classification":
             head = LogisticRegression(max_iter=1000)
             scoring = "accuracy"
 
             param_grid = {
-                "pca__n_components": [10, 50, 100],
-                "linear__C": [0.01, 0.1, 1, 10, 100],
+                "pca__n_components": [10], #[10, 50, 100],
+                "linear__C": [0.01, 0.1, 1], #[0.01, 0.1, 1, 10, 100],
                 "linear__solver": ["lbfgs"],
                 "linear__penalty": ["l2"],
             }
@@ -100,8 +100,8 @@ class PCALinearModel(NumpyAbstractModel):
             scoring = "neg_mean_squared_error"
 
             param_grid = {
-                "pca__n_components": [10, 50, 100],
-                "linear__alpha": [0.01, 0.1, 1, 10],  # Ridge regularization
+                "pca__n_components": [10], #[10, 50, 100],
+                "linear__alpha": [0.01, 0.1, 1], #[0.01, 0.1, 1, 10],  # Ridge regularization
             }
             
         pipeline = Pipeline(
