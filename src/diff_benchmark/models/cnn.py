@@ -230,7 +230,7 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
             },
         }
         self.logger = None
-    
+
     def collate_with_augmentation(batch, transform=None):
         """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
         xs, ys, gs = zip(*batch)  # separate batch components

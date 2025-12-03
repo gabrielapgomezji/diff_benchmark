@@ -20,7 +20,6 @@ from tqdm import tqdm
 
 from diff_benchmark.utils.logger import TrainLogger
 
-
 # def collate_with_augmentation(batch, transform=None):
 #     """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
 #     xs, ys, gs = zip(*batch)  # separate batch components

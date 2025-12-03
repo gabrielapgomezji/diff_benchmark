@@ -79,7 +79,7 @@ def conv3x3x3(in_planes, out_planes, stride=1, dilation=1):
 
 
 def downsample_basic_block(x, planes, stride, no_cuda=False):
-    """Downsample the input tensor `x` using average pooling 
+    """Downsample the input tensor `x` using average pooling
     and zero-padding to match the desired number of output planes."""
     out = F.avg_pool3d(x, kernel_size=1, stride=stride)
     zero_pads = torch.Tensor(
@@ -97,11 +97,12 @@ def downsample_basic_block(x, planes, stride, no_cuda=False):
 class BasicBlock(nn.Module):
     """
     A BasicBlock module for a 3D convolutional neural network.
-    This block is a fundamental building block for constructing residual networks. 
-    It consists of two 3D convolutional layers, each followed by batch normalization 
-    and a ReLU activation. The block also supports downsampling and dilation for 
+    This block is a fundamental building block for constructing residual networks.
+    It consists of two 3D convolutional layers, each followed by batch normalization
+    and a ReLU activation. The block also supports downsampling and dilation for
     adjusting the spatial dimensions of the input.
-    """    
+    """
+
     expansion = 1
 
     def __init__(self, inplanes, planes, stride=1, dilation=1, downsample=None):
