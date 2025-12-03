@@ -1,11 +1,19 @@
+import csv
+import json
 import os
 from functools import partial
+from pathlib import Path
 
+import numpy as np
 import torch
 import torch.nn.functional as F
+from sklearn.model_selection import train_test_split
 from torch import nn
+from torch.utils.data import DataLoader, Subset
+from torchvision import transforms
 
-from diff_benchmark.models.base import TorchPipeline
+from diff_benchmark.models.base import LightningModel
+from diff_benchmark.models.utils import create_trainer
 
 __all__ = [
     "ResNet",
@@ -17,6 +25,43 @@ __all__ = [
     "resnet152",
     "resnet200",
 ]
+
+
+def collate_with_augmentation(batch, transform=None):
+    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
+    xs, ys, gs = zip(*batch)  # separate batch components
+    xs_aug = []
+    for x in xs:  # x shape: (D,H,W)
+        slices = []
+        for i in range(x.shape[0]):
+            slice_2d = x[i, :, :].unsqueeze(0)  # (1,H,W)
+            if transform:
+                slice_2d = transform(slice_2d)
+            slices.append(slice_2d)
+        x_aug = torch.stack(slices, dim=0)  # (D,1,H,W)
+        x_aug = x_aug.permute(1, 0, 2, 3)  # (C=1,D,H,W)
+        xs_aug.append(x_aug)
+
+    xs_aug = torch.stack(xs_aug, dim=0)
+    ys = torch.stack(ys)
+    gs = torch.stack(gs)
+    return xs_aug, ys, gs
+
+
+train_transforms = transforms.Compose(
+    [
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(15),
+        # transforms.RandomResizedCrop((224, 224), scale=(0.8, 1.0)),
+        transforms.Normalize(mean=[0.5], std=[0.5]),
+    ]
+)
+val_transforms = transforms.Compose(
+    [
+        # transforms.Resize((224, 224)),
+        transforms.Normalize(mean=[0.5], std=[0.5]),
+    ]
+)
 
 
 def conv3x3x3(in_planes, out_planes, stride=1, dilation=1):
@@ -34,13 +79,14 @@ def conv3x3x3(in_planes, out_planes, stride=1, dilation=1):
 
 
 def downsample_basic_block(x, planes, stride, no_cuda=False):
-    """Downsample basic block for a 3D convolutional neural network."""
+    """Downsample the input tensor `x` using average pooling
+    and zero-padding to match the desired number of output planes."""
     out = F.avg_pool3d(x, kernel_size=1, stride=stride)
     zero_pads = torch.Tensor(
         out.size(0), planes - out.size(1), out.size(2), out.size(3), out.size(4)
     ).zero_()
     if not no_cuda:
-        if isinstance(out.data, torch.cuda.FloatTensor):
+        if out.is_cuda and out.dtype == torch.float32:
             zero_pads = zero_pads.cuda()
 
     out = torch.cat([out.data, zero_pads], dim=1)
@@ -49,7 +95,14 @@ def downsample_basic_block(x, planes, stride, no_cuda=False):
 
 
 class BasicBlock(nn.Module):
-    """BasicBlock for a 3D convolutional neural network."""
+    """
+    A BasicBlock module for a 3D convolutional neural network.
+    This block is a fundamental building block for constructing residual networks.
+    It consists of two 3D convolutional layers, each followed by batch normalization
+    and a ReLU activation. The block also supports downsampling and dilation for
+    adjusting the spatial dimensions of the input.
+    """
+
     expansion = 1
 
     def __init__(self, inplanes, planes, stride=1, dilation=1, downsample=None):
@@ -272,8 +325,6 @@ class ResNet(nn.Module):
 
     def forward(self, x):
         """Forward pass of the ResNet model."""
-        if x.dim() == 4:  # missing the channel dimension
-            x = x.unsqueeze(1)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -417,7 +468,7 @@ def generate_model(opt):
 
     # load pretrain
     if opt.phase != "test" and opt.pretrain_path:
-        print("loading pretrained model {}".format(opt.pretrain_path))
+        print(f"loading pretrained model {opt.pretrain_path}")
         pretrain = torch.load(opt.pretrain_path)
         pretrain_dict = {
             k: v for k, v in pretrain["state_dict"].items() if k in net_dict.keys()
@@ -447,23 +498,7 @@ def generate_model(opt):
     return model, model.parameters()
 
 
-def collate_with_augmentation(batch, transform=None):
-    """Custom collate function with normalization and optional augmentation."""
-    mean = 0.5
-    std = 0.5
-    xs, ys, gs = zip(*batch)
-    # xs = torch.stack(xs, dim=0)   # default stacking: (B, 1, D, H, W)
-    xs = torch.stack([x.unsqueeze(0) for x in xs], dim=0)
-    ys = torch.stack(ys)
-    gs = torch.stack(gs)
-
-    # Normalize: (x - mean) / std
-    xs = (xs - mean) / std
-
-    return xs, ys, gs
-
-
-class ResNet3DModel(TorchPipeline):
+class ResNet3DModel(LightningModel, nn.Module):
     """
     ResNet3DModel
     A wrapper around a 3D ResNet (resnet10) for medical-volume classification built on PyTorch.
@@ -489,218 +524,186 @@ class ResNet3DModel(TorchPipeline):
 
     data_type = "images"
 
-    def _build_model(self, num_classes, model_depth=10, **kwargs):
-        # model = resnet10(num_classes=num_classes)
-        if model_depth == 10:
-            model = resnet10(num_classes=num_classes)
-        elif model_depth == 18:
-            model = resnet18(num_classes=num_classes)
-        elif model_depth == 34:
-            model = resnet34(num_classes=num_classes)
-        elif model_depth == 50:
-            model = resnet50(num_classes=num_classes)
-        elif model_depth == 101:
-            model = resnet101(num_classes=num_classes)
-        elif model_depth == 152:
-            model = resnet152(num_classes=num_classes)
-        elif model_depth == 200:
-            model = resnet200(num_classes=num_classes)
+    def __init__(
+        self, device, num_classes=2, input_channels=1, model_depth=10, **kwargs
+    ):
+        super().__init__(
+            learning_rate=kwargs.get("learning_rate", 1e-5),
+            weight_decay=kwargs.get("weight_decay", 1e-4),
+            scheduler_type=kwargs.get("scheduler_type", "plateau"),
+            optimizer_type=kwargs.get("optimizer_type", "adamw"),
+        )
+        self.run_id = kwargs.get("run_id", "unnamed_run")
+        self.num_classes = num_classes
+        self.input_channels = input_channels
+        self.model_depth = model_depth
+        self.device_str = device
+        self.fold_idx = kwargs.get("fold_idx", -1)
+        self.epochs = kwargs.get("epochs", 100)
+
+        self.save_hyperparameters()
+
+        self.build_model()  # required by parent
+        # criterion already set in LightningModel
+
+    def build_model(self):
+        if self.model_depth == 10:
+            self.model = resnet10(num_classes=self.num_classes)
+        elif self.model_depth == 18:
+            self.model = resnet18(num_classes=self.num_classes)
+        elif self.model_depth == 34:
+            self.model = resnet34(num_classes=self.num_classes)
+        elif self.model_depth == 50:
+            self.model = resnet50(num_classes=self.num_classes)
         else:
-            raise ValueError(f"Unsupported ResNet depth: {model_depth}")
-        model.collate_with_augmentation = collate_with_augmentation
-        model.mean = 0.5
-        model.std = 0.5
-        return model
+            raise ValueError(f"Unsupported ResNet depth: {self.model_depth}")
 
-    # def __init__(self, input_volumes=1, num_classes=2, device="cuda", **kwargs):
-    #     super().__init__()
-    #     self.device = device
-    #     self.run_id = kwargs.get("run_id", "unnamed_run")
-    #     self.epochs = kwargs.get("epochs", 100)
-    #     _ = input_volumes  # currently not used, kept for compatibility
-    #     # REMOVE INPUT_VOLUMES IF NOT NEEDED IN THE FUTURE
-    #     self.model = resnet10(num_classes=num_classes).to(device)
+    def forward(self, x):
+        # If user supplies input without channel dim → add it
+        if x.ndim == 4:
+            x = x.unsqueeze(1)  # (B, 1, D, H, W)
+        return self.model(x)
 
-    #     # Load pretrained if provided
-    #     pretrain_path = kwargs.get("pretrain_path", None)
-    #     if pretrain_path:
-    #         print(f"Loading pretrained weights from {pretrain_path}")
-    #         state_dict = torch.load(pretrain_path, map_location=device)
-    #         if "state_dict" in state_dict:
-    #             state_dict = state_dict["state_dict"]
-    #         self.model.load_state_dict(state_dict, strict=False)
+    def _train_val_loader_split(self, train_loader, val_ratio=0.3):
+        """Split the incoming dataloader's dataset into train and validation subsets."""
+        dataset = train_loader.dataset  # access the underlying dataset
+        n = len(dataset)
+        genders = np.asarray(dataset.dataset.gender[dataset.indices])
 
-    #     self.criterion = nn.CrossEntropyLoss()
-    #     lr = kwargs.get("learning_rate", 1e-5)
-    #     weight_decay = kwargs.get("weight_decay", 1e-4)
-    #     self.optimizer = torch.optim.Adam(
-    #         self.model.parameters(), lr=lr, weight_decay=weight_decay
-    #     )
+        indices = np.arange(n)
+        train_idx, val_idx = train_test_split(
+            indices, test_size=val_ratio, stratify=genders, random_state=42
+        )
 
-    #     self.best_val_model = 0
-    #     self.history = {
-    #         "train": {"epoch": [], "batch": [], "loss": [], "accuracy": []},
-    #         "val": {
-    #             "epoch": [],
-    #             "batch": [],
-    #             "loss": [],
-    #             "accuracy": [],
-    #             "batch_train_idx": [],
-    #         },
-    #     }
+        train_subset = Subset(dataset, train_idx)
+        val_subset = Subset(dataset, val_idx)
 
-    # def _dataloader_to_numpy(self, dataloader):
-    #     x, y, g = [], [], []
-    #     for xb, yb, gb in dataloader:
-    #         x.append(xb.numpy())
-    #         y.append(yb.numpy())
-    #         g.append(gb.numpy())
-    #     return np.concatenate(x), np.concatenate(y), np.concatenate(g)
+        # Transform-aware collation (optional)
+        train_loader_new = DataLoader(
+            train_subset,
+            batch_size=train_loader.batch_size,
+            shuffle=True,
+            num_workers=19,  # 0,#
+            pin_memory=False,
+            collate_fn=lambda batch: collate_with_augmentation(
+                batch, transform=train_transforms
+            ),
+        )
+        val_loader_new = DataLoader(
+            val_subset,
+            batch_size=1,
+            shuffle=False,
+            num_workers=19,  # 0,#10,
+            pin_memory=False,
+            collate_fn=lambda batch: collate_with_augmentation(
+                batch, transform=val_transforms
+            ),
+        )
+        return train_loader_new, val_loader_new
 
-    # def _train_val_loader_split(self, train_loader, val_ratio=0.3):
-    #     dataset = train_loader.dataset  # access the underlying dataset
-    #     n = len(dataset)
+    def _save_logs(self, history, save_path):
+        path = Path(save_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.suffix == ".json":
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(history, f)
+        elif path.suffix == ".csv":
+            keys = history[0].keys()
+            with open(path, "w", encoding="utf-8", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=keys)
+                writer.writeheader()
+                writer.writerows(history)
+        else:
+            raise ValueError("Save path must end with .json or .csv")
 
-    #     genders = []
-    #     for i in range(n):
-    #         _, _, g = dataset[i]
-    #         genders.append(g)
-    #     genders = np.array(genders)
+    def _save_logs(self, history, save_path):
+        """Utility for saving training logs as JSON or CSV."""
+        path = Path(save_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.suffix == ".json":
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(history, f)
+        elif path.suffix == ".csv":
+            keys = history[0].keys()
+            with open(path, "w", encoding="utf-8", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=keys)
+                writer.writeheader()
+                writer.writerows(history)
+        else:
+            raise ValueError("Save path must end with .json or .csv")
 
-    #     indices = np.arange(n)
-    #     train_idx, val_idx = train_test_split(
-    #         indices, test_size=val_ratio, stratify=genders, random_state=42
-    #     )
+    def fit(self, dataloader):
+        """
+        Lightning-based fit function to preserve compatibility with the old API.
+        Splits the input dataloader into training and validation sets,
+        sets up the trainer with early stopping and checkpointing,
+        and runs Trainer.fit().
+        """
+        print(f"Device: {self.device_str}")
+        print(f"Fold index: {self.fold_idx}")
 
-    #     train_subset = Subset(dataset, train_idx)
-    #     val_subset = Subset(dataset, val_idx)
+        train_loader, val_loader = self._train_val_loader_split(dataloader)
+        print("Dataloaders created.")
 
-    #     train_loader_new = DataLoader(
-    #         train_subset, batch_size=train_loader.batch_size, shuffle=True
-    #     )
-    #     val_loader_new = DataLoader(
-    #         val_subset, batch_size=train_loader.batch_size, shuffle=False
-    #     )
-    #     return train_loader_new, val_loader_new
+        trainer = create_trainer(
+            max_epochs=self.epochs,
+            monitor="val_accuracy",
+            mode="max",
+            patience=10,
+            accelerator="gpu" if "cuda" in self.device_str else "cpu",
+            devices=1,
+            save_dir=f"./data/results/checkpoints/{self.run_id}/fold_{self.fold_idx}",
+        )
 
-    # def _save_logs(self, history, save_path):
-    #     path = Path(save_path)
-    #     path.parent.mkdir(parents=True, exist_ok=True)
-    #     if path.suffix == ".json":
-    #         with open(path, "w", encoding="utf-8") as f:
-    #             json.dump(history, f)
-    #     elif path.suffix == ".csv":
-    #         keys = history[0].keys()
-    #         with open(path, "w", encoding="utf-8", newline="") as f:
-    #             writer = csv.DictWriter(f, fieldnames=keys)
-    #             writer.writeheader()
-    #             writer.writerows(history)
-    #     else:
-    #         raise ValueError("Save path must end with .json or .csv")
+        trainer.fit(self, train_loader, val_loader)
+        self.trainer = trainer  # store for predict later
 
-    # def fit(self, dataloader):
-    #     print(f"Device: {self.device}")
-    #     self.model.train()
-    #     patience_counter = 0
-    #     patience = 10
-    #     train_loader, val_loader = self._train_val_loader_split(dataloader)
-    #     for epoch in tqdm(range(self.epochs)):
-    #         total_loss = 0
-    #         train_accuracy = 0
-    #         for batch_train_idx, (xb, yb, _) in enumerate(train_loader):
-    #             xb, yb = xb.to(self.device, non_blocking=True), yb.long().to(
-    #                 self.device, non_blocking=True
-    #             )
-    #             self.optimizer.zero_grad()
-    #             xb = xb.unsqueeze(1)
-    #             preds = self.model(xb)
-    #             loss = self.criterion(preds, yb)
-    #             loss.backward()
-    #             self.optimizer.step()
-    #             total_loss += loss.item()
-    #             train_current_loss = loss.item()
-    #             train_accuracy += (preds.argmax(dim=1) == yb).float().mean().item()
-    #             train_current_accuracy = (
-    #                 (preds.argmax(dim=1) == yb).float().mean().item()
-    #             )
-    #             # avg_train_accuracy = train_accuracy / len(train_loader) # NOT USED FOR THE MOMENT
+        print(
+            f"[INFO] Training finished. Best model: {trainer.checkpoint_callback.best_model_path}"
+        )
 
-    #             self.history["train"]["epoch"].append(epoch)
-    #             self.history["train"]["batch"].append(batch_train_idx)
-    #             self.history["train"]["loss"].append(loss.item())
-    #             self.history["train"]["accuracy"].append(
-    #                 (preds.argmax(dim=1) == yb).float().mean().item()
-    #             )
+    def predict(self, dataloader):
+        """
+        Lightning-based predict function to preserve the old API.
+        Automatically loads the best checkpoint from the Trainer.
+        """
+        dataset = dataloader.dataset
+        dataloader = DataLoader(
+            dataset,
+            batch_size=128,
+            shuffle=False,
+            num_workers=19,  # 0,#10,
+            pin_memory=False,
+            collate_fn=lambda batch: collate_with_augmentation(
+                batch, transform=val_transforms
+            ),
+        )
+        trainer = getattr(self, "trainer", None)
+        if trainer is None:
+            # If fit() hasn’t been run, create a default trainer
+            trainer = create_trainer(
+                accelerator="gpu" if "cuda" in self.device_str else "cpu",
+                devices=1,
+                max_epochs=1,
+            )
 
-    #             # print(f"Epoch {epoch+1}, Loss: {total_loss/len(train_loader):.4f}")
-    #             if batch_train_idx % 3 == 0:
-    #                 self.model.eval()
-    #                 val_loss = 0
-    #                 val_accuracy = 0
-    #                 with torch.no_grad():
-    #                     for batch_val_idx, (xb, yb, _) in enumerate(val_loader):
-    #                         xb, yb = xb.to(
-    #                             self.device, non_blocking=True
-    #                         ), yb.long().to(self.device, non_blocking=True)
-    #                         xb = xb.unsqueeze(1)
-    #                         preds = self.model(xb)
-    #                         loss = self.criterion(preds, yb)
-    #                         val_loss += loss.item()
-    #                         val_current_loss = loss.item()
-    #                         val_accuracy += (
-    #                             (preds.argmax(dim=1) == yb).float().mean().item()
-    #                         )
-    #                         val_current_accuracy = (
-    #                             (preds.argmax(dim=1) == yb).float().mean().item()
-    #                         )
+        # Load best model checkpoint automatically
+        best_path = getattr(trainer.checkpoint_callback, "best_model_path", None)
+        # if best_path and Path(best_path).exists():
+        #     state_dict = torch.load(best_path, map_location=self.device_str)
+        #     self.load_state_dict(state_dict["state_dict"], strict=False)
+        #     print(f"[INFO] Loaded checkpoint from {best_path}")
 
-    #                         self.history["val"]["epoch"].append(epoch)
-    #                         self.history["val"]["batch"].append(batch_val_idx)
-    #                         self.history["val"]["loss"].append(loss.item())
-    #                         self.history["val"]["accuracy"].append(
-    #                             (preds.argmax(dim=1) == yb).float().mean().item()
-    #                         )
-    #                         self.history["val"]["batch_train_idx"].append(
-    #                             batch_train_idx
-    #                         )
-
-    #                 # avg_val_loss = val_loss / len(val_loader)   # NOT USED FOR THE MOMENT
-    #                 avg_val_accuracy = val_accuracy / len(val_loader)
-    #                 if avg_val_accuracy > self.best_val_model:
-    #                     patience_counter = 0
-    #                     save_path = Path("./data/models") / f"{self.run_id}_best.pth"
-    #                     save_path.parent.mkdir(parents=True, exist_ok=True)
-    #                     self.best_val_model = avg_val_accuracy
-    #                     torch.save(
-    #                         self.model.state_dict(),
-    #                         save_path,
-    #                     )
-    #                 else:
-    #                     patience_counter += 1
-
-    #                 # Early stopping trigger
-    #                 if patience_counter >= patience:
-    #                     print(f"Early stopping at epoch {epoch+1}")
-    #                     break
-    #                 self.model.train()  # switch back to train mode
-
-    #             # avg_train_loss = total_loss / (batch_train_idx + 1)  # len(train_loader) #NOT USED FOR THE MOMENT
-
-    #             # self.scheduler.step()
-    #             # print(f"Epoch {epoch+1}: Train Loss={avg_train_loss:.4f}, Train Acc={avg_train_accuracy:.4f}, Val Loss={avg_val_loss:.4f}, Val Acc={avg_val_accuracy:.4f}")
-    #             print(
-    #                 f"Epoch {epoch+1}: Train Loss={train_current_loss:.4f}, Train Acc={train_current_accuracy:.4f}, Val Loss={val_current_loss:.4f}, Val Acc={val_current_accuracy:.4f}"
-    #             )
-    #     self._save_logs(self.history, f"./data/results/{self.run_id}_training_log.json")
-
-    # def predict(self, dataloader):
-    #     self.model.eval()
-    #     preds_all = []
-    #     with torch.no_grad():
-    #         for xb, _, _ in dataloader:
-    #             xb = xb.to(self.device, non_blocking=True)
-    #             xb = xb.unsqueeze(1)
-    #             logits = self.model(xb)
-    #             preds = torch.argmax(logits, dim=1)
-    #             preds_all.append(preds.cpu())
-    #     return torch.cat(preds_all).numpy()
+        self.eval()
+        # preds_all = trainer.predict(self, dataloaders=self.x_only_loader(dataloader))
+        if best_path and Path(best_path).exists():
+            preds_all = trainer.predict(
+                self, dataloaders=dataloader, ckpt_path=best_path
+            )
+        else:
+            preds_all = trainer.predict(
+                self, dataloaders=self.x_only_loader(dataloader)
+            )
+        # preds_all = trainer.predict(self, dataloaders=dataloader)
+        preds = torch.cat([p.cpu() for p in preds_all])
+        return preds.numpy()

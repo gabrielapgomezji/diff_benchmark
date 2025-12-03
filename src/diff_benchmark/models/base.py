@@ -21,7 +21,6 @@ from tqdm import tqdm
 from diff_benchmark.utils.logger import TrainLogger
 from diff_benchmark.scores.scores import compute_metrics
 
-
 def collate_with_augmentation(batch, transform=None):
     """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
     xs, ys, gs = zip(*batch)  # separate batch components
@@ -37,10 +36,10 @@ def collate_with_augmentation(batch, transform=None):
         x_aug = x_aug.permute(1, 0, 2, 3)  # (C=1,D,H,W)
         xs_aug.append(x_aug)
 
-    xs_aug = torch.stack(xs_aug, dim=0)
-    ys = torch.stack(ys)
-    gs = torch.stack(gs)
-    return xs_aug, ys, gs
+#     xs_aug = torch.stack(xs_aug, dim=0)
+#     ys = torch.stack(ys)
+#     gs = torch.stack(gs)
+#     return xs_aug, ys, gs
 
 
 train_transforms = transforms.Compose(
@@ -208,25 +207,28 @@ class TorchPipeline:
         train_subset = Subset(dataset, train_idx)
         val_subset = Subset(dataset, val_idx)
 
+        collate_train = self.model.collate_with_augmentation
+        collate_val = self.model.collate_with_augmentation
+
         train_loader_new = DataLoader(
             train_subset,
             batch_size=train_loader.batch_size,
             shuffle=True,
             num_workers=self.num_workers,
-            pin_memory=True,
-            collate_fn=lambda batch: collate_with_augmentation(
-                batch, transform=train_transforms
-            ),
+            # collate_fn=lambda batch: collate_with_augmentation(
+            #     batch, transform=train_transforms
+            # ),
+            collate_fn=lambda batch: collate_train(batch, transform=train_transforms),
         )
         val_loader_new = DataLoader(
             val_subset,
-            batch_size=128,
+            batch_size=64,
             shuffle=False,
             num_workers=self.num_workers,
-            pin_memory=True,
-            collate_fn=lambda batch: collate_with_augmentation(
-                batch, transform=val_transforms
-            ),
+            # collate_fn=lambda batch: collate_with_augmentation(
+            #     batch, transform=val_transforms
+            # ),
+            collate_fn=lambda batch: collate_val(batch, transform=val_transforms),
         )
         return train_loader_new, val_loader_new
 
@@ -254,7 +256,7 @@ class TorchPipeline:
             anneal_strategy="cos",
             pct_start=self.pct_start,
             div_factor=3,  # 1.0e3, #10,
-            final_div_factor=1.0e3,  # 1.0e4,
+            final_div_factor=1.0e5,  # 1.0e4,
         )
 
         print("Dataloaders created")
@@ -376,12 +378,15 @@ class TorchPipeline:
         self.model.eval()
         preds_all = []
 
-        mean = 0.5
-        std = 0.5
+        # mean = 0.5
+        # std = 0.5
+        mean = self.model.mean
+        std = self.model.std
 
         with torch.no_grad():
             for xb, _, _ in dataloader:
                 xb = (xb - mean) / std
+                # xb = xb.unsqueeze(1) # REMOVE FOR THE 2DCNN
                 xb = xb.to(self.device)
                 logits = self.model(xb)
                 preds = torch.argmax(logits, dim=1)
@@ -404,6 +409,7 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
         weight_decay=1e-4,
         average="binary",
         scheduler_type="plateau",
+        optimizer_type="adamw",
         **kwargs,
     ):
         super().__init__()
@@ -412,6 +418,7 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
         self.weight_decay = weight_decay
         self.average = average
         self.scheduler_type = scheduler_type
+        self.optimizer_type = optimizer_type
 
         # Subclasses must define self.model and self.criterion
         self.model = None
@@ -484,9 +491,14 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
         return preds
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(
-            self.parameters(), lr=self.lr, weight_decay=self.weight_decay
-        )
+        if self.optimizer_type == "adamw":
+            optimizer = torch.optim.AdamW(
+                self.parameters(), lr=self.lr, weight_decay=self.weight_decay
+            )
+        else:
+            optimizer = torch.optim.Adam(
+                self.parameters(), lr=self.lr, weight_decay=self.weight_decay
+            )
         if self.scheduler_type == "plateau":
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
                 optimizer, mode="min", factor=0.5, patience=10
@@ -508,6 +520,22 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
         if self.scheduler_type == "exponential":
             scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
             return {"optimizer": optimizer, "lr_scheduler": scheduler}
+        if self.scheduler_type == "onecycle":
+            scheduler = torch.optim.lr_scheduler.OneCycleLR(
+                optimizer,
+                max_lr=self.lr,
+                total_steps=self.trainer.estimated_stepping_batches,
+                pct_start=0.3,
+                anneal_strategy="cos",
+                final_div_factor=1e4,
+            )
+            return {
+                "optimizer": optimizer,
+                "lr_scheduler": {
+                    "scheduler": scheduler,
+                    "interval": "step",  # OneCycleLR MUST be per-step
+                },
+            }
 
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
         return {

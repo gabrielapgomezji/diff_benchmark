@@ -16,9 +16,9 @@ models:
     freeze_backbone: true
     trainable_blocks: 1
     epochs: 50
-    batch_size: 32
-    dropout: 0 #0.5
-    learning_rate: 1.0e-03
+    batch_size: 8
+    dropout: 0.5
+    learning_rate: 1.0e-07
     weight_decay: 0.01
     max_lr: 3.0e-5
     pct_start: 0.2
