@@ -46,7 +46,7 @@ data_paths:
 target_columns:
 # - Gender
 - Age_in_Yrs
-prediction_task: regression  # classification, # multivariate_regression
+prediction_task: regression  # classification #  multivariate_regression
 
 # ==============================
 # DATA SPLITS
