@@ -85,17 +85,21 @@ class ResNet3SliceClassifier(nn.Module):
         self.backbone = ResNet18Backbone(**kwargs)
         self.num_subvols = input_slices // 3
         self.dropout = nn.Dropout(p=dropout) if dropout > 0 else nn.Identity()
-        # self.fc = nn.Linear(self.num_subvols * self.backbone.out_dim, num_classes)
-        # Aggregate subvolume embeddings into a single embedding (B, 512)
-        # learnable per-subvolume scalar weights (will be normalized via softmax in forward)
-        self.aggregate_weights = nn.Parameter(
-            torch.ones(self.num_subvols, dtype=torch.float32)
-        )
-        self.fc = nn.Linear(self.backbone.out_dim, num_classes)
+        self.fc = nn.Linear(self.num_subvols * self.backbone.out_dim, num_classes)
+        # # Aggregate subvolume embeddings into a single embedding (B, 512)
+        # # learnable per-subvolume scalar weights (will be normalized via softmax in forward)
+        # self.aggregate_weights = nn.Parameter(
+        #     torch.ones(self.num_subvols, dtype=torch.float32)
+        # )
+        # self.fc = nn.Linear(self.backbone.out_dim, num_classes)
 
         if freeze_backbone:
             for param in self.backbone.parameters():
                 param.requires_grad = False
+
+        self.attention = nn.Sequential(
+            nn.Linear(512, 128), nn.ReLU(), nn.Linear(128, 1)
+        )
 
     def forward(self, x):
         """
@@ -103,7 +107,7 @@ class ResNet3SliceClassifier(nn.Module):
         """
         # batch, slice, height, width = x.shape
         # assert S % 3 == 0, "Slice dimension must be divisible by 3"
-        x = x.squeeze(1)
+        # x = x.squeeze(1)
 
         subvols = x.unfold(dimension=1, size=3, step=3)
         subvols = subvols.permute(0, 1, 4, 2, 3)  # (B, num_subvols, 3, H, W)
@@ -120,16 +124,39 @@ class ResNet3SliceClassifier(nn.Module):
         feats = feats.reshape(B, N, -1)
 
         # Concatenate subvolume features: (B, N*512)
-        # feats = feats.reshape(B, -1)
-        w = torch.softmax(self.aggregate_weights, dim=0)  # (N,)
-        w = w.view(1, N, 1)  # (1, N, 1)
-        # print(w)
-        feats = (feats * w).sum(dim=1)  # (B, 512)
-        # print(feats)
+        feats = feats.reshape(B, -1)
+        # w = torch.softmax(self.aggregate_weights, dim=0)  # (N,)
+        # w = w.view(1, N, 1)  # (1, N, 1)
+        # feats = (feats * w).sum(dim=1)  # (B, 512)
+        # att = torch.softmax(self.attention(feats), dim=1)  # (B, N, 1)
+        # print(att, att.shape)
+        # feats = (feats * att).sum(dim=1)
+        # print(feats, feats.shape)
         # feats scalar product with weights. 1 embedding per features (B, 512).
         feats = self.dropout(feats)
         out = self.fc(feats)  # (B, num_classes)
         return out
+
+
+def collate_with_augmentation(batch, transform=None):
+    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
+    xs, ys, gs = zip(*batch)  # separate batch components
+    xs_aug = []
+    for x in xs:  # x shape: (D,H,W)
+        slices = []
+        for i in range(x.shape[0]):
+            slice_2d = x[i, :, :].unsqueeze(0)  # (1,H,W)
+            if transform:
+                slice_2d = transform(slice_2d)
+            slices.append(slice_2d)
+        x_aug = torch.stack(slices, dim=0)  # (D,1,H,W)
+        x_aug = x_aug.permute(1, 0, 2, 3)  # (C=1,D,H,W)
+        xs_aug.append(x_aug)
+
+    xs_aug = torch.stack(xs_aug, dim=0)
+    ys = torch.stack(ys)
+    gs = torch.stack(gs)
+    return xs_aug.squeeze(1), ys, gs
 
 
 class CNNTorchTrainModel(TorchPipeline):
@@ -150,5 +177,7 @@ class CNNTorchTrainModel(TorchPipeline):
             pretrained=pretrained,
             trainable_blocks=trainable_blocks,
         )
-
+        model.collate_with_augmentation = collate_with_augmentation
+        model.std = 0.5
+        model.mean = 0.5
         return model

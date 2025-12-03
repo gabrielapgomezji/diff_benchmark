@@ -180,6 +180,7 @@ class ResNet3SliceModel(LightningModel):
             weight_decay=kwargs.get("weight_decay", 1e-4),
             average="binary",
             scheduler_type=kwargs.get("weight_decay", "plateau"),
+            optimizer_type=kwargs.get("optimizer_type", "adamw"),
         )
 
         self.device_str = device
