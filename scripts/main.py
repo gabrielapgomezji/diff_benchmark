@@ -11,6 +11,7 @@ from diff_benchmark.analysis.save_results import (
     save_fold_results,
     save_model_results,
 )
+from diff_benchmark.analysis.true_vs_pred import plot_true_vs_pred
 from diff_benchmark.analysis.scores_summary import summarize_folds_to_csv
 from diff_benchmark.dataloaders.dataloaders import PreprocessedData
 from diff_benchmark.dataset.generate_dataset import CustomDataset
@@ -137,6 +138,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
             # model = model.to(device)
             model.fit(train_loader)
             train_pred = model.predict(train_loader)
+            plot_true_vs_pred(y_train, train_pred, fold_idx=fold_idx, run_id=run_id, type="train")
             train_score = mean_squared_error(y_train, train_pred)
             # train_score = accuracy_score(y_train, train_pred)
             # train_score = compute_metrics(y_train, train_pred)
@@ -148,6 +150,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
 
             # print("Testing...")
             test_pred = model.predict(test_loader)
+            plot_true_vs_pred(y_test, test_pred, fold_idx=fold_idx, run_id=run_id, type="test")
             test_score = mean_squared_error(y_test, test_pred)
             # test_score = accuracy_score(y_test, test_pred)
             # test_score = compute_metrics(y_test, test_pred)
