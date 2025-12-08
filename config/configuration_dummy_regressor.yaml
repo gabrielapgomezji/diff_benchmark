@@ -7,5 +7,5 @@ models:
 - name: dummy_regressor
   params:
     name: dummy_regressor
-    comment: Dummy Regressor. Testing new dataloader
+    comment: Dummy Regressor.
     batch_size: 32

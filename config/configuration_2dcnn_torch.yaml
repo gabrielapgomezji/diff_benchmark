@@ -15,12 +15,12 @@ models:
     pretrained: true
     freeze_backbone: true
     trainable_blocks: 1
-    epochs: 50
-    batch_size: 8
-    dropout: 0.5
-    learning_rate: 1.0e-07
-    weight_decay: 0.01
-    max_lr: 3.0e-5
+    epochs: 20
+    batch_size: 64
+    dropout: 0 #.15
+    learning_rate: 1.0e-4
+    weight_decay: 0 #0.0001
+    max_lr: 1e-2
     pct_start: 0.2
 # - name: 2dcnn_torch
 #   params:

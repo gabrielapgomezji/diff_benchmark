@@ -45,8 +45,9 @@ data_paths:
 
 target_columns:
 # - Gender
-- Age_in_Yrs
-prediction_task: regression  # classification #  multivariate_regression
+# - Age_in_Yrs
+- DDisc_AUC_40K
+prediction_task: regression  # classification # multivariate_regression
 
 # ==============================
 # DATA SPLITS
