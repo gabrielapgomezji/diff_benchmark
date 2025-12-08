@@ -11,6 +11,7 @@ from diff_benchmark.analysis.save_results import (
     save_fold_results,
     save_model_results,
 )
+from diff_benchmark.analysis.true_vs_pred import plot_true_vs_pred
 from diff_benchmark.analysis.scores_summary import summarize_folds_to_csv
 from diff_benchmark.dataloaders.dataloaders import PreprocessedData
 from diff_benchmark.dataset.generate_dataset import CustomDataset
@@ -18,6 +19,7 @@ from diff_benchmark.models.model_configurations import get_model, make_run_id
 from diff_benchmark.preprocessing.preprocess_demographic_data import (
     DefaultDemographicsPreprocessor,
 )
+from sklearn.metrics import mean_squared_error
 from diff_benchmark.scores.scores import accuracy_score, compute_metrics
 from diff_benchmark.utils.config_loader import load_configs
 from diff_benchmark.utils.data_pipeline import get_data_pipeline
@@ -56,9 +58,9 @@ def run_single_model(model_name, model_config, general_config, results_path):
 
     # DATASET GENERATION
     X = brain_filtered  # .drop(columns=["subject_id"]).to_numpy()
-    y = np.array(demographics_filtered["Gender"])
     gender = np.array(demographics_filtered["Gender"])
-
+    y = np.array(demographics_filtered[config["target_columns"][0]])
+    
     dataset = CustomDataset(X, y, gender)
     # ----------- CROSS VALIDATION + TRAINING + TESTING -----------
 
@@ -123,14 +125,12 @@ def run_single_model(model_name, model_config, general_config, results_path):
             train_loader, test_loader = preprocessed.get_dataloader_fold(
                 dataset, fold_idx, indices, batch_size=local_config["batch_size"]
             )
-            # _, y_train, _, _, y_test, _ = preprocessed.get_arrays_from_indices(
-            #     dataset, fold_idx, indices
-            # )
             train_idx, test_idx = indices[fold_idx]
             targets = dataset.targets.numpy()
             y_train = np.array(targets[train_idx]).squeeze()
             y_test = np.array(targets[test_idx]).squeeze()
 
+            local_config["prediction_task"] = config.get("prediction_task", "regression")
             model = get_model(model_name, local_config)
             # --------- Train / Val / Test Model ---------
             # print("Training...")
@@ -138,7 +138,9 @@ def run_single_model(model_name, model_config, general_config, results_path):
             # model = model.to(device)
             model.fit(train_loader)
             train_pred = model.predict(train_loader)
-            train_score = accuracy_score(y_train, train_pred)
+            plot_true_vs_pred(y_train, train_pred, fold_idx=fold_idx, run_id=run_id, type="train")
+            train_score = mean_squared_error(y_train, train_pred)
+            # train_score = accuracy_score(y_train, train_pred)
             # train_score = compute_metrics(y_train, train_pred)
             print(train_score)
 
@@ -148,7 +150,9 @@ def run_single_model(model_name, model_config, general_config, results_path):
 
             # print("Testing...")
             test_pred = model.predict(test_loader)
-            test_score = accuracy_score(y_test, test_pred)
+            plot_true_vs_pred(y_test, test_pred, fold_idx=fold_idx, run_id=run_id, type="test")
+            test_score = mean_squared_error(y_test, test_pred)
+            # test_score = accuracy_score(y_test, test_pred)
             # test_score = compute_metrics(y_test, test_pred)
             print(test_score)
 

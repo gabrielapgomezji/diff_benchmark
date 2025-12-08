@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 
-def preprocess_csv(csv_path: str, target_columns: np.ndarray):
+def preprocess_csv_old(csv_path: str, target_columns: np.ndarray):
     """
     Preprocesses a CSV file by loading it into a DataFrame and filtering rows based on the specified target columns.
     Args:
@@ -20,6 +20,33 @@ def preprocess_csv(csv_path: str, target_columns: np.ndarray):
 
     if "Gender" in df_targets.columns:
         df_targets["Gender"] = df_targets["Gender"].map({"M": 1, "F": 0})
+
+    df_targets = df_targets.dropna(subset=target_columns)
+
+    return df_targets
+
+def preprocess_csv(csv_path: str, target_columns: np.ndarray):
+    """
+    Preprocesses a CSV file by loading it into a DataFrame and filtering rows based on the specified target columns.
+    Args:
+        csv_path (str or Path): The file path to the CSV file to be processed.
+        target_columns (np.ndarray): An array of column names or indices to filter the rows in the DataFrame.
+    Returns:
+        pd.DataFrame: A DataFrame containing only the rows corresponding to the specified target columns.
+    """
+
+    csv_path = Path(csv_path)
+    df_targets = pd.read_csv(csv_path, index_col=0)
+
+    if "Gender" in df_targets.columns:
+        df_targets = df_targets.loc[:, ["Subject"] + target_columns]
+        df_targets["Gender"] = df_targets["Gender"].map({"M": 1, "F": 0})
+    if "Age_in_Yrs" in df_targets.columns:
+        df_targets = df_targets.loc[:, ["Subject"] + target_columns]
+        df_targets["Age_in_Yrs"] = df_targets["Age_in_Yrs"].astype(float)
+    # if "Age_in_Yrs" not in target_columns and "Gender" not in target_columns:
+    #     filtered_targets = [c for c in target_columns if c not in ("Age_in_Yrs", "Gender")]
+    #     df_targets = df_targets.loc[:, ["Subject", "Gender", "Age_in_Yrs"] + filtered_targets]
 
     df_targets = df_targets.dropna(subset=target_columns)
 

@@ -8,13 +8,15 @@ from diff_benchmark.models.classic_ml import PCARandomForestModel, PCASVMModel
 from diff_benchmark.models.cnn import ResNet3SliceModel
 from diff_benchmark.models.cnn_medicalnet import ResNet3DModel
 from diff_benchmark.models.cnn_torch_train import CNNTorchTrainModel
+from diff_benchmark.models.cnn_torch_train_reg import CNNRegTorchTrainModel
 
-# from diff_benchmark.models.cnn_medicalnet_with_base import ResNet3DModel
-from diff_benchmark.models.dummy import DummyClassifier
+# from diff_benchmark.models.cnn_medicalnet import ResNet3DModel
+from diff_benchmark.models.dummy import DummyClassifier, DummyRegressor
 from diff_benchmark.models.lcot_model import KernelRidgeRegression
 from diff_benchmark.models.logistic_regression import (
     LogisticRegressionModel,
     PCALogisticRegressionModel,
+    PCALinearModel,
 )
 
 # from diff_benchmark.models.mlp import MLPClassifier
@@ -66,6 +68,9 @@ def get_model(name: str, config: dict):
 
     if name == "dummy_classifier":
         return DummyClassifier()
+    
+    if name == "dummy_regressor":
+        return DummyRegressor()
 
     # if name == "mlp_classifier":
     #     return MLPClassifier(
@@ -79,21 +84,25 @@ def get_model(name: str, config: dict):
 
     if name == "pca_logistic":
         return PCALogisticRegressionModel()
+    
+    if name == "pca_linear":
+        return PCALinearModel(**config)
 
     if name == "logistic_regression":
         return LogisticRegressionModel()
 
     if name == "pca_forest":
-        return PCARandomForestModel()
+        return PCARandomForestModel(**config)
 
     if name == "pca_svm":
-        return PCASVMModel()
+        return PCASVMModel(**config)
 
     if name == "2dcnn":
         return ResNet3SliceModel(**config)
 
     if name == "2dcnn_torch":
-        return CNNTorchTrainModel(**config)
+        # return CNNTorchTrainModel(**config)
+        return CNNRegTorchTrainModel(**config)
 
     if name == "2dcnn_lite":
         return cnn_with_base.ResNet3SliceModel(**config)

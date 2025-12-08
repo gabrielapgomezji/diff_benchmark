@@ -14,97 +14,97 @@ models:
     num_workers: 5
     num_classes: 2
     batch_size: 32
-    epochs: 50
+    epochs: 3
     device: cuda
     model_depth: 18
-    dropout: 0.5
-    learning_rate: 1.0e-07
+    dropout: 0 #0.5
+    learning_rate: 1.0e-05
     weight_decay: 0.001
-    max_lr: 3.0e-2
+    max_lr: 3.0e-3
     pct_start: 0.2
     
-- name: medicalnet
-  params:
-    name: medicalnet
-    comment: Medicalnet. Depth 10. Test hyperparameters
-    region_name: VisCent_ExStr
-    input_channels: 1
-    num_workers: 5
-    num_classes: 2
-    batch_size: 32
-    epochs: 150
-    device: cuda
-    model_depth: 34
-    dropout: 0 #0.5
-    learning_rate: 1.0e-07
-    weight_decay: 0.01
-    max_lr: 3.0e-5
-    pct_start: 0.2
-- name: medicalnet
-  params:
-    name: medicalnet
-    comment: Medicalnet. Depth 10. Test hyperparameters
-    region_name: VisCent_ExStr
-    input_channels: 1
-    num_workers: 5
-    num_classes: 2
-    batch_size: 8
-    epochs: 50
-    device: cuda
-    model_depth: 50
-    dropout: 0 #0.5
-    learning_rate: 1.0e-07
-    weight_decay: 0.01
-    max_lr: 3.0e-5
-    pct_start: 0.2
-- name: medicalnet
-  params:
-    name: medicalnet
-    comment: Medicalnet. Depth 10. Test hyperparameters
-    region_name: VisCent_ExStr
-    input_channels: 1
-    num_workers: 5
-    num_classes: 2
-    batch_size: 8
-    epochs: 50
-    device: cuda
-    model_depth: 101
-    dropout: 0 #0.5
-    learning_rate: 1.0e-07
-    weight_decay: 0.01
-    max_lr: 3.0e-5
-    pct_start: 0.2
-- name: medicalnet
-  params:
-    name: medicalnet
-    comment: Medicalnet. Depth 10. Test hyperparameters
-    region_name: VisCent_ExStr
-    input_channels: 1
-    num_workers: 5
-    num_classes: 2
-    batch_size: 8
-    epochs: 50
-    device: cuda
-    model_depth: 152
-    dropout: 0 #0.5
-    learning_rate: 1.0e-07
-    weight_decay: 0.01
-    max_lr: 3.0e-5
-    pct_start: 0.2
-- name: medicalnet
-  params:
-    name: medicalnet
-    comment: Medicalnet. Depth 10. Test hyperparameters
-    region_name: VisCent_ExStr
-    input_channels: 1
-    num_workers: 5
-    num_classes: 2
-    batch_size: 8
-    epochs: 50
-    device: cuda
-    model_depth: 200
-    dropout: 0 #0.5
-    learning_rate: 1.0e-07
-    weight_decay: 0.01
-    max_lr: 3.0e-5
-    pct_start: 0.2
+# - name: medicalnet
+#   params:
+#     name: medicalnet
+#     comment: Medicalnet. Depth 10. Test hyperparameters
+#     region_name: VisCent_ExStr
+#     input_channels: 1
+#     num_workers: 5
+#     num_classes: 2
+#     batch_size: 32
+#     epochs: 150
+#     device: cuda
+#     model_depth: 34
+#     dropout: 0 #0.5
+#     learning_rate: 1.0e-07
+#     weight_decay: 0.01
+#     max_lr: 3.0e-5
+#     pct_start: 0.2
+# - name: medicalnet
+#   params:
+#     name: medicalnet
+#     comment: Medicalnet. Depth 10. Test hyperparameters
+#     region_name: VisCent_ExStr
+#     input_channels: 1
+#     num_workers: 5
+#     num_classes: 2
+#     batch_size: 8
+#     epochs: 50
+#     device: cuda
+#     model_depth: 50
+#     dropout: 0 #0.5
+#     learning_rate: 1.0e-07
+#     weight_decay: 0.01
+#     max_lr: 3.0e-5
+#     pct_start: 0.2
+# - name: medicalnet
+#   params:
+#     name: medicalnet
+#     comment: Medicalnet. Depth 10. Test hyperparameters
+#     region_name: VisCent_ExStr
+#     input_channels: 1
+#     num_workers: 5
+#     num_classes: 2
+#     batch_size: 8
+#     epochs: 50
+#     device: cuda
+#     model_depth: 101
+#     dropout: 0 #0.5
+#     learning_rate: 1.0e-07
+#     weight_decay: 0.01
+#     max_lr: 3.0e-5
+#     pct_start: 0.2
+# - name: medicalnet
+#   params:
+#     name: medicalnet
+#     comment: Medicalnet. Depth 10. Test hyperparameters
+#     region_name: VisCent_ExStr
+#     input_channels: 1
+#     num_workers: 5
+#     num_classes: 2
+#     batch_size: 8
+#     epochs: 50
+#     device: cuda
+#     model_depth: 152
+#     dropout: 0 #0.5
+#     learning_rate: 1.0e-07
+#     weight_decay: 0.01
+#     max_lr: 3.0e-5
+#     pct_start: 0.2
+# - name: medicalnet
+#   params:
+#     name: medicalnet
+#     comment: Medicalnet. Depth 10. Test hyperparameters
+#     region_name: VisCent_ExStr
+#     input_channels: 1
+#     num_workers: 5
+#     num_classes: 2
+#     batch_size: 8
+#     epochs: 50
+#     device: cuda
+#     model_depth: 200
+#     dropout: 0 #0.5
+#     learning_rate: 1.0e-07
+#     weight_decay: 0.01
+#     max_lr: 3.0e-5
+#     pct_start: 0.2

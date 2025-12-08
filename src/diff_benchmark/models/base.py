@@ -19,21 +19,22 @@ from torchvision import transforms
 from tqdm import tqdm
 
 from diff_benchmark.utils.logger import TrainLogger
+from diff_benchmark.scores.scores import compute_metrics
 
-# def collate_with_augmentation(batch, transform=None):
-#     """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
-#     xs, ys, gs = zip(*batch)  # separate batch components
-#     xs_aug = []
-#     for x in xs:  # x shape: (D,H,W)
-#         slices = []
-#         for i in range(x.shape[0]):
-#             slice_2d = x[i, :, :].unsqueeze(0)  # (1,H,W)
-#             if transform:
-#                 slice_2d = transform(slice_2d)
-#             slices.append(slice_2d)
-#         x_aug = torch.stack(slices, dim=0)  # (D,1,H,W)
-#         x_aug = x_aug.permute(1, 0, 2, 3)  # (C=1,D,H,W)
-#         xs_aug.append(x_aug)
+def collate_with_augmentation(batch, transform=None):
+    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
+    xs, ys, gs = zip(*batch)  # separate batch components
+    xs_aug = []
+    for x in xs:  # x shape: (D,H,W)
+        slices = []
+        for i in range(x.shape[0]):
+            slice_2d = x[i, :, :].unsqueeze(0)  # (1,H,W)
+            if transform:
+                slice_2d = transform(slice_2d)
+            slices.append(slice_2d)
+        x_aug = torch.stack(slices, dim=0)  # (D,1,H,W)
+        x_aug = x_aug.permute(1, 0, 2, 3)  # (C=1,D,H,W)
+        xs_aug.append(x_aug)
 
 #     xs_aug = torch.stack(xs_aug, dim=0)
 #     ys = torch.stack(ys)
@@ -125,12 +126,13 @@ class TorchPipeline:
         )
         self.dtype = dtype if dtype is not None else torch.float32
 
-        self.model = self._build_model(**kwargs).to(self.device)
-
         self.fold_idx = kwargs.get("fold_idx", -1)
         self.run_id = kwargs.get("run_id", "unnamed_run")
         self.epochs = kwargs.get("epochs", 100)
         self.average = kwargs.get("average", "binary")
+        self._prediction_task = kwargs.get("prediction_task", None)
+    
+        self.model = self._build_model(**kwargs).to(self.device)
 
         self.learning_rate = kwargs.get("learning_rate", 1e-4)
         self.weight_decay = kwargs.get("weight_decay", 1e-2)
@@ -140,7 +142,10 @@ class TorchPipeline:
             weight_decay=self.weight_decay,
         )
         # self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
-        self.criterion = nn.CrossEntropyLoss()
+        if self.prediction_task == "classification":
+            self.criterion = nn.CrossEntropyLoss()
+        elif self.prediction_task == "regression":
+            self.criterion = nn.MSELoss()
 
         self.max_lr = kwargs.get("max_lr", 1e-4)
         self.pct_start = kwargs.get("pct_start", 0.2)
@@ -149,6 +154,9 @@ class TorchPipeline:
         # self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         #     self.optimizer, mode="min", factor=0.5, patience=10
         # )
+        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            self.optimizer, T_max=10, eta_min=0
+        )
         self.history = {
             "train": {"epoch": [], "batch": [], "loss": [], "metrics": [], "lr": []},
             "val": {
@@ -158,6 +166,14 @@ class TorchPipeline:
                 "batch_train_idx": [],
             },
         }
+    
+    @property
+    def prediction_task(self):
+        return self._prediction_task
+    
+    # @prediction_task.setter
+    # def prediction_task(self, value):
+    #     self._prediction_task = value
 
     @abstractmethod
     def _build_model(self, **kwargs):
@@ -223,7 +239,7 @@ class TorchPipeline:
         """Fit the model to the training data."""
         print(f"Device: {self.device}")
         self.model.train()
-
+        
         train_loader, val_loader = self._train_val_loader_split(dataloader)
         print(f"Fold index: {self.fold_idx}")
 
@@ -235,31 +251,46 @@ class TorchPipeline:
             mode="max",
         )
 
-        self.scheduler = torch.optim.lr_scheduler.OneCycleLR(
-            self.optimizer,
-            max_lr=self.max_lr,
-            epochs=self.epochs,
-            steps_per_epoch=len(train_loader),
-            anneal_strategy="cos",
-            pct_start=self.pct_start,
-            div_factor=3,  # 1.0e3, #10,
-            final_div_factor=1.0e5,  # 1.0e4,
-        )
+        # self.scheduler = torch.optim.lr_scheduler.OneCycleLR(
+        #     self.optimizer,
+        #     max_lr=self.max_lr,
+        #     epochs=self.epochs,
+        #     steps_per_epoch=len(train_loader),
+        #     anneal_strategy="cos",
+        #     pct_start=self.pct_start,
+        #     div_factor=3,  # 1.0e3, #10,
+        #     final_div_factor=1.0e5,  # 1.0e4,
+        # )
 
         print("Dataloaders created")
         for epoch in tqdm(range(self.epochs)):
 
             print(f"Epoch {epoch}")
+            epoch_losses = []
             for batch_train_idx, (xb, yb, _) in enumerate(train_loader):
-
+                
                 # print("Batch loaded")
-                xb, yb = xb.to(self.device, non_blocking=True), yb.long().to(
-                    self.device, non_blocking=True
-                )
-
+                # xb, yb = xb.to(self.device, non_blocking=True), yb.long().to(
+                #     self.device, non_blocking=True
+                # )
+                # xb, yb = xb.to(self.device, non_blocking=True), yb.float().to(
+                #     self.device, non_blocking=True
+                # )
+                xb = xb.to(self.device, non_blocking=True)
+                
+                if self.prediction_task == "classification":
+                    yb = yb.long().to(self.device, non_blocking=True)
+                else:
+                    yb = yb.float().to(self.device, non_blocking=True)
+        
                 # print("Moved to device")
                 self.optimizer.zero_grad()
                 preds = self.model(xb)
+                if self.prediction_task == "classification":
+                    preds = preds#.argmax(dim=1)
+                else:
+                    preds = preds.squeeze(1)
+                
                 loss = self.criterion(preds, yb)
 
                 loss.backward()
@@ -267,29 +298,34 @@ class TorchPipeline:
                 # print("Forward + Bakcward done")
                 self.optimizer.step()
 
+                epoch_losses.append(loss.item())
                 y_true = yb.cpu().detach().numpy()
-                y_pred = preds.argmax(dim=1).cpu().detach().numpy()
-
-                metrics = {
-                    "accuracy": accuracy_score(y_true, y_pred),
-                    "precision": precision_score(
-                        y_true, y_pred, average=self.average, zero_division="warn"
-                    ),
-                    "recall": recall_score(
-                        y_true, y_pred, average=self.average, zero_division="warn"
-                    ),
-                    "f1": f1_score(
-                        y_true, y_pred, average=self.average, zero_division="warn"
-                    ),
-                    # "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
-                }
+                # y_pred = preds.argmax(dim=1).cpu().detach().numpy()
+                if self.prediction_task == "classification":
+                    y_pred = preds.argmax(dim=1).cpu().detach().numpy()
+                else:
+                    y_pred = preds.cpu().detach().numpy()
+                metrics = compute_metrics(y_true, y_pred, self.prediction_task)
+                # metrics = {
+                #     "accuracy": accuracy_score(y_true, y_pred),
+                #     "precision": precision_score(
+                #         y_true, y_pred, average=self.average, zero_division="warn"
+                #     ),
+                #     "recall": recall_score(
+                #         y_true, y_pred, average=self.average, zero_division="warn"
+                #     ),
+                #     "f1": f1_score(
+                #         y_true, y_pred, average=self.average, zero_division="warn"
+                #     ),
+                #     # "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
+                # }
                 self.history["train"]["epoch"].append(epoch)
                 self.history["train"]["batch"].append(batch_train_idx)
                 self.history["train"]["loss"].append(loss.item())
                 self.history["train"]["metrics"].append(metrics)
 
                 # ############### VALIDATION ##############
-                # print(f"Epoch {epoch+1}, Loss: {total_loss/len(train_loader):.4f}")
+                # print(f"Epoch {epoch+1}, Loss: {loss/len(train_loader):.4f}")
                 if batch_train_idx % 10 == 0:
                     self.model.eval()
                     y_true = []
@@ -298,35 +334,49 @@ class TorchPipeline:
                     with torch.no_grad():
                         for batch_val_idx, (xb, yb, _) in enumerate(val_loader):
                             print(f"Val: batch {batch_val_idx}")
-                            xb, yb = xb.to(
-                                self.device, non_blocking=True
-                            ), yb.long().to(self.device, non_blocking=True)
+                            # xb, yb = xb.to(
+                            #     self.device, non_blocking=True
+                            # ), yb.long().to(self.device, non_blocking=True)
+                            xb = xb.to(self.device, non_blocking=True)
+                
+                            if self.prediction_task == "classification":
+                                yb = yb.long().to(self.device, non_blocking=True)
+                            else:
+                                yb = yb.float().to(self.device, non_blocking=True)
 
                             preds = self.model(xb)
+                            if self.prediction_task == "classification":
+                                preds = preds#.argmax(dim=1) # Remove the argmax for classification. Done in the cross entropy loss
+                            else:
+                                preds = preds.squeeze(1)
                             loss = self.criterion(preds, yb)
                             val_loss += loss.item()
 
                             y_true.append(yb.cpu().numpy())
-                            y_pred.append(preds.argmax(dim=1).cpu().numpy())
-
+                            # y_pred.append(preds.argmax(dim=1).cpu().numpy())
+                            if self.prediction_task == "classification":
+                                y_pred.append(preds.argmax(dim=1).cpu().detach().numpy())
+                            else:
+                                y_pred.append(preds.cpu().detach().numpy())
+                            
                     val_loss /= len(val_loader)
 
                     y_true = np.concatenate(y_true)
                     y_pred = np.concatenate(y_pred)
-
-                    metrics = {
-                        "accuracy": accuracy_score(y_true, y_pred),
-                        "precision": precision_score(
-                            y_true, y_pred, average=self.average, zero_division="warn"
-                        ),
-                        "recall": recall_score(
-                            y_true, y_pred, average=self.average, zero_division="warn"
-                        ),
-                        "f1": f1_score(
-                            y_true, y_pred, average=self.average, zero_division="warn"
-                        ),
-                        # "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
-                    }
+                    metrics = compute_metrics(y_true, y_pred, self.prediction_task)
+                    # metrics = {
+                    #     "accuracy": accuracy_score(y_true, y_pred),
+                    #     "precision": precision_score(
+                    #         y_true, y_pred, average=self.average, zero_division="warn"
+                    #     ),
+                    #     "recall": recall_score(
+                    #         y_true, y_pred, average=self.average, zero_division="warn"
+                    #     ),
+                    #     "f1": f1_score(
+                    #         y_true, y_pred, average=self.average, zero_division="warn"
+                    #     ),
+                    #     # "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
+                    # }
                     self.history["val"]["epoch"].append(epoch)
                     self.history["val"]["batch_train_idx"].append(batch_train_idx)
                     self.history["val"]["loss"].append(val_loss)
@@ -338,9 +388,12 @@ class TorchPipeline:
                     # )
                     self.model.train()
 
-                self.scheduler.step()  # For one cycle scheduler
-            # self.scheduler.step(val_loss)
-        plot_history_from_file(self.history, self.fold_idx, self.run_id)
+                # self.scheduler.step()  # For one cycle scheduler
+            self.scheduler.step()
+
+            print(f"Epoch {epoch}: Training loss {np.mean(epoch_losses)} - Val Loss: {val_loss}")
+
+        plot_history_from_file(self.history, self.fold_idx, self.run_id, self.prediction_task)
         self.logger.save_checkpoint(self.model, self.epochs, 0, is_last=True)
         self.logger.save_logs()
         self._save_logs(
@@ -373,8 +426,12 @@ class TorchPipeline:
                 # xb = xb.unsqueeze(1) # REMOVE FOR THE 2DCNN
                 xb = xb.to(self.device)
                 logits = self.model(xb)
-                preds = torch.argmax(logits, dim=1)
-                preds_all.append(preds.cpu())
+                # preds = torch.argmax(logits, dim=1)
+                if self.prediction_task == "classification":
+                    preds = logits.argmax(dim=1).cpu().detach()
+                else:
+                    preds = logits.squeeze(1).cpu().detach()
+                preds_all.append(preds) #.cpu())
         return torch.cat(preds_all).numpy()
 
 
@@ -531,9 +588,8 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MultipleLocator
 
-
 # def plot_history_from_file(path="history.json", save_path="training_history.pdf"):
-def plot_history_from_file(history, fold_idx, run_id):
+def plot_history_from_file(history, fold_idx, run_id, prediction_task):
     """
     Plots training and validation curves (loss + accuracy) with epochs on the x-axis.
     Infers steps_per_epoch and validation interval automatically from history.
@@ -553,62 +609,123 @@ def plot_history_from_file(history, fold_idx, run_id):
         e + i / steps_per_epoch
         for e, i in zip(history["val"]["epoch"], history["val"]["batch_train_idx"])
     ]
+    
+    epochs = sorted(set(history["train"]["epoch"]))
 
     # METRICS
     # --- Accuracy ---
-    train_acc = [m["accuracy"] for m in history["train"]["metrics"]]
-    val_acc = [m["accuracy"] for m in history["val"]["metrics"]]
+    if prediction_task == "classification":
+        train_acc = [m["accuracy"] for m in history["train"]["metrics"]]
+        val_acc = [m["accuracy"] for m in history["val"]["metrics"]]
 
-    train_prec = [m["precision"] for m in history["train"]["metrics"]]
-    val_prec = [m["precision"] for m in history["val"]["metrics"]]
-    train_rec = [m["recall"] for m in history["train"]["metrics"]]
-    val_rec = [m["recall"] for m in history["val"]["metrics"]]
+        train_prec = [m["precision"] for m in history["train"]["metrics"]]
+        val_prec = [m["precision"] for m in history["val"]["metrics"]]
+        train_rec = [m["recall"] for m in history["train"]["metrics"]]
+        val_rec = [m["recall"] for m in history["val"]["metrics"]]
 
-    train_f1 = [m["f1"] for m in history["train"]["metrics"]]
-    val_f1 = [m["f1"] for m in history["val"]["metrics"]]
+        train_f1 = [m["f1"] for m in history["train"]["metrics"]]
+        val_f1 = [m["f1"] for m in history["val"]["metrics"]]
 
-    epochs = sorted(set(history["train"]["epoch"]))
+        train_epoch_acc = [
+            np.mean(
+                [acc for e, acc in zip(history["train"]["epoch"], train_acc) if e == ep]
+            )
+            for ep in epochs
+        ]
+        val_epoch_acc = [
+            np.mean([acc for e, acc in zip(history["val"]["epoch"], val_acc) if e == ep])
+            for ep in epochs
+        ]
 
-    train_epoch_acc = [
-        np.mean(
-            [acc for e, acc in zip(history["train"]["epoch"], train_acc) if e == ep]
-        )
-        for ep in epochs
-    ]
-    val_epoch_acc = [
-        np.mean([acc for e, acc in zip(history["val"]["epoch"], val_acc) if e == ep])
-        for ep in epochs
-    ]
+        train_epoch_prec = [
+            np.mean(
+                [acc for e, acc in zip(history["train"]["epoch"], train_prec) if e == ep]
+            )
+            for ep in epochs
+        ]
+        val_epoch_prec = [
+            np.mean([acc for e, acc in zip(history["val"]["epoch"], val_prec) if e == ep])
+            for ep in epochs
+        ]
+        train_epoch_rec = [
+            np.mean(
+                [acc for e, acc in zip(history["train"]["epoch"], train_rec) if e == ep]
+            )
+            for ep in epochs
+        ]
+        val_epoch_rec = [
+            np.mean([acc for e, acc in zip(history["val"]["epoch"], val_rec) if e == ep])
+            for ep in epochs
+        ]
 
-    train_epoch_prec = [
-        np.mean(
-            [acc for e, acc in zip(history["train"]["epoch"], train_prec) if e == ep]
-        )
-        for ep in epochs
-    ]
-    val_epoch_prec = [
-        np.mean([acc for e, acc in zip(history["val"]["epoch"], val_prec) if e == ep])
-        for ep in epochs
-    ]
-    train_epoch_rec = [
-        np.mean(
-            [acc for e, acc in zip(history["train"]["epoch"], train_rec) if e == ep]
-        )
-        for ep in epochs
-    ]
-    val_epoch_rec = [
-        np.mean([acc for e, acc in zip(history["val"]["epoch"], val_rec) if e == ep])
-        for ep in epochs
-    ]
+        train_epoch_f1 = [
+            np.mean([acc for e, acc in zip(history["train"]["epoch"], train_f1) if e == ep])
+            for ep in epochs
+        ]
+        val_epoch_f1 = [
+            np.mean([acc for e, acc in zip(history["val"]["epoch"], val_f1) if e == ep])
+            for ep in epochs
+        ]
+    elif prediction_task == "regression":
+        train_mse = [m["mse"] for m in history["train"]["metrics"]]
+        val_mse = [m["mse"] for m in history["val"]["metrics"]]
 
-    train_epoch_f1 = [
-        np.mean([acc for e, acc in zip(history["train"]["epoch"], train_f1) if e == ep])
-        for ep in epochs
-    ]
-    val_epoch_f1 = [
-        np.mean([acc for e, acc in zip(history["val"]["epoch"], val_f1) if e == ep])
-        for ep in epochs
-    ]
+        train_epoch_mse = [
+            np.mean(
+                [mse for e, mse in zip(history["train"]["epoch"], train_mse) if e == ep]
+            )
+            for ep in epochs
+        ]
+        val_epoch_mse = [
+            np.mean([mse for e, mse in zip(history["val"]["epoch"], val_mse) if e == ep])
+            for ep in epochs
+        ]
+        train_r2 = [m["r2"] for m in history["train"]["metrics"]]
+        val_r2 = [m["r2"] for m in history["val"]["metrics"]]
+        train_epoch_r2 = [
+            np.mean(
+                [r2 for e, r2 in zip(history["train"]["epoch"], train_r2) if e == ep]
+            )
+            for ep in epochs
+        ]
+        val_epoch_r2 = [
+            np.mean([r2 for e, r2 in zip(history["val"]["epoch"], val_r2) if e == ep])
+            for ep in epochs
+        ]
+        train_explained_variance = [m["explained_variance"] for m in history["train"]["metrics"]]
+        val_explained_variance = [m["explained_variance"] for m in history["val"]["metrics"]]
+        train_epoch_explained_variance = [
+            np.mean(
+                [
+                    ev
+                    for e, ev in zip(history["train"]["epoch"], train_explained_variance)
+                    if e == ep
+                ]
+            )
+            for ep in epochs
+        ]
+        val_epoch_explained_variance = [
+            np.mean(
+                [
+                    ev
+                    for e, ev in zip(history["val"]["epoch"], val_explained_variance)
+                    if e == ep
+                ]
+            )
+            for ep in epochs
+        ]
+        train_mape = [m["mape"] for m in history["train"]["metrics"]]
+        val_mape = [m["mape"] for m in history["val"]["metrics"]]
+        train_epoch_mape = [
+            np.mean(
+                [mape for e, mape in zip(history["train"]["epoch"], train_mape) if e == ep]
+            )
+            for ep in epochs
+        ]
+        val_epoch_mape = [
+            np.mean([mape for e, mape in zip(history["val"]["epoch"], val_mape) if e == ep])
+            for ep in epochs
+        ]
 
     # --- Create figure with 2 subplots ---
     _, axes = plt.subplots(2, 2, figsize=(20, 10))
@@ -638,133 +755,237 @@ def plot_history_from_file(history, fold_idx, run_id):
     ax.legend()
     num_epochs = max(history["train"]["epoch"]) + 1
     ax.set_xlim(0, num_epochs)
-    ax.set_ylim(0, 1)
+    if prediction_task == "classification":
+        ax = axes[0, 1]
+        # ax.plot(
+        #     train_x,
+        #     train_acc,
+        #     "b-",
+        #     alpha=0.7,
+        #     linewidth=1.5,
+        #     label="Training",
+        # )
+        ax.plot(
+            epochs,
+            train_epoch_acc,
+            "b-",
+            markersize=5,
+            markeredgewidth=1.5,
+            label="Training",
+        )
 
-    ax = axes[0, 1]
-    # ax.plot(
-    #     train_x,
-    #     train_acc,
-    #     "b-",
-    #     alpha=0.7,
-    #     linewidth=1.5,
-    #     label="Training",
-    # )
-    ax.plot(
-        epochs,
-        train_epoch_acc,
-        "b-",
-        markersize=5,
-        markeredgewidth=1.5,
-        label="Training",
-    )
+        # ax.plot(
+        #     val_x,
+        #     val_acc,
+        #     "r-",
+        #     alpha=0.7,
+        #     linewidth=2,
+        #     label="Validation",
+        # )
+        ax.plot(
+            epochs,
+            val_epoch_acc,
+            "r-",
+            markersize=5,
+            markeredgewidth=1.5,
+            label="Validation",
+        )
 
-    # ax.plot(
-    #     val_x,
-    #     val_acc,
-    #     "r-",
-    #     alpha=0.7,
-    #     linewidth=2,
-    #     label="Validation",
-    # )
-    ax.plot(
-        epochs,
-        val_epoch_acc,
-        "r-",
-        markersize=5,
-        markeredgewidth=1.5,
-        label="Validation",
-    )
+        ax.set_xlabel("Epochs")
+        ax.set_ylabel("Accuracy")
+        ax.set_title(
+            f"Accuracy\n({steps_per_epoch} steps/epoch, validation every 10 steps)"
+        )
+        ax.legend()
+        ax.set_xlim(0, num_epochs)
+        ax.set_ylim(0, 1)
+        ax.xaxis.set_major_locator(MultipleLocator(2))
+        ax.yaxis.set_major_locator(MultipleLocator(0.05))
+        ax.grid(True)
 
-    ax.set_xlabel("Epochs")
-    ax.set_ylabel("Accuracy")
-    ax.set_title(
-        f"Accuracy\n({steps_per_epoch} steps/epoch, validation every 10 steps)"
-    )
-    ax.legend()
-    ax.set_xlim(0, num_epochs)
-    ax.set_ylim(0, 1)
-    ax.xaxis.set_major_locator(MultipleLocator(2))
-    ax.yaxis.set_major_locator(MultipleLocator(0.05))
-    ax.grid(True)
+        ax = axes[1, 0]
+        ax.plot(
+            epochs,
+            train_epoch_prec,
+            "b-",
+            alpha=0.7,
+            linewidth=1.5,
+            label="Training precision",
+        )
+        ax.plot(
+            epochs,
+            train_epoch_rec,
+            "b--",
+            alpha=0.7,
+            linewidth=1.5,
+            label="Training recall",
+        )
 
-    ax = axes[1, 0]
-    ax.plot(
-        epochs,
-        train_epoch_prec,
-        "b-",
-        alpha=0.7,
-        linewidth=1.5,
-        label="Training precision",
-    )
-    ax.plot(
-        epochs,
-        train_epoch_rec,
-        "b--",
-        alpha=0.7,
-        linewidth=1.5,
-        label="Training recall",
-    )
+        ax.plot(
+            epochs,
+            val_epoch_prec,
+            "r-",
+            alpha=0.7,
+            linewidth=2,
+            label="Validation precision",
+        )
+        ax.plot(
+            epochs,
+            val_epoch_rec,
+            "r--",
+            alpha=0.7,
+            linewidth=2,
+            label="Validation recall",
+        )
 
-    ax.plot(
-        epochs,
-        val_epoch_prec,
-        "r-",
-        alpha=0.7,
-        linewidth=2,
-        label="Validation precision",
-    )
-    ax.plot(
-        epochs,
-        val_epoch_rec,
-        "r--",
-        alpha=0.7,
-        linewidth=2,
-        label="Validation recall",
-    )
+        ax.set_xlabel("Epochs")
+        ax.set_ylabel("Precision/Recall")
+        ax.set_title(
+            f"Precision/Recall\n({steps_per_epoch} steps/epoch, validation every 10 steps)"
+        )
+        ax.legend()
+        ax.set_xlim(0, num_epochs)
+        ax.set_ylim(0, 1)
+        ax.xaxis.set_major_locator(MultipleLocator(2))
+        ax.yaxis.set_major_locator(MultipleLocator(0.05))
+        ax.grid(True)
 
-    ax.set_xlabel("Epochs")
-    ax.set_ylabel("Precision/Recall")
-    ax.set_title(
-        f"Precision/Recall\n({steps_per_epoch} steps/epoch, validation every 10 steps)"
-    )
-    ax.legend()
-    ax.set_xlim(0, num_epochs)
-    ax.set_ylim(0, 1)
-    ax.xaxis.set_major_locator(MultipleLocator(2))
-    ax.yaxis.set_major_locator(MultipleLocator(0.05))
-    ax.grid(True)
+        ax = axes[1, 1]
+        ax.plot(
+            epochs,
+            train_epoch_f1,
+            "b-",
+            alpha=0.7,
+            linewidth=1.5,
+            label="Training",
+        )
 
-    ax = axes[1, 1]
-    ax.plot(
-        epochs,
-        train_epoch_f1,
-        "b-",
-        alpha=0.7,
-        linewidth=1.5,
-        label="Training",
-    )
+        ax.plot(
+            epochs,
+            val_epoch_f1,
+            "r-",
+            alpha=0.7,
+            linewidth=2,
+            label="Validation",
+        )
 
-    ax.plot(
-        epochs,
-        val_epoch_f1,
-        "r-",
-        alpha=0.7,
-        linewidth=2,
-        label="Validation",
-    )
+        ax.set_xlabel("Epochs")
+        ax.set_ylabel("F1 score")
+        ax.set_title(
+            f"F1 score\n({steps_per_epoch} steps/epoch, validation every 10 steps)"
+        )
+        ax.legend()
+        ax.set_xlim(0, num_epochs)
+        ax.set_ylim(0, 1)
+        ax.xaxis.set_major_locator(MultipleLocator(2))
+        ax.yaxis.set_major_locator(MultipleLocator(0.05))
+        ax.grid(True)
 
-    ax.set_xlabel("Epochs")
-    ax.set_ylabel("F1 score")
-    ax.set_title(
-        f"F1 score\n({steps_per_epoch} steps/epoch, validation every 10 steps)"
-    )
-    ax.legend()
-    ax.set_xlim(0, num_epochs)
-    ax.set_ylim(0, 1)
-    ax.xaxis.set_major_locator(MultipleLocator(2))
-    ax.yaxis.set_major_locator(MultipleLocator(0.05))
-    ax.grid(True)
+        plt.tight_layout()
+        plt.savefig(f"history_{fold_idx}_{run_id}.png")
+        plt.show()
+    elif prediction_task == "regression":
+        ax = axes[0, 1]
+        ax.plot(
+            epochs,
+            train_epoch_mse,
+            "b-",
+            markersize=5,
+            markeredgewidth=1.5,
+            label="Training MSE",
+        )
 
-    plt.tight_layout()
-    plt.savefig(f"history_{fold_idx}_{run_id}.png")
-    plt.show()
+        ax.plot(
+            epochs,
+            val_epoch_mse,
+            "b--",
+            markersize=5,
+            markeredgewidth=1.5,
+            label="Validation MSE",
+        )
+        
+        ax.plot(
+            epochs,
+            train_epoch_mape,
+            "r-",
+            alpha=0.7,
+            linewidth=2,
+            label="Training MAPE",
+        )
+        ax.plot(
+            epochs,
+            val_epoch_mape,
+            "r--",
+            alpha=0.7,
+            linewidth=2,
+            label="Validation MAPE",
+        )
+
+        ax.set_xlabel("Epochs")
+        ax.set_ylabel("MSE and MAPE")
+        ax.set_yscale("log")
+        ax.set_title(
+            f"MSE and MAPE\n({steps_per_epoch} steps/epoch, validation every 10 steps)"
+        )
+        ax.legend()
+        ax.set_xlim(0, num_epochs)
+
+        ax = axes[1, 0]
+        ax.plot(
+            epochs,
+            train_epoch_r2,
+            "b-",
+            alpha=0.7,
+            linewidth=1.5,
+            label="Training",
+        )
+        ax.plot(
+            epochs,
+            val_epoch_r2,
+            "r-",
+            alpha=0.7,
+            linewidth=2,
+            label="Validation",
+        )
+
+        ax.set_xlabel("Epochs")
+        ax.set_ylabel("R2 Score")
+        ax.set_title(
+            f"R2 Score\n({steps_per_epoch} steps/epoch, validation every 10 steps)"
+        )
+        ax.legend()
+        ax.set_xlim(0, num_epochs)
+        ax.set_ylim(-50, 5)
+        
+        ax = axes[1, 1]
+        ax.plot(
+            epochs,
+            train_epoch_explained_variance,
+            "b-",
+            alpha=0.7,
+            linewidth=1.5,
+            label="Training",
+        )
+        ax.plot(
+            epochs,
+            val_epoch_explained_variance,
+            "r-",
+            alpha=0.7,
+            linewidth=2,
+            label="Validation",
+        )
+        ax.set_xlabel("Epochs")
+        ax.set_ylabel("Explained Variance")
+        ax.set_title(
+            f"Explained Variance\n({steps_per_epoch} steps/epoch, validation every 10 steps)"
+        )
+        ax.legend()
+        ax.set_xlim(0, num_epochs)
+        ax.set_ylim(0, 1)
+        ax.xaxis.set_major_locator(MultipleLocator(2))
+        ax.yaxis.set_major_locator(MultipleLocator(0.05))
+        ax.grid(True)
+
+        plt.tight_layout()
+        plt.savefig(f"history_{fold_idx}_{run_id}.png")
+        plt.show()

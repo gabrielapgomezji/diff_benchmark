@@ -27,6 +27,7 @@ class DummyRegressor(NumpyAbstractModel):
     """
 
     data_type = "array"
+    prediction_task = None
 
     def __init__(self):
         self.prediction_ = None
@@ -96,6 +97,7 @@ class DummyClassifier(NumpyAbstractModel):
     """
 
     data_type = "array"
+    prediction_task = None
 
     def __init__(self):
         self.class_ = None

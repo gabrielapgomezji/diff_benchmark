@@ -1,0 +1,11 @@
+# ==============================
+# MODEL CONFIGURATION
+# ==============================
+pretrain_path: /data/parietal/store3/work/ggomezji/projects/diff_benchmark/MedicalNet_pytorch_files2/pretrain/resnet_10.pth
+
+models:
+- name: pca_forest
+  params:
+    name: pca_forest
+    comment: PCA random forest regression. Testing new dataloader
+    batch_size: 32

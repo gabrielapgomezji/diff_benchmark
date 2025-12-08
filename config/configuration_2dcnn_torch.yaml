@@ -15,159 +15,159 @@ models:
     pretrained: true
     freeze_backbone: true
     trainable_blocks: 1
-    epochs: 50
-    batch_size: 8
-    dropout: 0.5
-    learning_rate: 1.0e-07
-    weight_decay: 0.01
-    max_lr: 3.0e-5
-    pct_start: 0.2
-- name: 2dcnn_torch
-  params:
-    name: 2dcnn_torch
-    comment: Reproducing with new pipeline eith correct optimizer and scheduler. With weights
-    input_slices: 145
-    num_classes: 2
-    device: cuda
-    dtype: none
-    pretrained: true
-    freeze_backbone: true
-    trainable_blocks: 1
-    epochs: 50
+    epochs: 20
     batch_size: 64
-    dropout: 0.5
-    learning_rate: 1.0e-07
-    weight_decay: 0.01
-    max_lr: 3.0e-5
+    dropout: 0 #.15
+    learning_rate: 1.0e-4
+    weight_decay: 0 #0.0001
+    max_lr: 1e-2
     pct_start: 0.2
-- name: 2dcnn_torch
-  params:
-    name: 2dcnn_torch
-    comment: Reproducing with new pipeline eith correct optimizer and scheduler. With weights
-    input_slices: 145
-    num_classes: 2
-    device: cuda
-    dtype: none
-    pretrained: true
-    freeze_backbone: true
-    trainable_blocks: 1
-    epochs: 50
-    batch_size: 128
-    dropout: 0.5
-    learning_rate: 1.0e-07
-    weight_decay: 0.01
-    max_lr: 3.0e-5
-    pct_start: 0.2
-###### pct_start
-- name: 2dcnn_torch
-  params:
-    name: 2dcnn_torch
-    comment: Reproducing with new pipeline eith correct optimizer and scheduler. With weights
-    input_slices: 145
-    num_classes: 2
-    device: cuda
-    dtype: none
-    pretrained: true
-    freeze_backbone: true
-    trainable_blocks: 1
-    epochs: 50
-    batch_size: 32
-    dropout: 0.5
-    learning_rate: 1.0e-07
-    weight_decay: 0.01
-    max_lr: 3.0e-6
-    pct_start: 0.1
-- name: 2dcnn_torch
-  params:
-    name: 2dcnn_torch
-    comment: Reproducing with new pipeline eith correct optimizer and scheduler. With weights
-    input_slices: 145
-    num_classes: 2
-    device: cuda
-    dtype: none
-    pretrained: true
-    freeze_backbone: true
-    trainable_blocks: 1
-    epochs: 50
-    batch_size: 64
-    dropout: 0.5
-    learning_rate: 1.0e-07
-    weight_decay: 0.01
-    max_lr: 3.0e-6
-    pct_start: 0.1
-- name: 2dcnn_torch
-  params:
-    name: 2dcnn_torch
-    comment: Reproducing with new pipeline eith correct optimizer and scheduler. With weights
-    input_slices: 145
-    num_classes: 2
-    device: cuda
-    dtype: none
-    pretrained: true
-    freeze_backbone: true
-    trainable_blocks: 1
-    epochs: 50
-    batch_size: 128
-    dropout: 0.5
-    learning_rate: 1.0e-07
-    weight_decay: 0.01
-    max_lr: 3.0e-6
-    pct_start: 0.1
-- name: 2dcnn_torch
-  params:
-    name: 2dcnn_torch
-    comment: Reproducing with new pipeline eith correct optimizer and scheduler. With weights
-    input_slices: 145
-    num_classes: 2
-    device: cuda
-    dtype: none
-    pretrained: true
-    freeze_backbone: true
-    trainable_blocks: 1
-    epochs: 50
-    batch_size: 32
-    dropout: 0.5
-    learning_rate: 1.0e-08
-    weight_decay: 0.01
-    max_lr: 3.0e-6
-    pct_start: 0.3
-- name: 2dcnn_torch
-  params:
-    name: 2dcnn_torch
-    comment: Reproducing with new pipeline eith correct optimizer and scheduler. With weights
-    input_slices: 145
-    num_classes: 2
-    device: cuda
-    dtype: none
-    pretrained: true
-    freeze_backbone: true
-    trainable_blocks: 1
-    epochs: 50
-    batch_size: 64
-    dropout: 0.5
-    learning_rate: 1.0e-08
-    weight_decay: 0.01
-    max_lr: 3.0e-6
-    pct_start: 0.3
-- name: 2dcnn_torch
-  params:
-    name: 2dcnn_torch
-    comment: Reproducing with new pipeline eith correct optimizer and scheduler. With weights
-    input_slices: 145
-    num_classes: 2
-    device: cuda
-    dtype: none
-    pretrained: true
-    freeze_backbone: true
-    trainable_blocks: 1
-    epochs: 50
-    batch_size: 128
-    dropout: 0.5
-    learning_rate: 1.0e-08
-    weight_decay: 0.01
-    max_lr: 3.0e-6
-    pct_start: 0.3
-#### dropout
+# - name: 2dcnn_torch
+#   params:
+#     name: 2dcnn_torch
+#     comment: Reproducing with new pipeline eith correct optimizer and scheduler. With weights
+#     input_slices: 145
+#     num_classes: 2
+#     device: cuda
+#     dtype: none
+#     pretrained: true
+#     freeze_backbone: true
+#     trainable_blocks: 1
+#     epochs: 50
+#     batch_size: 64
+#     dropout: 0 #0.5
+#     learning_rate: 1.0e-03
+#     weight_decay: 0.01
+#     max_lr: 3.0e-5
+#     pct_start: 0.2
+# - name: 2dcnn_torch
+#   params:
+#     name: 2dcnn_torch
+#     comment: Reproducing with new pipeline eith correct optimizer and scheduler. With weights
+#     input_slices: 145
+#     num_classes: 2
+#     device: cuda
+#     dtype: none
+#     pretrained: true
+#     freeze_backbone: true
+#     trainable_blocks: 1
+#     epochs: 50
+#     batch_size: 128
+#     dropout: 0 #0.5
+#     learning_rate: 1.0e-03
+#     weight_decay: 0.01
+#     max_lr: 3.0e-5
+#     pct_start: 0.2
+# ###### pct_start
+# - name: 2dcnn_torch
+#   params:
+#     name: 2dcnn_torch
+#     comment: Reproducing with new pipeline eith correct optimizer and scheduler. With weights
+#     input_slices: 145
+#     num_classes: 2
+#     device: cuda
+#     dtype: none
+#     pretrained: true
+#     freeze_backbone: true
+#     trainable_blocks: 1
+#     epochs: 50
+#     batch_size: 32
+#     dropout: 0 #0.5
+#     learning_rate: 1.0e-03
+#     weight_decay: 0.01
+#     max_lr: 3.0e-5
+#     pct_start: 0.1
+# - name: 2dcnn_torch
+#   params:
+#     name: 2dcnn_torch
+#     comment: Reproducing with new pipeline eith correct optimizer and scheduler. With weights
+#     input_slices: 145
+#     num_classes: 2
+#     device: cuda
+#     dtype: none
+#     pretrained: true
+#     freeze_backbone: true
+#     trainable_blocks: 1
+#     epochs: 50
+#     batch_size: 64
+#     dropout: 0 #0.5
+#     learning_rate: 1.0e-03
+#     weight_decay: 0.01
+#     max_lr: 3.0e-5
+#     pct_start: 0.1
+# - name: 2dcnn_torch
+#   params:
+#     name: 2dcnn_torch
+#     comment: Reproducing with new pipeline eith correct optimizer and scheduler. With weights
+#     input_slices: 145
+#     num_classes: 2
+#     device: cuda
+#     dtype: none
+#     pretrained: true
+#     freeze_backbone: true
+#     trainable_blocks: 1
+#     epochs: 50
+#     batch_size: 128
+#     dropout: 0 #0.5
+#     learning_rate: 1.0e-03
+#     weight_decay: 0.01
+#     max_lr: 3.0e-5
+#     pct_start: 0.1
+# - name: 2dcnn_torch
+#   params:
+#     name: 2dcnn_torch
+#     comment: Reproducing with new pipeline eith correct optimizer and scheduler. With weights
+#     input_slices: 145
+#     num_classes: 2
+#     device: cuda
+#     dtype: none
+#     pretrained: true
+#     freeze_backbone: true
+#     trainable_blocks: 1
+#     epochs: 50
+#     batch_size: 32
+#     dropout: 0 #0.5
+#     learning_rate: 1.0e-03
+#     weight_decay: 0.01
+#     max_lr: 3.0e-5
+#     pct_start: 0.3
+# - name: 2dcnn_torch
+#   params:
+#     name: 2dcnn_torch
+#     comment: Reproducing with new pipeline eith correct optimizer and scheduler. With weights
+#     input_slices: 145
+#     num_classes: 2
+#     device: cuda
+#     dtype: none
+#     pretrained: true
+#     freeze_backbone: true
+#     trainable_blocks: 1
+#     epochs: 50
+#     batch_size: 64
+#     dropout: 0 #0.5
+#     learning_rate: 1.0e-03
+#     weight_decay: 0.01
+#     max_lr: 3.0e-5
+#     pct_start: 0.3
+# - name: 2dcnn_torch
+#   params:
+#     name: 2dcnn_torch
+#     comment: Reproducing with new pipeline eith correct optimizer and scheduler. With weights
+#     input_slices: 145
+#     num_classes: 2
+#     device: cuda
+#     dtype: none
+#     pretrained: true
+#     freeze_backbone: true
+#     trainable_blocks: 1
+#     epochs: 50
+#     batch_size: 128
+#     dropout: 0 #0.5
+#     learning_rate: 1.0e-03
+#     weight_decay: 0.01
+#     max_lr: 3.0e-5
+#     pct_start: 0.3
+# #### dropout
 # - name: 2dcnn_torch
 #   params:
 #     name: 2dcnn_torch
@@ -308,9 +308,9 @@ models:
 #     epochs: 50
 #     batch_size: 64
 #     dropout: 0.25 #0.5
-#     learning_rate: 1.0e-07
+#     learning_rate: 1.0e-03
 #     weight_decay: 0.01
-#     max_lr: 3.0e-6
+#     max_lr: 3.0e-5
 #     pct_start: 0.3
 # - name: 2dcnn_torch
 #   params:
