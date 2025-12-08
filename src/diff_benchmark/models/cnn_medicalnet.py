@@ -201,7 +201,7 @@ class ResNet(nn.Module):
                     num_classes is the number of output classes.
     """
 
-    def __init__(self, block, layers, num_classes, shortcut_type="B", no_cuda=False):
+    def __init__(self, block, layers, num_classes, prediction_task, shortcut_type="B", no_cuda=False):
         self.inplanes = 64
         self.no_cuda = no_cuda
         super().__init__()
@@ -223,7 +223,9 @@ class ResNet(nn.Module):
         )
 
         self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
+        self.prediction_task = prediction_task
+        out_dim = num_classes if prediction_task == "classification" else 1
+        self.fc = nn.Linear(512 * block.expansion, out_dim)
 
         for m in self.modules():
             if isinstance(m, nn.Conv3d):
@@ -490,21 +492,22 @@ class ResNet3DModel(TorchPipeline):
     data_type = "images"
 
     def _build_model(self, num_classes, model_depth=10, **kwargs):
+        prediction_task = kwargs.get("prediction_task", None)
         # model = resnet10(num_classes=num_classes)
         if model_depth == 10:
-            model = resnet10(num_classes=num_classes)
+            model = resnet10(num_classes=num_classes, prediction_task=prediction_task)
         elif model_depth == 18:
-            model = resnet18(num_classes=num_classes)
+            model = resnet18(num_classes=num_classes, prediction_task=prediction_task)
         elif model_depth == 34:
-            model = resnet34(num_classes=num_classes)
+            model = resnet34(num_classes=num_classes, prediction_task=prediction_task)
         elif model_depth == 50:
-            model = resnet50(num_classes=num_classes)
+            model = resnet50(num_classes=num_classes, prediction_task=prediction_task)
         elif model_depth == 101:
-            model = resnet101(num_classes=num_classes)
+            model = resnet101(num_classes=num_classes, prediction_task=prediction_task)
         elif model_depth == 152:
-            model = resnet152(num_classes=num_classes)
+            model = resnet152(num_classes=num_classes, prediction_task=prediction_task)
         elif model_depth == 200:
-            model = resnet200(num_classes=num_classes)
+            model = resnet200(num_classes=num_classes, prediction_task=prediction_task)
         else:
             raise ValueError(f"Unsupported ResNet depth: {model_depth}")
         model.collate_with_augmentation = collate_with_augmentation

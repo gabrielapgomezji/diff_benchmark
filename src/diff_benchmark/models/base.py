@@ -154,6 +154,9 @@ class TorchPipeline:
         # self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         #     self.optimizer, mode="min", factor=0.5, patience=10
         # )
+        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            self.optimizer, T_max=10, eta_min=0
+        )
         self.history = {
             "train": {"epoch": [], "batch": [], "loss": [], "metrics": [], "lr": []},
             "val": {
@@ -248,34 +251,46 @@ class TorchPipeline:
             mode="max",
         )
 
-        self.scheduler = torch.optim.lr_scheduler.OneCycleLR(
-            self.optimizer,
-            max_lr=self.max_lr,
-            epochs=self.epochs,
-            steps_per_epoch=len(train_loader),
-            anneal_strategy="cos",
-            pct_start=self.pct_start,
-            div_factor=3,  # 1.0e3, #10,
-            final_div_factor=1.0e5,  # 1.0e4,
-        )
+        # self.scheduler = torch.optim.lr_scheduler.OneCycleLR(
+        #     self.optimizer,
+        #     max_lr=self.max_lr,
+        #     epochs=self.epochs,
+        #     steps_per_epoch=len(train_loader),
+        #     anneal_strategy="cos",
+        #     pct_start=self.pct_start,
+        #     div_factor=3,  # 1.0e3, #10,
+        #     final_div_factor=1.0e5,  # 1.0e4,
+        # )
 
         print("Dataloaders created")
         for epoch in tqdm(range(self.epochs)):
 
             print(f"Epoch {epoch}")
+            epoch_losses = []
             for batch_train_idx, (xb, yb, _) in enumerate(train_loader):
-
+                
                 # print("Batch loaded")
                 # xb, yb = xb.to(self.device, non_blocking=True), yb.long().to(
                 #     self.device, non_blocking=True
                 # )
-                xb, yb = xb.to(self.device, non_blocking=True), yb.float().to(
-                    self.device, non_blocking=True
-                )
-
+                # xb, yb = xb.to(self.device, non_blocking=True), yb.float().to(
+                #     self.device, non_blocking=True
+                # )
+                xb = xb.to(self.device, non_blocking=True)
+                
+                if self.prediction_task == "classification":
+                    yb = yb.long().to(self.device, non_blocking=True)
+                else:
+                    yb = yb.float().to(self.device, non_blocking=True)
+        
                 # print("Moved to device")
                 self.optimizer.zero_grad()
                 preds = self.model(xb)
+                if self.prediction_task == "classification":
+                    preds = preds#.argmax(dim=1)
+                else:
+                    preds = preds.squeeze(1)
+                
                 loss = self.criterion(preds, yb)
 
                 loss.backward()
@@ -283,8 +298,13 @@ class TorchPipeline:
                 # print("Forward + Bakcward done")
                 self.optimizer.step()
 
+                epoch_losses.append(loss.item())
                 y_true = yb.cpu().detach().numpy()
-                y_pred = preds.argmax(dim=1).cpu().detach().numpy()
+                # y_pred = preds.argmax(dim=1).cpu().detach().numpy()
+                if self.prediction_task == "classification":
+                    y_pred = preds.argmax(dim=1).cpu().detach().numpy()
+                else:
+                    y_pred = preds.cpu().detach().numpy()
                 metrics = compute_metrics(y_true, y_pred, self.prediction_task)
                 # metrics = {
                 #     "accuracy": accuracy_score(y_true, y_pred),
@@ -305,7 +325,7 @@ class TorchPipeline:
                 self.history["train"]["metrics"].append(metrics)
 
                 # ############### VALIDATION ##############
-                # print(f"Epoch {epoch+1}, Loss: {total_loss/len(train_loader):.4f}")
+                # print(f"Epoch {epoch+1}, Loss: {loss/len(train_loader):.4f}")
                 if batch_train_idx % 10 == 0:
                     self.model.eval()
                     y_true = []
@@ -314,17 +334,31 @@ class TorchPipeline:
                     with torch.no_grad():
                         for batch_val_idx, (xb, yb, _) in enumerate(val_loader):
                             print(f"Val: batch {batch_val_idx}")
-                            xb, yb = xb.to(
-                                self.device, non_blocking=True
-                            ), yb.long().to(self.device, non_blocking=True)
+                            # xb, yb = xb.to(
+                            #     self.device, non_blocking=True
+                            # ), yb.long().to(self.device, non_blocking=True)
+                            xb = xb.to(self.device, non_blocking=True)
+                
+                            if self.prediction_task == "classification":
+                                yb = yb.long().to(self.device, non_blocking=True)
+                            else:
+                                yb = yb.float().to(self.device, non_blocking=True)
 
                             preds = self.model(xb)
+                            if self.prediction_task == "classification":
+                                preds = preds#.argmax(dim=1) # Remove the argmax for classification. Done in the cross entropy loss
+                            else:
+                                preds = preds.squeeze(1)
                             loss = self.criterion(preds, yb)
                             val_loss += loss.item()
 
                             y_true.append(yb.cpu().numpy())
-                            y_pred.append(preds.argmax(dim=1).cpu().numpy())
-
+                            # y_pred.append(preds.argmax(dim=1).cpu().numpy())
+                            if self.prediction_task == "classification":
+                                y_pred.append(preds.argmax(dim=1).cpu().detach().numpy())
+                            else:
+                                y_pred.append(preds.cpu().detach().numpy())
+                            
                     val_loss /= len(val_loader)
 
                     y_true = np.concatenate(y_true)
@@ -354,8 +388,11 @@ class TorchPipeline:
                     # )
                     self.model.train()
 
-                self.scheduler.step()  # For one cycle scheduler
-            # self.scheduler.step(val_loss)
+                # self.scheduler.step()  # For one cycle scheduler
+            self.scheduler.step()
+
+            print(f"Epoch {epoch}: Training loss {np.mean(epoch_losses)} - Val Loss: {val_loss}")
+
         plot_history_from_file(self.history, self.fold_idx, self.run_id, self.prediction_task)
         self.logger.save_checkpoint(self.model, self.epochs, 0, is_last=True)
         self.logger.save_logs()
@@ -389,8 +426,12 @@ class TorchPipeline:
                 # xb = xb.unsqueeze(1) # REMOVE FOR THE 2DCNN
                 xb = xb.to(self.device)
                 logits = self.model(xb)
-                preds = torch.argmax(logits, dim=1)
-                preds_all.append(preds.cpu())
+                # preds = torch.argmax(logits, dim=1)
+                if self.prediction_task == "classification":
+                    preds = logits.argmax(dim=1).cpu().detach()
+                else:
+                    preds = logits.squeeze(1).cpu().detach()
+                preds_all.append(preds) #.cpu())
         return torch.cat(preds_all).numpy()
 
 
@@ -546,7 +587,6 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
 
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MultipleLocator
-
 
 # def plot_history_from_file(path="history.json", save_path="training_history.pdf"):
 def plot_history_from_file(history, fold_idx, run_id, prediction_task):
@@ -883,6 +923,7 @@ def plot_history_from_file(history, fold_idx, run_id, prediction_task):
 
         ax.set_xlabel("Epochs")
         ax.set_ylabel("MSE and MAPE")
+        ax.set_yscale("log")
         ax.set_title(
             f"MSE and MAPE\n({steps_per_epoch} steps/epoch, validation every 10 steps)"
         )
@@ -914,6 +955,7 @@ def plot_history_from_file(history, fold_idx, run_id, prediction_task):
         )
         ax.legend()
         ax.set_xlim(0, num_epochs)
+        ax.set_ylim(-50, 5)
         
         ax = axes[1, 1]
         ax.plot(

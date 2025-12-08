@@ -77,7 +77,13 @@ class ResNet3SliceMultihead(nn.Module):
         # elif self.prediction_task is None:
         #     raise ValueError("prediction_task must be specified as 'classification' or 'regression'")
         else:
-            self.fc = nn.Linear(self.backbone.out_dim, 1)
+            # self.fc = nn.Linear(self.backbone.out_dim, 1)
+            self.fc = nn.Sequential(
+                nn.Linear(self.backbone.out_dim, 256),
+                nn.ReLU(),
+                self.dropout,
+                nn.Linear(256, 1),
+            )
 
         if freeze_backbone:
             for param in self.backbone.parameters():
@@ -117,6 +123,25 @@ class ResNet3SliceMultihead(nn.Module):
         out = self.fc(feats)  # (B, num_classes)
         return out
 
+def collate_with_augmentation(batch, transform=None):
+    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
+    xs, ys, gs = zip(*batch)  # separate batch components
+    xs_aug = []
+    for x in xs:  # x shape: (D,H,W)
+        slices = []
+        for i in range(x.shape[0]):
+            slice_2d = x[i, :, :].unsqueeze(0)  # (1,H,W)
+            if transform:
+                slice_2d = transform(slice_2d)
+            slices.append(slice_2d)
+        x_aug = torch.stack(slices, dim=0)  # (D,1,H,W)
+        x_aug = x_aug.permute(1, 0, 2, 3)  # (C=1,D,H,W)
+        xs_aug.append(x_aug)
+
+    xs_aug = torch.stack(xs_aug, dim=0)
+    ys = torch.stack(ys)
+    gs = torch.stack(gs)
+    return xs_aug.squeeze(1), ys, gs
 
 class CNNRegTorchTrainModel(TorchPipeline):
     """CNN Torch Train Model class inheriting from TorchPipeline."""
@@ -138,5 +163,8 @@ class CNNRegTorchTrainModel(TorchPipeline):
             trainable_blocks=trainable_blocks,
             prediction_task=prediction_task,
         )
-
+        model.collate_with_augmentation = collate_with_augmentation
+        model.std = 0.5
+        model.mean = 0.5
+        
         return model
