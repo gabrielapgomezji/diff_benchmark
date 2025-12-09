@@ -6,6 +6,8 @@ metric_to_compute: rtop
 scale: 1000     # Scale for Schaefer parcellation (options: 100–1000)
 big_delta: 0.0431
 small_delta: 0.0106
+big_delta_camcan: 0.024
+small_delta_camcan: 0.007
 big_delta_wand: 0.024
 small_delta_wand: 0.007
 random_state: 42
