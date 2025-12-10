@@ -31,8 +31,43 @@ from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
     resample_schaefer_onto_fs_lr,
     split_data,
 )
+import bids
 
-
+LABELS = {'???': 0, 'left-cerebral-white-matter': 2, 'left-lateral-ventricle': 4, 'left-inf-lat-vent': 5, 
+          'left-cerebellum-white-matter': 7, 'left-cerebellum-cortex': 8, 'left-thalamus-proper': 10, 
+          'left-caudate': 11, 'left-putamen': 12, 'left-pallidum': 13, '3rd-ventricle': 14, 
+          '4th-ventricle': 15, 'brain-stem': 16, 'left-hippocampus': 17, 'left-amygdala': 18, 'csf': 24, 
+          'left-accumbens-area': 26, 'left-ventraldc': 28, 'left-vessel': 30, 'left-choroid-plexus': 31, 
+          'right-cerebral-white-matter': 41, 'right-lateral-ventricle': 43, 'right-inf-lat-vent': 44, 
+          'right-cerebellum-white-matter': 46, 'right-cerebellum-cortex': 47, 'right-thalamus-proper': 49, 
+          'right-caudate': 50, 'right-putamen': 51, 'right-pallidum': 52, 'right-hippocampus': 53, 
+          'right-amygdala': 54, 'right-accumbens-area': 58, 'right-ventraldc': 60, 'right-vessel': 62, 
+          'right-choroid-plexus': 63, 'wm-hypointensities': 77, 'non-wm-hypointensities': 80, 
+          'optic-chiasm': 85, 'cc_posterior': 251, 'cc_mid_posterior': 252, 'cc_central': 253, 
+          'cc_mid_anterior': 254, 'cc_anterior': 255, 'ctx-lh-unknown': 1000, 'ctx-lh-bankssts': 1001, 
+          'ctx-lh-caudalanteriorcingulate': 1002, 'ctx-lh-caudalmiddlefrontal': 1003, 'ctx-lh-cuneus': 1005, 
+          'ctx-lh-entorhinal': 1006, 'ctx-lh-fusiform': 1007, 'ctx-lh-inferiorparietal': 1008, 
+          'ctx-lh-inferiortemporal': 1009, 'ctx-lh-isthmuscingulate': 1010, 'ctx-lh-lateraloccipital': 1011, 
+          'ctx-lh-lateralorbitofrontal': 1012, 'ctx-lh-lingual': 1013, 'ctx-lh-medialorbitofrontal': 1014, 
+          'ctx-lh-middletemporal': 1015, 'ctx-lh-parahippocampal': 1016, 'ctx-lh-paracentral': 1017, 
+          'ctx-lh-parsopercularis': 1018, 'ctx-lh-parsorbitalis': 1019, 'ctx-lh-parstriangularis': 1020, 
+          'ctx-lh-pericalcarine': 1021, 'ctx-lh-postcentral': 1022, 'ctx-lh-posteriorcingulate': 1023, 
+          'ctx-lh-precentral': 1024, 'ctx-lh-precuneus': 1025, 'ctx-lh-rostralanteriorcingulate': 1026, 
+          'ctx-lh-rostralmiddlefrontal': 1027, 'ctx-lh-superiorfrontal': 1028, 'ctx-lh-superiorparietal': 1029, 
+          'ctx-lh-superiortemporal': 1030, 'ctx-lh-supramarginal': 1031, 'ctx-lh-frontalpole': 1032, 
+          'ctx-lh-temporalpole': 1033, 'ctx-lh-transversetemporal': 1034, 'ctx-lh-insula': 1035, 
+          'ctx-rh-unknown': 2000, 'ctx-rh-bankssts': 2001, 'ctx-rh-caudalanteriorcingulate': 2002, 
+          'ctx-rh-caudalmiddlefrontal': 2003, 'ctx-rh-cuneus': 2005, 'ctx-rh-entorhinal': 2006, 
+          'ctx-rh-fusiform': 2007, 'ctx-rh-inferiorparietal': 2008, 'ctx-rh-inferiortemporal': 2009, 
+          'ctx-rh-isthmuscingulate': 2010, 'ctx-rh-lateraloccipital': 2011, 'ctx-rh-lateralorbitofrontal': 2012, 
+          'ctx-rh-lingual': 2013, 'ctx-rh-medialorbitofrontal': 2014, 'ctx-rh-middletemporal': 2015, 
+          'ctx-rh-parahippocampal': 2016, 'ctx-rh-paracentral': 2017, 'ctx-rh-parsopercularis': 2018, 
+          'ctx-rh-parsorbitalis': 2019, 'ctx-rh-parstriangularis': 2020, 'ctx-rh-pericalcarine': 2021, 
+          'ctx-rh-postcentral': 2022, 'ctx-rh-posteriorcingulate': 2023, 'ctx-rh-precentral': 2024, 
+          'ctx-rh-precuneus': 2025, 'ctx-rh-rostralanteriorcingulate': 2026, 'ctx-rh-rostralmiddlefrontal': 2027, 
+          'ctx-rh-superiorfrontal': 2028, 'ctx-rh-superiorparietal': 2029, 'ctx-rh-superiortemporal': 2030, 
+          'ctx-rh-supramarginal': 2031, 'ctx-rh-frontalpole': 2032, 'ctx-rh-temporalpole': 2033, 
+          'ctx-rh-transversetemporal': 2034, 'ctx-rh-insula': 2035}
 class DefaultCamcanPipeline(DataPreparationBrain):
     """
     DefaultCamcanPipeline is a class that extends the DataPreparationBrain class to handle
@@ -57,7 +92,8 @@ class DefaultCamcanPipeline(DataPreparationBrain):
 
     def __init__(self, config):
         super().__init__(config)
-        self.hcp_dir = Path(config["data_paths"]["camcan_base"])
+        self.camcan_dir = Path(config["data_paths"]["camcan_base"])
+        self.in_derivatives = Path(config["data_paths"]["camcan_base"]) / "derivatives"
         self.results_root = Path(config["data_paths"]["camcan_results"]) / "default"
         self.metric = config["metric_to_compute"]
         self.scale = config.get("scale", 1000)
@@ -66,7 +102,7 @@ class DefaultCamcanPipeline(DataPreparationBrain):
         self.small_delta = config["small_delta_camcan"]
         
         # NEW ATTRIBUTE TO STORE RESULTS
-        # self.layout = bids.BIDSLayout(str(CAMCAN_ROOT), derivatives=derivatives, validate=False)
+        self.layout = bids.BIDSLayout(str(self.camcan_dir), derivatives=self.in_derivatives, validate=False)
 
     def verify_raw_files(self, subject_id: str) -> bool:
         aparcaseg = self.layout.get(subject=subject_id, desc='aparcaseg', suffix='dseg', return_type='file')[0]
@@ -81,15 +117,11 @@ class DefaultCamcanPipeline(DataPreparationBrain):
             subject=entities_['subject'],
             extension='bvec', return_type='file'
         )[0]
-        
-        # subject_dir = self.hcp_dir / subject_id
-        # diffusion_dir = subject_dir / "T1w" / "Diffusion"
 
         required_files = {
             "DWI data": dwi_file,
             "bvals": dwi_file_bvals,
             "bvecs": dwi_file_bvecs,
-            # "nodif mask": diffusion_dir / "nodif_brain_mask.nii.gz",
             "aparc+aseg": aparcaseg,
         }
 
@@ -132,10 +164,11 @@ class DefaultCamcanPipeline(DataPreparationBrain):
                 self.results_root / "derivatives" / f"sub-{subject_id}" / "dwi"
             )
             derivatives_dir.mkdir(parents=True, exist_ok=True)
-
+            
             aparc_aseg = self.layout.get(subject=subject_id, desc='aparcaseg', suffix='dseg', return_type='file')[0]
             dwi_bids = self.layout.get(subject=subject_id, suffix='dwi', extension='.nii.gz', desc='eddycorrected+bbreg')[0]
             dwi_file = dwi_bids.path
+            
             entities_ = dwi_bids.get_entities()
             dwi_file_bvals = self.layout.get(
                 subject=entities_['subject'], 
@@ -149,10 +182,10 @@ class DefaultCamcanPipeline(DataPreparationBrain):
             dwi_nib = nib.load(dwi_file)
             bvals = np.loadtxt(dwi_file_bvals)
             bvecs = np.loadtxt(dwi_file_bvecs).T
-            
-            # nodif_mask = diffusion_dir / "nodif_brain_mask.nii.gz" # NOT USED IN CAMCAN?
 
-            # labels = extract_selected_labels(aparc_aseg) # CHECK BUT IS CORRECT
+            breakpoint()
+            labels = extract_selected_labels(aparc_aseg)
+            
             selected_labels = [
                 k for k in labels
                 if (
@@ -163,13 +196,7 @@ class DefaultCamcanPipeline(DataPreparationBrain):
                     ('pallidum' in k)
                 )
             ]
-            from xml import etree
-            header = nib.load(aparc_aseg).header
-            labels = {
-                n.text.lower(): int(n.get('Key'))
-                for n in etree.ElementTree.fromstring(header.extensions[0].text).findall('.//Label')
-            }
-            aparc_resampled = nimage.resample_to_img(
+            aparc_resampled = nimage.resample_img(
                 aparc_aseg,
                 target_affine=dwi_nib.affine,
                 target_shape=dwi_nib.shape[:3],
@@ -179,36 +206,8 @@ class DefaultCamcanPipeline(DataPreparationBrain):
             )
 
             # ctx_mask, vent_mask = create_masks(aparc_resampled, labels) # CHECK
-            # BELOW IS THE WORKING WAY FOR CAMCAN
-            from scipy import ndimage # in utils for create_mask
-            ctx_mask = nimage.math_img(
-                " + ".join(
-                    f"(x == {labels[k]})"
-                    for k in selected_labels
-                ),
-                x=aparc_resampled
-            )
-
-            vent_mask = nimage.new_img_like(
-                aparc_resampled,
-                ndimage.binary_erosion(
-                    nimage.get_data(
-                        nimage.math_img(
-                            " + ".join(
-                                f"(x == {v})" for k, v in labels.items()
-                                if 'vent' in k
-                            ), x=aparc_resampled
-                        )
-                    )
-                )
-            )
-            from nilearn import maskers # Also imported in utils
-            b0 = nimage.index_img(dwi_nib, 0)
-            ctx_masker = maskers.NiftiMasker(ctx_mask)
-            ctx_masker.fit(b0)
-
-            ventricle_masker = maskers.NiftiMasker(vent_mask)
-            ventricle_masker.fit(b0)
+            from diff_benchmark.preprocessing.wrapper_utils_brain_data import create_masks_bids
+            ctx_mask, vent_mask = create_masks_bids(aparc_resampled, labels, selected_labels)
 
             surfaces = {
                 f"{h}.{s}": self.layout.get(
@@ -221,51 +220,16 @@ class DefaultCamcanPipeline(DataPreparationBrain):
             }
 
             if self.metric == "rtop":
-                # rtop_img = compute_rtop(
-                #     dwi_nib,
-                #     ctx_mask,
-                #     vent_mask,
-                #     bvals,
-                #     bvecs,
-                #     self.big_delta,
-                #     self.small_delta,
-                # )
-                # nib.save(
-                #     rtop_img,
-                #     derivatives_dir / f"sub-{subject_id}_param-rtop_dwimap.nii.gz",
-                # )
-                # SMALL MODIFICATIONS
-                big_delta_per_bvalue = {
-                    1000: 24,
-                    2000: 30,
-                }
-                selected_bvals = [0] + [k for k, v in big_delta_per_bvalue.items() if v == self.big_delta * 1000]
-                bvals_mask = np.any([bvals == s for s in selected_bvals], axis=0)
-
-                dwi_insula = ctx_masker.transform(dwi_nib)
-                dwi_ventricles = ventricle_masker.transform(dwi_nib)
-                dwi_insula_bmasked = dwi_insula[bvals_mask, :]
-                dwi_ventricles_bmasked = dwi_ventricles[bvals_mask, :]
-
-                gtab = gradient_table(bvals=bvals[bvals_mask], bvecs=bvecs[bvals_mask], small_delta=self.small_delta, big_delta=self.big_delta)
-                from dipy.reconst.mapmri import MapmriModel
-                radial_order = 6
-                map_model_laplacian_aniso = MapmriModel(
-                    gtab,
-                    radial_order=radial_order,
-                    laplacian_regularization=True,
-                    laplacian_weighting=0.2,
-                    positivity_constraint=False,
-                    
+                from diff_benchmark.preprocessing.wrapper_utils_brain_data import compute_rtop_bids
+                rtop_img = compute_rtop_bids(
+                    dwi_nib,
+                    ctx_mask,
+                    vent_mask,
+                    bvals,
+                    bvecs,
+                    self.big_delta,
+                    self.small_delta,
                 )
-
-                rtop_insula_bmasked = map_model_laplacian_aniso.fit(dwi_insula_bmasked.T).rtop()
-                rtop_ventricles_masked = map_model_laplacian_aniso.fit(dwi_ventricles_bmasked.T).rtop()
-                # Need an adaptation of the following 2 lines
-                nrtop = rtop_insula_bmasked / rtop_ventricles_masked[~np.isnan(rtop_ventricles_masked)].mean()
-                nrtop = nrtop.clip(0, np.percentile(nrtop[~np.isnan(nrtop)], 99))
-                nrtop_img = ctx_masker.inverse_transform(nrtop)
-                rtop_img = nrtop_img
                 nib.save(
                     rtop_img,
                     derivatives_dir / f"sub-{subject_id}_param-rtop_dwimap.nii.gz",
