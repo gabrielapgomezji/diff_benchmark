@@ -35,7 +35,7 @@ data_paths:
   hcp_base: /data/parietal/store4/data/HCP
   hcp_results: /data/parietal/store3/work/ggomezji/benchmark/HCP900
   # data_path == (hcp_results): /data/parietal/store2/work/ggomezji/HCP900
-  camcan_base: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/camcan/derivatives
+  camcan_base: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/camcan
   camcan_results: /data/parietal/store3/work/ggomezji/benchmark/CamCAN
   wand_base: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/WAND-concat
   wand_results: /data/parietal/store3/work/ggomezji/benchmark/WAND
