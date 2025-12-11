@@ -2,7 +2,7 @@
 # ==============================
 # GENERAL SETTINGS
 # ==============================
-metric_to_compute: rtop
+metric_to_compute: md #rtop
 scale: 1000     # Scale for Schaefer parcellation (options: 100–1000)
 big_delta: 0.0431
 small_delta: 0.0106
@@ -10,6 +10,18 @@ big_delta_camcan: 0.024
 small_delta_camcan: 0.007
 big_delta_wand: 0.024
 small_delta_wand: 0.007
+big_delta_per_bvalue_camcan:
+  1000: 24
+  2000: 30
+big_delta_per_bvalue_wand:
+  2200: 24
+  4000: 30
+  4400: 24
+  8000: 30
+  5800: 42
+  7750: 55
+  11600: 42
+  15500: 55
 random_state: 42
 data_preparation:
   region: VisCent_ExStr #null # If we want all regions, set to null
