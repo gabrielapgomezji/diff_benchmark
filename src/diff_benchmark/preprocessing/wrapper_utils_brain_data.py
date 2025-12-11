@@ -18,41 +18,42 @@ from scipy.spatial import cKDTree
 from templateflow import api as tflow
 from tqdm import tqdm
 
-LABELS = {'???': 0, 'left-cerebral-white-matter': 2, 'left-lateral-ventricle': 4, 'left-inf-lat-vent': 5, 
-          'left-cerebellum-white-matter': 7, 'left-cerebellum-cortex': 8, 'left-thalamus-proper': 10, 
-          'left-caudate': 11, 'left-putamen': 12, 'left-pallidum': 13, '3rd-ventricle': 14, 
-          '4th-ventricle': 15, 'brain-stem': 16, 'left-hippocampus': 17, 'left-amygdala': 18, 'csf': 24, 
-          'left-accumbens-area': 26, 'left-ventraldc': 28, 'left-vessel': 30, 'left-choroid-plexus': 31, 
-          'right-cerebral-white-matter': 41, 'right-lateral-ventricle': 43, 'right-inf-lat-vent': 44, 
-          'right-cerebellum-white-matter': 46, 'right-cerebellum-cortex': 47, 'right-thalamus-proper': 49, 
-          'right-caudate': 50, 'right-putamen': 51, 'right-pallidum': 52, 'right-hippocampus': 53, 
-          'right-amygdala': 54, 'right-accumbens-area': 58, 'right-ventraldc': 60, 'right-vessel': 62, 
-          'right-choroid-plexus': 63, 'wm-hypointensities': 77, 'non-wm-hypointensities': 80, 
-          'optic-chiasm': 85, 'cc_posterior': 251, 'cc_mid_posterior': 252, 'cc_central': 253, 
-          'cc_mid_anterior': 254, 'cc_anterior': 255, 'ctx-lh-unknown': 1000, 'ctx-lh-bankssts': 1001, 
-          'ctx-lh-caudalanteriorcingulate': 1002, 'ctx-lh-caudalmiddlefrontal': 1003, 'ctx-lh-cuneus': 1005, 
-          'ctx-lh-entorhinal': 1006, 'ctx-lh-fusiform': 1007, 'ctx-lh-inferiorparietal': 1008, 
-          'ctx-lh-inferiortemporal': 1009, 'ctx-lh-isthmuscingulate': 1010, 'ctx-lh-lateraloccipital': 1011, 
-          'ctx-lh-lateralorbitofrontal': 1012, 'ctx-lh-lingual': 1013, 'ctx-lh-medialorbitofrontal': 1014, 
-          'ctx-lh-middletemporal': 1015, 'ctx-lh-parahippocampal': 1016, 'ctx-lh-paracentral': 1017, 
-          'ctx-lh-parsopercularis': 1018, 'ctx-lh-parsorbitalis': 1019, 'ctx-lh-parstriangularis': 1020, 
-          'ctx-lh-pericalcarine': 1021, 'ctx-lh-postcentral': 1022, 'ctx-lh-posteriorcingulate': 1023, 
-          'ctx-lh-precentral': 1024, 'ctx-lh-precuneus': 1025, 'ctx-lh-rostralanteriorcingulate': 1026, 
-          'ctx-lh-rostralmiddlefrontal': 1027, 'ctx-lh-superiorfrontal': 1028, 'ctx-lh-superiorparietal': 1029, 
-          'ctx-lh-superiortemporal': 1030, 'ctx-lh-supramarginal': 1031, 'ctx-lh-frontalpole': 1032, 
-          'ctx-lh-temporalpole': 1033, 'ctx-lh-transversetemporal': 1034, 'ctx-lh-insula': 1035, 
-          'ctx-rh-unknown': 2000, 'ctx-rh-bankssts': 2001, 'ctx-rh-caudalanteriorcingulate': 2002, 
-          'ctx-rh-caudalmiddlefrontal': 2003, 'ctx-rh-cuneus': 2005, 'ctx-rh-entorhinal': 2006, 
-          'ctx-rh-fusiform': 2007, 'ctx-rh-inferiorparietal': 2008, 'ctx-rh-inferiortemporal': 2009, 
-          'ctx-rh-isthmuscingulate': 2010, 'ctx-rh-lateraloccipital': 2011, 'ctx-rh-lateralorbitofrontal': 2012, 
-          'ctx-rh-lingual': 2013, 'ctx-rh-medialorbitofrontal': 2014, 'ctx-rh-middletemporal': 2015, 
-          'ctx-rh-parahippocampal': 2016, 'ctx-rh-paracentral': 2017, 'ctx-rh-parsopercularis': 2018, 
-          'ctx-rh-parsorbitalis': 2019, 'ctx-rh-parstriangularis': 2020, 'ctx-rh-pericalcarine': 2021, 
-          'ctx-rh-postcentral': 2022, 'ctx-rh-posteriorcingulate': 2023, 'ctx-rh-precentral': 2024, 
-          'ctx-rh-precuneus': 2025, 'ctx-rh-rostralanteriorcingulate': 2026, 'ctx-rh-rostralmiddlefrontal': 2027, 
-          'ctx-rh-superiorfrontal': 2028, 'ctx-rh-superiorparietal': 2029, 'ctx-rh-superiortemporal': 2030, 
-          'ctx-rh-supramarginal': 2031, 'ctx-rh-frontalpole': 2032, 'ctx-rh-temporalpole': 2033, 
-          'ctx-rh-transversetemporal': 2034, 'ctx-rh-insula': 2035}
+
+def read_label_file():
+    """
+    Read a FreeSurfer-style label file and return a dictionary mapping
+    lowercase label names to their indices.
+    
+    Args:
+        filepath (str): Path to the .txt label file.
+    
+    Returns:
+        dict: Dictionary with label names (lowercase) as keys and indices as values.
+    """
+    filepath = Path(__file__).parent.parent.parent.parent / "aux_materials/FreeSurferColorLUT.txt"
+    label_dict = {}
+    
+    with open(filepath, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            
+            # skip empty lines and header comments
+            if not line or line.startswith("#"):
+                continue
+            
+            # split by whitespace; expected format: index label_name R G B A
+            parts = line.split()
+            if len(parts) < 2:
+                continue
+            
+            try:
+                index = int(parts[0])
+                label_name = parts[1].lower()  # convert to lowercase
+                label_dict[label_name] = index
+            except (ValueError, IndexError):
+                continue
+    
+    return label_dict
 
 def extract_selected_labels(nifti_path):
     """Extract selected labels from a NIfTI file's header extensions."""
@@ -67,7 +68,8 @@ def extract_selected_labels(nifti_path):
         return {k: v for k, v in labels.items() if k.startswith("ctx") or "ventricle" in k}
     except Exception as e:
         print(f"Error extracting labels from given file \n Returning default labels.")
-        return LABELS
+        
+        return read_label_file()
 
 def create_masks(parcellation_img, labels):
     """Create context and ventricle masks from parcellation image."""
@@ -135,30 +137,24 @@ def compute_rtop(
     return masker.inverse_transform(rtop.T)
 
 def compute_rtop_bids(
-    dwi_nib, mask_img, normalization_mask_img, bvals, bvecs, big_delta, small_delta
+    dwi_nib, mask_img, normalization_mask_img, bvals, bvecs, big_delta, small_delta,
+    delta_per_bvalue=None
 ):
     """Compute RTOP (Radial Tensor Orientation Profile) from DWI data."""
     b0 = nimage.index_img(dwi_nib, 0)
     masker = maskers.NiftiMasker(mask_img)
     masker.fit(b0)
     dwi_data = masker.transform(dwi_nib)
-    # CHECK FOR HCP DATA
-    big_delta_per_bvalue = {
-                    2200: 24,
-                    4000: 30,
-                    4400: 24,
-                    8000: 30,
-                    5800: 42,
-                    7750: 55,
-                    11600: 42,
-                    15500: 55,
-                }
-    selected_bvals = [0] + [k for k, v in big_delta_per_bvalue.items() if v == big_delta * 1000]
-    bvals_mask = np.any([bvals == s for s in selected_bvals], axis=0)
-    if bvals_mask is not None:
-        dwi_data = dwi_data[bvals_mask, :]
     
-    gtab = gradient_table(bvals, bvecs, big_delta=big_delta, small_delta=small_delta)
+    if delta_per_bvalue is not None:
+        selected_bvals = [0] + [k for k, v in delta_per_bvalue.items() if v == big_delta * 1000]
+        bvals_mask = np.any([bvals == s for s in selected_bvals], axis=0)
+        dwi_data = dwi_data[bvals_mask, :]
+    else:
+        bvals_mask = np.ones_like(bvals, dtype=bool)
+        
+    
+    gtab = gradient_table(bvals=bvals[bvals_mask], bvecs=bvecs[bvals_mask], small_delta=small_delta, big_delta=big_delta)
     map_model = MapmriModel(
         gtab,
         radial_order=6,
@@ -171,7 +167,7 @@ def compute_rtop_bids(
         norm_masker = maskers.NiftiMasker(normalization_mask_img)
         norm_masker.fit(b0)
         dwi_ventricles = norm_masker.transform(dwi_nib)
-        if bvals_mask is not None:
+        if delta_per_bvalue is not None:
             dwi_ventricles = dwi_ventricles[bvals_mask, :]
         rtop_ventricles = map_model.fit(dwi_ventricles.T).rtop()
 
@@ -186,8 +182,9 @@ def compute_md(
     dwi_nib, mask_img, normalization_mask_img, bvals, bvecs, big_delta, small_delta
 ):
     """Compute Mean Diffusivity (MD) from DWI data."""
+    b0 = nimage.index_img(dwi_nib, 0)
     masker = maskers.NiftiMasker(mask_img)
-    masker.fit()
+    masker.fit(b0)
     dwi_data = masker.transform(dwi_nib)
 
     gtab = gradient_table(bvals, bvecs, big_delta=big_delta, small_delta=small_delta)
@@ -198,11 +195,49 @@ def compute_md(
 
     if normalization_mask_img is not None:
         norm_masker = maskers.NiftiMasker(normalization_mask_img)
-        norm_masker.fit()
+        norm_masker.fit(b0)
         dwi_ventricles = norm_masker.transform(dwi_nib)
         md_ventricles = dti_model.fit(dwi_ventricles.T).md
 
         nmd = md / md_ventricles.mean()
+        nmd_img = masker.inverse_transform(nmd.T)
+        return nmd_img
+    print("Be careful, this is not normalized MD!")
+    return masker.inverse_transform(md.T)
+
+def compute_md_bids(
+    dwi_nib, mask_img, normalization_mask_img, bvals, bvecs, big_delta, small_delta,
+    delta_per_bvalue=None
+):
+    """Compute Mean Diffusivity (MD) from DWI data."""
+    b0 = nimage.index_img(dwi_nib, 0)
+    masker = maskers.NiftiMasker(mask_img)
+    masker.fit(b0)
+    dwi_data = masker.transform(dwi_nib)
+
+    if delta_per_bvalue is not None:
+        selected_bvals = [0] + [k for k, v in delta_per_bvalue.items() if v == big_delta * 1000]
+        bvals_mask = np.any([bvals == s for s in selected_bvals], axis=0)
+        dwi_data = dwi_data[bvals_mask, :]
+    else:
+        bvals_mask = np.ones_like(bvals, dtype=bool)
+
+    gtab = gradient_table(bvals=bvals[bvals_mask], bvecs=bvecs[bvals_mask], small_delta=small_delta, big_delta=big_delta)
+
+    dti_model = dti.TensorModel(gtab)
+
+    md = dti_model.fit(dwi_data.T).md
+
+    if normalization_mask_img is not None:
+        norm_masker = maskers.NiftiMasker(normalization_mask_img)
+        norm_masker.fit(b0)
+        dwi_ventricles = norm_masker.transform(dwi_nib)
+        if delta_per_bvalue is not None:
+            dwi_ventricles = dwi_ventricles[bvals_mask, :]
+        md_ventricles = dti_model.fit(dwi_ventricles.T).md
+
+        nmd = md / md_ventricles[~np.isnan(md_ventricles)].mean()
+        nmd = nmd.clip(0, np.percentile(nmd[~np.isnan(nmd)], 99))
         nmd_img = masker.inverse_transform(nmd.T)
         return nmd_img
     print("Be careful, this is not normalized MD!")
