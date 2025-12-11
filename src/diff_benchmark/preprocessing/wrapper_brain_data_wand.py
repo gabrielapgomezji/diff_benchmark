@@ -33,41 +33,6 @@ from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
 )
 import bids
 
-LABELS = {'???': 0, 'left-cerebral-white-matter': 2, 'left-lateral-ventricle': 4, 'left-inf-lat-vent': 5, 
-          'left-cerebellum-white-matter': 7, 'left-cerebellum-cortex': 8, 'left-thalamus-proper': 10, 
-          'left-caudate': 11, 'left-putamen': 12, 'left-pallidum': 13, '3rd-ventricle': 14, 
-          '4th-ventricle': 15, 'brain-stem': 16, 'left-hippocampus': 17, 'left-amygdala': 18, 'csf': 24, 
-          'left-accumbens-area': 26, 'left-ventraldc': 28, 'left-vessel': 30, 'left-choroid-plexus': 31, 
-          'right-cerebral-white-matter': 41, 'right-lateral-ventricle': 43, 'right-inf-lat-vent': 44, 
-          'right-cerebellum-white-matter': 46, 'right-cerebellum-cortex': 47, 'right-thalamus-proper': 49, 
-          'right-caudate': 50, 'right-putamen': 51, 'right-pallidum': 52, 'right-hippocampus': 53, 
-          'right-amygdala': 54, 'right-accumbens-area': 58, 'right-ventraldc': 60, 'right-vessel': 62, 
-          'right-choroid-plexus': 63, 'wm-hypointensities': 77, 'non-wm-hypointensities': 80, 
-          'optic-chiasm': 85, 'cc_posterior': 251, 'cc_mid_posterior': 252, 'cc_central': 253, 
-          'cc_mid_anterior': 254, 'cc_anterior': 255, 'ctx-lh-unknown': 1000, 'ctx-lh-bankssts': 1001, 
-          'ctx-lh-caudalanteriorcingulate': 1002, 'ctx-lh-caudalmiddlefrontal': 1003, 'ctx-lh-cuneus': 1005, 
-          'ctx-lh-entorhinal': 1006, 'ctx-lh-fusiform': 1007, 'ctx-lh-inferiorparietal': 1008, 
-          'ctx-lh-inferiortemporal': 1009, 'ctx-lh-isthmuscingulate': 1010, 'ctx-lh-lateraloccipital': 1011, 
-          'ctx-lh-lateralorbitofrontal': 1012, 'ctx-lh-lingual': 1013, 'ctx-lh-medialorbitofrontal': 1014, 
-          'ctx-lh-middletemporal': 1015, 'ctx-lh-parahippocampal': 1016, 'ctx-lh-paracentral': 1017, 
-          'ctx-lh-parsopercularis': 1018, 'ctx-lh-parsorbitalis': 1019, 'ctx-lh-parstriangularis': 1020, 
-          'ctx-lh-pericalcarine': 1021, 'ctx-lh-postcentral': 1022, 'ctx-lh-posteriorcingulate': 1023, 
-          'ctx-lh-precentral': 1024, 'ctx-lh-precuneus': 1025, 'ctx-lh-rostralanteriorcingulate': 1026, 
-          'ctx-lh-rostralmiddlefrontal': 1027, 'ctx-lh-superiorfrontal': 1028, 'ctx-lh-superiorparietal': 1029, 
-          'ctx-lh-superiortemporal': 1030, 'ctx-lh-supramarginal': 1031, 'ctx-lh-frontalpole': 1032, 
-          'ctx-lh-temporalpole': 1033, 'ctx-lh-transversetemporal': 1034, 'ctx-lh-insula': 1035, 
-          'ctx-rh-unknown': 2000, 'ctx-rh-bankssts': 2001, 'ctx-rh-caudalanteriorcingulate': 2002, 
-          'ctx-rh-caudalmiddlefrontal': 2003, 'ctx-rh-cuneus': 2005, 'ctx-rh-entorhinal': 2006, 
-          'ctx-rh-fusiform': 2007, 'ctx-rh-inferiorparietal': 2008, 'ctx-rh-inferiortemporal': 2009, 
-          'ctx-rh-isthmuscingulate': 2010, 'ctx-rh-lateraloccipital': 2011, 'ctx-rh-lateralorbitofrontal': 2012, 
-          'ctx-rh-lingual': 2013, 'ctx-rh-medialorbitofrontal': 2014, 'ctx-rh-middletemporal': 2015, 
-          'ctx-rh-parahippocampal': 2016, 'ctx-rh-paracentral': 2017, 'ctx-rh-parsopercularis': 2018, 
-          'ctx-rh-parsorbitalis': 2019, 'ctx-rh-parstriangularis': 2020, 'ctx-rh-pericalcarine': 2021, 
-          'ctx-rh-postcentral': 2022, 'ctx-rh-posteriorcingulate': 2023, 'ctx-rh-precentral': 2024, 
-          'ctx-rh-precuneus': 2025, 'ctx-rh-rostralanteriorcingulate': 2026, 'ctx-rh-rostralmiddlefrontal': 2027, 
-          'ctx-rh-superiorfrontal': 2028, 'ctx-rh-superiorparietal': 2029, 'ctx-rh-superiortemporal': 2030, 
-          'ctx-rh-supramarginal': 2031, 'ctx-rh-frontalpole': 2032, 'ctx-rh-temporalpole': 2033, 
-          'ctx-rh-transversetemporal': 2034, 'ctx-rh-insula': 2035}
 class DefaultWandPipeline(DataPreparationBrain):
     """
     DefaultWandPipeline is a class that extends the DataPreparationBrain class to handle
@@ -100,6 +65,7 @@ class DefaultWandPipeline(DataPreparationBrain):
         self.schaefer_resampled = resample_schaefer_onto_fs_lr(scale=1000)
         self.big_delta = config["big_delta_wand"]
         self.small_delta = config["small_delta_wand"]
+        self.big_delta_per_bvalue = config.get("big_delta_per_bvalue_wand", None)
         
         # NEW ATTRIBUTE TO STORE RESULTS
         self.layout = bids.BIDSLayout(str(self.wand_dir), derivatives=self.in_derivatives, validate=False)
@@ -182,7 +148,7 @@ class DefaultWandPipeline(DataPreparationBrain):
             dwi_nib = nib.load(dwi_file)
             bvals = np.loadtxt(dwi_file_bvals)
             bvecs = np.loadtxt(dwi_file_bvecs)
-            breakpoint()
+
             labels = extract_selected_labels(aparc_aseg)
             
             selected_labels = [
@@ -233,7 +199,6 @@ class DefaultWandPipeline(DataPreparationBrain):
                     rtop_img,
                     derivatives_dir / f"sub-{subject_id}_param-rtop_dwimap.nii.gz",
                 )
-                breakpoint()
                 project_to_surface(
                     rtop_img,
                     ctx_mask,
@@ -242,22 +207,24 @@ class DefaultWandPipeline(DataPreparationBrain):
                     subject_id,
                     self.metric,
                 )
-            # elif self.metric == "md":
-            #     md_img = compute_md(
-            #         dwi_nib,
-            #         ctx_mask,
-            #         vent_mask,
-            #         bvals,
-            #         bvecs,
-            #         self.big_delta,
-            #         self.small_delta,
-            #     )
-            #     nib.save(
-            #         md_img, derivatives_dir / f"sub-{subject_id}_param-md_dwimap.nii.gz"
-            #     )
-            #     project_to_surface(
-            #         md_img, ctx_mask, surfaces, derivatives_dir, subject_id, self.metric
-            #     )
+            elif self.metric == "md":
+                from diff_benchmark.preprocessing.wrapper_utils_brain_data import compute_md_bids
+                md_img = compute_md_bids(
+                    dwi_nib,
+                    ctx_mask,
+                    vent_mask,
+                    bvals,
+                    bvecs,
+                    self.big_delta,
+                    self.small_delta,
+                    self.big_delta_per_bvalue,
+                )
+                nib.save(
+                    md_img, derivatives_dir / f"sub-{subject_id}_param-md_dwimap.nii.gz"
+                )
+                project_to_surface(
+                    md_img, ctx_mask, surfaces, derivatives_dir, subject_id, self.metric
+                )
 
         except (FileNotFoundError, OSError, ImageFileError, KeyError, ValueError) as e:
             print(f"[{subject_id}] Expected error during microstructure: {e}")
