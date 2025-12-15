@@ -55,7 +55,7 @@ def read_label_file():
     
     return label_dict
 
-def extract_selected_labels(nifti_path):
+def extract_selected_labels(nifti_path, labels_dict=None):
     """Extract selected labels from a NIfTI file's header extensions."""
     try:
         header = nib.load(nifti_path).header
@@ -67,9 +67,15 @@ def extract_selected_labels(nifti_path):
         }
         return {k: v for k, v in labels.items() if k.startswith("ctx") or "ventricle" in k}
     except Exception as e:
-        print(f"Error extracting labels from given file \n Returning default labels.")
-        
-        return read_label_file()
+        print(f"Error extracting labels from given file.")
+        if labels_dict is not None:
+            print("Using provided labels_dict instead.")
+            return labels_dict
+        print("Loading labels from fs_labels.json")
+        fs_labels = Path(__file__).parent.parent.parent.parent / "aux_materials/fs_labels.json"
+        labels_dict = json.load(fs_labels.open())
+        # read_label_file()
+        return labels_dict
 
 def create_masks(parcellation_img, labels):
     """Create context and ventricle masks from parcellation image."""
