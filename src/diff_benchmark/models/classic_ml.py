@@ -14,8 +14,9 @@ class PCARandomForestModel(NumpyAbstractModel):
     PCARandomForestModel combines PCA for dimensionality reduction
     with a Random Forest classifier for classification tasks.
     """
+
     data_type = "array"
-    
+
     def __init__(self, **kwargs):
         self.prediction_task = kwargs.get("prediction_task", None)
         # Define pipeline: standardization -> PCA -> RandomForest
@@ -23,10 +24,10 @@ class PCARandomForestModel(NumpyAbstractModel):
         if self.prediction_task == "classification":
             rf_head = RandomForestClassifier(random_state=42)
             scoring = "accuracy"
-        else: #if self.prediction_task == "regression":
+        else:  # if self.prediction_task == "regression":
             rf_head = RandomForestRegressor(random_state=42)
-            scoring = "neg_mean_squared_error"   # scikit-learn convention
-            
+            scoring = "neg_mean_squared_error"  # scikit-learn convention
+
         pipeline = Pipeline(
             [
                 ("scaler", StandardScaler()),
@@ -66,8 +67,10 @@ class PCARandomForestModel(NumpyAbstractModel):
 
     def fit(self, dataloader):
         """Fit PCA + RandomForest using grid search."""
-        assert self.prediction_task in ["classification", "regression"], \
-            f"prediction_task must be set before calling fit(). Got {self.prediction_task}"
+        assert self.prediction_task in [
+            "classification",
+            "regression",
+        ], f"prediction_task must be set before calling fit(). Got {self.prediction_task}"
 
         features, targets = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
@@ -86,6 +89,7 @@ class PCASVMModel(NumpyAbstractModel):
     PCASVMModel combines PCA for dimensionality reduction
     with a Support Vector Machine classifier.
     """
+
     data_type = "array"
 
     def __init__(self, **kwargs):
@@ -99,7 +103,7 @@ class PCASVMModel(NumpyAbstractModel):
             svm_head = SVR()
             scoring = "neg_mean_squared_error"
             svm_gamma = ["scale"]
-            
+
         # Define pipeline: scaling -> PCA -> SVM
         pipeline = Pipeline(
             [

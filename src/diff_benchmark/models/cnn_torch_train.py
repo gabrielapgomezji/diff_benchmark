@@ -105,10 +105,6 @@ class ResNet3SliceClassifier(nn.Module):
         """
         x: (batch, Slice, Height, Width) where Slice is slice dimension
         """
-        # batch, slice, height, width = x.shape
-        # assert S % 3 == 0, "Slice dimension must be divisible by 3"
-        # x = x.squeeze(1)
-
         subvols = x.unfold(dimension=1, size=3, step=3)
         subvols = subvols.permute(0, 1, 4, 2, 3)  # (B, num_subvols, 3, H, W)
 
@@ -125,14 +121,7 @@ class ResNet3SliceClassifier(nn.Module):
 
         # Concatenate subvolume features: (B, N*512)
         feats = feats.reshape(B, -1)
-        # w = torch.softmax(self.aggregate_weights, dim=0)  # (N,)
-        # w = w.view(1, N, 1)  # (1, N, 1)
-        # feats = (feats * w).sum(dim=1)  # (B, 512)
-        # att = torch.softmax(self.attention(feats), dim=1)  # (B, N, 1)
-        # print(att, att.shape)
-        # feats = (feats * att).sum(dim=1)
-        # print(feats, feats.shape)
-        # feats scalar product with weights. 1 embedding per features (B, 512).
+
         feats = self.dropout(feats)
         out = self.fc(feats)  # (B, num_classes)
         return out

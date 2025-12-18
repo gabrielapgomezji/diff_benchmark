@@ -23,37 +23,41 @@ def read_label_file():
     """
     Read a FreeSurfer-style label file and return a dictionary mapping
     lowercase label names to their indices.
-    
+
     Args:
         filepath (str): Path to the .txt label file.
-    
+
     Returns:
         dict: Dictionary with label names (lowercase) as keys and indices as values.
     """
-    filepath = Path(__file__).parent.parent.parent.parent / "aux_materials/FreeSurferColorLUT.txt"
+    filepath = (
+        Path(__file__).parent.parent.parent.parent
+        / "aux_materials/FreeSurferColorLUT.txt"
+    )
     label_dict = {}
-    
+
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
-            
+
             # skip empty lines and header comments
             if not line or line.startswith("#"):
                 continue
-            
+
             # split by whitespace; expected format: index label_name R G B A
             parts = line.split()
             if len(parts) < 2:
                 continue
-            
+
             try:
                 index = int(parts[0])
                 label_name = parts[1].lower()  # convert to lowercase
                 label_dict[label_name] = index
             except (ValueError, IndexError):
                 continue
-    
+
     return label_dict
+
 
 def extract_selected_labels(nifti_path, labels_dict=None):
     """Extract selected labels from a NIfTI file's header extensions."""
@@ -65,17 +69,22 @@ def extract_selected_labels(nifti_path, labels_dict=None):
                 ".//Label"
             )
         }
-        return {k: v for k, v in labels.items() if k.startswith("ctx") or "ventricle" in k}
+        return {
+            k: v for k, v in labels.items() if k.startswith("ctx") or "ventricle" in k
+        }
     except Exception as e:
         print(f"Error extracting labels from given file.")
         if labels_dict is not None:
             print("Using provided labels_dict instead.")
             return labels_dict
         print("Loading labels from fs_labels.json")
-        fs_labels = Path(__file__).parent.parent.parent.parent / "aux_materials/fs_labels.json"
+        fs_labels = (
+            Path(__file__).parent.parent.parent.parent / "aux_materials/fs_labels.json"
+        )
         labels_dict = json.load(fs_labels.open())
         # read_label_file()
         return labels_dict
+
 
 def create_masks(parcellation_img, labels):
     """Create context and ventricle masks from parcellation image."""
@@ -91,6 +100,7 @@ def create_masks(parcellation_img, labels):
         parcellation_img, ndimage.binary_erosion(nimage.get_data(vent_mask_raw))
     )
     return ctx_mask, vent_mask
+
 
 def create_masks_bids(parcellation_img, labels, selected_labels=None):
     """Create context and ventricle masks from parcellation image."""
@@ -112,6 +122,7 @@ def create_masks_bids(parcellation_img, labels, selected_labels=None):
         parcellation_img, ndimage.binary_erosion(nimage.get_data(vent_mask_raw))
     )
     return ctx_mask, vent_mask
+
 
 def compute_rtop(
     dwi_nib, mask_img, normalization_mask_img, bvals, bvecs, big_delta, small_delta
@@ -142,25 +153,38 @@ def compute_rtop(
 
     return masker.inverse_transform(rtop.T)
 
+
 def compute_rtop_bids(
-    dwi_nib, mask_img, normalization_mask_img, bvals, bvecs, big_delta, small_delta,
-    delta_per_bvalue=None
+    dwi_nib,
+    mask_img,
+    normalization_mask_img,
+    bvals,
+    bvecs,
+    big_delta,
+    small_delta,
+    delta_per_bvalue=None,
 ):
     """Compute RTOP (Radial Tensor Orientation Profile) from DWI data."""
     b0 = nimage.index_img(dwi_nib, 0)
     masker = maskers.NiftiMasker(mask_img)
     masker.fit(b0)
     dwi_data = masker.transform(dwi_nib)
-    
+
     if delta_per_bvalue is not None:
-        selected_bvals = [0] + [k for k, v in delta_per_bvalue.items() if v == big_delta * 1000]
+        selected_bvals = [0] + [
+            k for k, v in delta_per_bvalue.items() if v == big_delta * 1000
+        ]
         bvals_mask = np.any([bvals == s for s in selected_bvals], axis=0)
         dwi_data = dwi_data[bvals_mask, :]
     else:
         bvals_mask = np.ones_like(bvals, dtype=bool)
-        
-    
-    gtab = gradient_table(bvals=bvals[bvals_mask], bvecs=bvecs[bvals_mask], small_delta=small_delta, big_delta=big_delta)
+
+    gtab = gradient_table(
+        bvals=bvals[bvals_mask],
+        bvecs=bvecs[bvals_mask],
+        small_delta=small_delta,
+        big_delta=big_delta,
+    )
     map_model = MapmriModel(
         gtab,
         radial_order=6,
@@ -183,6 +207,7 @@ def compute_rtop_bids(
         return nrtop_img
 
     return masker.inverse_transform(rtop.T)
+
 
 def compute_md(
     dwi_nib, mask_img, normalization_mask_img, bvals, bvecs, big_delta, small_delta
@@ -211,9 +236,16 @@ def compute_md(
     print("Be careful, this is not normalized MD!")
     return masker.inverse_transform(md.T)
 
+
 def compute_md_bids(
-    dwi_nib, mask_img, normalization_mask_img, bvals, bvecs, big_delta, small_delta,
-    delta_per_bvalue=None
+    dwi_nib,
+    mask_img,
+    normalization_mask_img,
+    bvals,
+    bvecs,
+    big_delta,
+    small_delta,
+    delta_per_bvalue=None,
 ):
     """Compute Mean Diffusivity (MD) from DWI data."""
     b0 = nimage.index_img(dwi_nib, 0)
@@ -222,13 +254,20 @@ def compute_md_bids(
     dwi_data = masker.transform(dwi_nib)
 
     if delta_per_bvalue is not None:
-        selected_bvals = [0] + [k for k, v in delta_per_bvalue.items() if v == big_delta * 1000]
+        selected_bvals = [0] + [
+            k for k, v in delta_per_bvalue.items() if v == big_delta * 1000
+        ]
         bvals_mask = np.any([bvals == s for s in selected_bvals], axis=0)
         dwi_data = dwi_data[bvals_mask, :]
     else:
         bvals_mask = np.ones_like(bvals, dtype=bool)
 
-    gtab = gradient_table(bvals=bvals[bvals_mask], bvecs=bvecs[bvals_mask], small_delta=small_delta, big_delta=big_delta)
+    gtab = gradient_table(
+        bvals=bvals[bvals_mask],
+        bvecs=bvecs[bvals_mask],
+        small_delta=small_delta,
+        big_delta=big_delta,
+    )
 
     dti_model = dti.TensorModel(gtab)
 

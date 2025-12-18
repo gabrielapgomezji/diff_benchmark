@@ -123,6 +123,7 @@ class ResNet3SliceMultihead(nn.Module):
         out = self.fc(feats)  # (B, num_classes)
         return out
 
+
 def collate_with_augmentation(batch, transform=None):
     """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
     xs, ys, gs = zip(*batch)  # separate batch components
@@ -142,6 +143,7 @@ def collate_with_augmentation(batch, transform=None):
     ys = torch.stack(ys)
     gs = torch.stack(gs)
     return xs_aug.squeeze(1), ys, gs
+
 
 class CNNRegTorchTrainModel(TorchPipeline):
     """CNN Torch Train Model class inheriting from TorchPipeline."""
@@ -166,5 +168,5 @@ class CNNRegTorchTrainModel(TorchPipeline):
         model.collate_with_augmentation = collate_with_augmentation
         model.std = 0.5
         model.mean = 0.5
-        
+
         return model

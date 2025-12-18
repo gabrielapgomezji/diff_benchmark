@@ -3,6 +3,7 @@ import copy
 from pathlib import Path
 
 import numpy as np
+from sklearn.metrics import mean_squared_error
 
 from diff_benchmark.analysis.plot_history import plot_history_from_file
 from diff_benchmark.analysis.plot_results import plot_folds_predictions_vs_targets
@@ -11,23 +12,22 @@ from diff_benchmark.analysis.save_results import (
     save_fold_results,
     save_model_results,
 )
-from diff_benchmark.analysis.true_vs_pred import plot_true_vs_pred
 from diff_benchmark.analysis.scores_summary import summarize_folds_to_csv
-from diff_benchmark.dataloaders.dataloaders import PreprocessedData
-from diff_benchmark.dataset.generate_dataset import CustomDataset
+from diff_benchmark.analysis.true_vs_pred import plot_true_vs_pred
+from diff_benchmark.data.dataloaders import PreprocessedData
+from diff_benchmark.data.generate_dataset import CustomDataset
 from diff_benchmark.models.model_configurations import get_model, make_run_id
 from diff_benchmark.preprocessing.preprocess_demographic_data import (
     DefaultDemographicsPreprocessor,
 )
-from sklearn.metrics import mean_squared_error
-from diff_benchmark.scores.scores import accuracy_score, compute_metrics
 from diff_benchmark.utils.config_loader import load_configs
 from diff_benchmark.utils.data_pipeline import get_data_pipeline
 from diff_benchmark.utils.job_manager import run_jobs
+from diff_benchmark.utils.scores import accuracy_score, compute_metrics
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "--methods", nargs="+", type=str, default=["lcot"], help="Method to use"
+    "--methods", nargs="+", type=str, default=["2dcnn_torch"], help="Method to use"
 )
 args = parser.parse_args()
 
@@ -44,7 +44,6 @@ def run_single_model(model_name, model_config, general_config, results_path):
     brain_df = brain_preparator.run_microstructure_pipeline()
     brain_df = brain_df.reset_index()
 
-    ##### NEXT TESTING STEPS
     preprocessor = DefaultDemographicsPreprocessor(config["data_paths"]["csv_file"])
     demographics_df = preprocessor.preprocess(config["target_columns"])
 
@@ -60,7 +59,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
     X = brain_filtered  # .drop(columns=["subject_id"]).to_numpy()
     gender = np.array(demographics_filtered["Gender"])
     y = np.array(demographics_filtered[config["target_columns"][0]])
-    
+
     dataset = CustomDataset(X, y, gender)
     # ----------- CROSS VALIDATION + TRAINING + TESTING -----------
 
@@ -69,7 +68,6 @@ def run_single_model(model_name, model_config, general_config, results_path):
     specs = preprocessed.get_specs()
     print(specs)
 
-    # folds = preprocessed.get_folds_as_dataloaders(batch_size=16)
     indices = preprocessed.get_fold_indices()
 
     local_config = copy.deepcopy(model_config)
@@ -130,15 +128,16 @@ def run_single_model(model_name, model_config, general_config, results_path):
             y_train = np.array(targets[train_idx]).squeeze()
             y_test = np.array(targets[test_idx]).squeeze()
 
-            local_config["prediction_task"] = config.get("prediction_task", "regression")
+            local_config["prediction_task"] = config.get(
+                "prediction_task", "regression"
+            )
             model = get_model(model_name, local_config)
-            # --------- Train / Val / Test Model ---------
-            # print("Training...")
-            # device = torch.device("cpu")
-            # model = model.to(device)
+
             model.fit(train_loader)
             train_pred = model.predict(train_loader)
-            plot_true_vs_pred(y_train, train_pred, fold_idx=fold_idx, run_id=run_id, type="train")
+            plot_true_vs_pred(
+                y_train, train_pred, fold_idx=fold_idx, run_id=run_id, type="train"
+            )
             train_score = mean_squared_error(y_train, train_pred)
             # train_score = accuracy_score(y_train, train_pred)
             # train_score = compute_metrics(y_train, train_pred)
@@ -148,9 +147,10 @@ def run_single_model(model_name, model_config, general_config, results_path):
             train_preds.append(train_pred.tolist())
             train_targets.append(y_train.tolist())
 
-            # print("Testing...")
             test_pred = model.predict(test_loader)
-            plot_true_vs_pred(y_test, test_pred, fold_idx=fold_idx, run_id=run_id, type="test")
+            plot_true_vs_pred(
+                y_test, test_pred, fold_idx=fold_idx, run_id=run_id, type="test"
+            )
             test_score = mean_squared_error(y_test, test_pred)
             # test_score = accuracy_score(y_test, test_pred)
             # test_score = compute_metrics(y_test, test_pred)
@@ -175,7 +175,6 @@ def run_single_model(model_name, model_config, general_config, results_path):
                 },
             }
 
-            # print(f"Done Fold {fold_idx + 1}")
             per_fold_results.append(
                 {
                     "model": model_name,
@@ -202,10 +201,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
                 Path("./data/results/plots") / f"training_history_{run_id}.png"
             )
             training_history_plot_path.parent.mkdir(parents=True, exist_ok=True)
-            # if training_log_path.exists():
-            #     plot_history_from_file(
-            #         training_log_path, save_path=training_history_plot_path
-            #     )
+
             save_model_results(
                 summary,
                 Path(results_path) / "analysis_results" / f"{run_id}_partial.json",
@@ -226,13 +222,6 @@ def run_single_model(model_name, model_config, general_config, results_path):
     summary["results"]["test_average_score"] = float(np.mean(test_scores))
     summary["results"]["test_std_score"] = float(np.std(test_scores))
 
-    # print("\n Saving results...")
-    # if DEBUG:
-    #     save_fold_results(
-    #         model_name=model_name,
-    #         fold_results=per_fold_results,
-    #         output_dir=Path(results_path) / "analysis_results",
-    #     )
     save_model_results(summary, Path(results_path) / "analysis_results")
     return model_name, run_id
 
@@ -244,33 +233,3 @@ results = run_jobs(run_single_model, models_to_run, model_config, general_config
 # results is a list of (model_name, per_fold_results)
 for model_name, run_id in results:
     print(f"Completed model: {model_name}")
-
-
-# ------------ EVALUATION AND ANALYSIS ------------
-
-
-# -------- PLOT PER FOLD PRED VS TARGETS --------
-# for model_entry in models_to_run:
-#     name = model_entry["name"]
-#     plot_folds_predictions_vs_targets(
-#         summary_path=Path(config["data_paths"]["hcp_results"])
-#         / "analysis_results"
-#         / f"{name}_fold_results.json",
-#         output_dir=Path(config["data_paths"]["hcp_results"]]) / "analysis_results" / "plots",
-#     )
-
-#     summarize_folds_to_csv(
-#         fold_results_path=Path(config["data_paths"]["hcp_results"])
-#         / "analysis_results"
-#         / f"{name}_fold_results.json",
-#         output_csv_path=Path(config["data_paths"]["hcp_results"])
-#         / "analysis_results"
-#         / f"{name}_score_stats.csv",
-#     )
-
-
-###### VERY EARLY IN TESTING
-# preparator = LcotEmbedHcpPipeline(config)
-# preparator.extract_raw_data("100206")
-# preparator.compute_microstructure("100206")
-# breakpoint()

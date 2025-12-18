@@ -78,8 +78,9 @@ class PCALogisticRegressionModel(NumpyAbstractModel):
         features_reshaped = features.reshape(features.shape[0], -1)
         return self.model.predict(features_reshaped)
 
+
 class PCALinearModel(NumpyAbstractModel):
-    
+
     data_type = "array"
 
     def __init__(self, **kwargs):
@@ -89,21 +90,25 @@ class PCALinearModel(NumpyAbstractModel):
             scoring = "accuracy"
 
             param_grid = {
-                "pca__n_components": [10], #[10, 50, 100],
-                "linear__C": [0.01, 0.1, 1], #[0.01, 0.1, 1, 10, 100],
+                "pca__n_components": [10],  # [10, 50, 100],
+                "linear__C": [0.01, 0.1, 1],  # [0.01, 0.1, 1, 10, 100],
                 "linear__solver": ["lbfgs"],
                 "linear__penalty": ["l2"],
             }
 
-        else: #if self.prediction_task == "regression":  # regression
+        else:  # if self.prediction_task == "regression":  # regression
             head = Ridge()  # or LinearRegression()
             scoring = "neg_mean_squared_error"
 
             param_grid = {
-                "pca__n_components": [10], #[10, 50, 100],
-                "linear__alpha": [0.01, 0.1, 1], #[0.01, 0.1, 1, 10],  # Ridge regularization
+                "pca__n_components": [10],  # [10, 50, 100],
+                "linear__alpha": [
+                    0.01,
+                    0.1,
+                    1,
+                ],  # [0.01, 0.1, 1, 10],  # Ridge regularization
             }
-            
+
         pipeline = Pipeline(
             [
                 ("scaler", StandardScaler()),
@@ -134,8 +139,10 @@ class PCALinearModel(NumpyAbstractModel):
 
     def fit(self, dataloader):
         """Fit PCA and then logistic regression on reduced features."""
-        assert self.prediction_task in ["classification", "regression"], \
-            f"prediction_task must be set before calling fit(). Got {self.prediction_task}"
+        assert self.prediction_task in [
+            "classification",
+            "regression",
+        ], f"prediction_task must be set before calling fit(). Got {self.prediction_task}"
         features, targets = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
         self.model.fit(features_reshaped, targets.flatten())
@@ -146,6 +153,7 @@ class PCALinearModel(NumpyAbstractModel):
         features, _ = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
         return self.model.predict(features_reshaped)
+
 
 class LogisticRegressionModel(NumpyAbstractModel):
     """
@@ -162,9 +170,10 @@ class LogisticRegressionModel(NumpyAbstractModel):
         predict(dataloader):
             Transforms the input data using PCA and predicts the class labels using the logistic regression model.
     """
+
     data_type = "array"
     prediction_task = None
-    
+
     def __init__(self):
         self.model = LogisticRegression(max_iter=100)
 
