@@ -3,8 +3,8 @@ from pathlib import Path
 import nibabel as nib
 import numpy as np
 import torch
-
 from torch.utils.data import Dataset
+
 
 class CustomDataset(Dataset):
     """
@@ -70,15 +70,11 @@ class CustomDataset(Dataset):
                     for i in range(
                         final_features.shape[0]
                     ):  # iterate through depth dimension
-                        slice_2d = final_features[
-                            i, :, :
-                        ]
+                        slice_2d = final_features[i, :, :]
                         slice_2d = self.transform(slice_2d)
                         slices.append(slice_2d)
                     final_features = torch.stack(slices, dim=0)  # (D,1,H,W)
-                    final_features = final_features.permute(
-                        1, 0, 2, 3
-                    )  # (C=1,D,H,W)
+                    final_features = final_features.permute(1, 0, 2, 3)  # (C=1,D,H,W)
             except (OSError, FileNotFoundError) as e:
                 print(f"[Warning] Dropping subject {Path(self.features[idx])}: {e}")
                 return None

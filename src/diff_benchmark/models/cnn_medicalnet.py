@@ -50,6 +50,7 @@ def downsample_basic_block(x, planes, stride, no_cuda=False):
 
 class BasicBlock(nn.Module):
     """BasicBlock for a 3D convolutional neural network."""
+
     expansion = 1
 
     def __init__(self, inplanes, planes, stride=1, dilation=1, downsample=None):
@@ -201,7 +202,15 @@ class ResNet(nn.Module):
                     num_classes is the number of output classes.
     """
 
-    def __init__(self, block, layers, num_classes, prediction_task, shortcut_type="B", no_cuda=False):
+    def __init__(
+        self,
+        block,
+        layers,
+        num_classes,
+        prediction_task,
+        shortcut_type="B",
+        no_cuda=False,
+    ):
         self.inplanes = 64
         self.no_cuda = no_cuda
         super().__init__()
@@ -514,4 +523,3 @@ class ResNet3DModel(TorchPipeline):
         model.mean = 0.5
         model.std = 0.5
         return model
-    

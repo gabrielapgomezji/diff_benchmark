@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import bids
 import nibabel as nib
 import numpy as np
 from nibabel.filebasedimages import ImageFileError
@@ -14,7 +15,7 @@ from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
     project_to_surface,
     resample_schaefer_onto_fs_lr,
 )
-import bids
+
 
 class DefaultWandPipeline(DataPreparationBrain):
     """
@@ -49,22 +50,29 @@ class DefaultWandPipeline(DataPreparationBrain):
         self.big_delta = config["big_delta_wand"]
         self.small_delta = config["small_delta_wand"]
         self.big_delta_per_bvalue = config.get("big_delta_per_bvalue_wand", None)
-        
+
         # NEW ATTRIBUTE TO STORE RESULTS
-        self.layout = bids.BIDSLayout(str(self.wand_dir), derivatives=self.in_derivatives, validate=False)
+        self.layout = bids.BIDSLayout(
+            str(self.wand_dir), derivatives=self.in_derivatives, validate=False
+        )
 
     def verify_raw_files(self, subject_id: str) -> bool:
-        aparcaseg = self.layout.get(subject=subject_id, desc='aparcaseg', suffix='dseg', return_type='file')[0]
-        dwi_bids = self.layout.get(subject=subject_id, suffix='dwi', extension='.nii.gz', desc='eddycorrected+bbreg')[0]
+        aparcaseg = self.layout.get(
+            subject=subject_id, desc="aparcaseg", suffix="dseg", return_type="file"
+        )[0]
+        dwi_bids = self.layout.get(
+            subject=subject_id,
+            suffix="dwi",
+            extension=".nii.gz",
+            desc="eddycorrected+bbreg",
+        )[0]
         dwi_file = dwi_bids.path
         entities_ = dwi_bids.get_entities()
         dwi_file_bvals = self.layout.get(
-            subject=entities_['subject'], 
-            extension='bval', return_type='file'
+            subject=entities_["subject"], extension="bval", return_type="file"
         )[0]
         dwi_file_bvecs = self.layout.get(
-            subject=entities_['subject'],
-            extension='bvec', return_type='file'
+            subject=entities_["subject"], extension="bvec", return_type="file"
         )[0]
 
         required_files = {
@@ -113,35 +121,41 @@ class DefaultWandPipeline(DataPreparationBrain):
                 self.results_root / "derivatives" / f"sub-{subject_id}" / "dwi"
             )
             derivatives_dir.mkdir(parents=True, exist_ok=True)
-            
-            aparc_aseg = self.layout.get(subject=subject_id, desc='aparcaseg', suffix='dseg', return_type='file')[0]
-            dwi_bids = self.layout.get(subject=subject_id, suffix='dwi', extension='.nii.gz', desc='eddycorrected+bbreg')[0]
+
+            aparc_aseg = self.layout.get(
+                subject=subject_id, desc="aparcaseg", suffix="dseg", return_type="file"
+            )[0]
+            dwi_bids = self.layout.get(
+                subject=subject_id,
+                suffix="dwi",
+                extension=".nii.gz",
+                desc="eddycorrected+bbreg",
+            )[0]
             dwi_file = dwi_bids.path
-            
+
             entities_ = dwi_bids.get_entities()
             dwi_file_bvals = self.layout.get(
-                subject=entities_['subject'], 
-                extension='bval', return_type='file'
+                subject=entities_["subject"], extension="bval", return_type="file"
             )[0]
             dwi_file_bvecs = self.layout.get(
-                subject=entities_['subject'],
-                extension='bvec', return_type='file'
+                subject=entities_["subject"], extension="bvec", return_type="file"
             )[0]
-            
+
             dwi_nib = nib.load(dwi_file)
             bvals = np.loadtxt(dwi_file_bvals)
             bvecs = np.loadtxt(dwi_file_bvecs)
 
             labels = extract_selected_labels(aparc_aseg)
-            
+
             selected_labels = [
-                k for k in labels
+                k
+                for k in labels
                 if (
-                    ('ctx' in k) or
-                    ('thalamus' in k) or
-                    ('caudate' in k) or
-                    ('putamen' in k) or
-                    ('pallidum' in k)
+                    ("ctx" in k)
+                    or ("thalamus" in k)
+                    or ("caudate" in k)
+                    or ("putamen" in k)
+                    or ("pallidum" in k)
                 )
             ]
             aparc_resampled = nimage.resample_img(
@@ -154,21 +168,32 @@ class DefaultWandPipeline(DataPreparationBrain):
             )
 
             # ctx_mask, vent_mask = create_masks(aparc_resampled, labels) # CHECK
-            from diff_benchmark.preprocessing.wrapper_utils_brain_data import create_masks_bids
-            ctx_mask, vent_mask = create_masks_bids(aparc_resampled, labels, selected_labels)
+            from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
+                create_masks_bids,
+            )
+
+            ctx_mask, vent_mask = create_masks_bids(
+                aparc_resampled, labels, selected_labels
+            )
 
             surfaces = {
                 f"{h}.{s}": self.layout.get(
-                subject=subject_id, suffix=s, hemi=h, space=None,
-                extension='.surf.gii', return_type='files' #, density='32k'
-
-            )[0]
+                    subject=subject_id,
+                    suffix=s,
+                    hemi=h,
+                    space=None,
+                    extension=".surf.gii",
+                    return_type="files",  # , density='32k'
+                )[0]
                 for s in ("white", "pial", "inflated")
                 for h in ("L", "R")
             }
 
             if self.metric == "rtop":
-                from diff_benchmark.preprocessing.wrapper_utils_brain_data import compute_rtop_bids
+                from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
+                    compute_rtop_bids,
+                )
+
                 rtop_img = compute_rtop_bids(
                     dwi_nib,
                     ctx_mask,
@@ -191,7 +216,10 @@ class DefaultWandPipeline(DataPreparationBrain):
                     self.metric,
                 )
             elif self.metric == "md":
-                from diff_benchmark.preprocessing.wrapper_utils_brain_data import compute_md_bids
+                from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
+                    compute_md_bids,
+                )
+
                 md_img = compute_md_bids(
                     dwi_nib,
                     ctx_mask,

@@ -23,6 +23,7 @@ class DatasetSpecs:
     num_targets: int
     gender_distribution: dict
 
+
 class PreprocessedData:
     """
     PreprocessedData is a class for handling preprocessed datasets, providing functionality

@@ -2,21 +2,18 @@ import hashlib
 import json
 
 from diff_benchmark.models import cnn_with_base
-
 from diff_benchmark.models.classic_ml import PCARandomForestModel, PCASVMModel
 from diff_benchmark.models.cnn import ResNet3SliceModel
 from diff_benchmark.models.cnn_medicalnet import ResNet3DModel
 from diff_benchmark.models.cnn_torch_train import CNNTorchTrainModel
 from diff_benchmark.models.cnn_torch_train_reg import CNNRegTorchTrainModel
 
-# from diff_benchmark.models.cnn_medicalnet import ResNet3DModel
 from diff_benchmark.models.dummy import DummyClassifier, DummyRegressor
 from diff_benchmark.models.logistic_regression import (
     LogisticRegressionModel,
-    PCALogisticRegressionModel,
     PCALinearModel,
+    PCALogisticRegressionModel,
 )
-
 
 
 def make_run_id(name, params):
@@ -62,13 +59,13 @@ def get_model(name: str, config: dict):
 
     if name == "dummy_classifier":
         return DummyClassifier()
-    
+
     if name == "dummy_regressor":
         return DummyRegressor()
-    
+
     if name == "pca_logistic":
         return PCALogisticRegressionModel()
-    
+
     if name == "pca_linear":
         return PCALinearModel(**config)
 
@@ -93,8 +90,5 @@ def get_model(name: str, config: dict):
 
     if name == "medicalnet":
         return ResNet3DModel(**config)
-
-    # elif name == "other_model":
-    #     return OtherModelClass(param1=config["param1"], ...)
 
     raise ValueError(f"Unknown model name: {name}")

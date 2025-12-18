@@ -121,7 +121,7 @@ class ResNet3SliceClassifier(nn.Module):
 
         # Concatenate subvolume features: (B, N*512)
         feats = feats.reshape(B, -1)
-        
+
         feats = self.dropout(feats)
         out = self.fc(feats)  # (B, num_classes)
         return out

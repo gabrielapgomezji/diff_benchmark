@@ -1,13 +1,13 @@
 from sklearn.metrics import (
     accuracy_score,
     confusion_matrix,
-    f1_score,
-    precision_score,
-    recall_score,
-    mean_squared_error,
-    r2_score,
     explained_variance_score,
+    f1_score,
     mean_absolute_percentage_error,
+    mean_squared_error,
+    precision_score,
+    r2_score,
+    recall_score,
 )
 
 __all__ = ["accuracy_score"]
@@ -27,7 +27,10 @@ def compute_metrics_old(y_true, y_pred, average="binary", zero_division="warn"):
         "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
     }
 
-def compute_metrics(y_true, y_pred, prediction_task, average="binary", zero_division="warn"):
+
+def compute_metrics(
+    y_true, y_pred, prediction_task, average="binary", zero_division="warn"
+):
     """Compute standard classification metrics."""
     if prediction_task == "classification":
         return {
@@ -38,10 +41,12 @@ def compute_metrics(y_true, y_pred, prediction_task, average="binary", zero_divi
             "recall": recall_score(
                 y_true, y_pred, average=average, zero_division=zero_division
             ),
-            "f1": f1_score(y_true, y_pred, average=average, zero_division=zero_division),
+            "f1": f1_score(
+                y_true, y_pred, average=average, zero_division=zero_division
+            ),
             "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
         }
-        
+
     elif prediction_task == "regression":
         return {
             "mse": mean_squared_error(y_true, y_pred),
@@ -50,4 +55,6 @@ def compute_metrics(y_true, y_pred, prediction_task, average="binary", zero_divi
             "mape": mean_absolute_percentage_error(y_true, y_pred),
         }
     else:
-        raise ValueError("Invalid prediction_task. Choose either 'classification' or 'regression'.")
+        raise ValueError(
+            "Invalid prediction_task. Choose either 'classification' or 'regression'."
+        )

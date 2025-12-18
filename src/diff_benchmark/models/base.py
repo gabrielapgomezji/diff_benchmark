@@ -21,6 +21,7 @@ from tqdm import tqdm
 from diff_benchmark.utils.logger import TrainLogger
 from diff_benchmark.utils.scores import compute_metrics
 
+
 def collate_with_augmentation(batch, transform=None):
     """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
     xs, ys, gs = zip(*batch)  # separate batch components
@@ -35,6 +36,7 @@ def collate_with_augmentation(batch, transform=None):
         x_aug = torch.stack(slices, dim=0)  # (D,1,H,W)
         x_aug = x_aug.permute(1, 0, 2, 3)  # (C=1,D,H,W)
         xs_aug.append(x_aug)
+
 
 #     xs_aug = torch.stack(xs_aug, dim=0)
 #     ys = torch.stack(ys)
@@ -131,7 +133,7 @@ class TorchPipeline:
         self.epochs = kwargs.get("epochs", 100)
         self.average = kwargs.get("average", "binary")
         self._prediction_task = kwargs.get("prediction_task", None)
-    
+
         self.model = self._build_model(**kwargs).to(self.device)
 
         self.learning_rate = kwargs.get("learning_rate", 1e-4)
@@ -166,11 +168,11 @@ class TorchPipeline:
                 "batch_train_idx": [],
             },
         }
-    
+
     @property
     def prediction_task(self):
         return self._prediction_task
-    
+
     # @prediction_task.setter
     # def prediction_task(self, value):
     #     self._prediction_task = value
@@ -239,7 +241,7 @@ class TorchPipeline:
         """Fit the model to the training data."""
         print(f"Device: {self.device}")
         self.model.train()
-        
+
         train_loader, val_loader = self._train_val_loader_split(dataloader)
         print(f"Fold index: {self.fold_idx}")
 
@@ -268,7 +270,7 @@ class TorchPipeline:
             print(f"Epoch {epoch}")
             epoch_losses = []
             for batch_train_idx, (xb, yb, _) in enumerate(train_loader):
-                
+
                 # print("Batch loaded")
                 # xb, yb = xb.to(self.device, non_blocking=True), yb.long().to(
                 #     self.device, non_blocking=True
@@ -277,20 +279,20 @@ class TorchPipeline:
                 #     self.device, non_blocking=True
                 # )
                 xb = xb.to(self.device, non_blocking=True)
-                
+
                 if self.prediction_task == "classification":
                     yb = yb.long().to(self.device, non_blocking=True)
                 else:
                     yb = yb.float().to(self.device, non_blocking=True)
-        
+
                 # print("Moved to device")
                 self.optimizer.zero_grad()
                 preds = self.model(xb)
                 if self.prediction_task == "classification":
-                    preds = preds#.argmax(dim=1)
+                    preds = preds  # .argmax(dim=1)
                 else:
                     preds = preds.squeeze(1)
-                
+
                 loss = self.criterion(preds, yb)
 
                 loss.backward()
@@ -338,7 +340,7 @@ class TorchPipeline:
                             #     self.device, non_blocking=True
                             # ), yb.long().to(self.device, non_blocking=True)
                             xb = xb.to(self.device, non_blocking=True)
-                
+
                             if self.prediction_task == "classification":
                                 yb = yb.long().to(self.device, non_blocking=True)
                             else:
@@ -346,7 +348,7 @@ class TorchPipeline:
 
                             preds = self.model(xb)
                             if self.prediction_task == "classification":
-                                preds = preds#.argmax(dim=1) # Remove the argmax for classification. Done in the cross entropy loss
+                                preds = preds  # .argmax(dim=1) # Remove the argmax for classification. Done in the cross entropy loss
                             else:
                                 preds = preds.squeeze(1)
                             loss = self.criterion(preds, yb)
@@ -355,10 +357,12 @@ class TorchPipeline:
                             y_true.append(yb.cpu().numpy())
                             # y_pred.append(preds.argmax(dim=1).cpu().numpy())
                             if self.prediction_task == "classification":
-                                y_pred.append(preds.argmax(dim=1).cpu().detach().numpy())
+                                y_pred.append(
+                                    preds.argmax(dim=1).cpu().detach().numpy()
+                                )
                             else:
                                 y_pred.append(preds.cpu().detach().numpy())
-                            
+
                     val_loss /= len(val_loader)
 
                     y_true = np.concatenate(y_true)
@@ -391,9 +395,13 @@ class TorchPipeline:
                 # self.scheduler.step()  # For one cycle scheduler
             self.scheduler.step()
 
-            print(f"Epoch {epoch}: Training loss {np.mean(epoch_losses)} - Val Loss: {val_loss}")
+            print(
+                f"Epoch {epoch}: Training loss {np.mean(epoch_losses)} - Val Loss: {val_loss}"
+            )
 
-        plot_history_from_file(self.history, self.fold_idx, self.run_id, self.prediction_task)
+        plot_history_from_file(
+            self.history, self.fold_idx, self.run_id, self.prediction_task
+        )
         self.logger.save_checkpoint(self.model, self.epochs, 0, is_last=True)
         self.logger.save_logs()
         self._save_logs(
@@ -431,7 +439,7 @@ class TorchPipeline:
                     preds = logits.argmax(dim=1).cpu().detach()
                 else:
                     preds = logits.squeeze(1).cpu().detach()
-                preds_all.append(preds) #.cpu())
+                preds_all.append(preds)  # .cpu())
         return torch.cat(preds_all).numpy()
 
 
@@ -588,6 +596,7 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MultipleLocator
 
+
 # def plot_history_from_file(path="history.json", save_path="training_history.pdf"):
 def plot_history_from_file(history, fold_idx, run_id, prediction_task):
     """
@@ -609,7 +618,7 @@ def plot_history_from_file(history, fold_idx, run_id, prediction_task):
         e + i / steps_per_epoch
         for e, i in zip(history["val"]["epoch"], history["val"]["batch_train_idx"])
     ]
-    
+
     epochs = sorted(set(history["train"]["epoch"]))
 
     # METRICS
@@ -633,18 +642,26 @@ def plot_history_from_file(history, fold_idx, run_id, prediction_task):
             for ep in epochs
         ]
         val_epoch_acc = [
-            np.mean([acc for e, acc in zip(history["val"]["epoch"], val_acc) if e == ep])
+            np.mean(
+                [acc for e, acc in zip(history["val"]["epoch"], val_acc) if e == ep]
+            )
             for ep in epochs
         ]
 
         train_epoch_prec = [
             np.mean(
-                [acc for e, acc in zip(history["train"]["epoch"], train_prec) if e == ep]
+                [
+                    acc
+                    for e, acc in zip(history["train"]["epoch"], train_prec)
+                    if e == ep
+                ]
             )
             for ep in epochs
         ]
         val_epoch_prec = [
-            np.mean([acc for e, acc in zip(history["val"]["epoch"], val_prec) if e == ep])
+            np.mean(
+                [acc for e, acc in zip(history["val"]["epoch"], val_prec) if e == ep]
+            )
             for ep in epochs
         ]
         train_epoch_rec = [
@@ -654,12 +671,16 @@ def plot_history_from_file(history, fold_idx, run_id, prediction_task):
             for ep in epochs
         ]
         val_epoch_rec = [
-            np.mean([acc for e, acc in zip(history["val"]["epoch"], val_rec) if e == ep])
+            np.mean(
+                [acc for e, acc in zip(history["val"]["epoch"], val_rec) if e == ep]
+            )
             for ep in epochs
         ]
 
         train_epoch_f1 = [
-            np.mean([acc for e, acc in zip(history["train"]["epoch"], train_f1) if e == ep])
+            np.mean(
+                [acc for e, acc in zip(history["train"]["epoch"], train_f1) if e == ep]
+            )
             for ep in epochs
         ]
         val_epoch_f1 = [
@@ -677,7 +698,9 @@ def plot_history_from_file(history, fold_idx, run_id, prediction_task):
             for ep in epochs
         ]
         val_epoch_mse = [
-            np.mean([mse for e, mse in zip(history["val"]["epoch"], val_mse) if e == ep])
+            np.mean(
+                [mse for e, mse in zip(history["val"]["epoch"], val_mse) if e == ep]
+            )
             for ep in epochs
         ]
         train_r2 = [m["r2"] for m in history["train"]["metrics"]]
@@ -692,13 +715,19 @@ def plot_history_from_file(history, fold_idx, run_id, prediction_task):
             np.mean([r2 for e, r2 in zip(history["val"]["epoch"], val_r2) if e == ep])
             for ep in epochs
         ]
-        train_explained_variance = [m["explained_variance"] for m in history["train"]["metrics"]]
-        val_explained_variance = [m["explained_variance"] for m in history["val"]["metrics"]]
+        train_explained_variance = [
+            m["explained_variance"] for m in history["train"]["metrics"]
+        ]
+        val_explained_variance = [
+            m["explained_variance"] for m in history["val"]["metrics"]
+        ]
         train_epoch_explained_variance = [
             np.mean(
                 [
                     ev
-                    for e, ev in zip(history["train"]["epoch"], train_explained_variance)
+                    for e, ev in zip(
+                        history["train"]["epoch"], train_explained_variance
+                    )
                     if e == ep
                 ]
             )
@@ -718,12 +747,18 @@ def plot_history_from_file(history, fold_idx, run_id, prediction_task):
         val_mape = [m["mape"] for m in history["val"]["metrics"]]
         train_epoch_mape = [
             np.mean(
-                [mape for e, mape in zip(history["train"]["epoch"], train_mape) if e == ep]
+                [
+                    mape
+                    for e, mape in zip(history["train"]["epoch"], train_mape)
+                    if e == ep
+                ]
             )
             for ep in epochs
         ]
         val_epoch_mape = [
-            np.mean([mape for e, mape in zip(history["val"]["epoch"], val_mape) if e == ep])
+            np.mean(
+                [mape for e, mape in zip(history["val"]["epoch"], val_mape) if e == ep]
+            )
             for ep in epochs
         ]
 
@@ -903,7 +938,7 @@ def plot_history_from_file(history, fold_idx, run_id, prediction_task):
             markeredgewidth=1.5,
             label="Validation MSE",
         )
-        
+
         ax.plot(
             epochs,
             train_epoch_mape,
@@ -956,7 +991,7 @@ def plot_history_from_file(history, fold_idx, run_id, prediction_task):
         ax.legend()
         ax.set_xlim(0, num_epochs)
         ax.set_ylim(-50, 5)
-        
+
         ax = axes[1, 1]
         ax.plot(
             epochs,

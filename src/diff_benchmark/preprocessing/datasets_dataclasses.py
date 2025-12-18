@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Dict, Optional
+
 
 @dataclass
 class DatasetConfig:
@@ -15,5 +16,3 @@ class DatasetConfig:
     big_delta: Optional[float] = None
     small_delta: Optional[float] = None
     big_delta_per_bvalue: Optional[Dict[int, float]] = None
-    
-    
