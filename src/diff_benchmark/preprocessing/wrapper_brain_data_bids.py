@@ -69,7 +69,8 @@ class DefaultPipeline(DataPreparationBrain):
         
         # NEW ATTRIBUTE TO STORE RESULTS
         self.layout = bids.BIDSLayout(str(self.base_dir), derivatives=self.in_derivatives, validate=False)
-
+        breakpoint()
+        
     def verify_raw_files(self, subject_id: str) -> bool:
         aparcaseg = self.layout.get(subject=subject_id, desc='aparcaseg', suffix='dseg', return_type='file')[0]
         dwi_bids = self.layout.get(subject=subject_id, suffix='dwi', extension='.nii.gz', desc='eddycorrected+bbreg')[0]
