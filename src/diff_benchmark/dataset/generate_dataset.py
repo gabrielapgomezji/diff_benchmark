@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import h5py
 import nibabel as nib
 import numpy as np
 import torch
