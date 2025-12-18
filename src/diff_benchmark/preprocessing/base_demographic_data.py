@@ -23,8 +23,9 @@ class DemographicsPreprocessor(ABC):
     """
 
     def __init__(self, csv_path: str | Path):
-        self.csv_path = Path(csv_path)
-        self.df = pd.read_csv(self.csv_path, index_col=0)
+        self.csv_path = Path(csv_path)     
+        sep = "\t" if self.csv_path.suffix == ".tsv" else ","
+        self.df = pd.read_csv(self.csv_path, sep=sep, index_col=0)
 
     @abstractmethod
     def filter(self, target_columns: list[str]) -> None:
