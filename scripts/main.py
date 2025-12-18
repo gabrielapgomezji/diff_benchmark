@@ -27,7 +27,7 @@ from diff_benchmark.utils.job_manager import run_jobs
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "--methods", nargs="+", type=str, default=["lcot"], help="Method to use"
+    "--methods", nargs="+", type=str, default=["2dcnn_torch"], help="Method to use"
 )
 args = parser.parse_args()
 
