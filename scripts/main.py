@@ -44,7 +44,6 @@ def run_single_model(model_name, model_config, general_config, results_path):
     brain_df = brain_preparator.run_microstructure_pipeline()
     brain_df = brain_df.reset_index()
 
-    ##### NEXT TESTING STEPS
     preprocessor = DefaultDemographicsPreprocessor(config["data_paths"]["csv_file"])
     demographics_df = preprocessor.preprocess(config["target_columns"])
 
@@ -69,7 +68,6 @@ def run_single_model(model_name, model_config, general_config, results_path):
     specs = preprocessed.get_specs()
     print(specs)
 
-    # folds = preprocessed.get_folds_as_dataloaders(batch_size=16)
     indices = preprocessed.get_fold_indices()
 
     local_config = copy.deepcopy(model_config)
@@ -134,8 +132,6 @@ def run_single_model(model_name, model_config, general_config, results_path):
             model = get_model(model_name, local_config)
             # --------- Train / Val / Test Model ---------
             # print("Training...")
-            # device = torch.device("cpu")
-            # model = model.to(device)
             model.fit(train_loader)
             train_pred = model.predict(train_loader)
             plot_true_vs_pred(y_train, train_pred, fold_idx=fold_idx, run_id=run_id, type="train")
@@ -175,7 +171,6 @@ def run_single_model(model_name, model_config, general_config, results_path):
                 },
             }
 
-            # print(f"Done Fold {fold_idx + 1}")
             per_fold_results.append(
                 {
                     "model": model_name,
@@ -226,13 +221,6 @@ def run_single_model(model_name, model_config, general_config, results_path):
     summary["results"]["test_average_score"] = float(np.mean(test_scores))
     summary["results"]["test_std_score"] = float(np.std(test_scores))
 
-    # print("\n Saving results...")
-    # if DEBUG:
-    #     save_fold_results(
-    #         model_name=model_name,
-    #         fold_results=per_fold_results,
-    #         output_dir=Path(results_path) / "analysis_results",
-    #     )
     save_model_results(summary, Path(results_path) / "analysis_results")
     return model_name, run_id
 
@@ -244,33 +232,3 @@ results = run_jobs(run_single_model, models_to_run, model_config, general_config
 # results is a list of (model_name, per_fold_results)
 for model_name, run_id in results:
     print(f"Completed model: {model_name}")
-
-
-# ------------ EVALUATION AND ANALYSIS ------------
-
-
-# -------- PLOT PER FOLD PRED VS TARGETS --------
-# for model_entry in models_to_run:
-#     name = model_entry["name"]
-#     plot_folds_predictions_vs_targets(
-#         summary_path=Path(config["data_paths"]["hcp_results"])
-#         / "analysis_results"
-#         / f"{name}_fold_results.json",
-#         output_dir=Path(config["data_paths"]["hcp_results"]]) / "analysis_results" / "plots",
-#     )
-
-#     summarize_folds_to_csv(
-#         fold_results_path=Path(config["data_paths"]["hcp_results"])
-#         / "analysis_results"
-#         / f"{name}_fold_results.json",
-#         output_csv_path=Path(config["data_paths"]["hcp_results"])
-#         / "analysis_results"
-#         / f"{name}_score_stats.csv",
-#     )
-
-
-###### VERY EARLY IN TESTING
-# preparator = LcotEmbedHcpPipeline(config)
-# preparator.extract_raw_data("100206")
-# preparator.compute_microstructure("100206")
-# breakpoint()
