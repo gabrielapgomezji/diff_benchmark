@@ -1,13 +1,71 @@
 
 # ==============================
+# DATASET CONFIGURATION
+# ==============================
+datasets:
+  metric_to_compute: rtop # md #
+  scale: 1000
+  datasets_list:
+    - name: hcp
+      base_dir: /data/parietal/store4/data/HCP
+      results_dir: /data/parietal/store3/work/ggomezji/benchmark/HCP900
+      data_reading: hcp
+      big_delta: 0.0431
+      small_delta: 0.0106
+    - name: camcan
+      base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/camcan
+      results_dir: /data/parietal/store3/work/ggomezji/benchmark/CamCAN
+      data_reading: bids
+      big_delta: 0.024
+      small_delta: 0.007
+      big_delta_per_bvalue:
+        1000: 24
+        2000: 30
+    - name: wand
+      base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/WAND-concat
+      results_dir: /data/parietal/store3/work/ggomezji/benchmark/WAND
+      data_reading: bids
+      big_delta: 0.024
+      small_delta: 0.007
+      big_delta_per_bvalue:
+        2200: 24
+        4000: 30
+        4400: 24
+        8000: 30
+        5800: 42
+        7750: 55
+        11600: 42
+        15500: 55
+    - name: abide
+      base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/abide
+      results_dir: /data/parietal/store3/work/ggomezji/benchmark/abide
+      data_reading: multicenter-bids
+      big_delta: 0.024 # Need to check
+      small_delta: 0.007 # Need to check
+
+# ==============================
 # GENERAL SETTINGS
 # ==============================
-metric_to_compute: rtop
+metric_to_compute: md #rtop
 scale: 1000     # Scale for Schaefer parcellation (options: 100–1000)
 big_delta: 0.0431
 small_delta: 0.0106
+big_delta_camcan: 0.024
+small_delta_camcan: 0.007
 big_delta_wand: 0.024
 small_delta_wand: 0.007
+big_delta_per_bvalue_camcan:
+  1000: 24
+  2000: 30
+big_delta_per_bvalue_wand:
+  2200: 24
+  4000: 30
+  4400: 24
+  8000: 30
+  5800: 42
+  7750: 55
+  11600: 42
+  15500: 55
 random_state: 42
 data_preparation:
   region: VisCent_ExStr #null # If we want all regions, set to null
@@ -33,7 +91,7 @@ data_paths:
   hcp_base: /data/parietal/store4/data/HCP
   hcp_results: /data/parietal/store3/work/ggomezji/benchmark/HCP900
   # data_path == (hcp_results): /data/parietal/store2/work/ggomezji/HCP900
-  camcan_base: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/camcan/derivatives
+  camcan_base: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/camcan
   camcan_results: /data/parietal/store3/work/ggomezji/benchmark/CamCAN
   wand_base: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/WAND-concat
   wand_results: /data/parietal/store3/work/ggomezji/benchmark/WAND

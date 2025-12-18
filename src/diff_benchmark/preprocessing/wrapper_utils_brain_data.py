@@ -19,17 +19,63 @@ from templateflow import api as tflow
 from tqdm import tqdm
 
 
-def extract_selected_labels(nifti_path):
-    """Extract selected labels from a NIfTI file's header extensions."""
-    header = nib.load(nifti_path).header
-    labels = {
-        n.text.lower(): int(n.get("Key"))
-        for n in etree.ElementTree.fromstring(header.extensions[0].text).findall(
-            ".//Label"
-        )
-    }
-    return {k: v for k, v in labels.items() if k.startswith("ctx") or "ventricle" in k}
+def read_label_file():
+    """
+    Read a FreeSurfer-style label file and return a dictionary mapping
+    lowercase label names to their indices.
+    
+    Args:
+        filepath (str): Path to the .txt label file.
+    
+    Returns:
+        dict: Dictionary with label names (lowercase) as keys and indices as values.
+    """
+    filepath = Path(__file__).parent.parent.parent.parent / "aux_materials/FreeSurferColorLUT.txt"
+    label_dict = {}
+    
+    with open(filepath, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            
+            # skip empty lines and header comments
+            if not line or line.startswith("#"):
+                continue
+            
+            # split by whitespace; expected format: index label_name R G B A
+            parts = line.split()
+            if len(parts) < 2:
+                continue
+            
+            try:
+                index = int(parts[0])
+                label_name = parts[1].lower()  # convert to lowercase
+                label_dict[label_name] = index
+            except (ValueError, IndexError):
+                continue
+    
+    return label_dict
 
+def extract_selected_labels(nifti_path, labels_dict=None):
+    """Extract selected labels from a NIfTI file's header extensions."""
+    try:
+        header = nib.load(nifti_path).header
+        labels = {
+            n.text.lower(): int(n.get("Key"))
+            for n in etree.ElementTree.fromstring(header.extensions[0].text).findall(
+                ".//Label"
+            )
+        }
+        return {k: v for k, v in labels.items() if k.startswith("ctx") or "ventricle" in k}
+    except Exception as e:
+        print(f"Error extracting labels from given file.")
+        if labels_dict is not None:
+            print("Using provided labels_dict instead.")
+            return labels_dict
+        print("Loading labels from fs_labels.json")
+        fs_labels = Path(__file__).parent.parent.parent.parent / "aux_materials/fs_labels.json"
+        labels_dict = json.load(fs_labels.open())
+        # read_label_file()
+        return labels_dict
 
 def create_masks(parcellation_img, labels):
     """Create context and ventricle masks from parcellation image."""
@@ -46,6 +92,26 @@ def create_masks(parcellation_img, labels):
     )
     return ctx_mask, vent_mask
 
+def create_masks_bids(parcellation_img, labels, selected_labels=None):
+    """Create context and ventricle masks from parcellation image."""
+    if selected_labels is not None:
+        ctx_mask = nimage.math_img(
+            " + ".join(f"(x == {labels[k]})" for k in selected_labels if k in labels),
+            x=parcellation_img,
+        )
+    else:
+        ctx_mask = nimage.math_img(
+            " + ".join(f"(x == {v})" for k, v in labels.items() if "ctx" in k),
+            x=parcellation_img,
+        )
+    vent_mask_raw = nimage.math_img(
+        " + ".join(f"(x == {v})" for k, v in labels.items() if "vent" in k),
+        x=parcellation_img,
+    )
+    vent_mask = nimage.new_img_like(
+        parcellation_img, ndimage.binary_erosion(nimage.get_data(vent_mask_raw))
+    )
+    return ctx_mask, vent_mask
 
 def compute_rtop(
     dwi_nib, mask_img, normalization_mask_img, bvals, bvecs, big_delta, small_delta
@@ -76,13 +142,55 @@ def compute_rtop(
 
     return masker.inverse_transform(rtop.T)
 
+def compute_rtop_bids(
+    dwi_nib, mask_img, normalization_mask_img, bvals, bvecs, big_delta, small_delta,
+    delta_per_bvalue=None
+):
+    """Compute RTOP (Radial Tensor Orientation Profile) from DWI data."""
+    b0 = nimage.index_img(dwi_nib, 0)
+    masker = maskers.NiftiMasker(mask_img)
+    masker.fit(b0)
+    dwi_data = masker.transform(dwi_nib)
+    
+    if delta_per_bvalue is not None:
+        selected_bvals = [0] + [k for k, v in delta_per_bvalue.items() if v == big_delta * 1000]
+        bvals_mask = np.any([bvals == s for s in selected_bvals], axis=0)
+        dwi_data = dwi_data[bvals_mask, :]
+    else:
+        bvals_mask = np.ones_like(bvals, dtype=bool)
+        
+    
+    gtab = gradient_table(bvals=bvals[bvals_mask], bvecs=bvecs[bvals_mask], small_delta=small_delta, big_delta=big_delta)
+    map_model = MapmriModel(
+        gtab,
+        radial_order=6,
+        laplacian_regularization=True,
+        laplacian_weighting=0.2,
+        positivity_constraint=False,
+    )
+    rtop = map_model.fit(dwi_data.T).rtop()
+    if normalization_mask_img is not None:
+        norm_masker = maskers.NiftiMasker(normalization_mask_img)
+        norm_masker.fit(b0)
+        dwi_ventricles = norm_masker.transform(dwi_nib)
+        if delta_per_bvalue is not None:
+            dwi_ventricles = dwi_ventricles[bvals_mask, :]
+        rtop_ventricles = map_model.fit(dwi_ventricles.T).rtop()
+
+        nrtop = rtop / rtop_ventricles[~np.isnan(rtop_ventricles)].mean()
+        nrtop = nrtop.clip(0, np.percentile(nrtop[~np.isnan(nrtop)], 99))
+        nrtop_img = masker.inverse_transform(nrtop.T)
+        return nrtop_img
+
+    return masker.inverse_transform(rtop.T)
 
 def compute_md(
     dwi_nib, mask_img, normalization_mask_img, bvals, bvecs, big_delta, small_delta
 ):
     """Compute Mean Diffusivity (MD) from DWI data."""
+    b0 = nimage.index_img(dwi_nib, 0)
     masker = maskers.NiftiMasker(mask_img)
-    masker.fit()
+    masker.fit(b0)
     dwi_data = masker.transform(dwi_nib)
 
     gtab = gradient_table(bvals, bvecs, big_delta=big_delta, small_delta=small_delta)
@@ -93,11 +201,49 @@ def compute_md(
 
     if normalization_mask_img is not None:
         norm_masker = maskers.NiftiMasker(normalization_mask_img)
-        norm_masker.fit()
+        norm_masker.fit(b0)
         dwi_ventricles = norm_masker.transform(dwi_nib)
         md_ventricles = dti_model.fit(dwi_ventricles.T).md
 
         nmd = md / md_ventricles.mean()
+        nmd_img = masker.inverse_transform(nmd.T)
+        return nmd_img
+    print("Be careful, this is not normalized MD!")
+    return masker.inverse_transform(md.T)
+
+def compute_md_bids(
+    dwi_nib, mask_img, normalization_mask_img, bvals, bvecs, big_delta, small_delta,
+    delta_per_bvalue=None
+):
+    """Compute Mean Diffusivity (MD) from DWI data."""
+    b0 = nimage.index_img(dwi_nib, 0)
+    masker = maskers.NiftiMasker(mask_img)
+    masker.fit(b0)
+    dwi_data = masker.transform(dwi_nib)
+
+    if delta_per_bvalue is not None:
+        selected_bvals = [0] + [k for k, v in delta_per_bvalue.items() if v == big_delta * 1000]
+        bvals_mask = np.any([bvals == s for s in selected_bvals], axis=0)
+        dwi_data = dwi_data[bvals_mask, :]
+    else:
+        bvals_mask = np.ones_like(bvals, dtype=bool)
+
+    gtab = gradient_table(bvals=bvals[bvals_mask], bvecs=bvecs[bvals_mask], small_delta=small_delta, big_delta=big_delta)
+
+    dti_model = dti.TensorModel(gtab)
+
+    md = dti_model.fit(dwi_data.T).md
+
+    if normalization_mask_img is not None:
+        norm_masker = maskers.NiftiMasker(normalization_mask_img)
+        norm_masker.fit(b0)
+        dwi_ventricles = norm_masker.transform(dwi_nib)
+        if delta_per_bvalue is not None:
+            dwi_ventricles = dwi_ventricles[bvals_mask, :]
+        md_ventricles = dti_model.fit(dwi_ventricles.T).md
+
+        nmd = md / md_ventricles[~np.isnan(md_ventricles)].mean()
+        nmd = nmd.clip(0, np.percentile(nmd[~np.isnan(nmd)], 99))
         nmd_img = masker.inverse_transform(nmd.T)
         return nmd_img
     print("Be careful, this is not normalized MD!")
