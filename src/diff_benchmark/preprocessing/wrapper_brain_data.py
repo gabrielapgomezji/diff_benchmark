@@ -1,17 +1,7 @@
-import json
 from pathlib import Path
 
-import h5py
-import networkx as nx
 import nibabel as nib
-import nilearn as ni
 import numpy as np
-import pandas as pd
-import torch
-from dipy.core.gradients import gradient_table
-from dipy.core.subdivide_octahedron import create_unit_sphere
-from dipy.reconst.mapmri import MapmriModel
-from joblib import Parallel, delayed
 from nibabel.filebasedimages import ImageFileError
 from nilearn import image as nimage
 from tqdm import tqdm
@@ -19,16 +9,13 @@ from tqdm import tqdm
 from diff_benchmark.preprocessing.wrapper_brain_base import DataPreparationBrain
 from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
     average_per_parcel,
-    compute_data,
     compute_md,
     compute_rtop,
     create_masks,
     extract_region_data,
     extract_selected_labels,
-    load_vertexwise_attenuations,
     project_to_surface,
     resample_schaefer_onto_fs_lr,
-    split_data,
 )
 
 
