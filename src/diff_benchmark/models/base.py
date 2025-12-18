@@ -19,7 +19,7 @@ from torchvision import transforms
 from tqdm import tqdm
 
 from diff_benchmark.utils.logger import TrainLogger
-from diff_benchmark.scores.scores import compute_metrics
+from diff_benchmark.utils.scores import compute_metrics
 
 def collate_with_augmentation(batch, transform=None):
     """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
