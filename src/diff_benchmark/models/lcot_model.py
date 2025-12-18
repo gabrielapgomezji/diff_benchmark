@@ -118,7 +118,7 @@ class KernelRidgeRegression(nn.Module):
         # for epoch in range(self.epochs):
         #     weights = nn.functional.softmax(self.alphas, dim=0)
         #     # weights_expanded = weights.repeat_interleave(n_bval) # If all bvals used
-
+        
         #     # weights = weights_expanded
         #     breakpoint()
         #     K = torch.exp(-(weights[:, None, None] * dist_matrix_norm).sum(dim=0))
