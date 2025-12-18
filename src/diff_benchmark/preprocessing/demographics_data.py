@@ -44,10 +44,7 @@ def preprocess_csv(csv_path: str, target_columns: np.ndarray):
     if "Age_in_Yrs" in df_targets.columns:
         df_targets = df_targets.loc[:, ["Subject"] + target_columns]
         df_targets["Age_in_Yrs"] = df_targets["Age_in_Yrs"].astype(float)
-    # if "Age_in_Yrs" not in target_columns and "Gender" not in target_columns:
-    #     filtered_targets = [c for c in target_columns if c not in ("Age_in_Yrs", "Gender")]
-    #     df_targets = df_targets.loc[:, ["Subject", "Gender", "Age_in_Yrs"] + filtered_targets]
-
+    
     df_targets = df_targets.dropna(subset=target_columns)
 
     return df_targets
