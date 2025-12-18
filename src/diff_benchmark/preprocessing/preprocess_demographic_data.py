@@ -28,7 +28,6 @@ class DefaultDemographicsPreprocessor(DemographicsPreprocessor):
     """
 
     def filter(self, target_columns: list[str]) -> None:
-        breakpoint()
         if self.df.index.name and self.df.index.name.lower() in COLUMN_ALIASES["Subject"]:
             self.df = self.df.reset_index()
         self.df = self.df.rename(columns={

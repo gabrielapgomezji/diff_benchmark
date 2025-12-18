@@ -13,8 +13,8 @@ from diff_benchmark.analysis.save_results import (
 )
 from diff_benchmark.analysis.true_vs_pred import plot_true_vs_pred
 from diff_benchmark.analysis.scores_summary import summarize_folds_to_csv
-from diff_benchmark.dataloaders.dataloaders import PreprocessedData
-from diff_benchmark.dataset.generate_dataset import CustomDataset
+from diff_benchmark.data.dataloaders import PreprocessedData
+from diff_benchmark.data.generate_dataset import CustomDataset
 from diff_benchmark.models.model_configurations import get_model, make_run_id
 from diff_benchmark.preprocessing.preprocess_demographic_data import (
     DefaultDemographicsPreprocessor,
