@@ -5,7 +5,7 @@ import torch
 from sklearn.model_selection import StratifiedKFold
 from torch.utils.data import DataLoader, Subset, TensorDataset
 
-from diff_benchmark.dataloaders.base import DatasetSpecs  # AbstractPreprocessedData
+from diff_benchmark.dataloaders.base import DatasetSpecs
 
 
 class PreprocessedData:

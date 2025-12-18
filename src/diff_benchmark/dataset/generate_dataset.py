@@ -5,34 +5,7 @@ import nibabel as nib
 import numpy as np
 import torch
 
-# from joblib import Parallel, delayed
 from torch.utils.data import Dataset
-
-# from tqdm import tqdm
-
-# from diff_benchmark.dataset.base import DatasetBuilder
-# from diff_benchmark.dataset.read_save_dataset import save_dataset
-
-# class CustomDataset(Dataset):
-
-#     def __init__(self, list_path_subjects):
-#         self.list_subjects = list_path_subjects
-
-#     def __len__(self):
-#         return len(self.list_subjects)
-
-#     def __getitem__(self, idx):
-#         # load self.list_path_subjects[idx]
-
-
-# When you define a torch dataset; you have two options
-# 1. You build a tensor that contains all your data, and then you simply return data[idx] when you need index idx -> method you're using right now
-# Advantages: the data is already loaded into memory so it's fast, and it's simple
-# Inconvenients: when the data is too heavy for the memory (on ram), can't be done
-# 2. When you're asked to load index idx, you load the corresponding file into memory and you return it
-# Advantage: very low memory consumption
-# Inconvenient: slow because you need to load data everytime you need it
-
 
 class PreprocessedData:
     """
@@ -128,75 +101,29 @@ class CustomDataset(Dataset):
             final_features = self.features[idx]
         if self.mode == "paths":
             try:
-                if Path(self.features[idx]).suffix == ".h5":
-                    final_features = self._load_h5(Path(self.features[idx]))
-                else:
-                    img = nib.load(Path(self.features[idx]))
-                    # target_affine = np.diag([1.25, 1.25, 1.25, 1.0])
-                    # target_shape = (180, 224, 224)
-                    # resampled_img = resample_img(img, target_affine=target_affine, target_shape=target_shape, interpolation='continuous', copy_header=True, force_resample=True)
-                    resampled_img = img
-                    data = np.nan_to_num(resampled_img.get_fdata()).clip(0, 7)
-                    data /= 7.0
-                    final_features = torch.tensor(data, dtype=torch.float32)
-                    # features = nib.Nifti1Image(data, affine=img.affine)
-                    if self.transform is not None:
-                        slices = []
-                        for i in range(
-                            final_features.shape[0]
-                        ):  # iterate through depth dimension
-                            slice_2d = final_features[
-                                i, :, :
-                            ]  # .unsqueeze(0)  # (1,H,W)
-                            slice_2d = self.transform(slice_2d)
-                            slices.append(slice_2d)
-                        final_features = torch.stack(slices, dim=0)  # (D,1,H,W)
-                        final_features = final_features.permute(
-                            1, 0, 2, 3
-                        )  # (C=1,D,H,W)
-                        # final_features = final_features.squeeze(0)  # (D,H,W)
+                img = nib.load(Path(self.features[idx]))
+                data = np.nan_to_num(img.get_fdata()).clip(0, 7)
+                data /= 7.0
+                final_features = torch.tensor(data, dtype=torch.float32)
+                if self.transform is not None:
+                    slices = []
+                    for i in range(
+                        final_features.shape[0]
+                    ):  # iterate through depth dimension
+                        slice_2d = final_features[
+                            i, :, :
+                        ]
+                        slice_2d = self.transform(slice_2d)
+                        slices.append(slice_2d)
+                    final_features = torch.stack(slices, dim=0)  # (D,1,H,W)
+                    final_features = final_features.permute(
+                        1, 0, 2, 3
+                    )  # (C=1,D,H,W)
             except (OSError, FileNotFoundError) as e:
                 print(f"[Warning] Dropping subject {Path(self.features[idx])}: {e}")
                 return None
 
         return final_features, self.targets[idx], self.gender[idx]
-
-    def _load_h5(self, path):
-        """
-        Load the HDF5 file and convert it to a suitable tensor.
-        Combines all 'attenuation' datasets from all vertices and bvals into a single array.
-        """
-        if not path.is_file():
-            raise FileNotFoundError(f"File not found: {path}")
-        with h5py.File(path, "r") as f:
-            # Load metadata
-            meta = f["metadata"]
-            bvals = list(meta.attrs["bvals"])
-
-            # Load embeddings
-            emb_grp = f["embeddings"]
-            embeddings_per_bval = []
-
-            for bval in bvals:
-                bval_str = str(bval)
-                if bval_str not in emb_grp:
-                    raise KeyError(
-                        f"Missing embeddings for bval {bval_str} in file {path}"
-                    )
-                data = emb_grp[bval_str][:]
-                embeddings_per_bval.append(data)
-
-            # Stack into a single numpy array
-            # embeddings_per_bval: list of [num_values, emb_dim] arrays
-            data_array = np.stack(
-                embeddings_per_bval, axis=1
-            )  # shape: (num_values, num_bvals, emb_dim)
-
-            power = f["power"][:]
-        return {
-            "embeddings": torch.tensor(data_array, dtype=torch.float32),
-            "power": torch.tensor(power, dtype=torch.float32),
-        }
 
     def get_features_model(self):
         """
@@ -213,174 +140,3 @@ class CustomDataset(Dataset):
         else:
             self.mode = "paths"
         return self.mode
-
-
-# class CustomDatasetBuilder(DatasetBuilder):
-#     """
-#     Initializes the dataset generator.
-#     Parameters:
-#         base_path (str): The base path for the dataset.
-#         loading_strategy (str): The strategy to use for loading the dataset.
-#         df_targets (DataFrame): The DataFrame containing target values.
-#         h5_filename (str, optional): The name of the HDF5 file for embeddings. Defaults to "mapmri_default_embeddings.h5".
-#         output_dataset_filename (str, optional): The name of the output dataset file. Defaults to "dataset.h5".
-#     """
-
-#     def __init__(
-#         self,
-#         base_path,
-#         loading_strategy,
-#         df_targets,
-#         h5_filename="mapmri_default_embeddings.h5",
-#         output_dataset_filename="dataset.h5",
-#     ):
-#         super().__init__(base_path, h5_filename, output_dataset_filename)
-#         self.df_targets = df_targets
-#         self.strategy = loading_strategy
-
-#     def verify_files(self, subject_dir: Path) -> bool:
-#         """
-#         Verifies the existence of a specific HDF5 file and checks if the subject directory name is present in the DataFrame of targets.
-#         Args:
-#             subject_dir (Path): The directory path of the subject to verify.
-#         Returns:
-#             bool: True if the HDF5 file exists and the subject directory name is in the DataFrame, False otherwise.
-#         """
-
-#         h5_path = subject_dir / "processed" / self.h5_filename
-
-#         return (
-#             h5_path.exists()
-#             and int(subject_dir.name) in self.df_targets["Subject"].astype(int).tolist()
-#         )
-
-#     def filter_features(self, features: np.array) -> bool:
-#         """
-#         Filters features based on their shape.
-#         This method checks if the number of columns in the features array
-#         is equal to 536. It returns True if the condition is met,
-#         indicating that the features are valid, and False otherwise.
-#         Args:
-#             features (numpy.ndarray): The input features to be checked.
-#         Returns:
-#             bool: True if the number of columns is 536, False otherwise.
-#         """
-
-#         return features.shape[1] == 536
-
-#     def extract_information(self, subject_dir: Path) -> tuple:
-#         """
-#         Extracts information from the dataset for a given subject directory.
-#         Args:
-#             subject_dir (Path): The path to the subject directory containing the dataset.
-#         Returns:
-#             tuple: A tuple containing the extracted features, target values, subject ID, and gender of the subject.
-#                    Returns None if data loading fails, if the data is invalid, or if the subject ID is not found in the targets.
-#         Raises:
-#             Exception: If there is an error loading the data from the specified h5_path.
-#         """
-
-#         subject_id = subject_dir.name
-#         h5_path = subject_dir / "processed" / self.h5_filename
-
-#         try:
-#             data = self.strategy.load_data(h5_path)
-#             if not self.strategy.is_valid(data):
-#                 return None
-#         except Exception as e:
-#             print(f"Failed to load data for subject {subject_id}: {e}")
-#             return None
-
-#         features = self.strategy.to_features(data)
-
-#         if int(subject_id) not in self.df_targets["Subject"].astype(int).tolist():
-#             return None
-
-#         target = (
-#             self.df_targets.loc[self.df_targets["Subject"] == int(subject_id)]
-#             .drop(columns=["Subject"])
-#             .values.astype(float)
-#         )
-
-#         gender_subject = self.df_targets.loc[
-#             self.df_targets["Subject"] == int(subject_id), "Gender"
-#         ].values[0]
-
-#         return features, target, subject_id, gender_subject
-
-#     def save_dataset(self, features, targets, genders) -> None:
-#         """
-#         Saves the dataset to a specified output file.
-#         Parameters:
-#             features (array-like): The input features of the dataset.
-#             targets (array-like): The target labels corresponding to the input features.
-#             genders (array-like): The gender information associated with the dataset.
-#         This method calls the save_dataset function to write the dataset to the
-#         output file defined by self.output_dataset_filename.
-#         """
-
-#         save_dataset(
-#             features, targets, genders, output_file=self.output_dataset_filename
-#         )
-
-#     def create_dataset(self, n_jobs: int = 8) -> tuple:
-#         """
-#         Creates a dataset by processing subject directories in parallel.
-#         This method iterates through subject directories in the base path, extracts
-#         features and targets from the files, filters the features, and stacks the
-#         results into arrays. It utilizes parallel processing to speed up the
-#         information extraction.
-#         Parameters:
-#             n_jobs (int): The number of jobs to run in parallel. Default is 8.
-#         Returns:
-#             tuple: A tuple containing:
-#                 - features (np.ndarray): Stacked features array.
-#                 - targets (np.ndarray): Stacked targets array.
-#                 - subject_ids (list): List of subject IDs.
-#                 - genders (list): List of genders.
-#         Raises:
-#             Exception: If there is an error stacking the arrays.
-#             None: If no valid data is found or if an error occurs during processing.
-#         """
-
-#         subject_dirs = [
-#             d for d in self.base_path.iterdir() if d.is_dir() and self.verify_files(d)
-#         ]
-
-#         print(f"Processing {len(subject_dirs)} subjects in parallel...")
-
-#         def process(subject_dir):
-#             result = self.extract_information(subject_dir)
-#             if result is None:
-#                 return None
-#             features, target, subject_id, gender = result
-#             if not self.filter_features(features):
-#                 return None
-#             return features, target, subject_id, gender
-
-#         results = Parallel(n_jobs=n_jobs)(
-#             delayed(process)(d) for d in tqdm(subject_dirs)
-#         )
-
-#         # Filter out failed entries
-#         results = [r for r in results if r is not None]
-
-#         if not results:
-#             print("No valid data found.")
-#             return None
-
-#         features_list, targets_list, subject_ids, genders = zip(*results)
-
-#         try:
-#             features = np.stack(features_list)
-#             targets = (
-#                 np.stack(targets_list).squeeze(1)
-#                 if targets_list[0].ndim == 2 and targets_list[0].shape[1] == 1
-#                 else np.stack(targets_list)
-#             )
-#         except Exception as e:
-#             print(f"Error stacking arrays: {e}")
-#             return None
-
-#         self.save_dataset(features, targets, genders)
-#         return features, targets, subject_ids, genders

@@ -63,14 +63,11 @@ class DataLoadingStrategy(ABC):
     @abstractmethod
     def load_data(self, h5_path: Path):
         """Load embeddings, power, metadata, etc., from the given HDF5 file."""
-        # pass
 
     @abstractmethod
     def is_valid(self, data: dict) -> bool:
         """Check if the loaded data is valid."""
-        # pass
 
     @abstractmethod
     def to_features(self, data: dict) -> np.ndarray:
         """Convert the data dict into a feature vector."""
-        # pass
