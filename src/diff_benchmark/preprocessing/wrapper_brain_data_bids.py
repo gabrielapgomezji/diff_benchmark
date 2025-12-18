@@ -69,7 +69,6 @@ class DefaultPipeline(DataPreparationBrain):
         
         # NEW ATTRIBUTE TO STORE RESULTS
         self.layout = bids.BIDSLayout(str(self.base_dir), derivatives=self.in_derivatives, validate=False)
-        breakpoint()
         
     def verify_raw_files(self, subject_id: str) -> bool:
         aparcaseg = self.layout.get(subject=subject_id, desc='aparcaseg', suffix='dseg', return_type='file')[0]
@@ -151,7 +150,7 @@ class DefaultPipeline(DataPreparationBrain):
             bvecs = np.loadtxt(dwi_file_bvecs)
 
             labels = extract_selected_labels(aparc_aseg)
-            breakpoint()
+    
             selected_labels = [
                 k for k in labels
                 if (
