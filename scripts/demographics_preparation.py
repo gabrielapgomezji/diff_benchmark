@@ -15,6 +15,7 @@ from diff_benchmark.preprocessing.wrapper_brain_data_bids import (
 general_config_path = Path(__file__).parent.parent / "config/configuration_general.yaml"
 with open(general_config_path, "r", encoding="utf-8") as f:
     general_config = yaml.safe_load(f)
+    
 for dataset2prepare in general_config["datasets"]["datasets_list"]:
     if dataset2prepare["name"] == "abide":
         dataset = DatasetConfig(
@@ -49,4 +50,3 @@ for dataset2prepare in general_config["datasets"]["datasets_list"]:
 
         preprocessor = DefaultDemographicsPreprocessor(cog_file)
         demographics_df = preprocessor.preprocess(general_config["target_columns"])
-

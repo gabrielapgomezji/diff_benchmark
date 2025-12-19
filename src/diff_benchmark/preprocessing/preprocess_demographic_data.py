@@ -44,6 +44,7 @@ class DefaultDemographicsPreprocessor:
         path: str | Path | list[str | Path],
         site_column: str = "Site",
     ):
+        self.is_multisite = isinstance(path, list)
         self.paths = self._normalize_paths(path)
         self.site_column = site_column
         self.df: pd.DataFrame | None = None
@@ -93,7 +94,8 @@ class DefaultDemographicsPreprocessor:
 
     def _load_single_path(self, path: Path) -> tuple[pd.DataFrame, str | None]:
         if path.is_file():
-            return self._load_file(path), None
+            site = path.parent.name if self.is_multisite else None
+            return self._load_file(path), site
 
         if path.is_dir():
             demo_files = list(path.glob("*.tsv")) + list(path.glob("*.csv"))
@@ -105,7 +107,8 @@ class DefaultDemographicsPreprocessor:
                 )
 
             df = self._load_file(demo_files[0])
-            return df, path.name
+            site = path.name if self.is_multisite else None
+            return df, site
 
         raise FileNotFoundError(path)
 
