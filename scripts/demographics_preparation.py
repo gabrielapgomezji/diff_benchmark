@@ -7,7 +7,7 @@ from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
 from diff_benchmark.preprocessing.preprocess_demographic_data import (
     DefaultDemographicsPreprocessor,
 )
-from diff_benchmark.preprocessing.wrapper_brain_data_bids import (
+from diff_benchmark.preprocessing.brain_data_preparation import (
     DefaultMulticenterPipeline,
     DefaultPipeline,
 )
