@@ -46,7 +46,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
 
     preprocessor = DefaultDemographicsPreprocessor(config["data_paths"]["csv_file"])
     demographics_df = preprocessor.preprocess(config["target_columns"])
-
+    breakpoint()
     common_subjects = set(brain_df["subject_id"].astype(str)) & set(
         demographics_df["Subject"].astype(str)
     )

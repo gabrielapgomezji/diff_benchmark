@@ -1,4 +1,6 @@
-from diff_benchmark.preprocessing.base_demographic_data import DemographicsPreprocessor
+from pathlib import Path
+import pandas as pd
+from typing import Iterable
 
 COLUMN_ALIASES = {
     "Subject": {
@@ -23,49 +25,132 @@ COLUMN_ALIASES = {
 }
 
 
-class DefaultDemographicsPreprocessor(DemographicsPreprocessor):
+class DefaultDemographicsPreprocessor:
     """
-    DefaultDemographicsPreprocessor is a class that extends the DemographicsPreprocessor
-    to preprocess demographic data specifically for a dataset.
-    Methods:
-        filter(target_columns: list[str]) -> None:
-            Filters the DataFrame to include only the specified target columns,
-            ensuring that "Subject" and "Gender" are included if available.
-        categorical_to_numeric() -> None:
-            Converts the "Gender" column from categorical values ("M", "F") to numeric
-            values (1 for "M" and 0 for "F") if the column exists and is of object type.
-        clean_df() -> None:
-            Cleans the DataFrame by removing any rows with missing values.
+    Unified demographics preprocessor.
+
+    Supports:
+    - Unicentre datasets (single CSV/TSV)
+    - Multicentre datasets (directory with per-site subdirectories)
+
+    Output:
+    - One row per subject
+    - Always returns a single DataFrame
+    - Adds a 'Site' column automatically for multisite datasets
     """
 
-    def filter(self, target_columns: list[str]) -> None:
+    def __init__(
+        self,
+        path: str | Path | list[str | Path],
+        site_column: str = "Site",
+    ):
+        self.is_multisite = isinstance(path, list)
+        self.paths = self._normalize_paths(path)
+        self.site_column = site_column
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+    def preprocess(self, target_columns: list[str]) -> pd.DataFrame:
+        """
+        Entry point used by the benchmark.
+        """
+        df = self._load_all()
+        df = self._filter(df, target_columns)
+        df = self._categorical_to_numeric(df)
+        df = df.dropna()
+        return df
+
+    # ------------------------------------------------------------------
+    # Path handling
+    # ------------------------------------------------------------------
+    def _normalize_paths(
+        self, path: str | Path | list[str | Path]
+    ) -> list[Path]:
+        if isinstance(path, (str, Path)):
+            return [Path(path)]
+
+        if isinstance(path, Iterable):
+            return [Path(p) for p in path]
+
+        raise TypeError(
+            "path must be a str, Path, or list of str/Path"
+        )
+
+    # ------------------------------------------------------------------
+    # Loading logic
+    # ------------------------------------------------------------------
+    def _load_all(self) -> pd.DataFrame:
+        dfs = []
+
+        for p in self.paths:
+            df, site = self._load_single_path(p)
+            if site is not None:
+                df[self.site_column] = site
+            dfs.append(df)
+
+        return pd.concat(dfs, axis=0, ignore_index=True)
+
+    def _load_single_path(self, path: Path) -> tuple[pd.DataFrame, str | None]:
+        if path.is_file():
+            site = path.parent.name if self.is_multisite else None
+            return self._load_file(path), site
+
+        if path.is_dir():
+            demo_files = list(path.glob("*.tsv")) + list(path.glob("*.csv"))
+
+            if len(demo_files) != 1:
+                raise ValueError(
+                    f"Expected exactly one demographics file in {path}, "
+                    f"found {len(demo_files)}"
+                )
+
+            df = self._load_file(demo_files[0])
+            site = path.name if self.is_multisite else None
+            return df, site
+
+        raise FileNotFoundError(path)
+
+    def _load_file(self, file_path: Path) -> pd.DataFrame:
+        sep = "\t" if file_path.suffix == ".tsv" else ","
+        return pd.read_csv(file_path, sep=sep, index_col=0)
+
+    # ------------------------------------------------------------------
+    # Preprocessing logic
+    # ------------------------------------------------------------------
+    def _filter(self, df: pd.DataFrame, target_columns: list[str]) -> pd.DataFrame:
         if (
-            self.df.index.name
-            and self.df.index.name.lower() in COLUMN_ALIASES["Subject"]
+            df.index.name
+            and df.index.name.lower() in COLUMN_ALIASES["Subject"]
         ):
-            self.df = self.df.reset_index()
-        self.df = self.df.rename(
+            df = df.reset_index()
+
+        df = df.rename(
             columns={
                 c: canonical
                 for canonical, aliases in COLUMN_ALIASES.items()
-                for c in self.df.columns
+                for c in df.columns
                 if c.lower() in aliases
             }
         )
-        # Always include "Subject" and "Gender" if available
-        columns = ["Subject"] + target_columns
-        if "Gender" not in columns and "Gender" in self.df.columns:
-            columns.append("Gender")
-        self.df = self.df.loc[:, [col for col in columns if col in self.df.columns]]
 
-    def categorical_to_numeric(self) -> None:
-        if "Gender" in self.df.columns and self.df["Gender"].dtype == object:
-            self.df["Gender"] = (
-                self.df["Gender"]
+        columns = ["Subject"] + target_columns
+
+        if "Gender" not in columns and "Gender" in df.columns:
+            columns.append("Gender")
+
+        if self.site_column in df.columns:
+            columns.append(self.site_column)
+
+        df = df.loc[:, [c for c in columns if c in df.columns]]
+        return df
+
+    def _categorical_to_numeric(self, df: pd.DataFrame) -> pd.DataFrame:
+        if "Gender" in df.columns and df["Gender"].dtype == object:
+            df["Gender"] = (
+                df["Gender"]
                 .astype(str)
                 .str.upper()
                 .map({"M": 1, "F": 0, "MALE": 1, "FEMALE": 0})
             )
-
-    def clean_df(self) -> None:
-        self.df = self.df.dropna()
+        return df

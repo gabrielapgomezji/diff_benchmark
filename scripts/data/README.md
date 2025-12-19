@@ -105,10 +105,6 @@ Contains subject-specific preprocessed data (format depends on what preprocess_s
 - Paths are checked via the YAML configuration. Make sure the raw .h5 file exists before running this step.
 
 
-### demographics_data.py
-
-This script handles the preprocessing of target CSV files by selecting relevant target variables, encoding categorical variables, and cleaning missing data. It loads a CSV file containing subject-level metadata (e.g., behavior, diagnosis, demographic info) and prepares it for training and evaluation.
-
 **Inputs:**
 
 - CSV file path (csv_path): Path to the CSV file.
