@@ -8,12 +8,12 @@ with open(general_config_path, "r", encoding="utf-8") as f:
     general_config = yaml.safe_load(f)
     
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
-from diff_benchmark.preprocessing.wrapper_brain_data_bids import (
+from diff_benchmark.preprocessing.brain_data_preparation import (
     DefaultPipeline,
 )
 
 for dataset2prepare in general_config["datasets"]["datasets_list"]:
-    if dataset2prepare["name"] == "abide":
+    if dataset2prepare["name"] == "hcp":
         dataset = DatasetConfig(
             **dataset2prepare,
             metric_to_compute=general_config["datasets"]["metric_to_compute"],
@@ -51,6 +51,6 @@ for dataset2prepare in general_config["datasets"]["datasets_list"]:
 
         # subject_list = parse_subject_id(dataset)
         breakpoint()
-        subject_id = "29182"  # abide
+        subject_id = "101915" #hcp
         brain_preparator.verify_raw_files(subject_id)
         brain_preparator.compute_microstructure(subject_id)
