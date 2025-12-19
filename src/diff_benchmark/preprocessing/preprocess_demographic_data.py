@@ -47,7 +47,6 @@ class DefaultDemographicsPreprocessor:
         self.is_multisite = isinstance(path, list)
         self.paths = self._normalize_paths(path)
         self.site_column = site_column
-        self.df: pd.DataFrame | None = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -56,11 +55,11 @@ class DefaultDemographicsPreprocessor:
         """
         Entry point used by the benchmark.
         """
-        self.df = self._load_all()
-        self._filter(target_columns)
-        self._categorical_to_numeric()
-        self._clean_df()
-        return self.df
+        df = self._load_all()
+        df = self._filter(df, target_columns)
+        df = self._categorical_to_numeric(df)
+        df = df.dropna()
+        return df
 
     # ------------------------------------------------------------------
     # Path handling
@@ -119,40 +118,39 @@ class DefaultDemographicsPreprocessor:
     # ------------------------------------------------------------------
     # Preprocessing logic
     # ------------------------------------------------------------------
-    def _filter(self, target_columns: list[str]) -> None:
+    def _filter(self, df: pd.DataFrame, target_columns: list[str]) -> pd.DataFrame:
         if (
-            self.df.index.name
-            and self.df.index.name.lower() in COLUMN_ALIASES["Subject"]
+            df.index.name
+            and df.index.name.lower() in COLUMN_ALIASES["Subject"]
         ):
-            self.df = self.df.reset_index()
+            df = df.reset_index()
 
-        self.df = self.df.rename(
+        df = df.rename(
             columns={
                 c: canonical
                 for canonical, aliases in COLUMN_ALIASES.items()
-                for c in self.df.columns
+                for c in df.columns
                 if c.lower() in aliases
             }
         )
 
         columns = ["Subject"] + target_columns
 
-        if "Gender" not in columns and "Gender" in self.df.columns:
+        if "Gender" not in columns and "Gender" in df.columns:
             columns.append("Gender")
 
-        if self.site_column in self.df.columns:
+        if self.site_column in df.columns:
             columns.append(self.site_column)
 
-        self.df = self.df.loc[:, [c for c in columns if c in self.df.columns]]
+        df = df.loc[:, [c for c in columns if c in df.columns]]
+        return df
 
-    def _categorical_to_numeric(self) -> None:
-        if "Gender" in self.df.columns and self.df["Gender"].dtype == object:
-            self.df["Gender"] = (
-                self.df["Gender"]
+    def _categorical_to_numeric(self, df: pd.DataFrame) -> pd.DataFrame:
+        if "Gender" in df.columns and df["Gender"].dtype == object:
+            df["Gender"] = (
+                df["Gender"]
                 .astype(str)
                 .str.upper()
                 .map({"M": 1, "F": 0, "MALE": 1, "FEMALE": 0})
             )
-
-    def _clean_df(self) -> None:
-        self.df = self.df.dropna()
+        return df

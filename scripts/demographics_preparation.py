@@ -16,14 +16,14 @@ general_config_path = Path(__file__).parent.parent / "config/configuration_gener
 with open(general_config_path, "r", encoding="utf-8") as f:
     general_config = yaml.safe_load(f)
     
-for dataset2prepare in general_config["datasets"]["datasets_list"]:
-    if dataset2prepare["name"] == "abide":
+for dataset_to_prepare in general_config["datasets"]["datasets_list"]:
+    if dataset_to_prepare["name"] == "abide":
         dataset = DatasetConfig(
-            **dataset2prepare,
+            **dataset_to_prepare,
             metric_to_compute=general_config["datasets"]["metric_to_compute"],
             scale=general_config["datasets"]["scale"],
         )
-        if dataset2prepare["name"] == "abide":
+        if dataset_to_prepare["name"] == "abide":
             center_dirs = [
                 p for p in Path(dataset.base_dir).iterdir()
                 if p.is_dir() and not p.name.startswith(".")
