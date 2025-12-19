@@ -16,3 +16,8 @@ class DatasetConfig:
     big_delta: Optional[float] = None
     small_delta: Optional[float] = None
     big_delta_per_bvalue: Optional[Dict[int, float]] = None
+    
+    # Files extensions
+    dwi_desc: str = "eddycorrected+bbreg"
+    bvec_extensions: tuple[str, ...] = ("bvec",)
+    bval_extensions: tuple[str, ...] = ("bval",)

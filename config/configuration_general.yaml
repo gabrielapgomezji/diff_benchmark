@@ -3,7 +3,7 @@
 # DATASET CONFIGURATION
 # ==============================
 datasets:
-  metric_to_compute: rtop # md #
+  metric_to_compute: md # rtop # 
   scale: 1000
   datasets_list:
     - name: hcp
@@ -42,6 +42,10 @@ datasets:
       data_reading: multicenter-bids
       big_delta: 0.024 # Need to check
       small_delta: 0.007 # Need to check
+      bvec_extensions:
+        - bvecs_image
+      bval_extensions:
+        - bval
 
 # ==============================
 # GENERAL SETTINGS
