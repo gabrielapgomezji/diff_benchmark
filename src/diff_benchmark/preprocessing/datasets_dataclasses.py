@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional
+from typing import Iterable, Tuple, Union
 
 
 @dataclass
@@ -17,7 +18,10 @@ class DatasetConfig:
     small_delta: Optional[float] = None
     big_delta_per_bvalue: Optional[Dict[int, float]] = None
     
-    # Files extensions
+    # Files extensions (nodif, aparcaseg for hcp)
     dwi_desc: str = "eddycorrected+bbreg"
-    bvec_extensions: tuple[str, ...] = ("bvec",)
-    bval_extensions: tuple[str, ...] = ("bval",)
+    bvec_extensions: Union[str, Iterable[str]] = ("bvec",)
+    bval_extensions: Union[str, Iterable[str]] = ("bval",)
+
+    nodif_mask_extension: Optional[str] = None
+    aparcaseg_extension: Optional[str] = None
