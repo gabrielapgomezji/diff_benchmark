@@ -468,18 +468,18 @@ class DefaultPipeline(DataPreparationBrain):
                 subject=subject_id,
                 suffix="dwi",
                 extension=".nii.gz",
-                desc="eddycorrected+bbreg",
+                desc=self.dwi_desc,
             )[0]
             dwi_file = dwi_bids.path
 
             entities_ = dwi_bids.get_entities()
             dwi_file_bvals = self.layout.get(
-                subject=entities_["subject"], extension="bval", return_type="file"
+                subject=entities_["subject"], extension=self.bval_extensions, return_type="file"
             )[0]
             dwi_file_bvecs = self.layout.get(
                 subject=entities_["subject"],
-                extension="bvecs_image",
-                return_type="file",  # For abide is extension ='bvecs_image'
+                extension=self.bvec_extensions,
+                return_type="file",
             )[0]
 
             dwi_nib = nib.load(dwi_file)
