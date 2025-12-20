@@ -23,6 +23,7 @@ from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
                     compute_md_bids,
                     compute_rtop_bids,
                     create_masks_bids,
+                    compute_save_and_project_metric
                 )
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
 
@@ -154,8 +155,8 @@ class BrainDataPreparationPipeline(ABC):
 
             return {
                 "DWI data": diffusion_dir / self.dwi_desc,
-                "bvals": diffusion_dir / self.bval_extension,
-                "bvecs": diffusion_dir / self.bvec_extension,
+                "bvals": diffusion_dir / self.bval_extensions,
+                "bvecs": diffusion_dir / self.bvec_extensions,
                 "nodif mask": diffusion_dir / self.nodif_mask_extension,
                 "aparc+aseg": subject_dir / self.aparcaseg_extension,
                 **{f"surface:{k}": v for k, v in surfaces.items()},
@@ -305,47 +306,62 @@ class BrainDataPreparationPipeline(ABC):
                 aparc_resampled, labels, selected_labels
             )
             
-            if self.metric == "rtop":
-                rtop_img = compute_rtop_bids(
-                    dwi_nib,
-                    ctx_mask,
-                    vent_mask,
-                    bvals,
-                    bvecs,
-                    self.big_delta,
-                    self.small_delta,
-                    self.big_delta_per_bvalue,
-                )
-                nib.save(
-                    rtop_img,
-                    derivatives_dir / f"sub-{subject_id}_param-rtop_dwimap.nii.gz",
-                )
+            compute_save_and_project_metric(
+                metric=self.metric,
+                dwi_nib=dwi_nib,
+                ctx_mask=ctx_mask,
+                vent_mask=vent_mask,
+                bvals=bvals,
+                bvecs=bvecs,
+                big_delta=self.big_delta,
+                small_delta=self.small_delta,
+                big_delta_per_bvalue=self.big_delta_per_bvalue,
+                surfaces=surfaces,
+                derivatives_dir=derivatives_dir,
+                subject_id=subject_id,
+            )
+            
+            # if self.metric == "rtop":
+            #     rtop_img = compute_rtop_bids(
+            #         dwi_nib,
+            #         ctx_mask,
+            #         vent_mask,
+            #         bvals,
+            #         bvecs,
+            #         self.big_delta,
+            #         self.small_delta,
+            #         self.big_delta_per_bvalue,
+            #     )
+            #     nib.save(
+            #         rtop_img,
+            #         derivatives_dir / f"sub-{subject_id}_param-rtop_dwimap.nii.gz",
+            #     )
 
-                project_to_surface(
-                    rtop_img,
-                    ctx_mask,
-                    surfaces,
-                    derivatives_dir,
-                    subject_id,
-                    self.metric,
-                )
-            elif self.metric == "md":
-                md_img = compute_md_bids(
-                    dwi_nib,
-                    ctx_mask,
-                    vent_mask,
-                    bvals,
-                    bvecs,
-                    self.big_delta,
-                    self.small_delta,
-                    self.big_delta_per_bvalue,
-                )
-                nib.save(
-                    md_img, derivatives_dir / f"sub-{subject_id}_param-md_dwimap.nii.gz"
-                )
-                project_to_surface(
-                    md_img, ctx_mask, surfaces, derivatives_dir, subject_id, self.metric
-                )
+            #     project_to_surface(
+            #         rtop_img,
+            #         ctx_mask,
+            #         surfaces,
+            #         derivatives_dir,
+            #         subject_id,
+            #         self.metric,
+            #     )
+            # elif self.metric == "md":
+            #     md_img = compute_md_bids(
+            #         dwi_nib,
+            #         ctx_mask,
+            #         vent_mask,
+            #         bvals,
+            #         bvecs,
+            #         self.big_delta,
+            #         self.small_delta,
+            #         self.big_delta_per_bvalue,
+            #     )
+            #     nib.save(
+            #         md_img, derivatives_dir / f"sub-{subject_id}_param-md_dwimap.nii.gz"
+            #     )
+            #     project_to_surface(
+            #         md_img, ctx_mask, surfaces, derivatives_dir, subject_id, self.metric
+            #     )
 
         except (FileNotFoundError, OSError, ImageFileError, KeyError, ValueError) as e:
             print(f"[{subject_id}] Expected error during microstructure: {e}")

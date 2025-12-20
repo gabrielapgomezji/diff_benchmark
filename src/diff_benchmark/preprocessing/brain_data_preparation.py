@@ -149,7 +149,7 @@ class ImagePipeline(BrainDataPreparationPipeline):
     """
     def __init__(self, dataset_config):
         super().__init__(dataset_config)
-        self.in_derivatives = self.base_dir / "derivatives"
+        # self.in_derivatives = self.base_dir / "derivatives"
         self.results_root = Path(dataset_config.results_dir) / "default"
 
     def verify_subject_files(self, subject_id: str, metric: str) -> bool:

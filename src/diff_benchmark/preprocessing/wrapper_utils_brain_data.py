@@ -86,23 +86,7 @@ def extract_selected_labels(nifti_path, labels_dict=None):
         return labels_dict
 
 
-def create_masks(parcellation_img, labels):
-    """Create context and ventricle masks from parcellation image."""
-    ctx_mask = nimage.math_img(
-        " + ".join(f"(x == {v})" for k, v in labels.items() if "ctx" in k),
-        x=parcellation_img,
-    )
-    vent_mask_raw = nimage.math_img(
-        " + ".join(f"(x == {v})" for k, v in labels.items() if "vent" in k),
-        x=parcellation_img,
-    )
-    vent_mask = nimage.new_img_like(
-        parcellation_img, ndimage.binary_erosion(nimage.get_data(vent_mask_raw))
-    )
-    return ctx_mask, vent_mask
-
-
-def create_masks_bids(parcellation_img, labels, selected_labels=None):
+def create_masks(parcellation_img, labels, selected_labels=None):
     """Create context and ventricle masks from parcellation image."""
     if selected_labels is not None:
         ctx_mask = nimage.math_img(
@@ -125,36 +109,6 @@ def create_masks_bids(parcellation_img, labels, selected_labels=None):
 
 
 def compute_rtop(
-    dwi_nib, mask_img, normalization_mask_img, bvals, bvecs, big_delta, small_delta
-):
-    """Compute RTOP (Radial Tensor Orientation Profile) from DWI data."""
-    masker = maskers.NiftiMasker(mask_img)
-    masker.fit()
-    dwi_data = masker.transform(dwi_nib)
-
-    gtab = gradient_table(bvals, bvecs, big_delta=big_delta, small_delta=small_delta)
-    map_model = MapmriModel(
-        gtab,
-        radial_order=6,
-        laplacian_regularization=True,
-        laplacian_weighting=0.2,
-        positivity_constraint=False,
-    )
-    rtop = map_model.fit(dwi_data.T).rtop()
-    if normalization_mask_img is not None:
-        norm_masker = maskers.NiftiMasker(normalization_mask_img)
-        norm_masker.fit()
-        dwi_ventricles = norm_masker.transform(dwi_nib)
-        rtop_ventricles = map_model.fit(dwi_ventricles.T).rtop()
-
-        nrtop = rtop / rtop_ventricles.mean()
-        nrtop_img = masker.inverse_transform(nrtop.T)
-        return nrtop_img
-
-    return masker.inverse_transform(rtop.T)
-
-
-def compute_rtop_bids(
     dwi_nib,
     mask_img,
     normalization_mask_img,
@@ -210,34 +164,6 @@ def compute_rtop_bids(
 
 
 def compute_md(
-    dwi_nib, mask_img, normalization_mask_img, bvals, bvecs, big_delta, small_delta
-):
-    """Compute Mean Diffusivity (MD) from DWI data."""
-    b0 = nimage.index_img(dwi_nib, 0)
-    masker = maskers.NiftiMasker(mask_img)
-    masker.fit(b0)
-    dwi_data = masker.transform(dwi_nib)
-
-    gtab = gradient_table(bvals, bvecs, big_delta=big_delta, small_delta=small_delta)
-
-    dti_model = dti.TensorModel(gtab)
-
-    md = dti_model.fit(dwi_data.T).md
-
-    if normalization_mask_img is not None:
-        norm_masker = maskers.NiftiMasker(normalization_mask_img)
-        norm_masker.fit(b0)
-        dwi_ventricles = norm_masker.transform(dwi_nib)
-        md_ventricles = dti_model.fit(dwi_ventricles.T).md
-
-        nmd = md / md_ventricles.mean()
-        nmd_img = masker.inverse_transform(nmd.T)
-        return nmd_img
-    print("Be careful, this is not normalized MD!")
-    return masker.inverse_transform(md.T)
-
-
-def compute_md_bids(
     dwi_nib,
     mask_img,
     normalization_mask_img,
@@ -252,7 +178,6 @@ def compute_md_bids(
     masker = maskers.NiftiMasker(mask_img)
     masker.fit(b0)
     dwi_data = masker.transform(dwi_nib)
-
     if delta_per_bvalue is not None:
         selected_bvals = [0] + [
             k for k, v in delta_per_bvalue.items() if v == big_delta * 1000
@@ -540,3 +465,56 @@ def extract_region_data(
     region_values = np.concatenate([np.atleast_1d(v) for v in region_values])
     # return region_data # returns dict and csv is a column per region with the corresponding arrays
     return region_values
+
+METRIC_COMPUTERS = {
+    "rtop": compute_rtop,
+    "md": compute_md,
+}
+
+def compute_save_and_project_metric(
+    *,
+    metric: str,
+    dwi_nib,
+    ctx_mask,
+    vent_mask,
+    bvals,
+    bvecs,
+    big_delta,
+    small_delta,
+    big_delta_per_bvalue,
+    surfaces,
+    derivatives_dir,
+    subject_id,
+):
+    if metric not in METRIC_COMPUTERS:
+        raise ValueError(f"Unknown metric: {metric}")
+
+    compute_fn = METRIC_COMPUTERS[metric]
+    
+    metric_img = compute_fn(
+        dwi_nib,
+        ctx_mask,
+        vent_mask,
+        bvals,
+        bvecs,
+        big_delta,
+        small_delta,
+        big_delta_per_bvalue,
+    )
+
+    out_file = (
+        derivatives_dir
+        / f"sub-{subject_id}_param-{metric}_dwimap.nii.gz"
+    )
+    nib.save(metric_img, out_file)
+
+    project_to_surface(
+        metric_img,
+        ctx_mask,
+        surfaces,
+        derivatives_dir,
+        subject_id,
+        metric,
+    )
+
+    return metric_img
