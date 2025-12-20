@@ -41,10 +41,10 @@ class ProcessingResult:
 
         self.invalid_subjects.append(subject_id)
 
-
-class DataPreparationBrain(ABC):
+# DataPreparationBrain
+class BrainDataPreparationPipeline(ABC):
     """
-    DataPreparationBrain is an abstract base class for preparing and analyzing brain data.
+    BrainDataPreparationPipeline is an abstract base class for preparing and analyzing brain data.
     Attributes:
         config (dict): Configuration settings for data preparation and analysis.
         results (dict): A dictionary to store results of the analysis.
