@@ -60,36 +60,6 @@ class DefaultPipeline(BrainDataPreparationPipeline):
 
         return left_file.exists() and right_file.exists()
 
-    # def run_analysis(self):  # Doing a test
-    def run_analysis_good(self):
-        """Run the analysis on scalar files and compute average data per parcel."""
-        scalar_files = sorted(
-            self.results_root.glob(
-                f"derivatives/sub-*/dwi/*_hemi-L_param-{self.metric}.scalar.gii"
-            )
-        )
-        for left_file in tqdm(scalar_files, desc="Running analysis"):
-            try:
-                subject_id = left_file.stem.split("_")[0].replace("sub-", "")
-                right_file = left_file.with_name(
-                    left_file.name.replace("hemi-L", "hemi-R")
-                )
-
-                left_data = np.nan_to_num(nib.load(left_file).darrays[0].data).clip(
-                    0, 7
-                )
-                right_data = np.nan_to_num(nib.load(right_file).darrays[0].data).clip(
-                    0, 7
-                )
-
-                avg_data = average_per_parcel(
-                    left_data, right_data, self.schaefer_resampled
-                )
-                self.results[subject_id] = avg_data
-            except (FileNotFoundError, OSError, ValueError, IndexError) as e:
-                print(f"[{subject_id}] Expected error during analysis: {e}")
-
-    # def run_analysis_region(self):
     def run_analysis(self):
         scalar_files = sorted(
             self.results_root.glob(
@@ -121,9 +91,6 @@ class DefaultPipeline(BrainDataPreparationPipeline):
                 self.results[subject_id] = avg_data
             except (FileNotFoundError, OSError, ValueError, IndexError) as e:
                 print(f"[{subject_id}] Expected error during analysis: {e}")
-
-    def extract_features(self):
-        pass
 
 
 class ImagePipeline(BrainDataPreparationPipeline):
