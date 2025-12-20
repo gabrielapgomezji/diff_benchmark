@@ -20,8 +20,8 @@ class DatasetConfig:
     
     # Files extensions (nodif, aparcaseg for hcp)
     dwi_desc: str = "eddycorrected+bbreg"
-    bvec_extensions: Union[str, Iterable[str]] = ("bvec",)
-    bval_extensions: Union[str, Iterable[str]] = ("bval",)
+    bvec_extensions: str | Iterable[str] = ("bvec",)
+    bval_extensions: str | Iterable[str] = ("bval",)
 
-    nodif_mask_extension: Optional[str] = None
-    aparcaseg_extension: Optional[str] = None
+    nodif_mask_extension: str | None = None
+    aparcaseg_extension: str | None = None

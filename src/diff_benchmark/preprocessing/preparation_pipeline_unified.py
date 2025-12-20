@@ -19,7 +19,12 @@ from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
     project_to_surface,
     resample_schaefer_onto_fs_lr,
 )
-
+from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
+                    compute_md_bids,
+                    compute_rtop_bids,
+                    create_masks_bids,
+                )
+from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
 
 @dataclass
 class ProcessingResult:
@@ -77,10 +82,11 @@ class BrainDataPreparationPipeline(ABC):
             before running the analysis and exporting results to CSV.
     """
 
-    def __init__(self, dataset_config: dict):
+    def __init__(self, dataset_config: DatasetConfig):
         self.dataset_config = dataset_config
         self.data_reading = dataset_config.data_reading
         self.base_dir = Path(dataset_config.base_dir)
+        self.in_derivatives = self.base_dir / "derivatives"
         self.metric = dataset_config.metric_to_compute
         self.scale = dataset_config.scale
         self.schaefer_resampled = resample_schaefer_onto_fs_lr(self.scale)
@@ -92,11 +98,10 @@ class BrainDataPreparationPipeline(ABC):
         self.dwi_desc = dataset_config.dwi_desc
         self.bvec_extensions = dataset_config.bvec_extensions
         self.bval_extensions = dataset_config.bval_extensions
-        if self.data_reading == "hcp":
-            self.nodif_mask_extension = dataset_config.nodif_mask_extension
-            self.aparcaseg_extension = dataset_config.aparcaseg_extension
-            
-        elif "bids" in self.data_reading:
+        self.nodif_mask_extension = dataset_config.nodif_mask_extension
+        self.aparcaseg_extension = dataset_config.aparcaseg_extension
+        
+        if "bids" in self.data_reading:
             # File extension
             # --- Detect uni vs multicenter automatically ---
             if (self.base_dir / "sub-").exists() or any(
@@ -115,13 +120,14 @@ class BrainDataPreparationPipeline(ABC):
                 for center in center_dirs
             ]
     
-    def get_subjects(self):
-        subjects = []
-        for layout in self.layouts:
-            subjects += layout.get_subjects()
-        return sorted(list(set(subjects)))
+    def get_subjects(self) -> list[str]:
+        return sorted({
+            subject
+            for layout in self.layouts
+            for subject in layout.get_subjects()
+        })
 
-    def get_layout_for_subject(self, subject_id):
+    def get_layout_for_subject(self, subject_id: str) -> bids.BIDSLayout:
         # find the layout containing this subject
         for layout in self.layouts:
             if subject_id in layout.get_subjects():
@@ -294,21 +300,12 @@ class BrainDataPreparationPipeline(ABC):
                         or ("pallidum" in k)
                     )
                 ]
-            
-            from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
-                create_masks_bids,
-            )
 
             ctx_mask, vent_mask = create_masks_bids(
                 aparc_resampled, labels, selected_labels
             )
-            breakpoint()
+            
             if self.metric == "rtop":
-                from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
-                    compute_rtop_bids,
-                )
-
-                breakpoint()
                 rtop_img = compute_rtop_bids(
                     dwi_nib,
                     ctx_mask,
@@ -333,10 +330,6 @@ class BrainDataPreparationPipeline(ABC):
                     self.metric,
                 )
             elif self.metric == "md":
-                from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
-                    compute_md_bids,
-                )
-
                 md_img = compute_md_bids(
                     dwi_nib,
                     ctx_mask,
@@ -366,15 +359,7 @@ class BrainDataPreparationPipeline(ABC):
         specific analysis logic. Currently, it is a placeholder and does not
         perform any operations.
         """
-
-    @abstractmethod
-    def extract_features(self):
-        """
-        Extract features from the input data.
-        This method is intended to be overridden in subclasses to implement
-        specific feature extraction logic. It currently does not perform
-        any operations and serves as a placeholder.
-        """
+        
 
     def export_to_csv(self) -> pd.DataFrame:
         """
