@@ -60,7 +60,6 @@ class ProcessingResult:
 
         self.invalid_subjects.append(subject_id)
 
-# DataPreparationBrain
 class BrainDataPreparationPipeline(ABC):
     """
     BrainDataPreparationPipeline is an abstract base class for preparing and analyzing brain data.
@@ -320,48 +319,6 @@ class BrainDataPreparationPipeline(ABC):
                 derivatives_dir=derivatives_dir,
                 subject_id=subject_id,
             )
-            
-            # if self.metric == "rtop":
-            #     rtop_img = compute_rtop_bids(
-            #         dwi_nib,
-            #         ctx_mask,
-            #         vent_mask,
-            #         bvals,
-            #         bvecs,
-            #         self.big_delta,
-            #         self.small_delta,
-            #         self.big_delta_per_bvalue,
-            #     )
-            #     nib.save(
-            #         rtop_img,
-            #         derivatives_dir / f"sub-{subject_id}_param-rtop_dwimap.nii.gz",
-            #     )
-
-            #     project_to_surface(
-            #         rtop_img,
-            #         ctx_mask,
-            #         surfaces,
-            #         derivatives_dir,
-            #         subject_id,
-            #         self.metric,
-            #     )
-            # elif self.metric == "md":
-            #     md_img = compute_md_bids(
-            #         dwi_nib,
-            #         ctx_mask,
-            #         vent_mask,
-            #         bvals,
-            #         bvecs,
-            #         self.big_delta,
-            #         self.small_delta,
-            #         self.big_delta_per_bvalue,
-            #     )
-            #     nib.save(
-            #         md_img, derivatives_dir / f"sub-{subject_id}_param-md_dwimap.nii.gz"
-            #     )
-            #     project_to_surface(
-            #         md_img, ctx_mask, surfaces, derivatives_dir, subject_id, self.metric
-            #     )
 
         except (FileNotFoundError, OSError, ImageFileError, KeyError, ValueError) as e:
             print(f"[{subject_id}] Expected error during microstructure: {e}")
