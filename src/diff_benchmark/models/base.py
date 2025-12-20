@@ -22,7 +22,7 @@ from diff_benchmark.utils.logger import TrainLogger
 from diff_benchmark.utils.scores import compute_metrics
 
 
-def collate_with_augmentation(batch, transform=None):
+def collate_with_augmentation(batch: list, transform: transforms.Compose = None):
     """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
     xs, ys, gs = zip(*batch)  # separate batch components
     xs_aug = []
@@ -67,20 +67,20 @@ class NumpyAbstractModel(ABC):
     """
 
     @abstractmethod
-    def _dataloader_to_numpy(self, dataloader):
+    def _dataloader_to_numpy(self, dataloader: DataLoader):
         """
         Convert a DataLoader to numpy arrays.
         This method should be implemented by all subclasses to handle the conversion.
         """
 
     @abstractmethod
-    def fit(self, dataloader):
+    def fit(self, dataloader: DataLoader):
         """
         Fit the model to the training data.
         """
 
     @abstractmethod
-    def predict(self, dataloader):
+    def predict(self, dataloader: DataLoader):
         """
         Predict using the fitted model.
         """
@@ -93,20 +93,20 @@ class TorchAbstractModel(ABC):
     """
 
     @abstractmethod
-    def _dataloader_to_numpy(self, dataloader):
+    def _dataloader_to_numpy(self, dataloader: DataLoader):
         """
         Convert a DataLoader to numpy arrays.
         This method should be implemented by all subclasses to handle the conversion.
         """
 
     @abstractmethod
-    def fit(self, dataloader):
+    def fit(self, dataloader: DataLoader):
         """
         Fit the model to the training data.
         """
 
     @abstractmethod
-    def predict(self, dataloader):
+    def predict(self, dataloader: DataLoader):
         """
         Predict using the fitted model.
         """
@@ -118,7 +118,7 @@ class TorchPipeline:
     Extends TorchAbstractModel to include training-specific methods.
     """
 
-    def __init__(self, num_workers=10, device=None, dtype=None, **kwargs):
+    def __init__(self, num_workers: int =10, device: torch.device =None, dtype: torch.dtype =None, **kwargs):
 
         self.num_workers = num_workers
         self.device = (
@@ -183,7 +183,7 @@ class TorchPipeline:
             "_build_model must be implemented and return a torch model."
         )
 
-    def _save_logs(self, history, save_path):
+    def _save_logs(self, history: dict, save_path: str):
         path = Path(save_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.suffix == ".json":
@@ -198,7 +198,7 @@ class TorchPipeline:
         else:
             raise ValueError("Save path must end with .json or .csv")
 
-    def _train_val_loader_split(self, train_loader, val_ratio=0.3):
+    def _train_val_loader_split(self, train_loader: DataLoader, val_ratio: float = 0.3) -> tuple[DataLoader, DataLoader]:
 
         dataset = train_loader.dataset
         n = len(dataset)
@@ -237,7 +237,7 @@ class TorchPipeline:
         )
         return train_loader_new, val_loader_new
 
-    def fit(self, dataloader):
+    def fit(self, dataloader: DataLoader):
         """Fit the model to the training data."""
         print(f"Device: {self.device}")
         self.model.train()
@@ -408,7 +408,7 @@ class TorchPipeline:
             self.history, f"./data/results/logs/{self.run_id}_training_log.json"
         )
 
-    def predict(self, dataloader):
+    def predict(self, dataloader: DataLoader):
         """Prediction step using last model checkpoint."""
         checkpoint_path = Path(self.logger.best_path)
         if checkpoint_path.exists():
@@ -454,11 +454,11 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
 
     def __init__(
         self,
-        learning_rate=1e-4,
-        weight_decay=1e-4,
-        average="binary",
-        scheduler_type="plateau",
-        optimizer_type="adamw",
+        learning_rate: float = 1e-4,
+        weight_decay: float = 1e-4,
+        average: str = "binary",
+        scheduler_type: str = "plateau",
+        optimizer_type: str = "adamw",
         **kwargs,
     ):
         super().__init__()
@@ -484,14 +484,14 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
         """Forward pass."""
 
     @abstractmethod
-    def fit(self, dataloader):
+    def fit(self, dataloader: DataLoader):
         """Fit the model to the training data."""
 
     @abstractmethod
-    def predict(self, dataloader):
+    def predict(self, dataloader: DataLoader):
         """Predict using the fitted model."""
 
-    def compute_metrics(self, y_true, y_pred):
+    def compute_metrics(self, y_true: torch.Tensor, y_pred: torch.Tensor) -> dict:
         """Compute classification metrics."""
         return {
             "accuracy": accuracy_score(y_true, y_pred),
@@ -504,7 +504,7 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
             "f1": f1_score(y_true, y_pred, average=self.average, zero_division="warn"),
         }
 
-    def training_step(self, batch, batch_idx, *args, **kwargs):
+    def training_step(self, batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_idx: int, *args, **kwargs) -> torch.Tensor:
         """Training step for a single batch."""
         _ = batch_idx
         x, y, _ = batch
@@ -518,7 +518,7 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
         self.log_dict({f"train_{k}": v for k, v in metrics.items()}, prog_bar=False)
         return loss
 
-    def validation_step(self, batch, batch_idx, *args, **kwargs):
+    def validation_step(self, batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_idx: int, *args, **kwargs) -> dict:
         _ = batch_idx
         x, y, _ = batch
         logits = self(x)
@@ -531,7 +531,7 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
         self.log_dict({f"val_{k}": v for k, v in metrics.items()}, prog_bar=True)
         return {"val_loss": loss, **metrics}
 
-    def predict_step(self, batch, batch_idx, *args, dataloader_idx=0, **kwargs):
+    def predict_step(self, batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_idx: int, *args, dataloader_idx: int = 0, **kwargs) -> torch.Tensor:
         # Unpack batch safely
         _, _ = batch_idx, dataloader_idx
         x = batch[0] if isinstance(batch, (tuple, list)) else batch
@@ -539,7 +539,7 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
         preds = torch.argmax(logits, dim=1)
         return preds
 
-    def configure_optimizers(self):
+    def configure_optimizers(self) -> dict:
         if self.optimizer_type == "adamw":
             optimizer = torch.optim.AdamW(
                 self.parameters(), lr=self.lr, weight_decay=self.weight_decay

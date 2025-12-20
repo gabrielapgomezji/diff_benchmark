@@ -9,6 +9,7 @@ from nilearn import image as nimage
 from tqdm import tqdm
 
 from diff_benchmark.preprocessing.preparation_pipeline_unified import BrainDataPreparationPipeline
+from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
 from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
     average_per_parcel,
     extract_region_data,
@@ -40,7 +41,7 @@ class DefaultPipeline(BrainDataPreparationPipeline):
             Placeholder method for extracting features (to be implemented).
     """
 
-    def __init__(self, dataset_config):
+    def __init__(self, dataset_config: DatasetConfig):
         super().__init__(dataset_config)
         self.results_root = Path(dataset_config.results_dir) / "default"
 
@@ -114,7 +115,7 @@ class ImagePipeline(BrainDataPreparationPipeline):
         extract_features():
             Placeholder method for extracting features (to be implemented).
     """
-    def __init__(self, dataset_config):
+    def __init__(self, dataset_config: DatasetConfig):
         super().__init__(dataset_config)
         # self.in_derivatives = self.base_dir / "derivatives"
         self.results_root = Path(dataset_config.results_dir) / "default"

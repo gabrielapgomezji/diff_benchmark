@@ -13,7 +13,7 @@ from sklearn.metrics import (
 __all__ = ["accuracy_score"]
 
 
-def compute_metrics_old(y_true, y_pred, average="binary", zero_division="warn"):
+def compute_metrics_old(y_true: list, y_pred: list, average: str ="binary", zero_division: str ="warn") -> dict:
     """Compute standard classification metrics."""
     return {
         "accuracy": accuracy_score(y_true, y_pred),
@@ -29,8 +29,8 @@ def compute_metrics_old(y_true, y_pred, average="binary", zero_division="warn"):
 
 
 def compute_metrics(
-    y_true, y_pred, prediction_task, average="binary", zero_division="warn"
-):
+    y_true: list, y_pred: list, prediction_task: str, average: str ="binary", zero_division: str ="warn"
+) -> dict:
     """Compute standard classification metrics."""
     if prediction_task == "classification":
         return {

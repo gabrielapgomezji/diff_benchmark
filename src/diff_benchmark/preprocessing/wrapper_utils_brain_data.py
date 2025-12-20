@@ -19,7 +19,7 @@ from templateflow import api as tflow
 from tqdm import tqdm
 
 
-def read_label_file():
+def read_label_file() -> dict:
     """
     Read a FreeSurfer-style label file and return a dictionary mapping
     lowercase label names to their indices.
@@ -59,7 +59,7 @@ def read_label_file():
     return label_dict
 
 
-def extract_selected_labels(nifti_path, labels_dict=None):
+def extract_selected_labels(nifti_path: Path, labels_dict: dict | None = None) -> dict:
     """Extract selected labels from a NIfTI file's header extensions."""
     try:
         header = nib.load(nifti_path).header
@@ -86,7 +86,7 @@ def extract_selected_labels(nifti_path, labels_dict=None):
         return labels_dict
 
 
-def create_masks(parcellation_img, labels, selected_labels=None):
+def create_masks(parcellation_img: nib.nifti1.Nifti1Image, labels: dict, selected_labels: list | None = None) -> tuple:
     """Create context and ventricle masks from parcellation image."""
     if selected_labels is not None:
         ctx_mask = nimage.math_img(
@@ -109,14 +109,14 @@ def create_masks(parcellation_img, labels, selected_labels=None):
 
 
 def compute_rtop(
-    dwi_nib,
-    mask_img,
-    normalization_mask_img,
-    bvals,
-    bvecs,
-    big_delta,
-    small_delta,
-    delta_per_bvalue=None,
+    dwi_nib: nib.nifti1.Nifti1Image,
+    mask_img: nib.nifti1.Nifti1Image,
+    normalization_mask_img: nib.nifti1.Nifti1Image,
+    bvals: np.ndarray,
+    bvecs: np.ndarray,
+    big_delta: float,
+    small_delta: float,
+    delta_per_bvalue: dict | None = None,
 ):
     """Compute RTOP (Radial Tensor Orientation Profile) from DWI data."""
     b0 = nimage.index_img(dwi_nib, 0)
@@ -164,14 +164,14 @@ def compute_rtop(
 
 
 def compute_md(
-    dwi_nib,
-    mask_img,
-    normalization_mask_img,
-    bvals,
-    bvecs,
-    big_delta,
-    small_delta,
-    delta_per_bvalue=None,
+    dwi_nib: nib.nifti1.Nifti1Image,
+    mask_img: nib.nifti1.Nifti1Image,
+    normalization_mask_img: nib.nifti1.Nifti1Image,
+    bvals: np.ndarray,
+    bvecs: np.ndarray,
+    big_delta: float,
+    small_delta: float,
+    delta_per_bvalue: dict | None = None,
 ):
     """Compute Mean Diffusivity (MD) from DWI data."""
     b0 = nimage.index_img(dwi_nib, 0)
@@ -215,7 +215,7 @@ def compute_md(
 
 
 def project_to_surface(
-    micr_img, ctx_mask, surfaces, output_dir, subject_id, micr_metric
+    micr_img: nib.nifti1.Nifti1Image, ctx_mask: nib.nifti1.Nifti1Image, surfaces: dict, output_dir: Path, subject_id: str, micr_metric: str
 ):
     """
     Project image onto surface meshes and save as GIFTI files.
@@ -243,7 +243,7 @@ def project_to_surface(
         )
 
 
-def resample_schaefer_onto_fs_lr(scale=1000):
+def resample_schaefer_onto_fs_lr(scale: int = 1000) -> dict:
     """Resample Schaefer 2018 parcellation onto fsLR space."""
     fsaverage_left_schaefer_fn = tflow.get(
         "fsaverage",
@@ -353,7 +353,7 @@ def resample_schaefer_onto_fs_lr(scale=1000):
     }
 
 
-def load_rtop_data(config):
+def load_rtop_data(config: dict) -> tuple[np.ndarray, np.ndarray]:
     """
     Load RTOP scalar data from left and right .scalar.gii files.
     Assumes filenames follow format *_rtop_cortex.L/R*.scalar.gii
@@ -377,7 +377,7 @@ def load_rtop_data(config):
     return rtop_left, rtop_right
 
 
-def average_per_parcel(hem_left, hem_right, schaefer_resampled):
+def average_per_parcel(hem_left: np.ndarray, hem_right: np.ndarray, schaefer_resampled: dict) -> np.ndarray:
     """
     Average RTOP values across parcels in both hemispheres.
     hem_left: RTOP/MD/microstructure values for left hemisphere
@@ -402,7 +402,7 @@ def average_per_parcel(hem_left, hem_right, schaefer_resampled):
 
 
 def extract_region_data(
-    hem_left, hem_right, schaefer_resampled, target_substring=None, average=False
+    hem_left: np.ndarray, hem_right: np.ndarray, schaefer_resampled: dict, target_substring: str | None = None, average: bool = False
 ):
     """
     Average microstructure values across selected parcels in both hemispheres.
@@ -474,18 +474,18 @@ METRIC_COMPUTERS = {
 def compute_save_and_project_metric(
     *,
     metric: str,
-    dwi_nib,
-    ctx_mask,
-    vent_mask,
-    bvals,
-    bvecs,
-    big_delta,
-    small_delta,
-    big_delta_per_bvalue,
-    surfaces,
-    derivatives_dir,
-    subject_id,
-):
+    dwi_nib: nib.nifti1.Nifti1Image,
+    ctx_mask: nib.nifti1.Nifti1Image,
+    vent_mask: nib.nifti1.Nifti1Image,
+    bvals: np.ndarray,
+    bvecs: np.ndarray,
+    big_delta: float,
+    small_delta: float,
+    big_delta_per_bvalue: float,
+    surfaces: dict,
+    derivatives_dir: Path,
+    subject_id: str,
+) -> nib.nifti1.Nifti1Image:
     if metric not in METRIC_COMPUTERS:
         raise ValueError(f"Unknown metric: {metric}")
 

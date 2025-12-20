@@ -4,6 +4,7 @@ import nibabel as nib
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+import pandas as pd
 
 
 class CustomDataset(Dataset):
@@ -19,7 +20,7 @@ class CustomDataset(Dataset):
         gender (torch.Tensor): A tensor representation of the gender information.
     """
 
-    def __init__(self, features, targets, gender, transform=None):
+    def __init__(self, features: pd.DataFrame, targets: np.ndarray, gender: np.ndarray, transform=None):
         # self.features = torch.tensor(features, dtype=torch.float32)
         self.features = features.drop(columns=["subject_id"])
         self.targets = torch.tensor(targets, dtype=torch.float32)
@@ -34,7 +35,7 @@ class CustomDataset(Dataset):
         if self.mode == "paths":
             self.features = self.features[0].tolist()
 
-    def __len__(self):
+    def __len__(self) -> int:
         """
         Returns the number of elements in the dataset.
         This method overrides the built-in __len__ method to provide the length
@@ -46,7 +47,7 @@ class CustomDataset(Dataset):
 
         return len(self.features)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Retrieve a single data sample from the dataset.
         Args:
@@ -81,7 +82,7 @@ class CustomDataset(Dataset):
 
         return final_features, self.targets[idx], self.gender[idx]
 
-    def get_features_model(self):
+    def get_features_model(self) -> str:
         """
         Determines the mode of the features based on their data type.
         This method checks if the first column of the features DataFrame, excluding

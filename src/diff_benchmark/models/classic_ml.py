@@ -5,6 +5,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC, SVR
+from torch.utils.data import DataLoader
 
 from diff_benchmark.models.base import NumpyAbstractModel
 
@@ -55,7 +56,7 @@ class PCARandomForestModel(NumpyAbstractModel):
             verbose=1,
         )
 
-    def _dataloader_to_numpy(self, dataloader):
+    def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
         features_list = []
         targets_list = []
         for features_batch, targets_batch, _ in dataloader:
@@ -65,7 +66,7 @@ class PCARandomForestModel(NumpyAbstractModel):
         targets = np.concatenate(targets_list, axis=0)
         return features, targets
 
-    def fit(self, dataloader):
+    def fit(self, dataloader: DataLoader):
         """Fit PCA + RandomForest using grid search."""
         assert self.prediction_task in [
             "classification",
@@ -77,7 +78,7 @@ class PCARandomForestModel(NumpyAbstractModel):
         self.model.fit(features_reshaped, targets.flatten())
         # print("Best params found:", self.model.best_params_)
 
-    def predict(self, dataloader):
+    def predict(self, dataloader: DataLoader):
         """Predict using the best pipeline from grid search."""
         features, _ = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
@@ -131,7 +132,7 @@ class PCASVMModel(NumpyAbstractModel):
             verbose=1,
         )
 
-    def _dataloader_to_numpy(self, dataloader):
+    def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
         features_list = []
         targets_list = []
         for features_batch, targets_batch, _ in dataloader:
@@ -141,14 +142,14 @@ class PCASVMModel(NumpyAbstractModel):
         targets = np.concatenate(targets_list, axis=0)
         return features, targets
 
-    def fit(self, dataloader):
+    def fit(self, dataloader: DataLoader):
         """Fit PCA + SVM using grid search."""
         features, targets = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
         self.model.fit(features_reshaped, targets.flatten())
         # print("Best params found:", self.model.best_params_)
 
-    def predict(self, dataloader):
+    def predict(self, dataloader: DataLoader):
         """Predict class labels using the trained SVM model."""
         features, _ = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)

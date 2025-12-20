@@ -2,9 +2,10 @@ from diff_benchmark.preprocessing.wrapper_brain_data import (
     DefaultHcpPipeline,
     ImageHcpPipeline,
 )
+from diff_benchmark.preprocessing.wrapper_brain_data import DataPreparationBrain
 
 
-def get_data_pipeline(data_type, config):
+def get_data_pipeline(data_type: str, config: dict) -> DataPreparationBrain:
     """Factory function to get the appropriate data pipeline based on data_type."""
     if data_type == "images":
         print("Using Image Pipeline")

@@ -49,7 +49,7 @@ class PreprocessedData:
             target count, and gender distribution.
     """
 
-    def __init__(self, features, targets, genders, config):
+    def __init__(self, features: np.ndarray, targets: np.ndarray, genders: np.ndarray, config: dict):
         self.features = features
         self.targets = targets
         self.genders = genders
@@ -60,12 +60,12 @@ class PreprocessedData:
         )
         self.config = config
 
-    def get_fold_indices(self):
+    def get_fold_indices(self) -> list[tuple[np.ndarray, np.ndarray]]:
         """Returns the indices for each fold in the stratified K-Folds."""
         indices = list(self.skf.split(np.zeros(len(self.genders)), self.genders))
         return indices
 
-    def safe_collate(self, batch):
+    def safe_collate(self, batch: list) -> torch.Tensor:
         """
         Collate function that filters out None samples from the batch.
         """
@@ -75,11 +75,11 @@ class PreprocessedData:
 
     def get_dataloader_fold(
         self,
-        dataset,
-        fold_idx,
-        fold_indices,
-        batch_size=32,  # shuffle=True
-    ):
+        dataset: TensorDataset,
+        fold_idx: int,
+        fold_indices: list,
+        batch_size: int = 32,  # shuffle=True
+    ) -> tuple[DataLoader, DataLoader]:
         """
         Returns DataLoaders for the specified fold index using precomputed indices.
         """
@@ -102,7 +102,7 @@ class PreprocessedData:
 
         return train_loader, test_loader
 
-    def get_arrays_from_indices(self, dataset, fold_idx, fold_indices):
+    def get_arrays_from_indices(self, dataset: TensorDataset, fold_idx: int, fold_indices: list) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Given full arrays and fold index, return X, y, gender arrays for train/test sets.
         """
@@ -120,7 +120,7 @@ class PreprocessedData:
             genders[test_idx],
         )
 
-    def _create_dataset(self, idx):
+    def _create_dataset(self, idx: np.ndarray) -> TensorDataset:
         """Create a TensorDataset for the given indices."""
         return TensorDataset(
             torch.tensor(self.features[idx], dtype=torch.float32),
@@ -128,7 +128,7 @@ class PreprocessedData:
             torch.tensor(self.genders[idx], dtype=torch.int64),
         )
 
-    def get_folds_as_dataloaders(self, batch_size=32, shuffle=True):
+    def get_folds_as_dataloaders(self, batch_size: int = 32, shuffle: bool = True) -> list[tuple[DataLoader, DataLoader]]:
         """Generates and returns DataLoaders for all folds."""
         folds = []
 
@@ -145,7 +145,7 @@ class PreprocessedData:
 
         return folds
 
-    def get_folds_as_arrays(self):
+    def get_folds_as_arrays(self) -> list[tuple[tuple[np.ndarray, np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray, np.ndarray]]]:
         """Generates and returns arrays for all folds."""
         folds = []
 

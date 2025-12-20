@@ -1,9 +1,10 @@
 from pathlib import Path
+import argparse
 
 import yaml
 
 
-def load_configs(args):
+def load_configs(args: argparse.Namespace) -> tuple[dict, dict]:
     """Load general and model-specific configurations based on provided arguments."""
     # =====================
     # Load general config

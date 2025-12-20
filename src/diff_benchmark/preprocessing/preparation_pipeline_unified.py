@@ -20,9 +20,7 @@ from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
     resample_schaefer_onto_fs_lr,
 )
 from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
-                    compute_md_bids,
-                    compute_rtop_bids,
-                    create_masks_bids,
+                    create_masks,
                     compute_save_and_project_metric
                 )
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
@@ -263,7 +261,7 @@ class BrainDataPreparationPipeline(ABC):
             labels = extract_selected_labels(aparc_aseg)
             dwi_nib = nib.load(files["DWI data"])
             bvals = np.loadtxt(files["bvals"])
-            # surfaces = files["surfaces"]
+            
             surfaces = {k.split("surface:")[1]: v for k, v in files.items() if k.startswith("surface:")}
             if self.data_reading == "hcp":
                 bvecs = np.loadtxt(files["bvecs"]).T
@@ -301,10 +299,10 @@ class BrainDataPreparationPipeline(ABC):
                     )
                 ]
 
-            ctx_mask, vent_mask = create_masks_bids(
+            ctx_mask, vent_mask = create_masks(
                 aparc_resampled, labels, selected_labels
             )
-            
+            breakpoint()
             compute_save_and_project_metric(
                 metric=self.metric,
                 dwi_nib=dwi_nib,
