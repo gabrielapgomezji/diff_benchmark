@@ -3,6 +3,7 @@ from collections import Counter
 import numpy as np
 
 from diff_benchmark.models.base import NumpyAbstractModel
+from torch.utils.data import DataLoader
 
 
 class DummyRegressor(NumpyAbstractModel):
@@ -32,7 +33,7 @@ class DummyRegressor(NumpyAbstractModel):
     def __init__(self):
         self.prediction_ = None
 
-    def _dataloader_to_numpy(self, dataloader):
+    def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
         """
         Converts a dataloader containing batches of data into NumPy arrays.
         Args:
@@ -54,7 +55,7 @@ class DummyRegressor(NumpyAbstractModel):
         targets = np.concatenate(targets_list, axis=0)
         return features, targets
 
-    def fit(self, dataloader):
+    def fit(self, dataloader: DataLoader) -> None:
         """
         Fit the model using the provided dataloader.
         This method converts the data from the dataloader into numpy arrays and computes
@@ -69,7 +70,7 @@ class DummyRegressor(NumpyAbstractModel):
         _, targets = self._dataloader_to_numpy(dataloader)
         self.prediction_ = np.mean(targets)
 
-    def predict(self, dataloader):
+    def predict(self, dataloader: DataLoader) -> np.ndarray:
         """
         Predicts the output for the given dataloader.
         Args:
@@ -102,7 +103,7 @@ class DummyClassifier(NumpyAbstractModel):
     def __init__(self):
         self.class_ = None
 
-    def _dataloader_to_numpy(self, dataloader):
+    def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
         """
         Converts a dataloader containing batches of data into NumPy arrays.
         Args:
@@ -123,7 +124,7 @@ class DummyClassifier(NumpyAbstractModel):
         targets = np.concatenate(targets_list, axis=0)
         return features, targets
 
-    def fit(self, dataloader):
+    def fit(self, dataloader: DataLoader) -> None:
         """
         Fit the model using the provided dataloader.
         This method converts the data from the dataloader into numpy arrays and computes
@@ -137,7 +138,7 @@ class DummyClassifier(NumpyAbstractModel):
         _, targets = self._dataloader_to_numpy(dataloader)
         self.class_ = Counter(targets.flatten()).most_common(1)[0][0]
 
-    def predict(self, dataloader):
+    def predict(self, dataloader: DataLoader) -> np.ndarray:
         """
         Predicts the output for the given dataloader.
         Args:

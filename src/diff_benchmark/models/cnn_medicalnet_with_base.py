@@ -14,6 +14,7 @@ from torchvision import transforms
 
 from diff_benchmark.models.base import LightningModel
 from diff_benchmark.models.utils import create_trainer
+from typing import Any
 
 __all__ = [
     "ResNet",
@@ -27,7 +28,7 @@ __all__ = [
 ]
 
 
-def collate_with_augmentation(batch, transform=None):
+def collate_with_augmentation(batch, transform: callable =None):
     """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
     xs, ys, gs = zip(*batch)  # separate batch components
     xs_aug = []
@@ -64,7 +65,7 @@ val_transforms = transforms.Compose(
 )
 
 
-def conv3x3x3(in_planes, out_planes, stride=1, dilation=1):
+def conv3x3x3(in_planes: int, out_planes: int, stride: int = 1, dilation: int = 1) -> nn.Conv3d:
     """3D convolution with padding"""
     # 3x3x3 convolution with padding
     return nn.Conv3d(
@@ -78,7 +79,7 @@ def conv3x3x3(in_planes, out_planes, stride=1, dilation=1):
     )
 
 
-def downsample_basic_block(x, planes, stride, no_cuda=False):
+def downsample_basic_block(x: torch.Tensor, planes: int, stride: int, no_cuda: bool = False) -> torch.Tensor:
     """Downsample the input tensor `x` using average pooling
     and zero-padding to match the desired number of output planes."""
     out = F.avg_pool3d(x, kernel_size=1, stride=stride)
@@ -105,7 +106,7 @@ class BasicBlock(nn.Module):
 
     expansion = 1
 
-    def __init__(self, inplanes, planes, stride=1, dilation=1, downsample=None):
+    def __init__(self, inplanes: int, planes: int, stride: int = 1, dilation: int = 1, downsample: nn.Module = None):
         super().__init__()
         self.conv1 = conv3x3x3(inplanes, planes, stride=stride, dilation=dilation)
         self.bn1 = nn.BatchNorm3d(planes)
@@ -116,7 +117,7 @@ class BasicBlock(nn.Module):
         self.stride = stride
         self.dilation = dilation
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the BasicBlock."""
         residual = x
 
@@ -174,7 +175,7 @@ class Bottleneck(nn.Module):
 
     expansion = 4
 
-    def __init__(self, inplanes, planes, stride=1, dilation=1, downsample=None):
+    def __init__(self, inplanes: int, planes: int, stride: int = 1, dilation: int = 1, downsample: nn.Module = None):
         super().__init__()
         self.conv1 = nn.Conv3d(inplanes, planes, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm3d(planes)
@@ -195,7 +196,7 @@ class Bottleneck(nn.Module):
         self.stride = stride
         self.dilation = dilation
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the Bottleneck block."""
         residual = x
 
@@ -254,7 +255,7 @@ class ResNet(nn.Module):
                     num_classes is the number of output classes.
     """
 
-    def __init__(self, block, layers, num_classes, shortcut_type="B", no_cuda=False):
+    def __init__(self, block: nn.Module, layers: list[int], num_classes: int, shortcut_type: str = "B", no_cuda: bool = False):
         self.inplanes = 64
         self.no_cuda = no_cuda
         super().__init__()
@@ -285,7 +286,7 @@ class ResNet(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-    def _make_layer(self, block, planes, blocks, shortcut_type, stride=1, dilation=1):
+    def _make_layer(self, block: nn.Module, planes: int, blocks: int, shortcut_type: str, stride: int = 1, dilation: int = 1) -> nn.Sequential:
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             if shortcut_type == "A":
@@ -323,7 +324,7 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the ResNet model."""
         x = self.conv1(x)
         x = self.bn1(x)
@@ -340,49 +341,49 @@ class ResNet(nn.Module):
         return x
 
 
-def resnet10(**kwargs):
+def resnet10(**kwargs) -> ResNet:
     """Constructs a ResNet-18 model."""
     model = ResNet(BasicBlock, [1, 1, 1, 1], **kwargs)
     return model
 
 
-def resnet18(**kwargs):
+def resnet18(**kwargs) -> ResNet:
     """Constructs a ResNet-18 model."""
     model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
     return model
 
 
-def resnet34(**kwargs):
+def resnet34(**kwargs) -> ResNet:
     """Constructs a ResNet-34 model."""
     model = ResNet(BasicBlock, [3, 4, 6, 3], **kwargs)
     return model
 
 
-def resnet50(**kwargs):
+def resnet50(**kwargs) -> ResNet:
     """Constructs a ResNet-50 model."""
     model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
     return model
 
 
-def resnet101(**kwargs):
+def resnet101(**kwargs) -> ResNet:
     """Constructs a ResNet-101 model."""
     model = ResNet(Bottleneck, [3, 4, 23, 3], **kwargs)
     return model
 
 
-def resnet152(**kwargs):
+def resnet152(**kwargs) -> ResNet:
     """Constructs a ResNet-101 model."""
     model = ResNet(Bottleneck, [3, 8, 36, 3], **kwargs)
     return model
 
 
-def resnet200(**kwargs):
+def resnet200(**kwargs) -> ResNet:
     """Constructs a ResNet-101 model."""
     model = ResNet(Bottleneck, [3, 24, 36, 3], **kwargs)
     return model
 
 
-def generate_model(opt):
+def generate_model(opt: Any) -> ResNet:
     """Generate model"""
     assert opt.model in ["resnet"]
 
@@ -525,7 +526,7 @@ class ResNet3DModel(LightningModel, nn.Module):
     data_type = "images"
 
     def __init__(
-        self, device, num_classes=2, input_channels=1, model_depth=10, **kwargs
+        self, device: torch.device, num_classes: int = 2, input_channels: int = 1, model_depth: int = 10, **kwargs
     ):
         super().__init__(
             learning_rate=kwargs.get("learning_rate", 1e-5),
@@ -546,7 +547,7 @@ class ResNet3DModel(LightningModel, nn.Module):
         self.build_model()  # required by parent
         # criterion already set in LightningModel
 
-    def build_model(self):
+    def build_model(self) -> None:
         if self.model_depth == 10:
             self.model = resnet10(num_classes=self.num_classes)
         elif self.model_depth == 18:
@@ -558,13 +559,13 @@ class ResNet3DModel(LightningModel, nn.Module):
         else:
             raise ValueError(f"Unsupported ResNet depth: {self.model_depth}")
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # If user supplies input without channel dim → add it
         if x.ndim == 4:
             x = x.unsqueeze(1)  # (B, 1, D, H, W)
         return self.model(x)
 
-    def _train_val_loader_split(self, train_loader, val_ratio=0.3):
+    def _train_val_loader_split(self, train_loader: DataLoader, val_ratio: float = 0.3) -> tuple[DataLoader, DataLoader]:
         """Split the incoming dataloader's dataset into train and validation subsets."""
         dataset = train_loader.dataset  # access the underlying dataset
         n = len(dataset)
@@ -601,7 +602,7 @@ class ResNet3DModel(LightningModel, nn.Module):
         )
         return train_loader_new, val_loader_new
 
-    def _save_logs(self, history, save_path):
+    def _save_logs(self, history: list[dict], save_path: str) -> None:
         path = Path(save_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.suffix == ".json":
@@ -616,7 +617,7 @@ class ResNet3DModel(LightningModel, nn.Module):
         else:
             raise ValueError("Save path must end with .json or .csv")
 
-    def _save_logs(self, history, save_path):
+    def _save_logs(self, history: list[dict], save_path: str) -> None:
         """Utility for saving training logs as JSON or CSV."""
         path = Path(save_path)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -632,7 +633,7 @@ class ResNet3DModel(LightningModel, nn.Module):
         else:
             raise ValueError("Save path must end with .json or .csv")
 
-    def fit(self, dataloader):
+    def fit(self, dataloader: DataLoader) -> None:
         """
         Lightning-based fit function to preserve compatibility with the old API.
         Splits the input dataloader into training and validation sets,
@@ -662,7 +663,7 @@ class ResNet3DModel(LightningModel, nn.Module):
             f"[INFO] Training finished. Best model: {trainer.checkpoint_callback.best_model_path}"
         )
 
-    def predict(self, dataloader):
+    def predict(self, dataloader: DataLoader) -> np.ndarray:
         """
         Lightning-based predict function to preserve the old API.
         Automatically loads the best checkpoint from the Trainer.

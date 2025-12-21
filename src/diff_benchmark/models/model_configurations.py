@@ -16,7 +16,7 @@ from diff_benchmark.models.logistic_regression import (
 )
 
 
-def make_run_id(name, params):
+def make_run_id(name: str, params: dict) -> str:
     """
     Generates a unique run identifier based on the provided name and parameters.
     Parameters:
@@ -34,7 +34,7 @@ def make_run_id(name, params):
     return f"{name}_{run_hash}"
 
 
-def get_model(name: str, config: dict):
+def get_model(name: str, config: dict) -> object:
     """
     Get a machine learning model instance based on the specified name and configuration.
     Parameters:

@@ -7,6 +7,8 @@ from sklearn.preprocessing import StandardScaler
 
 from diff_benchmark.models.base import NumpyAbstractModel
 
+from torch.utils.data import DataLoader
+
 
 class PCALogisticRegressionModel(NumpyAbstractModel):
     """
@@ -55,7 +57,7 @@ class PCALogisticRegressionModel(NumpyAbstractModel):
             verbose=1,
         )
 
-    def _dataloader_to_numpy(self, dataloader):
+    def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
         features_list = []
         targets_list = []
         for features_batch, targets_batch, _ in dataloader:
@@ -65,14 +67,14 @@ class PCALogisticRegressionModel(NumpyAbstractModel):
         targets = np.concatenate(targets_list, axis=0)
         return features, targets
 
-    def fit(self, dataloader):
+    def fit(self, dataloader: DataLoader) -> None:
         """Fit PCA and then logistic regression on reduced features."""
         features, targets = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
         self.model.fit(features_reshaped, targets.flatten())
         # print("Best params found:", self.model.best_params_)
 
-    def predict(self, dataloader):
+    def predict(self, dataloader: DataLoader) -> np.ndarray:
         """Transform input with PCA and predict with logistic regression."""
         features, _ = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
@@ -127,7 +129,7 @@ class PCALinearModel(NumpyAbstractModel):
             verbose=1,
         )
 
-    def _dataloader_to_numpy(self, dataloader):
+    def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
         features_list = []
         targets_list = []
         for features_batch, targets_batch, _ in dataloader:
@@ -137,7 +139,7 @@ class PCALinearModel(NumpyAbstractModel):
         targets = np.concatenate(targets_list, axis=0)
         return features, targets
 
-    def fit(self, dataloader):
+    def fit(self, dataloader: DataLoader) -> None:
         """Fit PCA and then logistic regression on reduced features."""
         assert self.prediction_task in [
             "classification",
@@ -148,7 +150,7 @@ class PCALinearModel(NumpyAbstractModel):
         self.model.fit(features_reshaped, targets.flatten())
         # print("Best params found:", self.model.best_params_)
 
-    def predict(self, dataloader):
+    def predict(self, dataloader: DataLoader) -> np.ndarray:
         """Transform input with PCA and predict with logistic regression."""
         features, _ = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
@@ -177,7 +179,7 @@ class LogisticRegressionModel(NumpyAbstractModel):
     def __init__(self):
         self.model = LogisticRegression(max_iter=100)
 
-    def _dataloader_to_numpy(self, dataloader):
+    def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
         features_list = []
         targets_list = []
         for features_batch, targets_batch, _ in dataloader:
@@ -187,13 +189,13 @@ class LogisticRegressionModel(NumpyAbstractModel):
         targets = np.concatenate(targets_list, axis=0)
         return features, targets
 
-    def fit(self, dataloader):
+    def fit(self, dataloader: DataLoader) -> None:
         """Fit logistic regression on reduced features."""
         features, targets = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
         self.model.fit(features_reshaped, targets.flatten())
 
-    def predict(self, dataloader):
+    def predict(self, dataloader: DataLoader) -> np.ndarray:
         """predict with logistic regression."""
         features, _ = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)

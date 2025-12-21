@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from diff_benchmark.models.base import TorchPipeline
+from typing import Any
 
 __all__ = [
     "ResNet",
@@ -19,7 +20,7 @@ __all__ = [
 ]
 
 
-def conv3x3x3(in_planes, out_planes, stride=1, dilation=1):
+def conv3x3x3(in_planes: int, out_planes: int, stride: int = 1, dilation: int = 1) -> nn.Conv3d:
     """3D convolution with padding"""
     # 3x3x3 convolution with padding
     return nn.Conv3d(
@@ -33,7 +34,7 @@ def conv3x3x3(in_planes, out_planes, stride=1, dilation=1):
     )
 
 
-def downsample_basic_block(x, planes, stride, no_cuda=False):
+def downsample_basic_block(x: torch.Tensor, planes: int, stride: int, no_cuda: bool = False) -> torch.Tensor:
     """Downsample basic block for a 3D convolutional neural network."""
     out = F.avg_pool3d(x, kernel_size=1, stride=stride)
     zero_pads = torch.Tensor(
@@ -53,7 +54,7 @@ class BasicBlock(nn.Module):
 
     expansion = 1
 
-    def __init__(self, inplanes, planes, stride=1, dilation=1, downsample=None):
+    def __init__(self, inplanes: int, planes: int, stride: int = 1, dilation: int = 1, downsample: nn.Module = None):
         super().__init__()
         self.conv1 = conv3x3x3(inplanes, planes, stride=stride, dilation=dilation)
         self.bn1 = nn.BatchNorm3d(planes)
@@ -64,7 +65,7 @@ class BasicBlock(nn.Module):
         self.stride = stride
         self.dilation = dilation
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the BasicBlock."""
         residual = x
 
@@ -122,7 +123,7 @@ class Bottleneck(nn.Module):
 
     expansion = 4
 
-    def __init__(self, inplanes, planes, stride=1, dilation=1, downsample=None):
+    def __init__(self, inplanes: int, planes: int, stride: int = 1, dilation: int = 1, downsample: nn.Module = None):
         super().__init__()
         self.conv1 = nn.Conv3d(inplanes, planes, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm3d(planes)
@@ -143,7 +144,7 @@ class Bottleneck(nn.Module):
         self.stride = stride
         self.dilation = dilation
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the Bottleneck block."""
         residual = x
 
@@ -204,12 +205,12 @@ class ResNet(nn.Module):
 
     def __init__(
         self,
-        block,
-        layers,
-        num_classes,
-        prediction_task,
-        shortcut_type="B",
-        no_cuda=False,
+        block: nn.Module,
+        layers: list[int],
+        num_classes: int,
+        prediction_task: str,
+        shortcut_type: str = "B",
+        no_cuda: bool = False,
     ):
         self.inplanes = 64
         self.no_cuda = no_cuda
@@ -243,7 +244,7 @@ class ResNet(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-    def _make_layer(self, block, planes, blocks, shortcut_type, stride=1, dilation=1):
+    def _make_layer(self, block: nn.Module, planes: int, blocks: int, shortcut_type: str, stride: int = 1, dilation: int = 1) -> nn.Sequential:
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             if shortcut_type == "A":
@@ -281,7 +282,7 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the ResNet model."""
         if x.dim() == 4:  # missing the channel dimension
             x = x.unsqueeze(1)
@@ -300,49 +301,49 @@ class ResNet(nn.Module):
         return x
 
 
-def resnet10(**kwargs):
+def resnet10(**kwargs) -> ResNet:
     """Constructs a ResNet-18 model."""
     model = ResNet(BasicBlock, [1, 1, 1, 1], **kwargs)
     return model
 
 
-def resnet18(**kwargs):
+def resnet18(**kwargs) -> ResNet:
     """Constructs a ResNet-18 model."""
     model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
     return model
 
 
-def resnet34(**kwargs):
+def resnet34(**kwargs) -> ResNet:
     """Constructs a ResNet-34 model."""
     model = ResNet(BasicBlock, [3, 4, 6, 3], **kwargs)
     return model
 
 
-def resnet50(**kwargs):
+def resnet50(**kwargs) -> ResNet:
     """Constructs a ResNet-50 model."""
     model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
     return model
 
 
-def resnet101(**kwargs):
+def resnet101(**kwargs) -> ResNet:
     """Constructs a ResNet-101 model."""
     model = ResNet(Bottleneck, [3, 4, 23, 3], **kwargs)
     return model
 
 
-def resnet152(**kwargs):
+def resnet152(**kwargs) -> ResNet:
     """Constructs a ResNet-101 model."""
     model = ResNet(Bottleneck, [3, 8, 36, 3], **kwargs)
     return model
 
 
-def resnet200(**kwargs):
+def resnet200(**kwargs) -> ResNet:
     """Constructs a ResNet-101 model."""
     model = ResNet(Bottleneck, [3, 24, 36, 3], **kwargs)
     return model
 
 
-def generate_model(opt):
+def generate_model(opt: Any) -> ResNet:
     """Generate model"""
     assert opt.model in ["resnet"]
 
@@ -458,7 +459,7 @@ def generate_model(opt):
     return model, model.parameters()
 
 
-def collate_with_augmentation(batch, transform=None):
+def collate_with_augmentation(batch, transform: callable =None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Custom collate function with normalization and optional augmentation."""
     mean = 0.5
     std = 0.5
@@ -500,7 +501,7 @@ class ResNet3DModel(TorchPipeline):
 
     data_type = "images"
 
-    def _build_model(self, num_classes, model_depth=10, **kwargs):
+    def _build_model(self, num_classes: int, model_depth=10, **kwargs) -> ResNet:
         prediction_task = kwargs.get("prediction_task", None)
         # model = resnet10(num_classes=num_classes)
         if model_depth == 10:

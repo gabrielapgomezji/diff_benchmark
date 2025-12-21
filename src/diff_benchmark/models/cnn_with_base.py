@@ -11,9 +11,10 @@ from torchvision import models, transforms
 
 from diff_benchmark.models.base import LightningModel
 from diff_benchmark.models.utils import create_trainer
+from typing import Callable
 
 
-def collate_with_augmentation(batch, transform=None):
+def collate_with_augmentation(batch: list, transform: Callable = None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
     xs, ys, gs = zip(*batch)  # separate batch components
     xs_aug = []
@@ -71,7 +72,7 @@ class ResNet18Backbone(nn.Module):
                 torch.Tensor: A tensor of shape (B, 512) containing the extracted features.
     """
 
-    def __init__(self, pretrained=True, trainable_blocks=0, **kwargs):
+    def __init__(self, pretrained: bool =True, trainable_blocks: int =0, **kwargs):
         super().__init__()
         resnet = models.resnet18(
             weights=models.ResNet18_Weights.DEFAULT if pretrained else None
@@ -93,7 +94,7 @@ class ResNet18Backbone(nn.Module):
                 for param in block.parameters():
                     param.requires_grad = True
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         x: (B, 3, H, W)
         returns: (B, 512)
@@ -124,7 +125,7 @@ class ResNet3SliceClassifier(nn.Module):
     """
 
     def __init__(
-        self, input_slices, num_classes=2, freeze_backbone=True, dropout=0.5, **kwargs
+        self, input_slices: int, num_classes: int = 2, freeze_backbone: bool = True, dropout: float = 0.5, **kwargs
     ):
         super().__init__()
         self.backbone = ResNet18Backbone(**kwargs)
@@ -136,7 +137,7 @@ class ResNet3SliceClassifier(nn.Module):
             for param in self.backbone.parameters():
                 param.requires_grad = False
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         x: (batch, Slice, Height, Width) where Slice is slice dimension
         """
@@ -174,7 +175,7 @@ class ResNet3SliceModel(LightningModel):
 
     data_type = "images"
 
-    def __init__(self, input_slices=145, num_classes=2, device="cuda", **kwargs):
+    def __init__(self, input_slices: int =145, num_classes: int =2, device: str ="cuda", **kwargs):
         super().__init__(
             learning_rate=kwargs.get("learning_rate", 1e-5),
             weight_decay=kwargs.get("weight_decay", 1e-4),
@@ -199,7 +200,7 @@ class ResNet3SliceModel(LightningModel):
     # ------------------------------------------------------------
     # Model definition
     # ------------------------------------------------------------
-    def build_model(self):
+    def build_model(self) -> None:
         """Build the actual ResNet classifier."""
         # To avoid repeating args as input_slices
         model_kwargs = {
@@ -220,13 +221,13 @@ class ResNet3SliceModel(LightningModel):
             **model_kwargs,
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
 
     # ------------------------------------------------------------
     # Data helpers
     # ------------------------------------------------------------
-    def _train_val_loader_split(self, train_loader, val_ratio=0.3):
+    def _train_val_loader_split(self, train_loader: DataLoader, val_ratio: float = 0.3) -> tuple[DataLoader, DataLoader]:
         """Split the incoming dataloader's dataset into train and validation subsets."""
         dataset = train_loader.dataset  # access the underlying dataset
         n = len(dataset)
@@ -263,7 +264,7 @@ class ResNet3SliceModel(LightningModel):
         )
         return train_loader_new, val_loader_new
 
-    def _save_logs(self, history, save_path):
+    def _save_logs(self, history: list[dict], save_path: str) -> None:
         """Utility for saving training logs as JSON or CSV."""
         path = Path(save_path)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -282,7 +283,7 @@ class ResNet3SliceModel(LightningModel):
     # ------------------------------------------------------------
     # Lightning-compatible fit/predict interface
     # ------------------------------------------------------------
-    def fit(self, dataloader):
+    def fit(self, dataloader: DataLoader) -> None:
         """
         Lightning-based fit function to preserve compatibility with the old API.
         Splits the input dataloader into training and validation sets,
@@ -312,7 +313,7 @@ class ResNet3SliceModel(LightningModel):
             f"[INFO] Training finished. Best model: {trainer.checkpoint_callback.best_model_path}"
         )
 
-    def x_only_loader(self, dl):
+    def x_only_loader(self, dl: DataLoader):
         """Utility to create a dataloader that yields only inputs (no labels)."""
         for x, _, _ in dl:
             if isinstance(x, list):
@@ -322,7 +323,7 @@ class ResNet3SliceModel(LightningModel):
                 x = x.unsqueeze(1)
             yield (x,)
 
-    def predict(self, dataloader):
+    def predict(self, dataloader: DataLoader) -> np.ndarray:
         """
         Lightning-based predict function to preserve the old API.
         Automatically loads the best checkpoint from the Trainer.

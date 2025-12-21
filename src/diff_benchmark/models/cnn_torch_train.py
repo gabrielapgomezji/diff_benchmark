@@ -26,7 +26,7 @@ class ResNet18Backbone(nn.Module):
                 torch.Tensor: A tensor of shape (B, 512) containing the extracted features.
     """
 
-    def __init__(self, pretrained=True, trainable_blocks=0, **kwargs):
+    def __init__(self, pretrained: bool =True, trainable_blocks: int =0, **kwargs):
         super().__init__()
         resnet = models.resnet18(
             weights=models.ResNet18_Weights.DEFAULT if pretrained else None
@@ -48,7 +48,7 @@ class ResNet18Backbone(nn.Module):
                 for param in block.parameters():
                     param.requires_grad = True
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         x: (B, 3, H, W)
         returns: (B, 512)
@@ -79,7 +79,7 @@ class ResNet3SliceClassifier(nn.Module):
     """
 
     def __init__(
-        self, input_slices, num_classes=2, freeze_backbone=True, dropout=0.5, **kwargs
+        self, input_slices: int, num_classes: int = 2, freeze_backbone: bool = True, dropout: float = 0.5, **kwargs
     ):
         super().__init__()
         self.backbone = ResNet18Backbone(**kwargs)
@@ -101,7 +101,7 @@ class ResNet3SliceClassifier(nn.Module):
             nn.Linear(512, 128), nn.ReLU(), nn.Linear(128, 1)
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         x: (batch, Slice, Height, Width) where Slice is slice dimension
         """
@@ -127,7 +127,7 @@ class ResNet3SliceClassifier(nn.Module):
         return out
 
 
-def collate_with_augmentation(batch, transform=None):
+def collate_with_augmentation(batch: list, transform: callable = None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
     xs, ys, gs = zip(*batch)  # separate batch components
     xs_aug = []
@@ -154,7 +154,7 @@ class CNNTorchTrainModel(TorchPipeline):
     data_type = "images"
 
     def _build_model(
-        self, input_slices, num_classes, freeze_backbone, dropout, **kwargs
+        self, input_slices: int, num_classes: int, freeze_backbone: bool, dropout: float, **kwargs
     ):
         pretrained = kwargs.get("pretrained", False)
         trainable_blocks = kwargs.get("trainable_blocks", None)
