@@ -23,7 +23,15 @@ from diff_benchmark.utils.scores import compute_metrics
 
 
 def collate_with_augmentation(batch: list, transform: transforms.Compose = None):
-    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
+    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch.
+    Args:
+        batch (list): List of tuples (x, y, g) where x is a 3D tensor (D,H,W), y is the label,
+                      and g is additional info (e.g., gender).
+        transform (transforms.Compose, optional): 2D transformations to apply to each slice.
+    Returns:
+        Tuple of tensors: (xs_aug, ys, gs) where xs_aug is the augmented batch of 3D volumes,
+                          ys are the labels, and gs are the additional info.
+    """
     xs, ys, gs = zip(*batch)  # separate batch components
     xs_aug = []
     for x in xs:  # x shape: (D,H,W)
@@ -71,18 +79,24 @@ class NumpyAbstractModel(ABC):
         """
         Convert a DataLoader to numpy arrays.
         This method should be implemented by all subclasses to handle the conversion.
+        Args:
+            dataloader (DataLoader): PyTorch DataLoader to convert.
         """
 
     @abstractmethod
     def fit(self, dataloader: DataLoader):
         """
         Fit the model to the training data.
+        Args:
+            dataloader (DataLoader): PyTorch DataLoader with training data.
         """
 
     @abstractmethod
     def predict(self, dataloader: DataLoader):
         """
         Predict using the fitted model.
+        Args:
+            dataloader (DataLoader): PyTorch DataLoader with data to predict.
         """
 
 
@@ -97,18 +111,24 @@ class TorchAbstractModel(ABC):
         """
         Convert a DataLoader to numpy arrays.
         This method should be implemented by all subclasses to handle the conversion.
+        Args:
+            dataloader (DataLoader): PyTorch DataLoader to convert.
         """
 
     @abstractmethod
     def fit(self, dataloader: DataLoader):
         """
         Fit the model to the training data.
+        Args:
+            dataloader (DataLoader): PyTorch DataLoader with training data.
         """
 
     @abstractmethod
     def predict(self, dataloader: DataLoader):
         """
         Predict using the fitted model.
+        Args:
+            dataloader (DataLoader): PyTorch DataLoader with data to predict.
         """
 
 
@@ -179,11 +199,35 @@ class TorchPipeline:
 
     @abstractmethod
     def _build_model(self, **kwargs):
+        """
+        Build and return a PyTorch model.
+        This method must be implemented in a subclass to define the architecture
+        of the model. It should return an instance of a PyTorch model.
+        Args:
+            **kwargs: Arbitrary keyword arguments that may be used to configure
+                      the model.
+        Raises:
+            NotImplementedError: If the method is not implemented in a subclass.
+        Returns:
+            torch.nn.Module: A PyTorch model instance.
+        """
+        
         raise NotImplementedError(
             "_build_model must be implemented and return a torch model."
         )
 
     def _save_logs(self, history: dict, save_path: str):
+        """
+        Save the provided history logs to a file in either JSON or CSV format.
+        Args:
+            history (dict): The history data to save. If saving as CSV, this should
+                be a list of dictionaries where each dictionary represents a row.
+            save_path (str): The file path where the logs will be saved. The file
+                extension must be either '.json' or '.csv'.
+        Raises:
+            ValueError: If the save_path does not end with '.json' or '.csv'.
+        """
+        
         path = Path(save_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.suffix == ".json":
@@ -199,6 +243,27 @@ class TorchPipeline:
             raise ValueError("Save path must end with .json or .csv")
 
     def _train_val_loader_split(self, train_loader: DataLoader, val_ratio: float = 0.3) -> tuple[DataLoader, DataLoader]:
+        """
+        Splits a given training DataLoader into training and validation DataLoaders.
+        This method takes a DataLoader containing the training dataset and splits it
+        into two separate DataLoaders: one for training and one for validation. The
+        split is performed based on the specified validation ratio, and the split
+        is stratified by gender to ensure balanced representation in both subsets.
+        Args:
+            train_loader (DataLoader): The DataLoader containing the training dataset.
+            val_ratio (float, optional): The ratio of the dataset to be used for validation.
+                Defaults to 0.3.
+        Returns:
+            tuple[DataLoader, DataLoader]: A tuple containing the new training DataLoader
+            and validation DataLoader.
+        Notes:
+            - The `train_loader` dataset is expected to have a `dataset.gender` attribute
+              that provides gender information for stratified splitting.
+            - The `self.model.collate_with_augmentation` function is used as the collate
+              function for both training and validation DataLoaders.
+            - The `train_transforms` and `val_transforms` are applied to the respective
+              DataLoaders during data collation.
+        """
 
         dataset = train_loader.dataset
         n = len(dataset)
@@ -238,7 +303,10 @@ class TorchPipeline:
         return train_loader_new, val_loader_new
 
     def fit(self, dataloader: DataLoader):
-        """Fit the model to the training data."""
+        """Fit the model to the training data.
+        Args:
+            dataloader (DataLoader): PyTorch DataLoader with training data.
+        """
         print(f"Device: {self.device}")
         self.model.train()
 
@@ -409,7 +477,10 @@ class TorchPipeline:
         )
 
     def predict(self, dataloader: DataLoader):
-        """Prediction step using last model checkpoint."""
+        """Prediction step using last model checkpoint.
+        Args:
+            dataloader (DataLoader): PyTorch DataLoader with data to predict.
+        """
         checkpoint_path = Path(self.logger.best_path)
         if checkpoint_path.exists():
             state_dict = torch.load(checkpoint_path, map_location=self.device)
@@ -485,14 +556,26 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
 
     @abstractmethod
     def fit(self, dataloader: DataLoader):
-        """Fit the model to the training data."""
+        """Fit the model to the training data.
+        Args:
+            dataloader (DataLoader): PyTorch DataLoader with training data.
+        """
 
     @abstractmethod
     def predict(self, dataloader: DataLoader):
-        """Predict using the fitted model."""
+        """Predict using the fitted model.
+        Args:
+            dataloader (DataLoader): PyTorch DataLoader with data to predict.
+        """
 
     def compute_metrics(self, y_true: torch.Tensor, y_pred: torch.Tensor) -> dict:
-        """Compute classification metrics."""
+        """Compute classification metrics.
+        Args:
+            y_true (torch.Tensor): True labels.
+            y_pred (torch.Tensor): Predicted labels.
+        Returns:
+            dict: Dictionary with accuracy, precision, recall, and F1-score.
+        """
         return {
             "accuracy": accuracy_score(y_true, y_pred),
             "precision": precision_score(
@@ -505,7 +588,27 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
         }
 
     def training_step(self, batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_idx: int, *args, **kwargs) -> torch.Tensor:
-        """Training step for a single batch."""
+        """
+        Performs a single training step for the model.
+
+        Args:
+            batch (tuple[torch.Tensor, torch.Tensor, torch.Tensor]): A tuple containing the input tensor `x`, 
+            the target tensor `y`, and an additional tensor (unused in this method).
+            batch_idx (int): The index of the current batch.
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            torch.Tensor: The computed loss for the current batch.
+
+        Notes:
+            - The method computes the model's predictions (`logits`) using the input tensor `x`.
+            - The target tensor `y` is converted to a long data type for compatibility with the loss function.
+            - The loss is calculated using the specified criterion.
+            - Predictions are obtained by taking the argmax of the logits along dimension 1.
+            - Metrics are computed using the `compute_metrics` method and logged.
+            - The training loss and metrics are logged using the `self.log` and `self.log_dict` methods.
+        """
         _ = batch_idx
         x, y, _ = batch
         logits = self(x)
@@ -519,6 +622,19 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
         return loss
 
     def validation_step(self, batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_idx: int, *args, **kwargs) -> dict:
+        """
+        Performs a single validation step during the model evaluation phase.
+        Args:
+            batch (tuple[torch.Tensor, torch.Tensor, torch.Tensor]): A tuple containing the input tensor `x`, 
+                the target tensor `y`, and an additional tensor (unused in this method).
+            batch_idx (int): The index of the current batch.
+            *args: Additional positional arguments (not used in this method).
+            **kwargs: Additional keyword arguments (not used in this method).
+        Returns:
+            dict: A dictionary containing the validation loss under the key "val_loss" and additional 
+                computed metrics with keys prefixed by "val_".
+        """
+        
         _ = batch_idx
         x, y, _ = batch
         logits = self(x)
@@ -532,6 +648,20 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
         return {"val_loss": loss, **metrics}
 
     def predict_step(self, batch: tuple[torch.Tensor, torch.Tensor, torch.Tensor], batch_idx: int, *args, dataloader_idx: int = 0, **kwargs) -> torch.Tensor:
+        """
+        Perform a prediction step during inference.
+        Args:
+            batch (tuple[torch.Tensor, torch.Tensor, torch.Tensor]): A batch of data, typically containing input tensors 
+                and possibly additional information. The first element of the batch is used as input to the model.
+            batch_idx (int): The index of the current batch.
+            *args: Additional positional arguments.
+            dataloader_idx (int, optional): The index of the dataloader, useful when using multiple dataloaders. Defaults to 0.
+            **kwargs: Additional keyword arguments.
+        Returns:
+            torch.Tensor: The predicted class indices for the input batch, obtained by applying `torch.argmax` 
+                on the model's output logits along the class dimension.
+        """
+        
         # Unpack batch safely
         _, _ = batch_idx, dataloader_idx
         x = batch[0] if isinstance(batch, (tuple, list)) else batch
@@ -540,6 +670,25 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
         return preds
 
     def configure_optimizers(self) -> dict:
+        """
+        Configures the optimizer and learning rate scheduler for the model.
+        Returns:
+            dict: A dictionary containing the optimizer and learning rate scheduler configuration.
+        The method supports the following optimizers:
+            - AdamW: Adam optimizer with weight decay.
+            - Adam: Standard Adam optimizer.
+        The method supports the following learning rate schedulers:
+            - "plateau": ReduceLROnPlateau scheduler, which reduces the learning rate when a monitored metric has stopped improving.
+            - "step": StepLR scheduler, which decays the learning rate by a factor every fixed number of steps.
+            - "exponential": ExponentialLR scheduler, which decays the learning rate exponentially.
+            - "onecycle": OneCycleLR scheduler, which adjusts the learning rate cyclically over the course of training.
+        Notes:
+            - For the "plateau" scheduler, the learning rate is reduced based on the "val_loss" metric.
+            - The "onecycle" scheduler requires the total number of training steps to be estimated using `self.trainer.estimated_stepping_batches`.
+            - The "onecycle" scheduler operates on a per-step interval, while other schedulers typically operate on a per-epoch interval.
+            - If an unsupported `scheduler_type` is provided, a default StepLR scheduler is used.
+        """
+        
         if self.optimizer_type == "adamw":
             optimizer = torch.optim.AdamW(
                 self.parameters(), lr=self.lr, weight_decay=self.weight_decay

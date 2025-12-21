@@ -48,6 +48,11 @@ class DefaultPipeline(BrainDataPreparationPipeline):
     def verify_subject_files(self, subject_id: str, metric: str) -> bool:
         """
         Check if both hemispheres' .scalar.gii files exist for the given subject and metric.
+        Args:
+            subject_id (str): The subject identifier.
+            metric (str): The metric to check (e.g., 'rtop', 'md').
+        Returns:
+            bool: True if both files exist, False otherwise.
         """
         derivatives_dir = (
             self.results_root / "derivatives" / f"sub-{subject_id}" / "dwi"
@@ -62,6 +67,7 @@ class DefaultPipeline(BrainDataPreparationPipeline):
         return left_file.exists() and right_file.exists()
 
     def run_analysis(self):
+        """Run analysis extracting region data."""
         scalar_files = sorted(
             self.results_root.glob(
                 f"derivatives/sub-*/dwi/*_hemi-L_param-{self.metric}.scalar.gii"
@@ -123,6 +129,11 @@ class ImagePipeline(BrainDataPreparationPipeline):
     def verify_subject_files(self, subject_id: str, metric: str) -> bool:
         """
         Check if whole brain .nii.gii files exist for the given subject and metric.
+        Args:
+            subject_id (str): The subject identifier.
+            metric (str): The metric to check (e.g., 'rtop', 'md').
+        Returns:
+            bool: True if the file exists, False otherwise.
         """
         derivatives_dir = (
             self.results_root / "derivatives" / f"sub-{subject_id}" / "dwi"
@@ -132,6 +143,7 @@ class ImagePipeline(BrainDataPreparationPipeline):
         return file.exists()
 
     def run_analysis(self):
+        """Run analysis extracting region data."""
         img_files = sorted(
             self.results_root.glob(
                 f"derivatives/sub-*/dwi/*_param-{self.metric}_dwimap.nii.gz"

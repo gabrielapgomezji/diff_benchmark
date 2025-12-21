@@ -10,7 +10,15 @@ def run_single_process(
     results_path: str,
     general_config: dict,
 ) -> list:
-    """Runs a specified function in a single process for multiple models."""
+    """Runs a specified function in a single process for multiple models.
+    Parameters:
+        run_fn (callable): The function to run for each model entry.
+        models_to_run (list): A list of model entries, each containing a 'name' and 'params'.
+        results_path (str): The path where results will be stored.
+        general_config (dict): General configuration dictionary to be passed to the run function.
+    Returns:
+        list: A list of results returned by the run_fn for each model entry.
+    """
     results = []
     for model in models_to_run:
         results.append(
@@ -36,11 +44,9 @@ def run_with_joblib(
     Parameters:
         run_fn (callable): The function to run for each model entry.
         models_to_run (list): A list of model entries, each containing a 'name' and 'params'.
-        dataset (any): The dataset to be used in the function.
-        preprocessed (any): Preprocessed data to be passed to the function.
-        indices (any): Indices to be used in the function.
         results_path (str): The path where results will be stored.
-        n_jobs (int, optional): The number of jobs to run in parallel. Default is 5.
+        general_config (dict): General configuration dictionary to be passed to the run function.
+        n_jobs (int): The number of parallel jobs to run.
     Returns:
         list: A list of results returned by the run_fn for each model entry.
     """
@@ -68,9 +74,6 @@ def run_with_slurm(
     Parameters:
         run_fn (callable): The function to run for each model.
         models_to_run (list): A list of dictionaries, each containing the model name and parameters.
-        dataset (any): The dataset to be used in the function.
-        preprocessed (any): Indicates whether the dataset is preprocessed.
-        indices (list): A list of indices to be used in the function.
         results_path (str): The path where results will be stored.
         slurm_cfg (dict): A configuration dictionary for SLURM parameters, including:
             - log_folder (str): The folder for SLURM logs.
@@ -79,8 +82,9 @@ def run_with_slurm(
             - cpus_per_task (int): Number of CPUs to allocate per task.
             - timeout_min (int): Timeout in minutes for each job.
             - partition (str): The SLURM partition to use.
+        general_config (dict): General configuration dictionary to be passed to the run function.
     Returns:
-        list: A list of results from the executed jobs.
+        list: A list of results returned by the run_fn for each model entry.
     """
     submitit.slurm.slurm.SlurmJob.USE_SQUEUE = True
     executor = submitit.AutoExecutor(folder=slurm_cfg.get("log_folder", "./slurm_logs"))
@@ -136,20 +140,14 @@ def run_jobs(
     general_config: dict,
 ) -> any:
     """
-    Runs jobs using either SLURM or Joblib based on the configuration provided.
-    Parameters:
+    Runs jobs using either SLURM, Joblib or single process based on the configuration provided.
+    Args:
         run_fn (callable): The function to run for each job.
         models_to_run (list): A list of models to be processed.
-        dataset (any): The dataset to be used in the jobs.
-        preprocessed (any): Indicates whether the dataset is preprocessed.
-        indices (list): A list of indices to specify which jobs to run.
-        config (dict): A configuration dictionary that may contain:
-            - use_slurm (bool): If True, use SLURM for job management.
-            - results_path (str): Path to save the results (default is "./data").
-            - slurm (dict): Additional SLURM configuration options.
-            - n_jobs (int): Number of jobs to run in parallel with Joblib (default is 5).
+        config (dict): Configuration dictionary (not used in this function).
+        general_config (dict): General configuration dictionary containing flags for SLURM and Joblib.
     Returns:
-        Any: The result of the job execution, which depends on the implementation of
+        any: The results from the executed jobs, which depends on the implementation of
         run_with_slurm or run_with_joblib.
     """
     if general_config.get("use_slurm", False):

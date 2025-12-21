@@ -15,7 +15,17 @@ from typing import Callable
 
 
 def collate_with_augmentation(batch: list, transform: Callable = None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
+    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch.
+    Args:
+        batch (list): A list of tuples, where each tuple contains (x, y, g).
+                      x is a 3D tensor (D, H, W), y is the label, and g is additional info.
+        transform (Callable, optional): A torchvision transform to apply to each 2D slice. Defaults to None.
+    Returns:
+        tuple: A tuple containing:
+            - xs_aug (torch.Tensor): Augmented 4D tensor of shape (B, C=1, D, H, W).
+            - ys (torch.Tensor): Tensor of labels of shape (B,).
+            - gs (torch.Tensor): Tensor of additional info of shape (B,).
+    """
     xs, ys, gs = zip(*batch)  # separate batch components
     xs_aug = []
     for x in xs:  # x shape: (D,H,W)
@@ -96,9 +106,16 @@ class ResNet18Backbone(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
-        x: (B, 3, H, W)
-        returns: (B, 512)
+        Defines the forward pass of the model.
+        Args:
+            x (torch.Tensor): Input tensor of shape (B, C, H, W), where
+                B is the batch size, C is the number of channels, 
+                H is the height, and W is the width.
+        Returns:
+            torch.Tensor: Output tensor of shape (B, 512), where 512 
+                represents the flattened feature dimension.
         """
+        
         feats = self.feature_extractor(x)  # (B, 512, 1, 1)
         return feats.view(feats.size(0), -1)  # (B, 512)
 
@@ -139,8 +156,27 @@ class ResNet3SliceClassifier(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
-        x: (batch, Slice, Height, Width) where Slice is slice dimension
+        Defines the forward pass of the CNN model.
+        Args:
+            x (torch.Tensor): Input tensor of shape (Batch, Slice, Height, Width).
+                              If the input is a list or tuple, the first element is used.
+        Returns:
+            torch.Tensor: Output tensor of shape (Batch, num_classes).
+        The forward pass performs the following steps:
+        1. If the input is a list or tuple, extracts the first element.
+        2. Removes the singleton dimension at index 1 using `squeeze`.
+        3. Splits the input tensor into sub-volumes along the slice dimension using `unfold`.
+           Each sub-volume has a size of 3 slices.
+        4. Rearranges the dimensions of the sub-volumes for processing.
+        5. Iterates over each sub-volume, passing it through the backbone network to extract features.
+        6. Concatenates the features from all sub-volumes along the feature dimension.
+        7. Applies dropout to the concatenated features.
+        8. Passes the features through a fully connected layer to produce the final output.
+        Note:
+            - The slice dimension of the input tensor must be divisible by 3.
+            - The backbone network is expected to output a feature vector of size 512 for each sub-volume.
         """
+        
         # batch, slice, height, width = x.shape
         # assert S % 3 == 0, "Slice dimension must be divisible by 3"
         if isinstance(x, (list, tuple)):
@@ -171,6 +207,28 @@ class ResNet3SliceModel(LightningModel):
     Lightning-based implementation of the 3-slice ResNet model.
     Retains the same API as the original TorchAbstractModel (fit, predict),
     but runs fully under the PyTorch Lightning training framework.
+    Attributes:
+        data_type (str): Type of data the model works with, set to "images".
+    Args:
+        input_slices (int): Number of input slices for the model.
+        num_classes (int, optional): Number of output classes. Default is 2.
+        device (str, optional): Device to run the model on. Default is "cuda".
+        **kwargs: Additional keyword arguments for model configuration.
+    Methods:
+        build_model():
+            Builds the ResNet3SliceClassifier model.
+        forward(x):
+            Forward pass of the model.
+        _train_val_loader_split(train_loader, val_ratio):
+            Splits the input dataloader into training and validation sets.
+        _save_logs(history, save_path):
+            Saves training logs to a specified path in JSON or CSV format.
+        fit(dataloader):
+            Fits the model using the provided dataloader.
+        x_only_loader(dl):
+            Creates a dataloader that yields only inputs (no labels).
+        predict(dataloader):
+            Predicts outputs using the provided dataloader.
     """
 
     data_type = "images"
@@ -200,7 +258,7 @@ class ResNet3SliceModel(LightningModel):
     # ------------------------------------------------------------
     # Model definition
     # ------------------------------------------------------------
-    def build_model(self) -> None:
+    def build_model(self):
         """Build the actual ResNet classifier."""
         # To avoid repeating args as input_slices
         model_kwargs = {
@@ -228,7 +286,13 @@ class ResNet3SliceModel(LightningModel):
     # Data helpers
     # ------------------------------------------------------------
     def _train_val_loader_split(self, train_loader: DataLoader, val_ratio: float = 0.3) -> tuple[DataLoader, DataLoader]:
-        """Split the incoming dataloader's dataset into train and validation subsets."""
+        """Split the incoming dataloader's dataset into train and validation subsets.
+        Args:
+            train_loader (DataLoader): The original training dataloader.
+            val_ratio (float, optional): Proportion of data to use for validation. Defaults to 0.3.
+        Returns:
+            tuple: A tuple containing the new training and validation dataloaders.
+        """
         dataset = train_loader.dataset  # access the underlying dataset
         n = len(dataset)
         genders = np.asarray(dataset.dataset.gender[dataset.indices])
@@ -264,8 +328,12 @@ class ResNet3SliceModel(LightningModel):
         )
         return train_loader_new, val_loader_new
 
-    def _save_logs(self, history: list[dict], save_path: str) -> None:
-        """Utility for saving training logs as JSON or CSV."""
+    def _save_logs(self, history: list[dict], save_path: str):
+        """Utility for saving training logs as JSON or CSV.
+        Args:
+            history (list): List of dictionaries containing training logs.
+            save_path (str): Path to save the logs, must end with .json or .csv.
+        """
         path = Path(save_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.suffix == ".json":
@@ -283,12 +351,14 @@ class ResNet3SliceModel(LightningModel):
     # ------------------------------------------------------------
     # Lightning-compatible fit/predict interface
     # ------------------------------------------------------------
-    def fit(self, dataloader: DataLoader) -> None:
+    def fit(self, dataloader: DataLoader):
         """
         Lightning-based fit function to preserve compatibility with the old API.
         Splits the input dataloader into training and validation sets,
         sets up the trainer with early stopping and checkpointing,
         and runs Trainer.fit().
+        Args:
+            dataloader (DataLoader): The input dataloader for training.
         """
         print(f"Device: {self.device_str}")
         print(f"Fold index: {self.fold_idx}")
@@ -314,7 +384,12 @@ class ResNet3SliceModel(LightningModel):
         )
 
     def x_only_loader(self, dl: DataLoader):
-        """Utility to create a dataloader that yields only inputs (no labels)."""
+        """Utility to create a dataloader that yields only inputs (no labels).
+        Args:
+            dl (DataLoader): Original dataloader yielding (x, y, g).
+        Yields:
+            tuple: A tuple containing only the input tensor x.
+        """
         for x, _, _ in dl:
             if isinstance(x, list):
                 x = torch.stack(x)
@@ -327,6 +402,10 @@ class ResNet3SliceModel(LightningModel):
         """
         Lightning-based predict function to preserve the old API.
         Automatically loads the best checkpoint from the Trainer.
+        Args:
+            dataloader (DataLoader): The input dataloader for prediction.
+        Returns:
+            np.ndarray: The predicted outputs as a NumPy array.
         """
         dataset = dataloader.dataset
         dataloader = DataLoader(

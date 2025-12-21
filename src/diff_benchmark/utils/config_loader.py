@@ -5,7 +5,11 @@ import yaml
 
 
 def load_configs(args: argparse.Namespace) -> tuple[dict, dict]:
-    """Load general and model-specific configurations based on provided arguments."""
+    """Load general and model-specific configurations based on provided arguments.
+    Args:
+        args (argparse.Namespace): Parsed command-line arguments containing 'methods'.
+    Returns:
+        tuple[dict, dict]: A tuple containing the general configuration and the combined model configuration."""
     # =====================
     # Load general config
     # =====================

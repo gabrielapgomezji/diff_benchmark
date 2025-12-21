@@ -6,7 +6,15 @@ from diff_benchmark.preprocessing.wrapper_brain_data import DataPreparationBrain
 
 
 def get_data_pipeline(data_type: str, config: dict) -> DataPreparationBrain:
-    """Factory function to get the appropriate data pipeline based on data_type."""
+    """Factory function to get the appropriate data pipeline based on data_type.
+    Args:
+        data_type (str): Type of data pipeline to use. One of ['images', 'array'].
+        config (dict): Configuration dictionary for the data pipeline.
+    Returns:
+        DataPreparationBrain: An instance of the selected data pipeline.
+    Raises:
+        ValueError: If an unknown data_type is provided.
+    """
     if data_type == "images":
         print("Using Image Pipeline")
         brain_preparator = ImageHcpPipeline(config)

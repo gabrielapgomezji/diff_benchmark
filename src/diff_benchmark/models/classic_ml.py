@@ -57,6 +57,17 @@ class PCARandomForestModel(NumpyAbstractModel):
         )
 
     def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Converts a PyTorch DataLoader into NumPy arrays for features and targets.
+        Args:
+            dataloader (DataLoader): A PyTorch DataLoader object that yields batches of 
+                features, targets, and an optional third element (ignored).
+        Returns:
+            tuple[np.ndarray, np.ndarray]: A tuple containing two NumPy arrays:
+                - features: A NumPy array containing all the features from the DataLoader.
+                - targets: A NumPy array containing all the targets from the DataLoader.
+        """
+        
         features_list = []
         targets_list = []
         for features_batch, targets_batch, _ in dataloader:
@@ -67,7 +78,10 @@ class PCARandomForestModel(NumpyAbstractModel):
         return features, targets
 
     def fit(self, dataloader: DataLoader):
-        """Fit PCA + RandomForest using grid search."""
+        """Fit PCA + RandomForest using grid search.
+        Args:
+            dataloader (DataLoader): PyTorch DataLoader with training data.
+        """
         assert self.prediction_task in [
             "classification",
             "regression",
@@ -79,7 +93,9 @@ class PCARandomForestModel(NumpyAbstractModel):
         # print("Best params found:", self.model.best_params_)
 
     def predict(self, dataloader: DataLoader):
-        """Predict using the best pipeline from grid search."""
+        """Predict using the best pipeline from grid search.
+        Args:
+            dataloader (DataLoader): PyTorch DataLoader with data to predict."""
         features, _ = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
         return self.model.predict(features_reshaped)
@@ -133,6 +149,16 @@ class PCASVMModel(NumpyAbstractModel):
         )
 
     def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Converts a PyTorch DataLoader into NumPy arrays for features and targets.
+        Args:
+            dataloader (DataLoader): A PyTorch DataLoader object that yields batches of 
+                features, targets, and an optional third element (ignored).
+        Returns:
+            tuple[np.ndarray, np.ndarray]: A tuple containing two NumPy arrays:
+                - features: A NumPy array containing all the features from the DataLoader.
+                - targets: A NumPy array containing all the targets from the DataLoader.
+        """
         features_list = []
         targets_list = []
         for features_batch, targets_batch, _ in dataloader:
@@ -143,14 +169,20 @@ class PCASVMModel(NumpyAbstractModel):
         return features, targets
 
     def fit(self, dataloader: DataLoader):
-        """Fit PCA + SVM using grid search."""
+        """Fit PCA + SVM using grid search.
+        Args:
+            dataloader (DataLoader): PyTorch DataLoader with training data.
+        """
         features, targets = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
         self.model.fit(features_reshaped, targets.flatten())
         # print("Best params found:", self.model.best_params_)
 
     def predict(self, dataloader: DataLoader):
-        """Predict class labels using the trained SVM model."""
+        """Predict class labels using the trained SVM model.
+        Args:
+            dataloader (DataLoader): PyTorch DataLoader with data to predict.
+        """
         features, _ = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
         return self.model.predict(features_reshaped)

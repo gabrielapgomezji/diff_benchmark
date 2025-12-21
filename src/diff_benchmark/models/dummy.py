@@ -55,7 +55,7 @@ class DummyRegressor(NumpyAbstractModel):
         targets = np.concatenate(targets_list, axis=0)
         return features, targets
 
-    def fit(self, dataloader: DataLoader) -> None:
+    def fit(self, dataloader: DataLoader):
         """
         Fit the model using the provided dataloader.
         This method converts the data from the dataloader into numpy arrays and computes
@@ -124,7 +124,7 @@ class DummyClassifier(NumpyAbstractModel):
         targets = np.concatenate(targets_list, axis=0)
         return features, targets
 
-    def fit(self, dataloader: DataLoader) -> None:
+    def fit(self, dataloader: DataLoader):
         """
         Fit the model using the provided dataloader.
         This method converts the data from the dataloader into numpy arrays and computes

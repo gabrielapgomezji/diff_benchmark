@@ -6,6 +6,7 @@ from typing import Iterable, Tuple, Union
 
 @dataclass
 class DatasetConfig:
+    """Configuration for a diffusion MRI dataset."""
     name: str
     base_dir: Path
     results_dir: Path

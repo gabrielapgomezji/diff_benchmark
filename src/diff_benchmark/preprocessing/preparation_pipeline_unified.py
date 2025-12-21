@@ -119,6 +119,14 @@ class BrainDataPreparationPipeline(ABC):
             ]
     
     def get_subjects(self) -> list[str]:
+        """ 
+        Retrieve a sorted list of unique subject identifiers from the layouts.
+        This method aggregates subject identifiers from all layouts associated 
+        with the instance, removes duplicates, and returns them in sorted order.
+        Returns:
+            list[str]: A sorted list of unique subject identifiers.
+        """
+        
         return sorted({
             subject
             for layout in self.layouts
@@ -126,7 +134,15 @@ class BrainDataPreparationPipeline(ABC):
         })
 
     def get_layout_for_subject(self, subject_id: str) -> bids.BIDSLayout:
-        # find the layout containing this subject
+        """
+        Find the layout containing this subject.
+        Args:
+            subject_id (str): The subject identifier to find the layout for.
+        Returns:
+            bids.BIDSLayout: The layout containing the subject.
+        Raises:
+            ValueError: If the subject is not found in any center.
+        """
         for layout in self.layouts:
             if subject_id in layout.get_subjects():
                 return layout
@@ -134,7 +150,13 @@ class BrainDataPreparationPipeline(ABC):
        
     def _get_required_raw_files(self, subject_id: str) -> Dict[str, Union[Path, Dict[str, Path]]]:
         """
-        Return a dict mapping logical names -> file paths
+        Retrieves the required raw files for a given subject ID based on the data reading method.
+        Args:
+            subject_id (str): The unique identifier for the subject whose raw files are to be retrieved.
+        Returns:
+            Dict[str, Union[Path, Dict[str, Path]]]: A dictionary containing paths to the required raw files.
+        Raises:
+            ValueError: If the data reading method is not recognized.
         """
         if self.data_reading == "hcp":
             subject_dir = self.base_dir / subject_id
@@ -213,6 +235,8 @@ class BrainDataPreparationPipeline(ABC):
         Verifies the existence of raw files for a given subject ID.
         Args:
             subject_id (str): The unique identifier for the subject whose raw files are to be verified.
+        Returns:
+            bool: True if all required raw files exist and are non-empty, False otherwise.
         """
         required_files = self._get_required_raw_files(subject_id)
 
@@ -349,6 +373,10 @@ class BrainDataPreparationPipeline(ABC):
     def run_pipeline(self, recompute: bool = False) -> pd.DataFrame:
         """
         Main orchestration: ensures all required files exist before running analysis.
+        Args:
+            recompute (bool): Whether to recompute microstructure even if files exist.
+        Returns:
+            pd.DataFrame: DataFrame containing the results after running the analysis.
         """
         subject_list = sorted(
             [
@@ -358,8 +386,12 @@ class BrainDataPreparationPipeline(ABC):
             ]
         )
 
-        def process_subject(subject_id):
-            """Processes a single subject by checking for required files"""
+        def process_subject(subject_id: str):
+            """Processes a single subject by checking for required files
+            and computing microstructure if necessary.
+            Args:
+                subject_id (str): The unique identifier for the subject to be processed.
+            """
             # if not self.verify_subject_files(
             if self.verify_raw_files(subject_id):
                 if (
@@ -390,6 +422,8 @@ class BrainDataPreparationPipeline(ABC):
     def run_microstructure_pipeline(self) -> pd.DataFrame:
         """
         Main orchestration: ensures all required files exist before running analysis.
+        Returns:
+            pd.DataFrame: DataFrame containing the results after running the analysis.
         """
         print(
             "All data should be preprocessed already. Getting microstructure files..."
