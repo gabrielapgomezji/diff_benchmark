@@ -19,10 +19,21 @@ from tqdm import tqdm
 
 from diff_benchmark.models.base import TorchAbstractModel
 from diff_benchmark.utils.logger import TrainLogger  # MetricsManager
+from typing import Callable
 
 
-def collate_with_augmentation(batch, transform=None):
-    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
+def collate_with_augmentation(batch: list, transform: Callable = None):
+    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch.
+    Args:
+        batch (list): A list of tuples, where each tuple contains (x, y, g) for a sample.
+                      x is a 3D tensor (D, H, W), y is the label, and g is the group identifier.
+        transform (Callable, optional): A function or transform to apply to each 2D slice.
+    Returns:
+        tuple: A tuple containing:
+            - xs_aug (torch.Tensor): Augmented batch of 3D volumes with shape (B, C=1, D, H, W).
+            - ys (torch.Tensor): Tensor of labels with shape (B,).
+            - gs (torch.Tensor): Tensor of group identifiers with shape (B,).
+    """ 
     xs, ys, gs = zip(*batch)  # separate batch components
     xs_aug = []
     for x in xs:  # x shape: (D,H,W)
@@ -79,7 +90,7 @@ class ResNet18Backbone(nn.Module):
                 torch.Tensor: A tensor of shape (B, 512) containing the extracted features.
     """
 
-    def __init__(self, pretrained=True, trainable_blocks=0, **kwargs):
+    def __init__(self, pretrained: bool =True, trainable_blocks: int =0, **kwargs):
         super().__init__()
         resnet = models.resnet18(
             weights=models.ResNet18_Weights.DEFAULT if pretrained else None
@@ -101,11 +112,19 @@ class ResNet18Backbone(nn.Module):
                 for param in block.parameters():
                     param.requires_grad = True
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
-        x: (B, 3, H, W)
-        returns: (B, 512)
+        Defines the forward pass of the model.
+        Args:
+            x (torch.Tensor): Input tensor of shape (B, C, H, W), where
+                B is the batch size, C is the number of channels, 
+                H is the height, and W is the width.
+        Returns:
+            torch.Tensor: Output tensor of shape (B, 512), where 512 
+                represents the flattened feature vector for each input 
+                in the batch.
         """
+        
         feats = self.feature_extractor(x)  # (B, 512, 1, 1)
         return feats.view(feats.size(0), -1)  # (B, 512)
 
@@ -132,7 +151,7 @@ class ResNet3SliceClassifier(nn.Module):
     """
 
     def __init__(
-        self, input_slices, num_classes=2, freeze_backbone=True, dropout=0.5, **kwargs
+        self, input_slices: int, num_classes: int = 2, freeze_backbone: bool = True, dropout: float = 0.5, **kwargs
     ):
         super().__init__()
         self.backbone = ResNet18Backbone(**kwargs)
@@ -144,10 +163,23 @@ class ResNet3SliceClassifier(nn.Module):
             for param in self.backbone.parameters():
                 param.requires_grad = False
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
-        x: (batch, Slice, Height, Width) where Slice is slice dimension
+        Defines the forward pass of the model.
+        Args:
+            x (torch.Tensor): Input tensor of shape (Batch, 1, Slice, Height, Width).
+        Returns:
+            torch.Tensor: Output tensor of shape (Batch, num_classes).
+        The forward pass performs the following steps:
+        1. Removes the singleton dimension (channel) from the input tensor.
+        2. Splits the input tensor into subvolumes along the slice dimension, each containing 3 slices.
+        3. Rearranges the dimensions of the subvolumes for processing.
+        4. Iterates over each subvolume, passing it through the backbone network to extract features.
+        5. Concatenates the features from all subvolumes along the feature dimension.
+        6. Applies dropout to the concatenated features.
+        7. Passes the features through a fully connected layer to produce the final output.
         """
+        
         # batch, slice, height, width = x.shape
         # assert S % 3 == 0, "Slice dimension must be divisible by 3"
         x = x.squeeze(1)
@@ -192,7 +224,7 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
 
     data_type = "images"
 
-    def __init__(self, input_slices=145, num_classes=2, device="cuda", **kwargs):
+    def __init__(self, input_slices: int =145, num_classes: int =2, device: str ="cuda", **kwargs):
         super().__init__()
         self.device = device
         self.run_id = kwargs.get("run_id", "unnamed_run")
@@ -231,8 +263,18 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
         }
         self.logger = None
 
-    def collate_with_augmentation(batch, transform=None):
-        """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
+    def collate_with_augmentation(batch: list, transform: Callable = None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch.
+        Args:
+            batch (list): A list of tuples, where each tuple contains (x, y, g) for a sample.
+                          x is a 3D tensor (D, H, W), y is the label, and g is the group identifier.
+            transform (Callable, optional): A function or transform to apply to each 2D slice.
+        Returns:
+            tuple: A tuple containing:
+                - xs_aug (torch.Tensor): Augmented batch of 3D volumes with shape (B, C=1, D, H, W).
+                - ys (torch.Tensor): Tensor of labels with shape (B,).
+                - gs (torch.Tensor): Tensor of group identifiers with shape (B,).
+        """
         xs, ys, gs = zip(*batch)  # separate batch components
         xs_aug = []
         for x in xs:  # x shape: (D,H,W)
@@ -251,7 +293,22 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
         gs = torch.stack(gs)
         return xs_aug, ys, gs
 
-    def _dataloader_to_numpy(self, dataloader):
+    def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Converts a PyTorch DataLoader into NumPy arrays.
+        This method iterates over the provided DataLoader and extracts the data, 
+        labels, and group information, converting them into NumPy arrays.
+        Args:
+            dataloader (DataLoader): A PyTorch DataLoader object that yields batches 
+                of data in the form of (inputs, labels, groups).
+        Returns:
+            tuple[np.ndarray, np.ndarray, np.ndarray]: A tuple containing three 
+            NumPy arrays:
+                - x (np.ndarray): The input data concatenated across all batches.
+                - y (np.ndarray): The labels concatenated across all batches.
+                - g (np.ndarray): The group information concatenated across all batches.
+        """
+        
         x, y, g = [], [], []
         for xb, yb, gb in dataloader:
             x.append(xb.numpy())
@@ -259,7 +316,17 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
             g.append(gb.numpy())
         return np.concatenate(x), np.concatenate(y), np.concatenate(g)
 
-    def _train_val_loader_split(self, train_loader, val_ratio=0.3):
+    def _train_val_loader_split(self, train_loader: DataLoader, val_ratio: float = 0.3) -> tuple[DataLoader, DataLoader]:
+        """
+        Splits a given DataLoader into training and validation DataLoaders based on a specified validation ratio.
+        Args:
+            train_loader (DataLoader): The DataLoader containing the dataset to be split.
+            val_ratio (float, optional): The ratio of the dataset to be used for validation. 
+                Defaults to 0.3.
+        Returns:
+            tuple[DataLoader, DataLoader]: A tuple containing the new training DataLoader and validation DataLoader.
+        """
+        
         dataset = train_loader.dataset  # access the underlying dataset
         n = len(dataset)
         genders = np.asarray(dataset.dataset.gender[dataset.indices])
@@ -313,7 +380,18 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
         )
         return train_loader_new, val_loader_new
 
-    def _save_logs(self, history, save_path):
+    def _save_logs(self, history: list[dict], save_path: str):
+        """
+        Save the training or evaluation history logs to a specified file.
+        Args:
+            history (list of dict): A list of dictionaries containing the log data.
+                Each dictionary represents a single log entry with key-value pairs.
+            save_path (str): The file path where the logs will be saved. The file
+                extension must be either '.json' or '.csv'.
+        Raises:
+            ValueError: If the save_path does not end with '.json' or '.csv'.
+        """
+        
         path = Path(save_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.suffix == ".json":
@@ -328,7 +406,14 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
         else:
             raise ValueError("Save path must end with .json or .csv")
 
-    def fit(self, dataloader):
+    def fit(self, dataloader: DataLoader):
+        """
+        Train the ResNet3SliceModel using the provided DataLoader.
+        This method performs the training loop, including forward and backward passes,
+        validation, and logging of metrics.
+        Args:
+            dataloader (DataLoader): A PyTorch DataLoader that provides the training data.
+        """
         print(f"Device: {self.device}")
         self.model.train()
         train_loader, val_loader = self._train_val_loader_split(dataloader)
@@ -428,7 +513,13 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
             self.history, f"./data/results/logs/{self.run_id}_training_log.json"
         )
 
-    def predict(self, dataloader):
+    def predict(self, dataloader: DataLoader) -> np.ndarray:
+        """ Generate predictions for the given DataLoader.
+        Args:
+            dataloader (DataLoader): A PyTorch DataLoader that provides the data for prediction.
+        Returns:
+            np.ndarray: An array of predicted class labels.
+        """
         checkpoint_path = Path(self.logger.best_path)
         if checkpoint_path.exists():
             state_dict = torch.load(checkpoint_path, map_location=self.device)
@@ -454,13 +545,13 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
 class AttentionPool(nn.Module):
     """AttentionPool implements an attention-based pooling mechanism for aggregating feature vectors."""
 
-    def __init__(self, feature_dim, hidden_dim=128):
+    def __init__(self, feature_dim: int, hidden_dim: int = 128):
         super().__init__()
         self.attn = nn.Sequential(
             nn.Linear(feature_dim, hidden_dim), nn.Tanh(), nn.Linear(hidden_dim, 1)
         )
 
-    def forward(self, feats):
+    def forward(self, feats: torch.Tensor) -> torch.Tensor:
         """Forward pass of the AttentionPool."""
         # feats: (B, num_subvols, 512)
         attn_weights = torch.softmax(self.attn(feats), dim=1)  # (B, num_subvols, 1)

@@ -26,7 +26,7 @@ class ResNet18Backbone(nn.Module):
                 torch.Tensor: A tensor of shape (B, 512) containing the extracted features.
     """
 
-    def __init__(self, pretrained=True, trainable_blocks=0, **kwargs):
+    def __init__(self, pretrained: bool =True, trainable_blocks: int =0, **kwargs):
         super().__init__()
         resnet = models.resnet18(
             weights=models.ResNet18_Weights.DEFAULT if pretrained else None
@@ -48,11 +48,19 @@ class ResNet18Backbone(nn.Module):
                 for param in block.parameters():
                     param.requires_grad = True
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
-        x: (B, 3, H, W)
-        returns: (B, 512)
+        Defines the forward pass of the model.
+        Args:
+            x (torch.Tensor): Input tensor of shape (B, C, H, W), where
+                B is the batch size, C is the number of channels, 
+                H is the height, and W is the width.
+        Returns:
+            torch.Tensor: Output tensor of shape (B, 512), where 512 
+                represents the flattened feature dimension extracted 
+                by the feature extractor.
         """
+        
         feats = self.feature_extractor(x)  # (B, 512, 1, 1)
         return feats.view(feats.size(0), -1)  # (B, 512)
 
@@ -79,7 +87,7 @@ class ResNet3SliceClassifier(nn.Module):
     """
 
     def __init__(
-        self, input_slices, num_classes=2, freeze_backbone=True, dropout=0.5, **kwargs
+        self, input_slices: int, num_classes: int = 2, freeze_backbone: bool = True, dropout: float = 0.5, **kwargs
     ):
         super().__init__()
         self.backbone = ResNet18Backbone(**kwargs)
@@ -101,10 +109,25 @@ class ResNet3SliceClassifier(nn.Module):
             nn.Linear(512, 128), nn.ReLU(), nn.Linear(128, 1)
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
-        x: (batch, Slice, Height, Width) where Slice is slice dimension
+        Forward pass of the model.
+        Args:
+            x (torch.Tensor): Input tensor of shape (B, C, H, W), where:
+                - B is the batch size,
+                - C is the number of channels,
+                - H and W are the height and width of the input.
+        Returns:
+            torch.Tensor: Output tensor of shape (B, num_classes), where:
+                - B is the batch size,
+                - num_classes is the number of output classes.
+        Process:
+            1. The input tensor is divided into subvolumes along the channel dimension.
+            2. Subvolumes are reshaped and processed in parallel through the backbone network.
+            3. Features from all subvolumes are concatenated and passed through a dropout layer.
+            4. The final output is computed using a fully connected layer.
         """
+        
         subvols = x.unfold(dimension=1, size=3, step=3)
         subvols = subvols.permute(0, 1, 4, 2, 3)  # (B, num_subvols, 3, H, W)
 
@@ -127,8 +150,19 @@ class ResNet3SliceClassifier(nn.Module):
         return out
 
 
-def collate_with_augmentation(batch, transform=None):
-    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
+def collate_with_augmentation(batch: list, transform: callable = None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch.
+    Args:
+        batch (list): A list of tuples, where each tuple contains (x, y, g) for a single sample.
+                      x is a 3D tensor (D, H, W), y is the label tensor, and g is additional info tensor.
+        transform (callable, optional): A function that applies 2D augmentations to a single slice.
+                                        If None, no augmentation is applied. Defaults to None.
+    Returns:
+        tuple: A tuple containing:
+            - xs_aug (torch.Tensor): A tensor of shape (batch_size, C, D, H, W) with augmented slices.
+            - ys (torch.Tensor): A tensor of shape (batch_size,) containing labels.
+            - gs (torch.Tensor): A tensor of shape (batch_size,) containing additional info.
+    """
     xs, ys, gs = zip(*batch)  # separate batch components
     xs_aug = []
     for x in xs:  # x shape: (D,H,W)
@@ -149,12 +183,19 @@ def collate_with_augmentation(batch, transform=None):
 
 
 class CNNTorchTrainModel(TorchPipeline):
-    """CNN Torch Train Model class inheriting from TorchPipeline."""
+    """CNN Torch Train Model class inheriting from TorchPipeline.
+    Attributes:
+        name (str): The name of the model.
+        data_type (str): The type of data the model processes.
+    Methods:
+        _build_model(input_slices, num_classes, freeze_backbone, dropout, **kwargs):
+            Builds and returns the ResNet3SliceClassifier model.
+    """
 
     data_type = "images"
 
     def _build_model(
-        self, input_slices, num_classes, freeze_backbone, dropout, **kwargs
+        self, input_slices: int, num_classes: int, freeze_backbone: bool, dropout: float, **kwargs
     ):
         pretrained = kwargs.get("pretrained", False)
         trainable_blocks = kwargs.get("trainable_blocks", None)

@@ -14,6 +14,7 @@ from torchvision import transforms
 
 from diff_benchmark.models.base import LightningModel
 from diff_benchmark.models.utils import create_trainer
+from typing import Any
 
 __all__ = [
     "ResNet",
@@ -27,8 +28,12 @@ __all__ = [
 ]
 
 
-def collate_with_augmentation(batch, transform=None):
-    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
+def collate_with_augmentation(batch, transform: callable =None):
+    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch.
+    Args:
+        batch: List of tuples, where each tuple contains (3D_volume, label, group).
+        transform: A callable transformation to apply to each 2D slice.
+    """
     xs, ys, gs = zip(*batch)  # separate batch components
     xs_aug = []
     for x in xs:  # x shape: (D,H,W)
@@ -64,8 +69,18 @@ val_transforms = transforms.Compose(
 )
 
 
-def conv3x3x3(in_planes, out_planes, stride=1, dilation=1):
-    """3D convolution with padding"""
+def conv3x3x3(in_planes: int, out_planes: int, stride: int = 1, dilation: int = 1) -> nn.Conv3d:
+    """
+    Creates a 3D convolutional layer with a 3x3x3 kernel.
+    Args:
+        in_planes (int): Number of input channels.
+        out_planes (int): Number of output channels.
+        stride (int, optional): Stride of the convolution. Default is 1.
+        dilation (int, optional): Dilation rate for the convolution. Default is 1.
+    Returns:
+        nn.Conv3d: A 3D convolutional layer with the specified parameters.
+    """
+    
     # 3x3x3 convolution with padding
     return nn.Conv3d(
         in_planes,
@@ -78,9 +93,22 @@ def conv3x3x3(in_planes, out_planes, stride=1, dilation=1):
     )
 
 
-def downsample_basic_block(x, planes, stride, no_cuda=False):
-    """Downsample the input tensor `x` using average pooling
-    and zero-padding to match the desired number of output planes."""
+def downsample_basic_block(x: torch.Tensor, planes: int, stride: int, no_cuda: bool = False) -> torch.Tensor:
+    """
+    Downsamples a 3D tensor using average pooling and zero-padding.
+    Args:
+        x (torch.Tensor): The input tensor with shape (N, C, D, H, W), where
+            N is the batch size, C is the number of channels, and D, H, W are
+            the spatial dimensions.
+        planes (int): The target number of channels after downsampling.
+        stride (int): The stride for the average pooling operation.
+        no_cuda (bool, optional): If True, ensures the operation is performed
+            on the CPU even if the input tensor is on the GPU. Defaults to False.
+    Returns:
+        torch.Tensor: The downsampled tensor with shape (N, planes, D', H', W'),
+        where D', H', W' are the spatial dimensions after downsampling.
+    """
+    
     out = F.avg_pool3d(x, kernel_size=1, stride=stride)
     zero_pads = torch.Tensor(
         out.size(0), planes - out.size(1), out.size(2), out.size(3), out.size(4)
@@ -105,7 +133,7 @@ class BasicBlock(nn.Module):
 
     expansion = 1
 
-    def __init__(self, inplanes, planes, stride=1, dilation=1, downsample=None):
+    def __init__(self, inplanes: int, planes: int, stride: int = 1, dilation: int = 1, downsample: nn.Module = None):
         super().__init__()
         self.conv1 = conv3x3x3(inplanes, planes, stride=stride, dilation=dilation)
         self.bn1 = nn.BatchNorm3d(planes)
@@ -116,8 +144,18 @@ class BasicBlock(nn.Module):
         self.stride = stride
         self.dilation = dilation
 
-    def forward(self, x):
-        """Forward pass of the BasicBlock."""
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Defines the forward pass of the model.
+        Args:
+            x (torch.Tensor): Input tensor of shape (N, C, H, W, D), where
+                N is the batch size, C is the number of channels, and H, W, D
+                are the spatial dimensions.
+        Returns:
+            torch.Tensor: Output tensor after applying the convolutional layers,
+            batch normalization, ReLU activation, and residual connection.
+        """
+        
         residual = x
 
         out = self.conv1(x)
@@ -174,7 +212,7 @@ class Bottleneck(nn.Module):
 
     expansion = 4
 
-    def __init__(self, inplanes, planes, stride=1, dilation=1, downsample=None):
+    def __init__(self, inplanes: int, planes: int, stride: int = 1, dilation: int = 1, downsample: nn.Module = None):
         super().__init__()
         self.conv1 = nn.Conv3d(inplanes, planes, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm3d(planes)
@@ -195,8 +233,18 @@ class Bottleneck(nn.Module):
         self.stride = stride
         self.dilation = dilation
 
-    def forward(self, x):
-        """Forward pass of the Bottleneck block."""
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Defines the forward pass of the model.
+        Args:
+            x (torch.Tensor): Input tensor of shape (N, C, D, H, W), where
+                N is the batch size, C is the number of channels, and D, H, W
+                are the depth, height, and width of the input tensor, respectively.
+        Returns:
+            torch.Tensor: Output tensor after applying the convolutional layers,
+            batch normalization, ReLU activation, and residual connection.
+        """
+        
         residual = x
 
         out = self.conv1(x)
@@ -254,7 +302,7 @@ class ResNet(nn.Module):
                     num_classes is the number of output classes.
     """
 
-    def __init__(self, block, layers, num_classes, shortcut_type="B", no_cuda=False):
+    def __init__(self, block: nn.Module, layers: list[int], num_classes: int, shortcut_type: str = "B", no_cuda: bool = False):
         self.inplanes = 64
         self.no_cuda = no_cuda
         super().__init__()
@@ -285,7 +333,22 @@ class ResNet(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-    def _make_layer(self, block, planes, blocks, shortcut_type, stride=1, dilation=1):
+    def _make_layer(self, block: nn.Module, planes: int, blocks: int, shortcut_type: str, stride: int = 1, dilation: int = 1) -> nn.Sequential:
+        """
+        Creates a sequential layer consisting of multiple blocks.
+        Args:
+            block (nn.Module): The building block module to be used in the layer.
+            planes (int): The number of output channels for the blocks.
+            blocks (int): The number of blocks to include in the layer.
+            shortcut_type (str): The type of shortcut connection to use. 
+                Options are "A" for basic block downsampling or other types for 
+                convolutional downsampling.
+            stride (int, optional): The stride to use for the first block. Defaults to 1.
+            dilation (int, optional): The dilation rate for the convolutional layers. Defaults to 1.
+        Returns:
+            nn.Sequential: A sequential container of the constructed blocks.
+        """
+        
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             if shortcut_type == "A":
@@ -323,8 +386,17 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x):
-        """Forward pass of the ResNet model."""
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Defines the forward pass of the model.
+        Args:
+            x (torch.Tensor): Input tensor of shape (N, C, H, W) where
+                              N is the batch size, C is the number of channels,
+                              H is the height, and W is the width.
+        Returns:
+            torch.Tensor: Output tensor after passing through the network.
+        """
+        
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -340,50 +412,157 @@ class ResNet(nn.Module):
         return x
 
 
-def resnet10(**kwargs):
-    """Constructs a ResNet-18 model."""
+def resnet10(**kwargs) -> ResNet:
+    """
+    Constructs a ResNet-10 model.
+    This function creates a ResNet model with 10 layers using the BasicBlock
+    building block. The layer configuration is defined as [1, 1, 1, 1], which
+    specifies the number of blocks in each of the four layers of the network.
+    Args:
+        **kwargs: Additional keyword arguments passed to the ResNet constructor.
+    Returns:
+        ResNet: An instance of the ResNet-10 model.
+    """
+    
     model = ResNet(BasicBlock, [1, 1, 1, 1], **kwargs)
     return model
 
 
-def resnet18(**kwargs):
-    """Constructs a ResNet-18 model."""
+def resnet18(**kwargs) -> ResNet:
+    """
+    Constructs a ResNet-18 model.
+    This function initializes a ResNet-18 model using the ResNet architecture
+    with BasicBlock layers and a predefined layer configuration of [2, 2, 2, 2].
+    Args:
+        **kwargs: Additional keyword arguments to be passed to the ResNet constructor.
+                  These can include parameters such as the number of input channels,
+                  the number of classes for classification, etc.
+    Returns:
+        ResNet: An instance of the ResNet-18 model.
+    """
+    
     model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
     return model
 
 
-def resnet34(**kwargs):
-    """Constructs a ResNet-34 model."""
+def resnet34(**kwargs) -> ResNet:
+    """
+    Constructs a ResNet-34 model.
+    This function creates a ResNet-34 architecture using the ResNet class and 
+    the BasicBlock building block. The ResNet-34 model is defined by the 
+    layer configuration [3, 4, 6, 3], which specifies the number of blocks 
+    in each of the four layers of the network.
+    Args:
+        **kwargs: Additional keyword arguments passed to the ResNet class 
+                  constructor. These can include parameters such as the 
+                  number of input channels, number of classes, etc.
+    Returns:
+        ResNet: An instance of the ResNet-34 model.
+    """
+    
     model = ResNet(BasicBlock, [3, 4, 6, 3], **kwargs)
     return model
 
 
-def resnet50(**kwargs):
-    """Constructs a ResNet-50 model."""
+def resnet50(**kwargs) -> ResNet:
+    """
+    Constructs a ResNet-50 model.
+    This function creates a ResNet-50 architecture using the Bottleneck block 
+    and a predefined layer configuration of [3, 4, 6, 3]. Additional arguments 
+    can be passed to customize the model.
+    Args:
+        **kwargs: Arbitrary keyword arguments passed to the ResNet constructor.
+    Returns:
+        ResNet: An instance of the ResNet-50 model.
+    """
+    
     model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
     return model
 
 
-def resnet101(**kwargs):
-    """Constructs a ResNet-101 model."""
+def resnet101(**kwargs) -> ResNet:
+    """
+    Creates a ResNet-101 model.
+    This function constructs a ResNet-101 architecture using the `ResNet` class and the `Bottleneck` block. 
+    The ResNet-101 model is defined by the layer configuration [3, 4, 23, 3], which specifies the number 
+    of blocks in each of the four layers of the network.
+    Args:
+        **kwargs: Additional keyword arguments to be passed to the `ResNet` class.
+    Returns:
+        ResNet: An instance of the ResNet-101 model.
+    """
+    
     model = ResNet(Bottleneck, [3, 4, 23, 3], **kwargs)
     return model
 
 
-def resnet152(**kwargs):
-    """Constructs a ResNet-101 model."""
+def resnet152(**kwargs) -> ResNet:
+    """
+    Constructs a ResNet-152 model.
+    ResNet-152 is a deep residual network architecture with 152 layers, 
+    which is commonly used for image recognition tasks. This function 
+    initializes the model using the Bottleneck block and a specific 
+    layer configuration.
+    Args:
+        **kwargs: Additional keyword arguments to customize the ResNet model. 
+                  These arguments are passed to the ResNet constructor.
+    Returns:
+        ResNet: An instance of the ResNet-152 model.
+    """
+    
     model = ResNet(Bottleneck, [3, 8, 36, 3], **kwargs)
     return model
 
 
-def resnet200(**kwargs):
-    """Constructs a ResNet-101 model."""
+def resnet200(**kwargs) -> ResNet:
+    """
+    Constructs a ResNet-200 model.
+    This function initializes a ResNet-200 architecture using the Bottleneck
+    building block and a layer configuration of [3, 24, 36, 3]. The ResNet-200
+    model is a deep residual network designed for image or feature extraction tasks.
+    Args:
+        **kwargs: Additional keyword arguments to be passed to the ResNet constructor.
+                  These may include parameters such as the number of input channels,
+                  number of classes, or other model-specific configurations.
+    Returns:
+        ResNet: An instance of the ResNet-200 model.
+    """
+    
     model = ResNet(Bottleneck, [3, 24, 36, 3], **kwargs)
     return model
 
 
-def generate_model(opt):
-    """Generate model"""
+def generate_model(opt: Any) -> ResNet:
+    """
+    Generates a ResNet model based on the provided options.
+    Args:
+        opt (Any): A configuration object containing the following attributes:
+            - model (str): The type of model to generate. Must be "resnet".
+            - model_depth (int): The depth of the ResNet model. Must be one of 
+              [10, 18, 34, 50, 101, 152, 200].
+            - input_W (int): The width of the input sample.
+            - input_H (int): The height of the input sample.
+            - input_D (int): The depth of the input sample.
+            - resnet_shortcut (str): The type of shortcut connection to use in ResNet.
+            - no_cuda (bool): Whether to disable CUDA (GPU) support.
+            - n_seg_classes (int): The number of segmentation classes.
+            - gpu_id (list[int]): List of GPU IDs to use for training.
+            - phase (str): The phase of the model, e.g., "train" or "test".
+            - pretrain_path (str): Path to the pretrained model file (if any).
+            - new_layer_names (list[str]): List of layer names to treat as new parameters.
+    Returns:
+        Tuple[ResNet, Union[Iterable[torch.nn.Parameter], Dict[str, Iterable[torch.nn.Parameter]]]]:
+            - The generated ResNet model.
+            - The model parameters or a dictionary containing base and new parameters 
+              (if pretrained model is loaded and new layers are specified).
+    Notes:
+        - If `opt.no_cuda` is False and multiple GPUs are specified in `opt.gpu_id`, 
+          the model is wrapped in `torch.nn.DataParallel`.
+        - If `opt.phase` is not "test" and `opt.pretrain_path` is provided, the model 
+          is initialized with the pretrained weights. New parameters are separated 
+          based on `opt.new_layer_names`.
+    """
+
     assert opt.model in ["resnet"]
 
     if opt.model == "resnet":
@@ -525,7 +704,7 @@ class ResNet3DModel(LightningModel, nn.Module):
     data_type = "images"
 
     def __init__(
-        self, device, num_classes=2, input_channels=1, model_depth=10, **kwargs
+        self, device: torch.device, num_classes: int = 2, input_channels: int = 1, model_depth: int = 10, **kwargs
     ):
         super().__init__(
             learning_rate=kwargs.get("learning_rate", 1e-5),
@@ -547,6 +726,20 @@ class ResNet3DModel(LightningModel, nn.Module):
         # criterion already set in LightningModel
 
     def build_model(self):
+        """
+        Build the ResNet model based on the specified depth.
+        This method initializes the `self.model` attribute with a ResNet model
+        corresponding to the specified `self.model_depth`. The number of output
+        classes is determined by `self.num_classes`.
+        Supported ResNet depths:
+            - 10: Initializes a ResNet-10 model.
+            - 18: Initializes a ResNet-18 model.
+            - 34: Initializes a ResNet-34 model.
+            - 50: Initializes a ResNet-50 model.
+        Raises:
+            ValueError: If `self.model_depth` is not one of the supported depths.
+        """
+        
         if self.model_depth == 10:
             self.model = resnet10(num_classes=self.num_classes)
         elif self.model_depth == 18:
@@ -558,14 +751,36 @@ class ResNet3DModel(LightningModel, nn.Module):
         else:
             raise ValueError(f"Unsupported ResNet depth: {self.model_depth}")
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass of the model.
+        Args:
+            x (torch.Tensor): Input tensor. Expected shape is either (B, C, D, H, W) 
+                              where C is the channel dimension, or (B, D, H, W) 
+                              if the channel dimension is omitted.
+        Returns:
+            torch.Tensor: Output tensor after passing through the model.
+        """
+        
         # If user supplies input without channel dim → add it
         if x.ndim == 4:
             x = x.unsqueeze(1)  # (B, 1, D, H, W)
         return self.model(x)
 
-    def _train_val_loader_split(self, train_loader, val_ratio=0.3):
-        """Split the incoming dataloader's dataset into train and validation subsets."""
+    def _train_val_loader_split(self, train_loader: DataLoader, val_ratio: float = 0.3) -> tuple[DataLoader, DataLoader]:
+        """
+        Splits a given DataLoader into training and validation DataLoaders based on a specified validation ratio.
+        Args:
+            train_loader (DataLoader): The DataLoader containing the dataset to be split.
+            val_ratio (float, optional): The ratio of the dataset to be used for validation. Defaults to 0.3.
+        Returns:
+            tuple[DataLoader, DataLoader]: A tuple containing the new training DataLoader and validation DataLoader.
+        Notes:
+            - The split is stratified based on the 'gender' attribute of the dataset.
+            - The new DataLoaders are created with specific batch sizes, shuffling, and optional transform-aware collation.
+            - The random state for the split is fixed at 42 for reproducibility.
+        """
+        
         dataset = train_loader.dataset  # access the underlying dataset
         n = len(dataset)
         genders = np.asarray(dataset.dataset.gender[dataset.indices])
@@ -601,7 +816,22 @@ class ResNet3DModel(LightningModel, nn.Module):
         )
         return train_loader_new, val_loader_new
 
-    def _save_logs(self, history, save_path):
+    def _save_logs(self, history: list[dict], save_path: str):
+        """
+        Saves the provided history logs to a file in either JSON or CSV format.
+        Args:
+            history (list[dict]): A list of dictionaries containing the log data to save.
+            save_path (str): The file path where the logs should be saved. The file extension
+                             must be either '.json' or '.csv'.
+        Raises:
+            ValueError: If the save_path does not end with '.json' or '.csv'.
+        Notes:
+            - If the save_path directory does not exist, it will be created.
+            - For JSON files, the entire history is serialized and saved.
+            - For CSV files, the keys of the first dictionary in the history list are used
+              as the column headers.
+        """
+        
         path = Path(save_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.suffix == ".json":
@@ -616,8 +846,17 @@ class ResNet3DModel(LightningModel, nn.Module):
         else:
             raise ValueError("Save path must end with .json or .csv")
 
-    def _save_logs(self, history, save_path):
-        """Utility for saving training logs as JSON or CSV."""
+    def _save_logs(self, history: list[dict], save_path: str):
+        """
+        Saves the provided history logs to a file in either JSON or CSV format.
+        Args:
+            history (list[dict]): A list of dictionaries containing the log data to save.
+            save_path (str): The file path where the logs should be saved. 
+                             The file extension must be either '.json' or '.csv'.
+        Raises:
+            ValueError: If the save_path does not end with '.json' or '.csv'.
+        """
+        
         path = Path(save_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.suffix == ".json":
@@ -632,12 +871,14 @@ class ResNet3DModel(LightningModel, nn.Module):
         else:
             raise ValueError("Save path must end with .json or .csv")
 
-    def fit(self, dataloader):
+    def fit(self, dataloader: DataLoader):
         """
         Lightning-based fit function to preserve compatibility with the old API.
         Splits the input dataloader into training and validation sets,
         sets up the trainer with early stopping and checkpointing,
         and runs Trainer.fit().
+        Args:
+            dataloader (DataLoader): The DataLoader containing the training data.
         """
         print(f"Device: {self.device_str}")
         print(f"Fold index: {self.fold_idx}")
@@ -662,10 +903,14 @@ class ResNet3DModel(LightningModel, nn.Module):
             f"[INFO] Training finished. Best model: {trainer.checkpoint_callback.best_model_path}"
         )
 
-    def predict(self, dataloader):
+    def predict(self, dataloader: DataLoader) -> np.ndarray:
         """
         Lightning-based predict function to preserve the old API.
         Automatically loads the best checkpoint from the Trainer.
+        Args:
+            dataloader (DataLoader): The DataLoader containing the data to predict on.
+        Returns:
+            np.ndarray: The predictions as a NumPy array.
         """
         dataset = dataloader.dataset
         dataloader = DataLoader(

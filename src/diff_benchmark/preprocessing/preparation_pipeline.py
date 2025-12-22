@@ -130,6 +130,10 @@ class BrainDataPreparationPipeline(ABC):
     def run_pipeline(self, recompute: bool = False) -> pd.DataFrame:
         """
         Main orchestration: ensures all required files exist before running analysis.
+        Args:
+            recompute (bool): Whether to recompute microstructure even if files exist.
+        Returns:
+            pd.DataFrame: A DataFrame containing the results after running the analysis.
         """
         subject_list = sorted(
             [
@@ -139,8 +143,12 @@ class BrainDataPreparationPipeline(ABC):
             ]
         )
 
-        def process_subject(subject_id):
-            """Processes a single subject by checking for required files"""
+        def process_subject(subject_id: str):
+            """Processes a single subject by checking for required files
+            and computing microstructure if necessary.
+            Args:
+                subject_id (str): The unique identifier for the subject to be processed.
+            """
             # if not self.verify_subject_files(
             if self.verify_raw_files(subject_id):
                 if (
@@ -171,6 +179,8 @@ class BrainDataPreparationPipeline(ABC):
     def run_microstructure_pipeline(self) -> pd.DataFrame:
         """
         Main orchestration: ensures all required files exist before running analysis.
+        Returns:
+            pd.DataFrame: A DataFrame containing the results after running the analysis.
         """
         print(
             "All data should be preprocessed already. Getting microstructure files..."

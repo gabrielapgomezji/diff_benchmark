@@ -74,6 +74,8 @@ class DataPreparationBrain(ABC):
         Verifies the existence of raw files for a given subject ID.
         Args:
             subject_id (str): The unique identifier for the subject whose raw files are to be verified.
+        Returns:
+            bool: True if the raw files exist, False otherwise.
         """
 
     @abstractmethod
@@ -130,6 +132,10 @@ class DataPreparationBrain(ABC):
     def run_pipeline(self, recompute: bool = False) -> pd.DataFrame:
         """
         Main orchestration: ensures all required files exist before running analysis.
+        Args:
+            recompute (bool): Whether to recompute microstructure even if files exist.
+        Returns:
+            DataFrame: A pandas DataFrame containing the exported results.
         """
         subject_list = sorted(
             [
@@ -171,6 +177,8 @@ class DataPreparationBrain(ABC):
     def run_microstructure_pipeline(self) -> pd.DataFrame:
         """
         Main orchestration: ensures all required files exist before running analysis.
+        Returns:
+            DataFrame: A pandas DataFrame containing the exported results.
         """
         print(
             "All data should be preprocessed already. Getting microstructure files..."

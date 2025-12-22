@@ -49,7 +49,7 @@ class PreprocessedData:
             target count, and gender distribution.
     """
 
-    def __init__(self, features, targets, genders, config):
+    def __init__(self, features: np.ndarray, targets: np.ndarray, genders: np.ndarray, config: dict):
         self.features = features
         self.targets = targets
         self.genders = genders
@@ -60,14 +60,18 @@ class PreprocessedData:
         )
         self.config = config
 
-    def get_fold_indices(self):
+    def get_fold_indices(self) -> list[tuple[np.ndarray, np.ndarray]]:
         """Returns the indices for each fold in the stratified K-Folds."""
         indices = list(self.skf.split(np.zeros(len(self.genders)), self.genders))
         return indices
 
-    def safe_collate(self, batch):
+    def safe_collate(self, batch: list) -> torch.Tensor:
         """
         Collate function that filters out None samples from the batch.
+        Args:
+            batch (list): A list of samples to be collated.
+        Returns:
+            torch.Tensor: A collated tensor of the batch with None samples removed.
         """
         # drop None samples
         batch = [b for b in batch if b is not None]
@@ -75,13 +79,20 @@ class PreprocessedData:
 
     def get_dataloader_fold(
         self,
-        dataset,
-        fold_idx,
-        fold_indices,
-        batch_size=32,  # shuffle=True
-    ):
+        dataset: TensorDataset,
+        fold_idx: int,
+        fold_indices: list,
+        batch_size: int = 32,  # shuffle=True
+    ) -> tuple[DataLoader, DataLoader]:
         """
         Returns DataLoaders for the specified fold index using precomputed indices.
+        Args:
+            dataset (TensorDataset): The dataset to create DataLoaders from.
+            fold_idx (int): The index of the fold to retrieve.
+            fold_indices (list): A list of tuples containing train and test indices for each fold.
+            batch_size (int, optional): The batch size for the DataLoaders. Defaults to 32.
+        Returns:
+            tuple[DataLoader, DataLoader]: A tuple containing the train and test DataLoaders
         """
         train_idx, test_idx = fold_indices[fold_idx]
 
@@ -102,9 +113,17 @@ class PreprocessedData:
 
         return train_loader, test_loader
 
-    def get_arrays_from_indices(self, dataset, fold_idx, fold_indices):
+    def get_arrays_from_indices(self, dataset: TensorDataset, fold_idx: int, fold_indices: list) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Given full arrays and fold index, return X, y, gender arrays for train/test sets.
+        Args:
+            dataset (TensorDataset): The dataset containing features, targets, and genders.
+            fold_idx (int): The index of the fold to retrieve.
+            fold_indices (list): A list of tuples containing train and test indices for each fold.
+        Returns:
+            tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+                A tuple containing train features, train targets, train genders,
+                test features, test targets, test genders.
         """
         train_idx, test_idx = fold_indices[fold_idx]
         features = dataset.features.numpy()
@@ -120,16 +139,27 @@ class PreprocessedData:
             genders[test_idx],
         )
 
-    def _create_dataset(self, idx):
-        """Create a TensorDataset for the given indices."""
+    def _create_dataset(self, idx: np.ndarray) -> TensorDataset:
+        """Create a TensorDataset for the given indices.
+         Args:
+            idx (np.ndarray): Indices to include in the dataset.
+        Returns:
+            TensorDataset: A TensorDataset containing the selected features, targets, and genders.
+        """
         return TensorDataset(
             torch.tensor(self.features[idx], dtype=torch.float32),
             torch.tensor(self.targets[idx], dtype=torch.float32),
             torch.tensor(self.genders[idx], dtype=torch.int64),
         )
 
-    def get_folds_as_dataloaders(self, batch_size=32, shuffle=True):
-        """Generates and returns DataLoaders for all folds."""
+    def get_folds_as_dataloaders(self, batch_size: int = 32, shuffle: bool = True) -> list[tuple[DataLoader, DataLoader]]:
+        """Generates and returns DataLoaders for all folds.
+        Args:
+            batch_size (int, optional): The batch size for the DataLoaders. Defaults to 32.
+            shuffle (bool, optional): Whether to shuffle the training DataLoader. Defaults to True.
+        Returns:
+            list[tuple[DataLoader, DataLoader]]: A list of tuples containing train and validation DataLoaders for each fold.
+        """
         folds = []
 
         for train_idx, val_idx in self.skf.split(self.features, self.genders):
@@ -145,8 +175,12 @@ class PreprocessedData:
 
         return folds
 
-    def get_folds_as_arrays(self):
-        """Generates and returns arrays for all folds."""
+    def get_folds_as_arrays(self) -> list[tuple[tuple[np.ndarray, np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray, np.ndarray]]]:
+        """Generates and returns arrays for all folds.
+        Returns:
+            list[tuple[tuple[np.ndarray, np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray, np.ndarray]]]:
+                A list of tuples containing train and validation arrays for each fold.
+        """
         folds = []
 
         for train_idx, val_idx in self.skf.split(self.features, self.genders):
@@ -165,7 +199,10 @@ class PreprocessedData:
         return folds
 
     def get_specs(self) -> DatasetSpecs:
-        """Returns specifications of the dataset including sample count, feature count,"""
+        """Returns specifications of the dataset including sample count, feature count, and gender distribution.
+        Returns:
+            DatasetSpecs: An object containing dataset specifications.
+        """
         gender_dist = dict(Counter(self.genders))
         return DatasetSpecs(
             num_samples=len(self.features),

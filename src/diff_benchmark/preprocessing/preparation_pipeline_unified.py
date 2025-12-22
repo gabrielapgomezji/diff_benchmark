@@ -20,9 +20,7 @@ from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
     resample_schaefer_onto_fs_lr,
 )
 from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
-                    compute_md_bids,
-                    compute_rtop_bids,
-                    create_masks_bids,
+                    create_masks,
                     compute_save_and_project_metric
                 )
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
@@ -60,7 +58,6 @@ class ProcessingResult:
 
         self.invalid_subjects.append(subject_id)
 
-# DataPreparationBrain
 class BrainDataPreparationPipeline(ABC):
     """
     BrainDataPreparationPipeline is an abstract base class for preparing and analyzing brain data.
@@ -122,6 +119,14 @@ class BrainDataPreparationPipeline(ABC):
             ]
     
     def get_subjects(self) -> list[str]:
+        """ 
+        Retrieve a sorted list of unique subject identifiers from the layouts.
+        This method aggregates subject identifiers from all layouts associated 
+        with the instance, removes duplicates, and returns them in sorted order.
+        Returns:
+            list[str]: A sorted list of unique subject identifiers.
+        """
+        
         return sorted({
             subject
             for layout in self.layouts
@@ -129,7 +134,15 @@ class BrainDataPreparationPipeline(ABC):
         })
 
     def get_layout_for_subject(self, subject_id: str) -> bids.BIDSLayout:
-        # find the layout containing this subject
+        """
+        Find the layout containing this subject.
+        Args:
+            subject_id (str): The subject identifier to find the layout for.
+        Returns:
+            bids.BIDSLayout: The layout containing the subject.
+        Raises:
+            ValueError: If the subject is not found in any center.
+        """
         for layout in self.layouts:
             if subject_id in layout.get_subjects():
                 return layout
@@ -137,7 +150,13 @@ class BrainDataPreparationPipeline(ABC):
        
     def _get_required_raw_files(self, subject_id: str) -> Dict[str, Union[Path, Dict[str, Path]]]:
         """
-        Return a dict mapping logical names -> file paths
+        Retrieves the required raw files for a given subject ID based on the data reading method.
+        Args:
+            subject_id (str): The unique identifier for the subject whose raw files are to be retrieved.
+        Returns:
+            Dict[str, Union[Path, Dict[str, Path]]]: A dictionary containing paths to the required raw files.
+        Raises:
+            ValueError: If the data reading method is not recognized.
         """
         if self.data_reading == "hcp":
             subject_dir = self.base_dir / subject_id
@@ -216,6 +235,8 @@ class BrainDataPreparationPipeline(ABC):
         Verifies the existence of raw files for a given subject ID.
         Args:
             subject_id (str): The unique identifier for the subject whose raw files are to be verified.
+        Returns:
+            bool: True if all required raw files exist and are non-empty, False otherwise.
         """
         required_files = self._get_required_raw_files(subject_id)
 
@@ -264,7 +285,7 @@ class BrainDataPreparationPipeline(ABC):
             labels = extract_selected_labels(aparc_aseg)
             dwi_nib = nib.load(files["DWI data"])
             bvals = np.loadtxt(files["bvals"])
-            # surfaces = files["surfaces"]
+            
             surfaces = {k.split("surface:")[1]: v for k, v in files.items() if k.startswith("surface:")}
             if self.data_reading == "hcp":
                 bvecs = np.loadtxt(files["bvecs"]).T
@@ -302,10 +323,10 @@ class BrainDataPreparationPipeline(ABC):
                     )
                 ]
 
-            ctx_mask, vent_mask = create_masks_bids(
+            ctx_mask, vent_mask = create_masks(
                 aparc_resampled, labels, selected_labels
             )
-            
+            breakpoint()
             compute_save_and_project_metric(
                 metric=self.metric,
                 dwi_nib=dwi_nib,
@@ -320,48 +341,6 @@ class BrainDataPreparationPipeline(ABC):
                 derivatives_dir=derivatives_dir,
                 subject_id=subject_id,
             )
-            
-            # if self.metric == "rtop":
-            #     rtop_img = compute_rtop_bids(
-            #         dwi_nib,
-            #         ctx_mask,
-            #         vent_mask,
-            #         bvals,
-            #         bvecs,
-            #         self.big_delta,
-            #         self.small_delta,
-            #         self.big_delta_per_bvalue,
-            #     )
-            #     nib.save(
-            #         rtop_img,
-            #         derivatives_dir / f"sub-{subject_id}_param-rtop_dwimap.nii.gz",
-            #     )
-
-            #     project_to_surface(
-            #         rtop_img,
-            #         ctx_mask,
-            #         surfaces,
-            #         derivatives_dir,
-            #         subject_id,
-            #         self.metric,
-            #     )
-            # elif self.metric == "md":
-            #     md_img = compute_md_bids(
-            #         dwi_nib,
-            #         ctx_mask,
-            #         vent_mask,
-            #         bvals,
-            #         bvecs,
-            #         self.big_delta,
-            #         self.small_delta,
-            #         self.big_delta_per_bvalue,
-            #     )
-            #     nib.save(
-            #         md_img, derivatives_dir / f"sub-{subject_id}_param-md_dwimap.nii.gz"
-            #     )
-            #     project_to_surface(
-            #         md_img, ctx_mask, surfaces, derivatives_dir, subject_id, self.metric
-            #     )
 
         except (FileNotFoundError, OSError, ImageFileError, KeyError, ValueError) as e:
             print(f"[{subject_id}] Expected error during microstructure: {e}")
@@ -394,6 +373,10 @@ class BrainDataPreparationPipeline(ABC):
     def run_pipeline(self, recompute: bool = False) -> pd.DataFrame:
         """
         Main orchestration: ensures all required files exist before running analysis.
+        Args:
+            recompute (bool): Whether to recompute microstructure even if files exist.
+        Returns:
+            pd.DataFrame: DataFrame containing the results after running the analysis.
         """
         subject_list = sorted(
             [
@@ -403,8 +386,12 @@ class BrainDataPreparationPipeline(ABC):
             ]
         )
 
-        def process_subject(subject_id):
-            """Processes a single subject by checking for required files"""
+        def process_subject(subject_id: str):
+            """Processes a single subject by checking for required files
+            and computing microstructure if necessary.
+            Args:
+                subject_id (str): The unique identifier for the subject to be processed.
+            """
             # if not self.verify_subject_files(
             if self.verify_raw_files(subject_id):
                 if (
@@ -435,6 +422,8 @@ class BrainDataPreparationPipeline(ABC):
     def run_microstructure_pipeline(self) -> pd.DataFrame:
         """
         Main orchestration: ensures all required files exist before running analysis.
+        Returns:
+            pd.DataFrame: DataFrame containing the results after running the analysis.
         """
         print(
             "All data should be preprocessed already. Getting microstructure files..."

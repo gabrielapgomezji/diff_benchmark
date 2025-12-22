@@ -26,7 +26,7 @@ class ResNet18Backbone(nn.Module):
                 torch.Tensor: A tensor of shape (B, 512) containing the extracted features.
     """
 
-    def __init__(self, pretrained=True, trainable_blocks=0, **kwargs):
+    def __init__(self, pretrained: bool =True, trainable_blocks: int =0, **kwargs):
         super().__init__()
         resnet = models.resnet18(
             weights=models.ResNet18_Weights.DEFAULT if pretrained else None
@@ -48,18 +48,52 @@ class ResNet18Backbone(nn.Module):
                 for param in block.parameters():
                     param.requires_grad = True
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
-        x: (B, 3, H, W)
-        returns: (B, 512)
+        Defines the forward pass of the model.
+        Args:
+            x (torch.Tensor): Input tensor of shape (B, C, H, W), where
+                B is the batch size, C is the number of channels, 
+                H is the height, and W is the width.
+        Returns:
+            torch.Tensor: Output tensor of shape (B, 512), where 512 
+                represents the flattened feature vector extracted 
+                by the feature extractor.
         """
+        
         feats = self.feature_extractor(x)  # (B, 512, 1, 1)
         return feats.view(feats.size(0), -1)  # (B, 512)
 
 
 class ResNet3SliceMultihead(nn.Module):
+    """A PyTorch module for processing 3D medical image data using a ResNet-based backbone.
+    This model processes input slices in groups of three (subvolumes) and aggregates their features
+    using learnable scalar weights. It supports both classification and regression tasks.
+    Args:
+        input_slices (int): The number of input slices. Must be divisible by 3.
+        num_classes (int, optional): The number of output classes for classification tasks. Default is 2.
+        freeze_backbone (bool, optional): Whether to freeze the backbone's parameters during training. Default is True.
+        dropout (float, optional): Dropout probability for regularization. If 0, dropout is disabled. Default is 0.5.
+        **kwargs: Additional keyword arguments, including:
+            - prediction_task (str): The type of prediction task, either "classification" or "regression".
+    Attributes:
+        backbone (nn.Module): The ResNet18-based backbone for feature extraction.
+        num_subvols (int): The number of subvolumes derived from the input slices.
+        dropout (nn.Module): Dropout layer for regularization.
+        aggregate_weights (nn.Parameter): Learnable scalar weights for aggregating subvolume features.
+        fc (nn.Module): Fully connected layer(s) for the final prediction, configured based on the task.
+    Methods:
+        forward(x: torch.Tensor) -> torch.Tensor:
+            Forward pass of the model. Processes the input tensor and returns the output tensor.
+            Args:
+                x (torch.Tensor): Input tensor of shape (batch, Slice, Height, Width), where Slice is the slice dimension.
+            Returns:
+                torch.Tensor: Output tensor of shape (batch, num_classes) for classification tasks or
+                (batch, 1) for regression tasks.
+    """
+    
     def __init__(
-        self, input_slices, num_classes=2, freeze_backbone=True, dropout=0.5, **kwargs
+        self, input_slices: int, num_classes: int = 2, freeze_backbone: bool = True, dropout: float = 0.5, **kwargs
     ):
         super().__init__()
         self.backbone = ResNet18Backbone(**kwargs)
@@ -89,9 +123,28 @@ class ResNet3SliceMultihead(nn.Module):
             for param in self.backbone.parameters():
                 param.requires_grad = False
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
-        x: (batch, Slice, Height, Width) where Slice is slice dimension
+        Defines the forward pass of the model.
+        This method processes the input tensor `x` through the following steps:
+        1. Removes the singleton dimension from the input tensor.
+        2. Splits the input tensor into subvolumes along the slice dimension.
+        3. Permutes and reshapes the subvolumes for parallel processing.
+        4. Passes the subvolumes through the backbone network to extract features.
+        5. Aggregates the features using learned weights and computes a single
+           embedding per batch.
+        6. Applies dropout to the aggregated features.
+        7. Passes the processed features through a fully connected layer to
+           produce the final output.
+        Args:
+            x (torch.Tensor): Input tensor of shape (B, 1, S, H, W), where
+            B is the batch size,
+            S is the number of slices (must be divisible by 3),
+            H is the height, and
+            W is the width.
+        Returns:
+            torch.Tensor: Output tensor of shape (B, num_classes), where
+            num_classes is the number of output classes.
         """
         # batch, slice, height, width = x.shape
         # assert S % 3 == 0, "Slice dimension must be divisible by 3"
@@ -124,8 +177,19 @@ class ResNet3SliceMultihead(nn.Module):
         return out
 
 
-def collate_with_augmentation(batch, transform=None):
-    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch."""
+def collate_with_augmentation(batch: list, transform: callable = None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch.
+    Args:
+        batch (list): A list of tuples, where each tuple contains (x, y, g) for a single sample.
+                      x is a 3D tensor (D, H, W), y is the label tensor, and g is the group tensor.
+        transform (callable, optional): A function that applies 2D augmentations to a single slice.
+                                        If None, no augmentation is applied. Default is None.
+    Returns:
+        tuple: A tuple containing:
+            - xs_aug (torch.Tensor): A tensor of shape (batch_size, C, D, H, W) with augmented slices.
+            - ys (torch.Tensor): A tensor of shape (batch_size,) containing the labels.
+            - gs (torch.Tensor): A tensor of shape (batch_size,) containing the group identifiers.
+    """
     xs, ys, gs = zip(*batch)  # separate batch components
     xs_aug = []
     for x in xs:  # x shape: (D,H,W)
@@ -146,13 +210,39 @@ def collate_with_augmentation(batch, transform=None):
 
 
 class CNNRegTorchTrainModel(TorchPipeline):
-    """CNN Torch Train Model class inheriting from TorchPipeline."""
+    """CNN Torch Train Model class inheriting from TorchPipeline.
+    Args:
+        input_slices (int): Number of input slices.
+        num_classes (int): Number of output classes.
+        freeze_backbone (bool): Whether to freeze the backbone during training.
+        dropout (float): Dropout rate.
+        **kwargs: Additional keyword arguments.
+    Attributes:
+        data_type (str): Type of data, set to "images".
+    Methods:
+        _build_model(input_slices, num_classes, freeze_backbone, dropout, **kwargs):
+            Builds and returns the ResNet3SliceMultihead model.
+    """
 
     data_type = "images"
 
     def _build_model(
-        self, input_slices, num_classes, freeze_backbone, dropout, **kwargs
+        self, input_slices: int, num_classes: int, freeze_backbone: bool, dropout: float, **kwargs
     ):
+        """
+        Build and configure a ResNet3SliceMultihead model.
+        Args:
+            input_slices (int): The number of input slices for the model.
+            num_classes (int): The number of output classes for the model.
+            freeze_backbone (bool): Whether to freeze the backbone of the model during training.
+            dropout (float): The dropout rate to use in the model.
+            **kwargs: Additional optional arguments:
+                - pretrained (bool): Whether to use a pretrained model. Default is False.
+                - trainable_blocks (Optional): Specifies which blocks of the model are trainable. Default is None.
+                - prediction_task (Optional): Specifies the prediction task for the model. Default is None.
+        Returns:
+            ResNet3SliceMultihead: A configured instance of the ResNet3SliceMultihead model.
+        """
         pretrained = kwargs.get("pretrained", False)
         trainable_blocks = kwargs.get("trainable_blocks", None)
         prediction_task = kwargs.get("prediction_task", None)

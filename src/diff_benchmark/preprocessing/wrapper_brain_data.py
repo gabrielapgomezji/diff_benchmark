@@ -52,6 +52,23 @@ class DefaultHcpPipeline(DataPreparationBrain):
         self.small_delta = config["small_delta"]
 
     def verify_raw_files(self, subject_id: str) -> bool:
+        """
+        Verifies the existence and non-emptiness of required raw files for a given subject.
+        This method checks if all the necessary files for diffusion processing are present
+        and non-empty in the specified subject's directory. The required files include:
+        - DWI data: `data.nii.gz`
+        - bvals: `bvals`
+        - bvecs: `bvecs`
+        - nodif mask: `nodif_brain_mask.nii.gz`
+        - aparc+aseg: `aparc+aseg.nii.gz`
+        If any of the files are missing or empty, a warning message is printed, and the method
+        returns `False`. Otherwise, it returns `True`.
+        Args:
+            subject_id (str): The identifier of the subject whose files are to be verified.
+        Returns:
+            bool: `True` if all required files are present and non-empty, `False` otherwise.
+        """
+        
         subject_dir = self.hcp_dir / subject_id
         diffusion_dir = subject_dir / "T1w" / "Diffusion"
 
@@ -82,6 +99,11 @@ class DefaultHcpPipeline(DataPreparationBrain):
     def verify_subject_files(self, subject_id: str, metric: str) -> bool:
         """
         Check if both hemispheres' .scalar.gii files exist for the given subject and metric.
+        Args:
+            subject_id (str): The identifier of the subject.
+            metric (str): The metric to check (e.g., 'rtop', 'md').
+        Returns:
+            bool: True if both left and right hemisphere files exist, False otherwise.
         """
         derivatives_dir = (
             self.results_root / "derivatives" / f"sub-{subject_id}" / "dwi"
@@ -96,7 +118,10 @@ class DefaultHcpPipeline(DataPreparationBrain):
         return left_file.exists() and right_file.exists()
 
     def compute_microstructure(self, subject_id: str):
-        """Compute microstructure metrics for the given subject and save the results."""
+        """Compute microstructure metrics for the given subject and save the results.
+        Args:
+            subject_id (str): The identifier of the subject.
+        """
         try:
             derivatives_dir = (
                 self.results_root / "derivatives" / f"sub-{subject_id}" / "dwi"
@@ -207,6 +232,7 @@ class DefaultHcpPipeline(DataPreparationBrain):
 
     # def run_analysis_region(self):
     def run_analysis(self):
+        """Run analysis extracting region data."""
         scalar_files = sorted(
             self.results_root.glob(
                 f"derivatives/sub-*/dwi/*_hemi-L_param-{self.metric}.scalar.gii"
@@ -275,6 +301,28 @@ class ImageHcpPipeline(DataPreparationBrain):
         self.small_delta = config["small_delta"]
 
     def verify_raw_files(self, subject_id: str) -> bool:
+        """
+        Verifies the existence and non-emptiness of required raw files for a given subject.
+        This method checks if all the necessary files for diffusion data processing
+        are present and non-empty in the specified subject's directory. If any file
+        is missing or empty, a warning message is printed, and the method returns False.
+        Otherwise, it confirms that all required files are valid and returns True.
+        Args:
+            subject_id (str): The identifier of the subject whose files are to be verified.
+        Returns:
+            bool: True if all required files are present and non-empty, False otherwise.
+        Required Files:
+            - DWI data: data.nii.gz
+            - bvals: bvals
+            - bvecs: bvecs
+            - nodif mask: nodif_brain_mask.nii.gz
+            - aparc+aseg: aparc+aseg.nii.gz
+        Notes:
+            - The method assumes that the subject's data is organized in a specific directory
+              structure under `self.hcp_dir`.
+            - Missing or empty files are logged with a warning message.
+        """
+        
         subject_dir = self.hcp_dir / subject_id
         diffusion_dir = subject_dir / "T1w" / "Diffusion"
 
@@ -308,6 +356,11 @@ class ImageHcpPipeline(DataPreparationBrain):
     def verify_subject_files(self, subject_id: str, metric: str) -> bool:
         """
         Check if whole brain .nii.gii files exist for the given subject and metric.
+        Args:
+            subject_id (str): The identifier of the subject.
+            metric (str): The metric to check (e.g., 'rtop', 'md').
+        Returns:
+            bool: True if the file exists, False otherwise.
         """
         derivatives_dir = (
             self.results_root / "derivatives" / f"sub-{subject_id}" / "dwi"
@@ -317,7 +370,10 @@ class ImageHcpPipeline(DataPreparationBrain):
         return file.exists()
 
     def compute_microstructure(self, subject_id: str):
-        """Compute microstructure metrics for the given subject and save the results."""
+        """Compute microstructure metrics for the given subject and save the results.
+        Args:
+            subject_id (str): The identifier of the subject.
+        """
         try:
             derivatives_dir = (
                 self.results_root / "derivatives" / f"sub-{subject_id}" / "dwi"
@@ -378,6 +434,7 @@ class ImageHcpPipeline(DataPreparationBrain):
             print(f"[{subject_id}] Expected error during microstructure: {e}")
 
     def run_analysis(self):
+        """Run analysis extracting region data."""
         img_files = sorted(
             self.results_root.glob(
                 f"derivatives/sub-*/dwi/*_param-{self.metric}_dwimap.nii.gz"

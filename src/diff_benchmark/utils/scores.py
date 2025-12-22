@@ -13,8 +13,16 @@ from sklearn.metrics import (
 __all__ = ["accuracy_score"]
 
 
-def compute_metrics_old(y_true, y_pred, average="binary", zero_division="warn"):
-    """Compute standard classification metrics."""
+def compute_metrics_old(y_true: list, y_pred: list, average: str ="binary", zero_division: str ="warn") -> dict:
+    """Compute standard classification metrics.
+    Parameters:
+        y_true (list): True labels.
+        y_pred (list): Predicted labels.
+        average (str): Averaging method for multi-class classification.
+        zero_division (str): Handling of zero division cases.
+    Returns:
+        dict: A dictionary containing accuracy, precision, recall, f1 score, and confusion matrix.
+    """
     return {
         "accuracy": accuracy_score(y_true, y_pred),
         "precision": precision_score(
@@ -29,9 +37,16 @@ def compute_metrics_old(y_true, y_pred, average="binary", zero_division="warn"):
 
 
 def compute_metrics(
-    y_true, y_pred, prediction_task, average="binary", zero_division="warn"
-):
-    """Compute standard classification metrics."""
+    y_true: list, y_pred: list, prediction_task: str, average: str ="binary", zero_division: str ="warn"
+) -> dict:
+    """Compute standard classification and regression metrics.
+    Parameters:
+        y_true (list): True labels.
+        y_pred (list): Predicted labels.
+        prediction_task (str): Type of prediction task - "classification" or "regression".
+        average (str): Averaging method for multi-class classification.
+        zero_division (str): Handling of zero division cases.
+    """
     if prediction_task == "classification":
         return {
             "accuracy": accuracy_score(y_true, y_pred),

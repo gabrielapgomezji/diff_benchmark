@@ -14,16 +14,15 @@ from sklearn.metrics import (
 
 
 class MetricsManager:
-    """Compute and store metrics for classification tasks."""
+    """
+    Compute and store metrics for classification tasks.
 
-    def __init__(self, average="binary"):
-        """
-        Compute and store metrics for classification tasks.
+    Args:
+        average (str): averaging method for multi-class/multi-label metrics
+                        ('binary', 'macro', 'micro', 'weighted')
+    """
 
-        Args:
-            average (str): averaging method for multi-class/multi-label metrics
-                           ('binary', 'macro', 'micro', 'weighted')
-        """
+    def __init__(self, average: str ="binary"):
         self.average = average
         self.reset()
 
@@ -33,22 +32,38 @@ class MetricsManager:
         self.y_pred = []
         self.y_scores = []
 
-    def update(self, y_true, y_pred, y_scores=None):
-        """Update stored predictions with new batch results."""
+    def update(self, y_true: list, y_pred: list, y_scores: list | None = None):
+        """Update stored predictions with new batch results.
+        Parameters:
+            y_true (list): Ground truth labels.
+            y_pred (list): Predicted labels.
+            y_scores (list, optional): Prediction scores or probabilities.
+        """
         self.y_true.extend(y_true)
         self.y_pred.extend(y_pred)
         if y_scores is not None:
             self.y_scores.extend(y_scores)
 
-    def compute_batch(self, y_true, y_pred, y_scores=None):
-        """Compute metrics for a single batch only."""
+    def compute_batch(self, y_true: list, y_pred: list, y_scores: list | None = None) -> dict:
+        """Compute metrics for a single batch only.
+        return metrics for a single batch only.
+        Args:
+            y_true (array-like): Ground truth labels.
+            y_pred (array-like): Predicted labels.
+            y_scores (array-like, optional): Prediction scores or probabilities.
+        Returns:
+            dict: Metrics results.
+        """
         return self._compute_core(y_true, y_pred, y_scores)
 
-    def compute(self):
-        """Compute metrics over ALL stored batches (epoch)."""
+    def compute(self) -> dict:
+        """Compute metrics over ALL stored batches (epoch).
+        Returns:
+            dict: Metrics results.
+        """
         return self._compute_core(self.y_true, self.y_pred, self.y_scores)
 
-    def _compute_core(self, y_true, y_pred, y_scores=None):
+    def _compute_core(self, y_true: list, y_pred: list, y_scores: list | None = None) -> dict:
         """
         Compute a dictionary of metrics.
 
@@ -84,25 +99,25 @@ class MetricsManager:
 
 
 class TrainLogger:
-    """Logger for training process, metrics, and model checkpoints."""
+    """
+    Training logger and checkpoint saver.
+
+    Args:
+        fold_idx (int): Index of the current fold (for cross-validation).
+        run_id (str): Identifier for the training run.
+        save_dir (str): Base directory to save logs and models.
+        monitor (str): Metric name to monitor for saving the best model.
+        mode (str): "max" if higher is better, "min" if lower is better.
+    """
 
     def __init__(
         self,
-        fold_idx,
-        run_id="unnamed_run",
-        save_dir="./data/results/logger",
-        monitor="val_accuracy",
-        mode="max",
+        fold_idx: int,
+        run_id: str ="unnamed_run",
+        save_dir: str ="./data/results/logger",
+        monitor: str ="val_accuracy",
+        mode: str ="max",
     ):
-        """
-        Training logger and checkpoint saver.
-
-        Args:
-            run_id (str): Identifier for the training run.
-            save_dir (str): Base directory to save logs and models.
-            monitor (str): Metric name to monitor for saving the best model.
-            mode (str): "max" if higher is better, "min" if lower is better.
-        """
         self.run_id = run_id
         self.fold_idx = fold_idx
         self.save_dir = Path(save_dir)
@@ -139,18 +154,36 @@ class TrainLogger:
     #     if accuracy is not None:
     #         self.history[phase]["accuracy"].append(accuracy)
 
-    def log_batch(self, phase, epoch, batch, loss, metrics):
-        """Log metrics for a batch."""
+    def log_batch(self, phase: str, epoch: int, batch: int, loss: float, metrics: dict):
+        """Log metrics for a batch.
+        Args:
+            phase (str): 'train' or 'val'.
+            epoch (int): Current epoch.
+            batch (int): Current batch.
+            loss (float): Loss value.
+            metrics (dict): Dictionary of additional metrics.
+        """
         self.history["batch"].append(
             {"phase": phase, "epoch": epoch, "batch": batch, "loss": loss, **metrics}
         )
 
-    def log_epoch(self, phase, epoch, metrics):
-        """Log metrics for an epoch."""
+    def log_epoch(self, phase: str, epoch: int, metrics: dict):
+        """Log metrics for an epoch.
+        Args:
+            phase (str): 'train' or 'val'.
+            epoch (int): Current epoch.
+            metrics (dict): Dictionary of metrics.
+        """
         self.history["epoch"].append({"phase": phase, "epoch": epoch, **metrics})
 
-    def log_predictions(self, epoch, y_true, y_pred, scores=None):
-        """Log predictions for an epoch."""
+    def log_predictions(self, epoch: int, y_true: list, y_pred: list, scores: list | None = None):
+        """Log predictions for an epoch.
+        Args:
+            epoch (int): Current epoch.
+            y_true (list): Ground truth labels.
+            y_pred (list): Predicted labels.
+            scores (list, optional): Prediction scores or probabilities.
+        """
         self.history["predictions"]["epoch"].append(epoch)
         self.history["predictions"]["y_true"].append(y_true.to_list())
         self.history["predictions"]["y_pred"].append(y_pred.to_list())
@@ -178,14 +211,20 @@ class TrainLogger:
         self.history[key].append(entry)
         print(f"[INFO] Metrics at epoch {epoch}: {metrics}")
 
-    def _is_best(self, score):
+    def _is_best(self, score: float) -> bool:
+        """Check if the current score is the best so far.
+        Args:
+            score (float): Current value of the monitored metric.
+        Returns:
+            bool: True if current score is the best, False otherwise.
+        """
         if self.mode == "max":
             return score > self.best_score
         if self.mode == "min":
             return score < self.best_score
         raise ValueError("mode should be 'max' or 'min'")
 
-    def save_checkpoint(self, model, epoch, current_score, is_last=False):
+    def save_checkpoint(self, model: torch.nn.Module, epoch: int, current_score: float, is_last: bool = False):
         """
         Save model checkpoint if current score is the best.
 
@@ -216,10 +255,14 @@ class TrainLogger:
 
         print(f"[INFO] Logs saved at {json_path}")
 
-    def update_smooth_checkpoint(self, model, epoch, val_score):
+    def update_smooth_checkpoint(self, model: torch.nn.Module, epoch: int, val_score: float):
         """
         Check 3-step smoothed validation accuracy and save checkpoint
         only when improvement is stable.
+        Args:
+            model (torch.nn.Module): The model to save.
+            epoch (int): Current epoch number.
+            val_score (float): Current validation score.
         """
         self.val_scores.append(val_score)
         if len(self.val_scores) < self.patience_window:

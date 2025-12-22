@@ -7,6 +7,8 @@ from sklearn.preprocessing import StandardScaler
 
 from diff_benchmark.models.base import NumpyAbstractModel
 
+from torch.utils.data import DataLoader
+
 
 class PCALogisticRegressionModel(NumpyAbstractModel):
     """
@@ -55,7 +57,18 @@ class PCALogisticRegressionModel(NumpyAbstractModel):
             verbose=1,
         )
 
-    def _dataloader_to_numpy(self, dataloader):
+    def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Converts a dataloader containing batches of data into NumPy arrays.
+        Args:
+            dataloader (iterable): An iterable that yields batches of data in the form
+                                   (x_batch, y_batch, _), where x_batch and y_batch
+                                   are the input and target tensors, respectively.
+        Returns:
+            tuple: A tuple containing two NumPy arrays:
+                - X (np.ndarray): Concatenated array of input data.
+                - Y (np.ndarray): Concatenated array of target data.
+        """
         features_list = []
         targets_list = []
         for features_batch, targets_batch, _ in dataloader:
@@ -65,15 +78,23 @@ class PCALogisticRegressionModel(NumpyAbstractModel):
         targets = np.concatenate(targets_list, axis=0)
         return features, targets
 
-    def fit(self, dataloader):
-        """Fit PCA and then logistic regression on reduced features."""
+    def fit(self, dataloader: DataLoader):
+        """Fit PCA and then logistic regression on reduced features.
+        Args:
+            dataloader (DataLoader): A PyTorch DataLoader object containing the training data.
+        """
         features, targets = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
         self.model.fit(features_reshaped, targets.flatten())
         # print("Best params found:", self.model.best_params_)
 
-    def predict(self, dataloader):
-        """Transform input with PCA and predict with logistic regression."""
+    def predict(self, dataloader: DataLoader) -> np.ndarray:
+        """Transform input with PCA and predict with logistic regression.
+        Args:
+            dataloader (DataLoader): A PyTorch DataLoader object containing the input data for prediction.
+        Returns:
+            np.ndarray: Predicted class labels for the input data.
+        """
         features, _ = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
         return self.model.predict(features_reshaped)
@@ -127,7 +148,18 @@ class PCALinearModel(NumpyAbstractModel):
             verbose=1,
         )
 
-    def _dataloader_to_numpy(self, dataloader):
+    def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Converts a dataloader containing batches of data into NumPy arrays.
+        Args:
+            dataloader (iterable): An iterable that yields batches of data in the form
+                                   (x_batch, y_batch, _), where x_batch and y_batch
+                                   are the input and target tensors, respectively.
+        Returns:
+            tuple: A tuple containing two NumPy arrays:
+                - X (np.ndarray): Concatenated array of input data.
+                - Y (np.ndarray): Concatenated array of target data.
+        """
         features_list = []
         targets_list = []
         for features_batch, targets_batch, _ in dataloader:
@@ -137,8 +169,11 @@ class PCALinearModel(NumpyAbstractModel):
         targets = np.concatenate(targets_list, axis=0)
         return features, targets
 
-    def fit(self, dataloader):
-        """Fit PCA and then logistic regression on reduced features."""
+    def fit(self, dataloader: DataLoader):
+        """Fit PCA and then logistic regression on reduced features.
+        Args:
+            dataloader (DataLoader): A PyTorch DataLoader object containing the training data.
+        """
         assert self.prediction_task in [
             "classification",
             "regression",
@@ -148,8 +183,13 @@ class PCALinearModel(NumpyAbstractModel):
         self.model.fit(features_reshaped, targets.flatten())
         # print("Best params found:", self.model.best_params_)
 
-    def predict(self, dataloader):
-        """Transform input with PCA and predict with logistic regression."""
+    def predict(self, dataloader: DataLoader) -> np.ndarray:
+        """Transform input with PCA and predict with logistic regression.
+        Args:
+            dataloader (DataLoader): A PyTorch DataLoader object containing the input data for prediction.
+        Returns:
+            np.ndarray: Predicted class labels for the input data.
+        """
         features, _ = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
         return self.model.predict(features_reshaped)
@@ -177,7 +217,18 @@ class LogisticRegressionModel(NumpyAbstractModel):
     def __init__(self):
         self.model = LogisticRegression(max_iter=100)
 
-    def _dataloader_to_numpy(self, dataloader):
+    def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Converts a dataloader containing batches of data into NumPy arrays.
+        Args:
+            dataloader (iterable): An iterable that yields batches of data in the form
+                                   (x_batch, y_batch, _), where x_batch and y_batch
+                                   are the input and target tensors, respectively.
+        Returns:
+            tuple: A tuple containing two NumPy arrays:
+                - X (np.ndarray): Concatenated array of input data.
+                - Y (np.ndarray): Concatenated array of target data.
+        """
         features_list = []
         targets_list = []
         for features_batch, targets_batch, _ in dataloader:
@@ -187,14 +238,22 @@ class LogisticRegressionModel(NumpyAbstractModel):
         targets = np.concatenate(targets_list, axis=0)
         return features, targets
 
-    def fit(self, dataloader):
-        """Fit logistic regression on reduced features."""
+    def fit(self, dataloader: DataLoader):
+        """Fit logistic regression on reduced features.
+        Args:
+            dataloader (DataLoader): A PyTorch DataLoader object containing the training data.
+        """
         features, targets = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
         self.model.fit(features_reshaped, targets.flatten())
 
-    def predict(self, dataloader):
-        """predict with logistic regression."""
+    def predict(self, dataloader: DataLoader) -> np.ndarray:
+        """predict with logistic regression.
+        Args:
+            dataloader (DataLoader): A PyTorch DataLoader object containing the input data for prediction.
+        Returns:
+            np.ndarray: Predicted class labels for the input data.
+        """
         features, _ = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
         return self.model.predict(features_reshaped).reshape(-1, 1)
