@@ -8,6 +8,7 @@ from joblib import Parallel, delayed
 from tqdm import tqdm
 from typing import Dict, Union
 
+from pathlib import Path
 import bids
 import nibabel as nib
 import numpy as np
@@ -24,6 +25,13 @@ from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
                     compute_save_and_project_metric
                 )
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
+
+def process_subject_wrapper(subject_id, pipeline, recompute):
+    """
+    Wrapper to call the instance method safely.
+    This function is top-level, so joblib can pickle it.
+    """
+    pipeline._process_subject(subject_id, recompute)
 
 @dataclass
 class ProcessingResult:
@@ -158,76 +166,79 @@ class BrainDataPreparationPipeline(ABC):
         Raises:
             ValueError: If the data reading method is not recognized.
         """
-        if self.data_reading == "hcp":
-            subject_dir = self.base_dir / subject_id
-            diffusion_dir = subject_dir / "T1w" / "Diffusion"
-            
-            surfaces = {
-                f"{h}.{s}": subject_dir
-                / "T1w"
-                / "fsaverage_LR32k"
-                / f"{subject_id}.{h}.{s}.32k_fs_LR.surf.gii"
-                for s in ("white", "pial")
-                for h in ("L", "R")
-            }
-            
+        try:
+            if self.data_reading == "hcp":
+                subject_dir = self.base_dir / subject_id
+                diffusion_dir = subject_dir / "T1w" / "Diffusion"
+                
+                surfaces = {
+                    f"{h}.{s}": subject_dir
+                    / "T1w"
+                    / "fsaverage_LR32k"
+                    / f"{subject_id}.{h}.{s}.32k_fs_LR.surf.gii"
+                    for s in ("white", "pial")
+                    for h in ("L", "R")
+                }
+                
 
-            return {
-                "DWI data": diffusion_dir / self.dwi_desc,
-                "bvals": diffusion_dir / self.bval_extensions,
-                "bvecs": diffusion_dir / self.bvec_extensions,
-                "nodif mask": diffusion_dir / self.nodif_mask_extension,
-                "aparc+aseg": subject_dir / self.aparcaseg_extension,
-                **{f"surface:{k}": v for k, v in surfaces.items()},
-            }
-        elif "bids" in self.data_reading:
-            layout = self.get_layout_for_subject(subject_id)
-
-            aparcaseg = layout.get(
-                subject=subject_id, desc="aparcaseg", suffix="dseg", return_type="file"
-            )[0]
-
-            dwi_bids = layout.get(
-                subject=subject_id,
-                suffix="dwi",
-                extension=".nii.gz",
-                desc=self.dwi_desc,
-            )[0]
-
-            entities = dwi_bids.get_entities()
-
-            bvals = layout.get(
-                subject=entities["subject"],
-                extension=self.bval_extensions,
-                return_type="file",
-            )[0]
-
-            bvecs = layout.get(
-                subject=entities["subject"],
-                extension=self.bvec_extensions,
-                return_type="file",
-            )[0]
-            
-            surfaces = {
-                f"{h}.{s}": self.layout.get(
-                    subject=subject_id,
-                    suffix=s,
-                    hemi=h,
-                    space=None,
-                    extension=".surf.gii",
-                    return_type="files",  # , density='32k'
+                return {
+                    "DWI data": diffusion_dir / self.dwi_desc,
+                    "bvals": diffusion_dir / self.bval_extensions,
+                    "bvecs": diffusion_dir / self.bvec_extensions,
+                    "nodif mask": diffusion_dir / self.nodif_mask_extension,
+                    "aparc+aseg": subject_dir / self.aparcaseg_extension,
+                    **{f"surface:{k}": v for k, v in surfaces.items()},
+                }
+            elif "bids" in self.data_reading:
+                layout = self.get_layout_for_subject(subject_id)
+                
+                aparcaseg = layout.get(
+                    subject=subject_id, desc="aparcaseg", suffix="dseg", return_type="file"
                 )[0]
-                for s in ("white", "pial", "inflated")
-                for h in ("L", "R")
-            }
 
-            return {
-                "DWI data": Path(dwi_bids.path),
-                "bvals": Path(bvals),
-                "bvecs": Path(bvecs),
-                "aparc+aseg": Path(aparcaseg),
-                **{f"surface:{k}": v for k, v in surfaces.items()},
-            }
+                dwi_bids = layout.get(
+                    subject=subject_id,
+                    suffix="dwi",
+                    extension=".nii.gz",
+                    desc=self.dwi_desc,
+                )[0]
+
+                entities = dwi_bids.get_entities()
+
+                bvals = layout.get(
+                    subject=entities["subject"],
+                    extension=self.bval_extensions,
+                    return_type="file",
+                )[0]
+
+                bvecs = layout.get(
+                    subject=entities["subject"],
+                    extension=self.bvec_extensions,
+                    return_type="file",
+                )[0]
+                
+                surfaces = {
+                    f"{h}.{s}": Path(layout.get(
+                        subject=subject_id,
+                        suffix=s,
+                        hemi=h,
+                        space=None,
+                        extension=".surf.gii",
+                        return_type="files",  # , density='32k'
+                    )[0])
+                    for s in ("white", "pial", "inflated")
+                    for h in ("L", "R")
+                }
+
+                return {
+                    "DWI data": Path(dwi_bids.path),
+                    "bvals": Path(bvals),
+                    "bvecs": Path(bvecs),
+                    "aparc+aseg": Path(aparcaseg),
+                    **{f"surface:{k}": v for k, v in surfaces.items()},
+                }
+        except (IndexError, KeyError):
+            return None
 
   
     def verify_raw_files(self, subject_id: str) -> bool:
@@ -239,7 +250,9 @@ class BrainDataPreparationPipeline(ABC):
             bool: True if all required raw files exist and are non-empty, False otherwise.
         """
         required_files = self._get_required_raw_files(subject_id)
-
+        if required_files is None:
+            print(f"[SKIP] {subject_id}: required raw files not found")
+            return False
         missing_or_empty = []
         for name, path in required_files.items():
             if not path.exists():
@@ -326,7 +339,7 @@ class BrainDataPreparationPipeline(ABC):
             ctx_mask, vent_mask = create_masks(
                 aparc_resampled, labels, selected_labels
             )
-            breakpoint()
+            
             compute_save_and_project_metric(
                 metric=self.metric,
                 dwi_nib=dwi_nib,
@@ -370,6 +383,24 @@ class BrainDataPreparationPipeline(ABC):
         df.index.name = "subject_id"
         return df
 
+    def _process_subject(self, subject_id: str, recompute: bool):
+        """
+        Move the body of your old process_subject here.
+        This will be called by the top-level wrapper.
+        """
+        if not self.verify_raw_files(subject_id):
+            print(f"[{subject_id}] Missing raw files, skipping")
+            return  # Skip this subject
+
+        if self.verify_subject_files(subject_id, self.metric) and recompute:
+            print(f"[{subject_id}] Recomputing microstructure.")
+            self.compute_microstructure(subject_id)
+        elif not self.verify_subject_files(subject_id, self.metric):
+            print(f"[{subject_id}] Computing microstructure.")
+            self.compute_microstructure(subject_id)
+        else:
+            print(f"[{subject_id}] All files already present.")
+            
     def run_pipeline(self, recompute: bool = False) -> pd.DataFrame:
         """
         Main orchestration: ensures all required files exist before running analysis.
@@ -378,38 +409,56 @@ class BrainDataPreparationPipeline(ABC):
         Returns:
             pd.DataFrame: DataFrame containing the results after running the analysis.
         """
-        subject_list = sorted(
-            [
-                p.name
-                for p in Path(self.dataset_config.base_dir).iterdir()
-                if p.is_dir() and p.name.isdigit()
-            ]
-        )
+        def parse_subject_ids(dataset):
+            base = Path(dataset.base_dir)
 
-        def process_subject(subject_id: str):
-            """Processes a single subject by checking for required files
-            and computing microstructure if necessary.
-            Args:
-                subject_id (str): The unique identifier for the subject to be processed.
-            """
-            # if not self.verify_subject_files(
-            if self.verify_raw_files(subject_id):
-                if (
-                    self.verify_subject_files(
-                        subject_id, self.dataset_config.metric_to_compute
-                    )
-                    and recompute
-                ):
-                    print(f"[{subject_id}] Recomputing microstructure.")
-                    self.compute_microstructure(subject_id)
-                else:
-                    print(f"[{subject_id}] Missing files — computing microstructure.")
-                    self.compute_microstructure(subject_id)
-            # else:
-            #     print(f"[{subject_id}] All required files found.")
+            glob_patterns = {
+                "multicenter-bids": "*/sub-*",
+                "bids": "sub-*",
+                "hcp": "*",
+            }
 
-        Parallel(n_jobs=50)(
-            delayed(process_subject)(subject_id)
+            try:
+                pattern = glob_patterns[dataset.data_reading]
+            except KeyError:
+                raise ValueError(f"Unknown data_reading: {dataset.data_reading}")
+
+            subjects = []
+
+            for p in base.glob(pattern):
+                name = p.name
+                sid = name if dataset.data_reading == "hcp" else name[4:]
+
+                subjects.append(sid)
+
+            return sorted(subjects)
+        subject_list = parse_subject_ids(self.dataset_config)
+        
+        # def process_subject(subject_id: str):
+        #     """Processes a single subject by checking for required files
+        #     and computing microstructure if necessary.
+        #     Args:
+        #         subject_id (str): The unique identifier for the subject to be processed.
+        #     """
+        #     if not self.verify_raw_files(subject_id):
+        #         return  # clean skip
+        #     if self.verify_raw_files(subject_id):
+        #         if (
+        #             self.verify_subject_files(
+        #                 subject_id, self.dataset_config.metric_to_compute
+        #             )
+        #             and recompute
+        #         ):
+        #             print(f"[{subject_id}] Recomputing microstructure.")
+        #             self.compute_microstructure(subject_id)
+        #         else:
+        #             print(f"[{subject_id}] Missing files — computing microstructure.")
+        #             self.compute_microstructure(subject_id)
+        #     else:
+        #         print(f"[{subject_id}] All required files found.")
+
+        Parallel(n_jobs=1)(
+            delayed(process_subject_wrapper)(subject_id, self, recompute)
             for subject_id in tqdm(subject_list, desc="Processing subjects")
         )
 
@@ -419,7 +468,7 @@ class BrainDataPreparationPipeline(ABC):
         # df = self.export_to_csv()
         # return df
 
-    def run_microstructure_pipeline(self) -> pd.DataFrame:
+    def load_features(self) -> pd.DataFrame:
         """
         Main orchestration: ensures all required files exist before running analysis.
         Returns:

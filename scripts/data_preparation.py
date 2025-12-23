@@ -13,7 +13,7 @@ from diff_benchmark.preprocessing.brain_data_preparation import (
 )
 
 for dataset2prepare in general_config["datasets"]["datasets_list"]:
-    if dataset2prepare["name"] == "hcp":
+    if dataset2prepare["name"] == "abide":
         dataset = DatasetConfig(
             **dataset2prepare,
             metric_to_compute=general_config["datasets"]["metric_to_compute"],
@@ -24,33 +24,37 @@ for dataset2prepare in general_config["datasets"]["datasets_list"]:
         # subject_id = "01187" # wand
         # subject_id = "CC110037" # camcan
         # subject_id = "29182"  # abide
+        
+        from pathlib import Path
+        def parse_subject_ids(dataset):
+            base = Path(dataset.base_dir)
 
-        # def parse_subject_id(dataset: str):
-        #     """
-        #     Return the numeric part of a subject folder.
-        #     Accepts any folder name that contains only digits.
-        #     Returns None if not a valid subject directory.
-        #     """
-        #     from glob import glob
+            glob_patterns = {
+                "multicenter-bids": "*/sub-*",
+                "bids": "sub-*",
+                "hcp": "*",
+            }
 
-        #     base_folder = dataset.base_dir
+            try:
+                pattern = glob_patterns[dataset.data_reading]
+            except KeyError:
+                raise ValueError(f"Unknown data_reading: {dataset.data_reading}")
 
-        #     if dataset.data_reading == "multicenter-bids":
-        #         extra = "/*/*sub-*"
-        #     if dataset.data_reading == "bids":
-        #         extra = "/*sub-*"
-        #     if dataset.data_reading == "hcp":
-        #         extra = "/*"
-        #     file_list = glob(f"{base_folder}{extra}")
-        #     file_list = [
-        #         sub_id
-        #         for x in file_list
-        #         if (sub_id := x.split("/")[-1].replace("sub-", "")).isdigit()
-        #     ]
-        #     return sorted(file_list)
+            subjects = []
 
-        # subject_list = parse_subject_id(dataset)
-        breakpoint()
-        subject_id = "101915" #hcp
-        brain_preparator.verify_raw_files(subject_id)
-        brain_preparator.compute_microstructure(subject_id)
+            for p in base.glob(pattern):
+                name = p.name
+                sid = name if dataset.data_reading == "hcp" else name[4:]
+
+                subjects.append(sid)
+
+            return sorted(subjects)
+
+        subject_list = parse_subject_ids(dataset)
+        
+        # brain_preparator._get_required_raw_files(subject_list[0])
+        brain_preparator.run_pipeline()
+        
+        # subject_id = "101915" #hcp
+        # brain_preparator.verify_raw_files(subject_id)
+        # brain_preparator.compute_microstructure(subject_id)
