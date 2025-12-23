@@ -1,5 +1,6 @@
 from typing import Tuple
 import numpy as np
+import pandas as pd
 
 from diff_benchmark.models.model_configurations import get_model
 from diff_benchmark.data.dataloaders import PreprocessedData
@@ -41,7 +42,7 @@ def get_data_pipeline(data_type: str, dataset:DatasetConfig) -> DataPreparationB
 
     return brain_preparator
 
-class prepare_dataset_and_preprocessed():
+class DatasetPreparation:
     """
     End-to-end data preparation:
     - Extract microstructure features
@@ -64,10 +65,16 @@ class prepare_dataset_and_preprocessed():
         self.source_dataset = source_dataset
     def _extract_participants_files_from_layouts(
         self,
-        layouts: List["bids.BIDSLayout"],
+        layouts: List[bids.BIDSLayout],
     ) -> Union[str, List[str]]:
         """
         Returns a single participants.tsv path or a list (multicenter).
+        Args:
+            layouts (List[bids.BIDSLayout]): List of BIDS layouts to search.
+        Returns:
+            Union[str, List[str]]: Path(s) to participants.tsv file(s).
+        Raises:
+            RuntimeError: If no participants.tsv files are found.
         """
         participants_files = []
 
@@ -81,9 +88,11 @@ class prepare_dataset_and_preprocessed():
 
         return participants_files if len(participants_files) > 1 else participants_files[0]
 
-    def _get_brain_df(self):
+    def _get_brain_df(self) -> pd.DataFrame:
         """
         Prepare brain DataFrame.
+        Returns:
+            pd.DataFrame: Preprocessed brain features DataFrame.
         """
         # -------- MODEL & PIPELINE --------
         model = get_model(self.model_name, self.model_config["params"])
@@ -96,23 +105,31 @@ class prepare_dataset_and_preprocessed():
             .reset_index()
         )
         return brain_df
-    def _get_demographics_df(self):
+    
+    def _get_demographics_df(self) -> pd.DataFrame:
         """
         Prepare demographics DataFrame.
+        Returns:
+            pd.DataFrame: Preprocessed demographics DataFrame.
         """
         # -------- DEMOGRAPHICS --------
         if self.source_dataset.name == "hcp":
             cog_file = self.general_config["data_paths"]["csv_file"]
             
         else:
-            layouts = self.brain_preparator.layouts
-            cog_file = self._extract_participants_files_from_layouts(layouts)
+            cog_file = self._extract_participants_files_from_layouts(self.brain_preparator.layouts)
         preprocessor = DefaultDemographicsPreprocessor(cog_file)
         demographics_df = preprocessor.preprocess(self.general_config["target_columns"])
         return demographics_df
-    def _filter_dfs(self, brain_df, demographics_df):
+    
+    def _filter_dfs(self, brain_df: pd.DataFrame, demographics_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
         Align and filter brain and demographics DataFrames.
+        Args:
+            brain_df (pd.DataFrame): DataFrame containing brain features.
+            demographics_df (pd.DataFrame): DataFrame containing demographics data.
+        Returns:
+            Tuple[pd.DataFrame, pd.DataFrame]: Aligned and filtered brain and demographics Data
         """
         # -------- SUBJECT ALIGNMENT --------
         brain_df["subject_id"] = brain_df["subject_id"].astype(str)
@@ -126,9 +143,15 @@ class prepare_dataset_and_preprocessed():
             demographics_df["Subject"].isin(common_subjects)
         ]
         return brain_filtered, demographics_filtered
-    def _create_torch_dataset(self, brain_filtered, demographics_filtered):
+    
+    def _create_torch_dataset(self, brain_filtered: pd.DataFrame, demographics_filtered: pd.DataFrame) -> Tuple[CustomDataset, PreprocessedData]:
         """
         Create CustomDataset and PreprocessedData objects.
+        Args:
+            brain_filtered (pd.DataFrame): Filtered brain features DataFrame.
+            demographics_filtered (pd.DataFrame): Filtered demographics DataFrame.
+        Returns:
+            Tuple[CustomDataset, PreprocessedData]: Created dataset and preprocessed data.
         """
         # -------- DATASET CREATION --------
         X = brain_filtered
@@ -138,7 +161,12 @@ class prepare_dataset_and_preprocessed():
         preprocessed = PreprocessedData(X, y, gender, config=self.general_config)
         return torch_dataset, preprocessed
     
-    def pipeline(self) -> Tuple["CustomDataset", "PreprocessedData"]:
+    def pipeline(self) -> Tuple[CustomDataset, PreprocessedData]:
+        """
+        Orchestrates the data preparation pipeline.
+        Returns:
+            Tuple[CustomDataset, PreprocessedData]: The prepared dataset and preprocessed data.
+        """
         brain_df = self._get_brain_df()
         demographics_df = self._get_demographics_df()
         brain_filtered, demographics_filtered = self._filter_dfs(brain_df, demographics_df)

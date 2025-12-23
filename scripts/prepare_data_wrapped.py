@@ -1,5 +1,5 @@
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
-from diff_benchmark.data.prepare_data import prepare_dataset_and_preprocessed
+from diff_benchmark.data.prepare_data import DatasetPreparation
 import argparse
 from diff_benchmark.utils.config_loader import load_configs
 
@@ -21,7 +21,7 @@ for dataset2prepare in general_config["datasets"]["datasets_list"]:
             )
             dataset2work = dataset
 
-torch_dataset_preparator = prepare_dataset_and_preprocessed(
+torch_dataset_preparator = DatasetPreparation(
             model_name=models_to_run[0]["name"],
             model_config=models_to_run[0],
             general_config=general_config,

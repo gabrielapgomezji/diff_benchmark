@@ -385,8 +385,11 @@ class BrainDataPreparationPipeline(ABC):
 
     def _process_subject(self, subject_id: str, recompute: bool):
         """
-        Move the body of your old process_subject here.
-        This will be called by the top-level wrapper.
+        Processes a single subject by checking for required files
+        and computing microstructure if necessary.
+        Args:
+            subject_id (str): The unique identifier for the subject to be processed.
+            recompute (bool): Whether to recompute microstructure even if files exist.
         """
         if not self.verify_raw_files(subject_id):
             print(f"[{subject_id}] Missing raw files, skipping")
