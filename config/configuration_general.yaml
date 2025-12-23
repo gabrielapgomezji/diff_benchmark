@@ -48,6 +48,7 @@ datasets:
       big_delta: 0.024 # Need to check
       small_delta: 0.007 # Need to check
       bvec_extensions:
+        - bvec
         - bvecs_image
       bval_extensions:
         - bval

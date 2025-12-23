@@ -61,6 +61,7 @@ class DefaultDemographicsPreprocessor:
         """
         df = self._load_all()
         df = self._filter(df, target_columns)
+        df = self._normalize_subject_ids(df)
         df = self._categorical_to_numeric(df)
         df = df.dropna()
         return df
@@ -95,6 +96,15 @@ class DefaultDemographicsPreprocessor:
             "path must be a str, Path, or list of str/Path"
         )
 
+    def _normalize_subject_ids(self, df: pd.DataFrame) -> pd.DataFrame:
+        if "Subject" in df.columns:
+            df["Subject"] = (
+                df["Subject"]
+                .astype(str)
+                .str.strip()
+                .str.replace(r"^sub-", "", regex=True)
+            )
+        return df
     # ------------------------------------------------------------------
     # Loading logic
     # ------------------------------------------------------------------
@@ -172,7 +182,7 @@ class DefaultDemographicsPreprocessor:
         """
         
         sep = "\t" if file_path.suffix == ".tsv" else ","
-        return pd.read_csv(file_path, sep=sep, index_col=0)
+        return pd.read_csv(file_path, sep=sep) #, index_col=0)
 
     # ------------------------------------------------------------------
     # Preprocessing logic
