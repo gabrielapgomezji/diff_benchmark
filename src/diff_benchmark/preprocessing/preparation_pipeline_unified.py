@@ -355,7 +355,7 @@ class BrainDataPreparationPipeline(ABC):
                 subject_id=subject_id,
             )
 
-        except (FileNotFoundError, OSError, ImageFileError, KeyError, ValueError) as e:
+        except (FileNotFoundError, OSError, ImageFileError, KeyError, ValueError, IndexError) as e:
             print(f"[{subject_id}] Expected error during microstructure: {e}")
 
 

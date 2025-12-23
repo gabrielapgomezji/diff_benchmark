@@ -15,7 +15,8 @@ from diff_benchmark.preprocessing.brain_data_preparation import (
 )
 from diff_benchmark.preprocessing.wrapper_brain_data import DataPreparationBrain
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
-
+import bids
+from typing import List, Union
 
 def get_data_pipeline(data_type: str, dataset:DatasetConfig) -> DataPreparationBrain:
     """Factory function to get the appropriate data pipeline based on data_type.
@@ -35,17 +36,12 @@ def get_data_pipeline(data_type: str, dataset:DatasetConfig) -> DataPreparationB
         brain_preparator = DefaultPipeline(dataset)
     else:
         raise ValueError(
-            f"Unknown data_type '{data_type}'. Must be one of ['lcot_embed', 'images', 'array']."
+            f"Unknown data_type '{data_type}'. Must be one of ['images', 'array']."
         )
 
     return brain_preparator
 
-
-def prepare_dataset_and_preprocessed(
-    model_name: str,
-    model_config: dict,
-    config: dict,
-) -> Tuple["CustomDataset", "PreprocessedData"]:
+class prepare_dataset_and_preprocessed():
     """
     End-to-end data preparation:
     - Extract microstructure features
@@ -53,72 +49,98 @@ def prepare_dataset_and_preprocessed(
     - Align subjects
     - Build dataset and preprocessed objects
     """
-    breakpoint()
-    # -------- MODEL & PIPELINE --------
-    model = get_model(model_name, model_config)
-    data_type = model.data_type
+    def __init__(self,
+        model_name: str,
+        model_config: dict,
+        general_config: dict,
+        source_dataset:DatasetConfig,
+    ):
+        """
+        Initialize the data preparation process.
+        """
+        self.model_name = model_name
+        self.model_config = model_config
+        self.general_config = general_config
+        self.source_dataset = source_dataset
+    def _extract_participants_files_from_layouts(
+        self,
+        layouts: List["bids.BIDSLayout"],
+    ) -> Union[str, List[str]]:
+        """
+        Returns a single participants.tsv path or a list (multicenter).
+        """
+        participants_files = []
 
-    for dataset2prepare in general_config["datasets"]["datasets_list"]:
-        if dataset2prepare["name"] == "camcan":
-            dataset = DatasetConfig(
-                **dataset2prepare,
-                metric_to_compute=general_config["datasets"]["metric_to_compute"],
-                scale=general_config["datasets"]["scale"],
-            )
-    breakpoint()    
-    brain_preparator = get_data_pipeline(data_type, dataset)
-    brain_df = (
-        brain_preparator
-        .load_features()
-        .reset_index()
-    )
+        for layout in layouts:
+            participants = layout.get_file("participants.tsv")
+            if participants is not None:
+                participants_files.append(participants.path)
 
-    # -------- DEMOGRAPHICS --------
-    preprocessor = DefaultDemographicsPreprocessor(
-        config["data_paths"]["csv_file"]
-    )
-    demographics_df = preprocessor.preprocess(
-        config["target_columns"]
-    )
+        if not participants_files:
+            raise RuntimeError("No participants.tsv found in any BIDS layout")
 
-    # -------- SUBJECT ALIGNMENT --------
-    brain_df["subject_id"] = brain_df["subject_id"].astype(str)
-    demographics_df["Subject"] = demographics_df["Subject"].astype(str)
+        return participants_files if len(participants_files) > 1 else participants_files[0]
 
-    common_subjects = set(brain_df["subject_id"]) & set(demographics_df["Subject"])
+    def _get_brain_df(self):
+        """
+        Prepare brain DataFrame.
+        """
+        # -------- MODEL & PIPELINE --------
+        model = get_model(self.model_name, self.model_config["params"])
+        data_type = model.data_type
+        
+        self.brain_preparator = get_data_pipeline(data_type, self.source_dataset)
+        brain_df = (
+            self.brain_preparator
+            .load_features()
+            .reset_index()
+        )
+        return brain_df
+    def _get_demographics_df(self):
+        """
+        Prepare demographics DataFrame.
+        """
+        # -------- DEMOGRAPHICS --------
+        if self.source_dataset.name == "hcp":
+            cog_file = self.general_config["data_paths"]["csv_file"]
+            
+        else:
+            layouts = self.brain_preparator.layouts
+            cog_file = self._extract_participants_files_from_layouts(layouts)
+        preprocessor = DefaultDemographicsPreprocessor(cog_file)
+        demographics_df = preprocessor.preprocess(self.general_config["target_columns"])
+        return demographics_df
+    def _filter_dfs(self, brain_df, demographics_df):
+        """
+        Align and filter brain and demographics DataFrames.
+        """
+        # -------- SUBJECT ALIGNMENT --------
+        brain_df["subject_id"] = brain_df["subject_id"].astype(str)
+        demographics_df["Subject"] = demographics_df["Subject"].astype(str)
+        common_subjects = set(brain_df["subject_id"]) & set(demographics_df["Subject"])
 
-    brain_filtered = brain_df[
-        brain_df["subject_id"].isin(common_subjects)
-    ]
-    demographics_filtered = demographics_df[
-        demographics_df["Subject"].isin(common_subjects)
-    ]
-
-    # -------- DATASET CREATION --------
-    X = brain_filtered
-    y = np.asarray(demographics_filtered[config["target_columns"][0]])
-    gender = np.asarray(demographics_filtered["Gender"])
-
-    dataset = CustomDataset(X, y, gender)
-    preprocessed = PreprocessedData(X, y, gender, config=config)
-
-    return dataset, preprocessed
-
-import argparse
-from diff_benchmark.utils.config_loader import load_configs
-
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--methods", nargs="+", type=str, default=["2dcnn_torch"], help="Method to use"
-)
-args = parser.parse_args()
-
-general_config, model_config = load_configs(args)
-
-breakpoint()
-
-prepare_dataset_and_preprocessed(
-    model_name=args.methods[0],
-    model_config=model_config,
-    config=general_config,
-)
+        brain_filtered = brain_df[
+            brain_df["subject_id"].isin(common_subjects)
+        ]
+        demographics_filtered = demographics_df[
+            demographics_df["Subject"].isin(common_subjects)
+        ]
+        return brain_filtered, demographics_filtered
+    def _create_torch_dataset(self, brain_filtered, demographics_filtered):
+        """
+        Create CustomDataset and PreprocessedData objects.
+        """
+        # -------- DATASET CREATION --------
+        X = brain_filtered
+        y = np.asarray(demographics_filtered[self.general_config["target_columns"][0]])
+        gender = np.asarray(demographics_filtered["Gender"])
+        torch_dataset = CustomDataset(X, y, gender)
+        preprocessed = PreprocessedData(X, y, gender, config=self.general_config)
+        return torch_dataset, preprocessed
+    
+    def pipeline(self) -> Tuple["CustomDataset", "PreprocessedData"]:
+        brain_df = self._get_brain_df()
+        demographics_df = self._get_demographics_df()
+        brain_filtered, demographics_filtered = self._filter_dfs(brain_df, demographics_df)
+        torch_dataset, preprocessed = self._create_torch_dataset(brain_filtered, demographics_filtered)
+        return torch_dataset, preprocessed
