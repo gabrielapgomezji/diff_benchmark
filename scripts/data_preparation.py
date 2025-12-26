@@ -13,7 +13,7 @@ from diff_benchmark.preprocessing.brain_data_preparation import (
 )
 
 for dataset2prepare in general_config["datasets"]["datasets_list"]:
-    if dataset2prepare["name"] == "wand":
+    if dataset2prepare["name"] == "abide":
         dataset = DatasetConfig(
             **dataset2prepare,
             metric_to_compute=general_config["datasets"]["metric_to_compute"],
@@ -25,36 +25,36 @@ for dataset2prepare in general_config["datasets"]["datasets_list"]:
         # subject_id = "CC110037" # camcan
         # subject_id = "29182"  # abide
         
-        from pathlib import Path
-        def parse_subject_ids(dataset):
-            base = Path(dataset.base_dir)
+        # from pathlib import Path
+        # def parse_subject_ids(dataset):
+        #     base = Path(dataset.base_dir)
 
-            glob_patterns = {
-                "multicenter-bids": "*/sub-*",
-                "bids": "sub-*",
-                "hcp": "*",
-            }
+        #     glob_patterns = {
+        #         "multicenter-bids": "*/sub-*",
+        #         "bids": "sub-*",
+        #         "hcp": "*",
+        #     }
 
-            try:
-                pattern = glob_patterns[dataset.data_reading]
-            except KeyError:
-                raise ValueError(f"Unknown data_reading: {dataset.data_reading}")
+        #     try:
+        #         pattern = glob_patterns[dataset.data_reading]
+        #     except KeyError:
+        #         raise ValueError(f"Unknown data_reading: {dataset.data_reading}")
 
-            subjects = []
+        #     subjects = []
 
-            for p in base.glob(pattern):
-                name = p.name
-                sid = name if dataset.data_reading == "hcp" else name[4:]
+        #     for p in base.glob(pattern):
+        #         name = p.name
+        #         sid = name if dataset.data_reading == "hcp" else name[4:]
 
-                subjects.append(sid)
+        #         subjects.append(sid)
 
-            return sorted(subjects)
+        #     return sorted(subjects)
 
-        subject_list = parse_subject_ids(dataset)
+        # subject_list = parse_subject_ids(dataset)
         
         # brain_preparator._get_required_raw_files(subject_list[0])
         brain_preparator.run_pipeline()
         
-        # subject_id = "101915" #hcp
+        # subject_id = "76884" # wand
         # brain_preparator.verify_raw_files(subject_id)
         # brain_preparator.compute_microstructure(subject_id)
