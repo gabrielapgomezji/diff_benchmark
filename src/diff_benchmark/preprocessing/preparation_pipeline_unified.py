@@ -25,12 +25,15 @@ from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
                     compute_save_and_project_metric
                 )
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
+from diff_benchmark.utils.job_manager_wrap import run_jobs
 
-def process_subject_wrapper(subject_id, pipeline, recompute):
+def process_subject_wrapper(subject_id, pipeline_cls, dataset_config, recompute):
     """
     Wrapper to call the instance method safely.
     This function is top-level, so joblib can pickle it.
     """
+    # pipeline._process_subject(subject_id, recompute)
+    pipeline = pipeline_cls(dataset_config)
     pipeline._process_subject(subject_id, recompute)
 
 @dataclass
@@ -300,6 +303,7 @@ class BrainDataPreparationPipeline(ABC):
             bvals = np.loadtxt(files["bvals"])
             
             surfaces = {k.split("surface:")[1]: v for k, v in files.items() if k.startswith("surface:")}
+            
             if self.data_reading == "hcp":
                 bvecs = np.loadtxt(files["bvecs"]).T
                 nodif_mask = files["nodif mask"]
@@ -354,7 +358,6 @@ class BrainDataPreparationPipeline(ABC):
                 derivatives_dir=derivatives_dir,
                 subject_id=subject_id,
             )
-
         except (FileNotFoundError, OSError, ImageFileError, KeyError, ValueError, IndexError) as e:
             print(f"[{subject_id}] Expected error during microstructure: {e}")
 
@@ -437,32 +440,20 @@ class BrainDataPreparationPipeline(ABC):
             return sorted(subjects)
         subject_list = parse_subject_ids(self.dataset_config)
         
-        # def process_subject(subject_id: str):
-        #     """Processes a single subject by checking for required files
-        #     and computing microstructure if necessary.
-        #     Args:
-        #         subject_id (str): The unique identifier for the subject to be processed.
-        #     """
-        #     if not self.verify_raw_files(subject_id):
-        #         return  # clean skip
-        #     if self.verify_raw_files(subject_id):
-        #         if (
-        #             self.verify_subject_files(
-        #                 subject_id, self.dataset_config.metric_to_compute
-        #             )
-        #             and recompute
-        #         ):
-        #             print(f"[{subject_id}] Recomputing microstructure.")
-        #             self.compute_microstructure(subject_id)
-        #         else:
-        #             print(f"[{subject_id}] Missing files — computing microstructure.")
-        #             self.compute_microstructure(subject_id)
-        #     else:
-        #         print(f"[{subject_id}] All required files found.")
-
-        Parallel(n_jobs=1)(
-            delayed(process_subject_wrapper)(subject_id, self, recompute)
-            for subject_id in tqdm(subject_list, desc="Processing subjects")
+        run_jobs(
+            run_fn=process_subject_wrapper,
+            fn_kwargs_list=[
+                {"subject_id": subject_id, "pipeline_cls": type(self), "dataset_config": self.dataset_config, "recompute": recompute}
+                for subject_id in subject_list
+            ],
+            parallel_type="slurm",
+            slurm_cfg = {
+                "cpus_per_task": 1,
+                "timeout_min": 900,
+                "mem_gb": 50,
+                
+            },
+            n_jobs=50,
         )
 
         # Once all files are ready, run the analysis

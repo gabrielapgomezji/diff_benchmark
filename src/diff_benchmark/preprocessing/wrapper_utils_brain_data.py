@@ -2,7 +2,6 @@ import json
 from pathlib import Path
 from xml import etree
 
-import h5py
 import nibabel as nib
 import nilearn as ni
 import numpy as np

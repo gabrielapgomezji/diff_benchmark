@@ -13,7 +13,7 @@ general_config, model_config = load_configs(args)
 
 models_to_run = model_config["models"]
 for dataset2prepare in general_config["datasets"]["datasets_list"]:
-        if dataset2prepare["name"] == "hcp":
+        if dataset2prepare["name"] == "abide":
             dataset = DatasetConfig(
                 **dataset2prepare,
                 metric_to_compute=general_config["datasets"]["metric_to_compute"],
@@ -27,4 +27,5 @@ torch_dataset_preparator = DatasetPreparation(
             general_config=general_config,
             source_dataset=dataset2work,
         )
+breakpoint()
 torch_dataset, preprocessed = torch_dataset_preparator.pipeline()

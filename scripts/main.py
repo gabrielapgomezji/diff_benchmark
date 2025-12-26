@@ -22,9 +22,13 @@ from diff_benchmark.preprocessing.preprocess_demographic_data import (
 )
 from diff_benchmark.utils.config_loader import load_configs
 from diff_benchmark.utils.data_pipeline import get_data_pipeline
-from diff_benchmark.utils.job_manager import run_jobs
+# from diff_benchmark.utils.job_manager import run_jobs
+from diff_benchmark.utils.job_manager_wrap import run_jobs
 from diff_benchmark.utils.scores import accuracy_score, compute_metrics
-
+from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
+from diff_benchmark.data.prepare_data import DatasetPreparation
+    
+    
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "--methods", nargs="+", type=str, default=["2dcnn_torch"], help="Method to use"
@@ -36,34 +40,23 @@ general_config, model_config = load_configs(args)
 
 def run_single_model(model_name, model_config, general_config, results_path):
     config = general_config
-
-    model = get_model(model_name, model_config)
-    data_type = model.data_type
-
-    brain_preparator = get_data_pipeline(data_type, config)
-    brain_df = brain_preparator.run_microstructure_pipeline()
-    brain_df = brain_df.reset_index()
-
-    preprocessor = DefaultDemographicsPreprocessor(config["data_paths"]["csv_file"])
-    demographics_df = preprocessor.preprocess(config["target_columns"])
-    breakpoint()
-    common_subjects = set(brain_df["subject_id"].astype(str)) & set(
-        demographics_df["Subject"].astype(str)
-    )
-    demographics_filtered = demographics_df[
-        demographics_df["Subject"].astype(str).isin(common_subjects)
-    ]
-    brain_filtered = brain_df[brain_df["subject_id"].astype(str).isin(common_subjects)]
-
-    # DATASET GENERATION
-    X = brain_filtered  # .drop(columns=["subject_id"]).to_numpy()
-    gender = np.array(demographics_filtered["Gender"])
-    y = np.array(demographics_filtered[config["target_columns"][0]])
-
-    dataset = CustomDataset(X, y, gender)
-    # ----------- CROSS VALIDATION + TRAINING + TESTING -----------
-
-    preprocessed = PreprocessedData(X, y, gender, config=config)
+    
+    for dataset2prepare in general_config["datasets"]["datasets_list"]:
+        if dataset2prepare["name"] == "hcp":
+            dataset = DatasetConfig(
+                **dataset2prepare,
+                metric_to_compute=general_config["datasets"]["metric_to_compute"],
+                scale=general_config["datasets"]["scale"],
+            )
+            dataset2work = dataset
+    
+    torch_dataset_preparator = DatasetPreparation(
+                model_name=model_name,
+                model_config=model_config,
+                general_config=general_config,
+                source_dataset=dataset2work,
+            )
+    dataset, preprocessed = torch_dataset_preparator.pipeline()
 
     specs = preprocessed.get_specs()
     print(specs)
@@ -228,8 +221,31 @@ def run_single_model(model_name, model_config, general_config, results_path):
 
 models_to_run = model_config["models"]
 
-results = run_jobs(run_single_model, models_to_run, model_config, general_config)
+run_single_model(
+    model_name=models_to_run[0]["name"],
+    model_config=models_to_run[0]["params"],
+    general_config=general_config,
+    results_path="./data/results",
+)
+# results = run_jobs(run_single_model, models_to_run, model_config, general_config)
+results = run_jobs(run_fn=run_single_model,
+                   fn_kwargs_list=[
+                       {
+                           "model_name": model["name"],
+                           "model_config": model["params"],
+                           "general_config": general_config,
+                       }
+                       for model in models_to_run
+                    ],
+                    parallel_type=None,
+                    slurm_cfg={
+                    "cpus_per_task": 1,
+                    "timeout_min": 900,
+                    "mem_gb": 50,
+                    },
+                    n_jobs=50,
+            )
 
 # results is a list of (model_name, per_fold_results)
-for model_name, run_id in results:
-    print(f"Completed model: {model_name}")
+# for model_name, run_id in results:
+#     print(f"Completed model: {model_name}")

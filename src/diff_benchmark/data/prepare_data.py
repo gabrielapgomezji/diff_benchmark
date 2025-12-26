@@ -95,7 +95,7 @@ class DatasetPreparation:
             pd.DataFrame: Preprocessed brain features DataFrame.
         """
         # -------- MODEL & PIPELINE --------
-        model = get_model(self.model_name, self.model_config["params"])
+        model = get_model(self.model_name, self.model_config) #["params"])
         data_type = model.data_type
         
         self.brain_preparator = get_data_pipeline(data_type, self.source_dataset)
