@@ -22,6 +22,24 @@ from diff_benchmark.utils.logger import TrainLogger
 from diff_benchmark.utils.scores import compute_metrics
 
 
+def build_prediction_head(
+    in_dim: int,
+    prediction_task: str,
+    num_classes: int | None = None,
+    dropout: float | nn.Module = 0.0,
+):
+    if prediction_task == "classification":
+        return nn.Linear(in_dim, num_classes)
+
+    else:
+        return nn.Sequential(
+            nn.Linear(in_dim, 256),
+            nn.ReLU(),
+            dropout,
+            nn.Linear(256, 1),
+        )
+
+
 def collate_with_augmentation(batch: list, transform: transforms.Compose = None):
     """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch.
     Args:
@@ -74,14 +92,27 @@ class NumpyAbstractModel(ABC):
     Defines the interface that all models must implement.
     """
 
-    @abstractmethod
-    def _dataloader_to_numpy(self, dataloader: DataLoader):
+    def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
         """
-        Convert a DataLoader to numpy arrays.
-        This method should be implemented by all subclasses to handle the conversion.
+        Converts a dataloader containing batches of data into NumPy arrays.
         Args:
-            dataloader (DataLoader): PyTorch DataLoader to convert.
+            dataloader (iterable): An iterable that yields batches of data in the form
+                                   (x_batch, y_batch, _), where x_batch and y_batch
+                                   are the input and target tensors, respectively.
+        Returns:
+            tuple: A tuple containing two NumPy arrays:
+                - features (np.ndarray): Concatenated array of input data.
+                - targets (np.ndarray): Concatenated array of target data.
         """
+
+        features_list = []
+        targets_list = []
+        for features_batch, targets_batch, _ in dataloader:
+            features_list.append(features_batch.numpy())
+            targets_list.append(targets_batch.numpy())
+        features = np.concatenate(features_list, axis=0)
+        targets = np.concatenate(targets_list, axis=0)
+        return features, targets
 
     @abstractmethod
     def fit(self, dataloader: DataLoader):
@@ -105,15 +136,6 @@ class TorchAbstractModel(ABC):
     Abstract base class for all models in the diff_benchmark framework.
     Defines the interface that all models must implement.
     """
-
-    @abstractmethod
-    def _dataloader_to_numpy(self, dataloader: DataLoader):
-        """
-        Convert a DataLoader to numpy arrays.
-        This method should be implemented by all subclasses to handle the conversion.
-        Args:
-            dataloader (DataLoader): PyTorch DataLoader to convert.
-        """
 
     @abstractmethod
     def fit(self, dataloader: DataLoader):

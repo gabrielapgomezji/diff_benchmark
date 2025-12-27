@@ -2,7 +2,8 @@ import torch
 from torch import nn
 from torchvision import models
 
-from diff_benchmark.models.base import TorchPipeline
+from diff_benchmark.models.base import TorchPipeline, build_prediction_head
+from diff_benchmark.models.utils_models.prediction_head import PredictionHead
 
 
 class ResNet18Backbone(nn.Module):
@@ -106,18 +107,14 @@ class ResNet3SliceMultihead(nn.Module):
             torch.ones(self.num_subvols, dtype=torch.float32)
         )
         self.prediction_task = kwargs.get("prediction_task", None)
-        if self.prediction_task == "classification":
-            self.fc = nn.Linear(self.backbone.out_dim, num_classes)
-        # elif self.prediction_task is None:
-        #     raise ValueError("prediction_task must be specified as 'classification' or 'regression'")
-        else:
-            # self.fc = nn.Linear(self.backbone.out_dim, 1)
-            self.fc = nn.Sequential(
-                nn.Linear(self.backbone.out_dim, 256),
-                nn.ReLU(),
-                self.dropout,
-                nn.Linear(256, 1),
-            )
+
+        self.fc = PredictionHead(
+            embedding_dim=self.backbone.out_dim,
+            prediction_task=self.prediction_task,
+            num_classes=num_classes, # for regression is specified to 1
+            hidden_dims=[256],
+            dropout=dropout,
+        )
 
         if freeze_backbone:
             for param in self.backbone.parameters():

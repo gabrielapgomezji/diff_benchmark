@@ -33,28 +33,6 @@ class DummyRegressor(NumpyAbstractModel):
     def __init__(self):
         self.prediction_ = None
 
-    def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
-        """
-        Converts a dataloader containing batches of data into NumPy arrays.
-        Args:
-            dataloader (iterable): An iterable that yields batches of data in the form
-                                   (x_batch, y_batch, _), where x_batch and y_batch
-                                   are the input and target tensors, respectively.
-        Returns:
-            tuple: A tuple containing two NumPy arrays:
-                - features (np.ndarray): Concatenated array of input data.
-                - targets (np.ndarray): Concatenated array of target data.
-        """
-
-        features_list = []
-        targets_list = []
-        for features_batch, targets_batch, _ in dataloader:
-            features_list.append(features_batch.numpy())
-            targets_list.append(targets_batch.numpy())
-        features = np.concatenate(features_list, axis=0)
-        targets = np.concatenate(targets_list, axis=0)
-        return features, targets
-
     def fit(self, dataloader: DataLoader):
         """
         Fit the model using the provided dataloader.
@@ -102,27 +80,6 @@ class DummyClassifier(NumpyAbstractModel):
 
     def __init__(self):
         self.class_ = None
-
-    def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
-        """
-        Converts a dataloader containing batches of data into NumPy arrays.
-        Args:
-            dataloader (iterable): An iterable that yields batches of data in the form
-                                   (x_batch, y_batch, _), where x_batch and y_batch
-                                   are the input and target tensors, respectively.
-        Returns:
-            tuple: A tuple containing two NumPy arrays:
-                - X (np.ndarray): Concatenated array of input data.
-                - Y (np.ndarray): Concatenated array of target data.
-        """
-        features_list = []
-        targets_list = []
-        for features_batch, targets_batch, _ in dataloader:
-            features_list.append(features_batch.numpy())
-            targets_list.append(targets_batch.numpy())
-        features = np.concatenate(features_list, axis=0)
-        targets = np.concatenate(targets_list, axis=0)
-        return features, targets
 
     def fit(self, dataloader: DataLoader):
         """

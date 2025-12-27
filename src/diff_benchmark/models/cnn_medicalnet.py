@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from diff_benchmark.models.base import TorchPipeline
+from diff_benchmark.models.utils_models.prediction_head import PredictionHead
 from typing import Any
 
 __all__ = [
@@ -291,9 +292,13 @@ class ResNet(nn.Module):
         )
 
         self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
-        self.prediction_task = prediction_task
-        out_dim = num_classes if prediction_task == "classification" else 1
-        self.fc = nn.Linear(512 * block.expansion, out_dim)
+        self.fc = PredictionHead(
+            embedding_dim=512 * block.expansion,
+            prediction_task=prediction_task,
+            num_classes=num_classes, # for regression is specified to 1
+            hidden_dims=None,
+            dropout=0.0,
+        )
 
         for m in self.modules():
             if isinstance(m, nn.Conv3d):

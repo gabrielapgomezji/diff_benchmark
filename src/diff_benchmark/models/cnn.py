@@ -215,7 +215,6 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
         best_val_model (float): Best validation accuracy achieved during training.
         history (dict): Dictionary to store training and validation history.
     Methods:
-        _dataloader_to_numpy(dataloader): Converts data from a DataLoader to NumPy arrays.
         _train_val_loader_split(train_loader, val_ratio=0.3): Splits the dataset into training and validation sets.
         _save_logs(history, save_path): Saves training history to a specified file format (JSON or CSV).
         fit(dataloader): Trains the model using the provided DataLoader.
@@ -292,29 +291,6 @@ class ResNet3SliceModel(TorchAbstractModel, nn.Module):
         ys = torch.stack(ys)
         gs = torch.stack(gs)
         return xs_aug, ys, gs
-
-    def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """
-        Converts a PyTorch DataLoader into NumPy arrays.
-        This method iterates over the provided DataLoader and extracts the data, 
-        labels, and group information, converting them into NumPy arrays.
-        Args:
-            dataloader (DataLoader): A PyTorch DataLoader object that yields batches 
-                of data in the form of (inputs, labels, groups).
-        Returns:
-            tuple[np.ndarray, np.ndarray, np.ndarray]: A tuple containing three 
-            NumPy arrays:
-                - x (np.ndarray): The input data concatenated across all batches.
-                - y (np.ndarray): The labels concatenated across all batches.
-                - g (np.ndarray): The group information concatenated across all batches.
-        """
-        
-        x, y, g = [], [], []
-        for xb, yb, gb in dataloader:
-            x.append(xb.numpy())
-            y.append(yb.numpy())
-            g.append(gb.numpy())
-        return np.concatenate(x), np.concatenate(y), np.concatenate(g)
 
     def _train_val_loader_split(self, train_loader: DataLoader, val_ratio: float = 0.3) -> tuple[DataLoader, DataLoader]:
         """

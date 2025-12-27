@@ -46,6 +46,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
                 **dataset2prepare,
                 metric_to_compute=general_config["datasets"]["metric_to_compute"],
                 scale=general_config["datasets"]["scale"],
+                region=general_config["data_preparation"]["region"],
             )
             dataset2work = dataset
     

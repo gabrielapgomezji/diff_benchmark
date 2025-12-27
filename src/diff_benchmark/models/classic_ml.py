@@ -56,27 +56,6 @@ class PCARandomForestModel(NumpyAbstractModel):
             verbose=1,
         )
 
-    def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
-        """
-        Converts a PyTorch DataLoader into NumPy arrays for features and targets.
-        Args:
-            dataloader (DataLoader): A PyTorch DataLoader object that yields batches of 
-                features, targets, and an optional third element (ignored).
-        Returns:
-            tuple[np.ndarray, np.ndarray]: A tuple containing two NumPy arrays:
-                - features: A NumPy array containing all the features from the DataLoader.
-                - targets: A NumPy array containing all the targets from the DataLoader.
-        """
-        
-        features_list = []
-        targets_list = []
-        for features_batch, targets_batch, _ in dataloader:
-            features_list.append(features_batch.numpy())
-            targets_list.append(targets_batch.numpy())
-        features = np.concatenate(features_list, axis=0)
-        targets = np.concatenate(targets_list, axis=0)
-        return features, targets
-
     def fit(self, dataloader: DataLoader):
         """Fit PCA + RandomForest using grid search.
         Args:
@@ -147,26 +126,6 @@ class PCASVMModel(NumpyAbstractModel):
             n_jobs=-1,
             verbose=1,
         )
-
-    def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
-        """
-        Converts a PyTorch DataLoader into NumPy arrays for features and targets.
-        Args:
-            dataloader (DataLoader): A PyTorch DataLoader object that yields batches of 
-                features, targets, and an optional third element (ignored).
-        Returns:
-            tuple[np.ndarray, np.ndarray]: A tuple containing two NumPy arrays:
-                - features: A NumPy array containing all the features from the DataLoader.
-                - targets: A NumPy array containing all the targets from the DataLoader.
-        """
-        features_list = []
-        targets_list = []
-        for features_batch, targets_batch, _ in dataloader:
-            features_list.append(features_batch.numpy())
-            targets_list.append(targets_batch.numpy())
-        features = np.concatenate(features_list, axis=0)
-        targets = np.concatenate(targets_list, axis=0)
-        return features, targets
 
     def fit(self, dataloader: DataLoader):
         """Fit PCA + SVM using grid search.
