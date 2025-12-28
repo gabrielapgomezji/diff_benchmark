@@ -34,7 +34,7 @@ class DummyRegressor(NumpyAbstractModel):
         self.prediction_ = None
         
     def model(self):
-        pass
+        return self.model == None
 
     def fit(self, dataloader: DataLoader):
         """
@@ -83,6 +83,9 @@ class DummyClassifier(NumpyAbstractModel):
 
     def __init__(self):
         self.class_ = None
+    
+    def model(self):
+        return self.model == None
 
     def fit(self, dataloader: DataLoader):
         """
