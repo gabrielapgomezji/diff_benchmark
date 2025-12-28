@@ -32,6 +32,9 @@ class DummyRegressor(NumpyAbstractModel):
 
     def __init__(self):
         self.prediction_ = None
+        
+    def model(self):
+        pass
 
     def fit(self, dataloader: DataLoader):
         """

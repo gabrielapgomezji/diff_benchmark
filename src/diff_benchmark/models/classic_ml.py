@@ -19,6 +19,7 @@ class PCARandomForestModel(NumpyAbstractModel):
     data_type = "array"
 
     def __init__(self, **kwargs):
+        super().__init__()
         self.prediction_task = kwargs.get("prediction_task", None)
         # Define pipeline: standardization -> PCA -> RandomForest
         # Choose RF head depending on task
@@ -56,29 +57,8 @@ class PCARandomForestModel(NumpyAbstractModel):
             verbose=1,
         )
 
-    def fit(self, dataloader: DataLoader):
-        """Fit PCA + RandomForest using grid search.
-        Args:
-            dataloader (DataLoader): PyTorch DataLoader with training data.
-        """
-        assert self.prediction_task in [
-            "classification",
-            "regression",
-        ], f"prediction_task must be set before calling fit(). Got {self.prediction_task}"
-
-        features, targets = self._dataloader_to_numpy(dataloader)
-        features_reshaped = features.reshape(features.shape[0], -1)
-        self.model.fit(features_reshaped, targets.flatten())
-        # print("Best params found:", self.model.best_params_)
-
-    def predict(self, dataloader: DataLoader):
-        """Predict using the best pipeline from grid search.
-        Args:
-            dataloader (DataLoader): PyTorch DataLoader with data to predict."""
-        features, _ = self._dataloader_to_numpy(dataloader)
-        features_reshaped = features.reshape(features.shape[0], -1)
-        return self.model.predict(features_reshaped)
-
+    def model(self):
+        return self.model
 
 class PCASVMModel(NumpyAbstractModel):
     """
@@ -89,6 +69,7 @@ class PCASVMModel(NumpyAbstractModel):
     data_type = "array"
 
     def __init__(self, **kwargs):
+        super().__init__()
         self.prediction_task = kwargs.get("prediction_task", None)
         if self.prediction_task == "classification":
             svm_head = SVC(probability=True)
@@ -111,8 +92,8 @@ class PCASVMModel(NumpyAbstractModel):
 
         # Define hyperparameter grid
         param_grid = {
-            "pca__n_components": [50, 100, 400],
-            "svm__C": [0.1, 1, 10, 100],
+            "pca__n_components": [50],#, 100, 400],
+            "svm__C": [0.1],#, 1, 10, 100],
             "svm__kernel": ["linear", "rbf"],
             "svm__gamma": svm_gamma,
         }
@@ -126,22 +107,6 @@ class PCASVMModel(NumpyAbstractModel):
             n_jobs=-1,
             verbose=1,
         )
-
-    def fit(self, dataloader: DataLoader):
-        """Fit PCA + SVM using grid search.
-        Args:
-            dataloader (DataLoader): PyTorch DataLoader with training data.
-        """
-        features, targets = self._dataloader_to_numpy(dataloader)
-        features_reshaped = features.reshape(features.shape[0], -1)
-        self.model.fit(features_reshaped, targets.flatten())
-        # print("Best params found:", self.model.best_params_)
-
-    def predict(self, dataloader: DataLoader):
-        """Predict class labels using the trained SVM model.
-        Args:
-            dataloader (DataLoader): PyTorch DataLoader with data to predict.
-        """
-        features, _ = self._dataloader_to_numpy(dataloader)
-        features_reshaped = features.reshape(features.shape[0], -1)
-        return self.model.predict(features_reshaped)
+        
+    def model(self):
+        return self.model
