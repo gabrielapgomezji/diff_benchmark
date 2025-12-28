@@ -1,4 +1,24 @@
 from torch import nn
+import numpy as np
+from torch.utils.data import DataLoader
+
+class NumpyEmbeddingModel:
+    data_type = "array"
+
+    def __init__(self, embedding_model, head):
+        self.model = embedding_model
+        self.head = head
+        self.prediction_task = head.prediction_task
+
+    def fit(self, dataloader: DataLoader):
+        features, targets = self.model._build_model(dataloader)
+        self.model.fit(features, targets)
+
+    def predict(self, dataloader: DataLoader) -> np.ndarray:
+        features, _ = self.model._build_model(dataloader)
+        return self.head.predict(features)
+
+
 
 class MLPHead(nn.Module):
     def __init__(
