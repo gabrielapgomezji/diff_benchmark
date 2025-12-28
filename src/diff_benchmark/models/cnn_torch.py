@@ -206,7 +206,7 @@ def collate_with_augmentation(batch: list, transform: callable = None) -> tuple[
     return xs_aug.squeeze(1), ys, gs
 
 
-class CNNRegTorchTrainModel(TorchPipeline):
+class CNNTorchTrainModel(TorchPipeline):
     """CNN Torch Train Model class inheriting from TorchPipeline.
     Args:
         input_slices (int): Number of input slices.
