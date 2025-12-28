@@ -10,9 +10,8 @@ from diff_benchmark.models.cnn_torch_train_reg import CNNRegTorchTrainModel
 
 from diff_benchmark.models.dummy import DummyClassifier, DummyRegressor
 from diff_benchmark.models.logistic_regression import (
-    LogisticRegressionModel,
+    LinearModel,
     PCALinearModel,
-    PCALogisticRegressionModel,
 )
 
 
@@ -63,14 +62,11 @@ def get_model(name: str, config: dict) -> object:
     if name == "dummy_regressor":
         return DummyRegressor()
 
-    if name == "pca_logistic":
-        return PCALogisticRegressionModel()
-
     if name == "pca_linear":
         return PCALinearModel(**config)
 
-    if name == "logistic_regression":
-        return LogisticRegressionModel()
+    if name == "linear":
+        return LinearModel(**config)
 
     if name == "pca_forest":
         return PCARandomForestModel(**config)
