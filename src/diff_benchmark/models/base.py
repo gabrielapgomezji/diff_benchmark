@@ -91,7 +91,9 @@ class NumpyAbstractModel(ABC):
     Abstract base class for all models in the diff_benchmark framework.
     Defines the interface that all models must implement.
     """
-
+    def __init__(self):
+        self.output_dim = 1
+    
     def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
         """
         Converts a dataloader containing batches of data into NumPy arrays.
@@ -113,22 +115,39 @@ class NumpyAbstractModel(ABC):
         features = np.concatenate(features_list, axis=0)
         targets = np.concatenate(targets_list, axis=0)
         return features, targets
-
+    
+    @property
     @abstractmethod
+    def model(self):
+        """Underlying sklearn-like model with fit/predict"""
+        pass
+    
+    def _reshape_data(self, dataloader: DataLoader):
+        features, targets = self._dataloader_to_numpy(dataloader)
+        features_reshaped = features.reshape(features.shape[0], -1)
+        return features_reshaped, targets.flatten()
+
     def fit(self, dataloader: DataLoader):
         """
         Fit the model to the training data.
         Args:
             dataloader (DataLoader): PyTorch DataLoader with training data.
         """
+        features, targets = self._reshape_data(dataloader)
+        self.model.fit(features, targets)
+        
 
-    @abstractmethod
     def predict(self, dataloader: DataLoader):
         """
         Predict using the fitted model.
         Args:
             dataloader (DataLoader): PyTorch DataLoader with data to predict.
         """
+        features, _ = self._reshape_data(dataloader)
+        preds =  self.model.predict(features)
+        if self.output_dim == 2:
+            return preds.reshape(-1, 1)
+        return preds
 
 
 class TorchAbstractModel(ABC):
