@@ -23,53 +23,6 @@ from diff_benchmark.utils.scores import compute_metrics
 from diff_benchmark.models.utils import create_trainer
 
 
-def build_prediction_head(
-    in_dim: int,
-    prediction_task: str,
-    num_classes: int | None = None,
-    dropout: float | nn.Module = 0.0,
-):
-    if prediction_task == "classification":
-        return nn.Linear(in_dim, num_classes)
-
-    else:
-        return nn.Sequential(
-            nn.Linear(in_dim, 256),
-            nn.ReLU(),
-            dropout,
-            nn.Linear(256, 1),
-        )
-
-
-def collate_with_augmentation(batch: list, transform: transforms.Compose = None):
-    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch.
-    Args:
-        batch (list): List of tuples (x, y, g) where x is a 3D tensor (D,H,W), y is the label,
-                      and g is additional info (e.g., gender).
-        transform (transforms.Compose, optional): 2D transformations to apply to each slice.
-    Returns:
-        Tuple of tensors: (xs_aug, ys, gs) where xs_aug is the augmented batch of 3D volumes,
-                          ys are the labels, and gs are the additional info.
-    """
-    xs, ys, gs = zip(*batch)  # separate batch components
-    xs_aug = []
-    for x in xs:  # x shape: (D,H,W)
-        slices = []
-        for i in range(x.shape[0]):
-            slice_2d = x[i, :, :].unsqueeze(0)  # (1,H,W)
-            if transform:
-                slice_2d = transform(slice_2d)
-            slices.append(slice_2d)
-        x_aug = torch.stack(slices, dim=0)  # (D,1,H,W)
-        x_aug = x_aug.permute(1, 0, 2, 3)  # (C=1,D,H,W)
-        xs_aug.append(x_aug)
-
-    xs_aug = torch.stack(xs_aug, dim=0)
-    ys = torch.stack(ys)
-    gs = torch.stack(gs)
-    return xs_aug, ys, gs
-
-
 train_transforms = transforms.Compose(
     [
         transforms.RandomHorizontalFlip(),
@@ -566,6 +519,7 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
 
     def __init__(
         self,
+        num_workers: int = 10,
         learning_rate: float = 1e-4,
         weight_decay: float = 1e-4,
         average: str = "binary",
@@ -575,6 +529,7 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
     ):
         super().__init__()
         self.save_hyperparameters()
+        self.num_workers = num_workers
         self.lr = learning_rate
         self.weight_decay = weight_decay
         self.average = average
@@ -615,28 +570,50 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
 
         train_subset = Subset(dataset, train_idx)
         val_subset = Subset(dataset, val_idx)
+        collate_train = self.model.collate_with_augmentation
+        collate_val = self.model.collate_with_augmentation
 
-        # Transform-aware collation (optional)
         train_loader_new = DataLoader(
             train_subset,
             batch_size=train_loader.batch_size,
             shuffle=True,
-            num_workers=19,  # 0,#
-            pin_memory=False,
-            collate_fn=lambda batch: collate_with_augmentation(
-                batch, transform=train_transforms
-            ),
+            num_workers=self.num_workers,
+            # collate_fn=lambda batch: collate_with_augmentation(
+            #     batch, transform=train_transforms
+            # ),
+            collate_fn=lambda batch: collate_train(batch, transform=train_transforms),
         )
         val_loader_new = DataLoader(
             val_subset,
-            batch_size=1,
+            batch_size=64,
             shuffle=False,
-            num_workers=19,  # 0,#10,
-            pin_memory=False,
-            collate_fn=lambda batch: collate_with_augmentation(
-                batch, transform=val_transforms
-            ),
+            num_workers=self.num_workers,
+            # collate_fn=lambda batch: collate_with_augmentation(
+            #     batch, transform=val_transforms
+            # ),
+            collate_fn=lambda batch: collate_val(batch, transform=val_transforms),
         )
+        # Transform-aware collation (optional)
+        # train_loader_new = DataLoader(
+        #     train_subset,
+        #     batch_size=train_loader.batch_size,
+        #     shuffle=True,
+        #     num_workers=19,  # 0,#
+        #     pin_memory=False,
+        #     collate_fn=lambda batch: collate_with_augmentation(
+        #         batch, transform=train_transforms
+        #     ),
+        # )
+        # val_loader_new = DataLoader(
+        #     val_subset,
+        #     batch_size=1,
+        #     shuffle=False,
+        #     num_workers=19,  # 0,#10,
+        #     pin_memory=False,
+        #     collate_fn=lambda batch: collate_with_augmentation(
+        #         batch, transform=val_transforms
+        #     ),
+        # )
         return train_loader_new, val_loader_new
     
     def _save_logs(self, history: list[dict], save_path: str):
@@ -721,13 +698,13 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
             np.ndarray: The predictions as a NumPy array.
         """
         dataset = dataloader.dataset
+        
         dataloader = DataLoader(
             dataset,
             batch_size=128,
             shuffle=False,
             num_workers=19,  # 0,#10,
-            pin_memory=False,
-            collate_fn=lambda batch: collate_with_augmentation(
+            collate_fn=lambda batch: self.model.collate_with_augmentation(
                 batch, transform=val_transforms
             ),
         )

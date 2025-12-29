@@ -28,48 +28,6 @@ __all__ = [
     "resnet200",
 ]
 
-
-def collate_with_augmentation(batch, transform: callable =None):
-    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch.
-    Args:
-        batch: List of tuples, where each tuple contains (3D_volume, label, group).
-        transform: A callable transformation to apply to each 2D slice.
-    """
-    xs, ys, gs = zip(*batch)  # separate batch components
-    xs_aug = []
-    for x in xs:  # x shape: (D,H,W)
-        slices = []
-        for i in range(x.shape[0]):
-            slice_2d = x[i, :, :].unsqueeze(0)  # (1,H,W)
-            if transform:
-                slice_2d = transform(slice_2d)
-            slices.append(slice_2d)
-        x_aug = torch.stack(slices, dim=0)  # (D,1,H,W)
-        x_aug = x_aug.permute(1, 0, 2, 3)  # (C=1,D,H,W)
-        xs_aug.append(x_aug)
-
-    xs_aug = torch.stack(xs_aug, dim=0)
-    ys = torch.stack(ys)
-    gs = torch.stack(gs)
-    return xs_aug, ys, gs
-
-
-train_transforms = transforms.Compose(
-    [
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomRotation(15),
-        # transforms.RandomResizedCrop((224, 224), scale=(0.8, 1.0)),
-        transforms.Normalize(mean=[0.5], std=[0.5]),
-    ]
-)
-val_transforms = transforms.Compose(
-    [
-        # transforms.Resize((224, 224)),
-        transforms.Normalize(mean=[0.5], std=[0.5]),
-    ]
-)
-
-
 def conv3x3x3(in_planes: int, out_planes: int, stride: int = 1, dilation: int = 1) -> nn.Conv3d:
     """
     Creates a 3D convolutional layer with a 3x3x3 kernel.
@@ -684,6 +642,41 @@ def generate_model(opt: Any) -> ResNet:
 
     return model, model.parameters()
 
+def collate_with_augmentation(batch, transform: callable =None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """
+    Collates a batch of data with optional augmentation and normalization.
+    Args:
+        batch (list of tuples): A batch of data where each element is a tuple 
+            containing three tensors (x, y, g). `x` represents the input data, 
+            `y` represents the labels, and `g` represents additional metadata.
+        transform (callable, optional): A callable transformation function to 
+            apply to the input data `x`. Defaults to None.
+    Returns:
+        tuple[torch.Tensor, torch.Tensor, torch.Tensor]: A tuple containing:
+            - xs (torch.Tensor): The stacked and normalized input data tensor 
+                with shape (B, 1, D, H, W), where B is the batch size.
+            - ys (torch.Tensor): The stacked labels tensor.
+            - gs (torch.Tensor): The stacked metadata tensor.
+    Notes:
+        - The input data `x` is normalized using a mean of 0.5 and a standard 
+            deviation of 0.5.
+        - If a transformation function is provided, it should be applied to 
+            the input data before stacking.
+    """
+    
+    mean = 0.5
+    std = 0.5
+    xs, ys, gs = zip(*batch)
+    # xs = torch.stack(xs, dim=0)   # default stacking: (B, 1, D, H, W)
+    xs = torch.stack([x.unsqueeze(0) for x in xs], dim=0)
+    ys = torch.stack(ys)
+    gs = torch.stack(gs)
+
+    # Normalize: (x - mean) / std
+    xs = (xs - mean) / std
+
+    return xs, ys, gs
+
 
 class ResNet3DModelLite(LightningModel, nn.Module):
     """
@@ -766,6 +759,8 @@ class ResNet3DModelLite(LightningModel, nn.Module):
             self.model = resnet200(num_classes=self.num_classes, prediction_task=self.prediction_task)
         else:
             raise ValueError(f"Unsupported ResNet depth: {self.model_depth}")
+        self.model.collate_with_augmentation = collate_with_augmentation
+        
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of the model.
@@ -781,41 +776,6 @@ class ResNet3DModelLite(LightningModel, nn.Module):
         if x.ndim == 4:
             x = x.unsqueeze(1)  # (B, 1, D, H, W)
         return self.model(x)
-
-def collate_with_augmentation(batch, transform: callable =None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """
-    Collates a batch of data with optional augmentation and normalization.
-    Args:
-        batch (list of tuples): A batch of data where each element is a tuple 
-            containing three tensors (x, y, g). `x` represents the input data, 
-            `y` represents the labels, and `g` represents additional metadata.
-        transform (callable, optional): A callable transformation function to 
-            apply to the input data `x`. Defaults to None.
-    Returns:
-        tuple[torch.Tensor, torch.Tensor, torch.Tensor]: A tuple containing:
-            - xs (torch.Tensor): The stacked and normalized input data tensor 
-                with shape (B, 1, D, H, W), where B is the batch size.
-            - ys (torch.Tensor): The stacked labels tensor.
-            - gs (torch.Tensor): The stacked metadata tensor.
-    Notes:
-        - The input data `x` is normalized using a mean of 0.5 and a standard 
-            deviation of 0.5.
-        - If a transformation function is provided, it should be applied to 
-            the input data before stacking.
-    """
-    
-    mean = 0.5
-    std = 0.5
-    xs, ys, gs = zip(*batch)
-    # xs = torch.stack(xs, dim=0)   # default stacking: (B, 1, D, H, W)
-    xs = torch.stack([x.unsqueeze(0) for x in xs], dim=0)
-    ys = torch.stack(ys)
-    gs = torch.stack(gs)
-
-    # Normalize: (x - mean) / std
-    xs = (xs - mean) / std
-
-    return xs, ys, gs
 
 
 class ResNet3DModel(TorchPipeline):

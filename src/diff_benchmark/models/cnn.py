@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torchvision import models
 
-from diff_benchmark.models.base import TorchPipeline, LightningModel, build_prediction_head
+from diff_benchmark.models.base import TorchPipeline, LightningModel
 from diff_benchmark.models.utils_models.prediction_head import PredictionHead
 
 
@@ -355,7 +355,9 @@ class ResNet3SliceModel(LightningModel):
             pretrained=self.pretrained,
             trainable_blocks=self.trainable_blocks,
             prediction_task=self.prediction_task,
+            **model_kwargs,
         )
+        self.model.collate_with_augmentation = collate_with_augmentation
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
