@@ -20,6 +20,7 @@ from tqdm import tqdm
 
 from diff_benchmark.utils.logger import TrainLogger
 from diff_benchmark.utils.scores import compute_metrics
+from diff_benchmark.models.utils import create_trainer
 
 
 def build_prediction_head(
@@ -63,11 +64,10 @@ def collate_with_augmentation(batch: list, transform: transforms.Compose = None)
         x_aug = x_aug.permute(1, 0, 2, 3)  # (C=1,D,H,W)
         xs_aug.append(x_aug)
 
-
-#     xs_aug = torch.stack(xs_aug, dim=0)
-#     ys = torch.stack(ys)
-#     gs = torch.stack(gs)
-#     return xs_aug, ys, gs
+    xs_aug = torch.stack(xs_aug, dim=0)
+    ys = torch.stack(ys)
+    gs = torch.stack(gs)
+    return xs_aug, ys, gs
 
 
 train_transforms = transforms.Compose(
@@ -590,24 +590,176 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
     def build_model(self):
         """Define the network architecture and loss function."""
 
+    def _train_val_loader_split(self, train_loader: DataLoader, val_ratio: float = 0.3) -> tuple[DataLoader, DataLoader]:
+        """
+        Splits a given DataLoader into training and validation DataLoaders based on a specified validation ratio.
+        Args:
+            train_loader (DataLoader): The DataLoader containing the dataset to be split.
+            val_ratio (float, optional): The ratio of the dataset to be used for validation. Defaults to 0.3.
+        Returns:
+            tuple[DataLoader, DataLoader]: A tuple containing the new training DataLoader and validation DataLoader.
+        Notes:
+            - The split is stratified based on the 'gender' attribute of the dataset.
+            - The new DataLoaders are created with specific batch sizes, shuffling, and optional transform-aware collation.
+            - The random state for the split is fixed at 42 for reproducibility.
+        """
+        
+        dataset = train_loader.dataset  # access the underlying dataset
+        n = len(dataset)
+        genders = np.asarray(dataset.dataset.gender[dataset.indices])
+
+        indices = np.arange(n)
+        train_idx, val_idx = train_test_split(
+            indices, test_size=val_ratio, stratify=genders, random_state=42
+        )
+
+        train_subset = Subset(dataset, train_idx)
+        val_subset = Subset(dataset, val_idx)
+
+        # Transform-aware collation (optional)
+        train_loader_new = DataLoader(
+            train_subset,
+            batch_size=train_loader.batch_size,
+            shuffle=True,
+            num_workers=19,  # 0,#
+            pin_memory=False,
+            collate_fn=lambda batch: collate_with_augmentation(
+                batch, transform=train_transforms
+            ),
+        )
+        val_loader_new = DataLoader(
+            val_subset,
+            batch_size=1,
+            shuffle=False,
+            num_workers=19,  # 0,#10,
+            pin_memory=False,
+            collate_fn=lambda batch: collate_with_augmentation(
+                batch, transform=val_transforms
+            ),
+        )
+        return train_loader_new, val_loader_new
+    
+    def _save_logs(self, history: list[dict], save_path: str):
+        """Utility for saving training logs as JSON or CSV.
+        Args:
+            history (list): List of dictionaries containing training logs.
+            save_path (str): Path to save the logs, must end with .json or .csv.
+        """
+        path = Path(save_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.suffix == ".json":
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(history, f)
+        elif path.suffix == ".csv":
+            keys = history[0].keys()
+            with open(path, "w", encoding="utf-8", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=keys)
+                writer.writeheader()
+                writer.writerows(history)
+        else:
+            raise ValueError("Save path must end with .json or .csv")
+
     @abstractmethod
     # def forward(self, x):
     def forward(self, *args, **kwargs):
         """Forward pass."""
 
-    @abstractmethod
     def fit(self, dataloader: DataLoader):
-        """Fit the model to the training data.
-        Args:
-            dataloader (DataLoader): PyTorch DataLoader with training data.
         """
+        Lightning-based fit function to preserve compatibility with the old API.
+        Splits the input dataloader into training and validation sets,
+        sets up the trainer with early stopping and checkpointing,
+        and runs Trainer.fit().
+        Args:
+            dataloader (DataLoader): The DataLoader containing the training data.
+        """
+        print(f"Device: {self.device_str}")
+        print(f"Fold index: {self.fold_idx}")
 
-    @abstractmethod
-    def predict(self, dataloader: DataLoader):
-        """Predict using the fitted model.
+        train_loader, val_loader = self._train_val_loader_split(dataloader)
+        print("Dataloaders created.")
+
+        trainer = create_trainer(
+            max_epochs=self.epochs,
+            monitor="val_accuracy",
+            mode="max",
+            patience=10,
+            accelerator="gpu" if "cuda" in self.device_str else "cpu",
+            devices=1,
+            save_dir=f"./data/results/checkpoints/{self.run_id}/fold_{self.fold_idx}",
+        )
+
+        trainer.fit(self, train_loader, val_loader)
+        self.trainer = trainer  # store for predict later
+
+        print(
+            f"[INFO] Training finished. Best model: {trainer.checkpoint_callback.best_model_path}"
+        )
+    
+    def x_only_loader(self, dl: DataLoader):
+        """Utility to create a dataloader that yields only inputs (no labels).
         Args:
-            dataloader (DataLoader): PyTorch DataLoader with data to predict.
+            dl (DataLoader): Original dataloader yielding (x, y, g).
+        Yields:
+            tuple: A tuple containing only the input tensor x.
         """
+        for x, _, _ in dl:
+            if isinstance(x, list):
+                x = torch.stack(x)
+            # Ensure it’s a 5D tensor (B, 1, D, H, W)
+            if x.dim() == 4:
+                x = x.unsqueeze(1)
+            yield (x,)
+
+    def predict(self, dataloader: DataLoader) -> np.ndarray:
+        """
+        Lightning-based predict function to preserve the old API.
+        Automatically loads the best checkpoint from the Trainer.
+        Args:
+            dataloader (DataLoader): The DataLoader containing the data to predict on.
+        Returns:
+            np.ndarray: The predictions as a NumPy array.
+        """
+        dataset = dataloader.dataset
+        dataloader = DataLoader(
+            dataset,
+            batch_size=128,
+            shuffle=False,
+            num_workers=19,  # 0,#10,
+            pin_memory=False,
+            collate_fn=lambda batch: collate_with_augmentation(
+                batch, transform=val_transforms
+            ),
+        )
+        trainer = getattr(self, "trainer", None)
+        if trainer is None:
+            # If fit() hasn’t been run, create a default trainer
+            trainer = create_trainer(
+                accelerator="gpu" if "cuda" in self.device_str else "cpu",
+                devices=1,
+                max_epochs=1,
+            )
+
+        # Load best model checkpoint automatically
+        best_path = getattr(trainer.checkpoint_callback, "best_model_path", None)
+        # if best_path and Path(best_path).exists():
+        #     state_dict = torch.load(best_path, map_location=self.device_str)
+        #     self.load_state_dict(state_dict["state_dict"], strict=False)
+        #     print(f"[INFO] Loaded checkpoint from {best_path}")
+
+        self.eval()
+        # preds_all = trainer.predict(self, dataloaders=self.x_only_loader(dataloader))
+        if best_path and Path(best_path).exists():
+            preds_all = trainer.predict(
+                self, dataloaders=dataloader, ckpt_path=best_path
+            )
+        else:
+            preds_all = trainer.predict(
+                self, dataloaders=self.x_only_loader(dataloader)
+            )
+        # preds_all = trainer.predict(self, dataloaders=dataloader)
+        preds = torch.cat([p.cpu() for p in preds_all])
+        return preds.numpy()
 
     def compute_metrics(self, y_true: torch.Tensor, y_pred: torch.Tensor) -> dict:
         """Compute classification metrics.
@@ -675,7 +827,6 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
             dict: A dictionary containing the validation loss under the key "val_loss" and additional 
                 computed metrics with keys prefixed by "val_".
         """
-        
         _ = batch_idx
         x, y, _ = batch
         logits = self(x)

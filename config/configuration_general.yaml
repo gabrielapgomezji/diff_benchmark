@@ -112,10 +112,10 @@ data_paths:
   csv_file: /data/parietal/store2/work/ggomezji/Merged_HCP_Demographics.csv
 
 target_columns:
-- Gender
+# - Gender
 # - Age_in_Yrs
-# - DDisc_AUC_40K
-prediction_task: classification # regression  # multivariate_regression
+- DDisc_AUC_40K
+prediction_task: regression  # classification # multivariate_regression
 
 # ==============================
 # DATA SPLITS
