@@ -12,8 +12,9 @@ from torch import nn
 from torch.utils.data import DataLoader, Subset
 from torchvision import transforms
 
-from diff_benchmark.models.base import LightningModel
+from diff_benchmark.models.base import TorchPipeline, LightningModel
 from diff_benchmark.models.utils import create_trainer
+from diff_benchmark.models.utils_models.prediction_head import PredictionHead
 from typing import Any
 
 __all__ = [
@@ -302,7 +303,7 @@ class ResNet(nn.Module):
                     num_classes is the number of output classes.
     """
 
-    def __init__(self, block: nn.Module, layers: list[int], num_classes: int, shortcut_type: str = "B", no_cuda: bool = False):
+    def __init__(self, block: nn.Module, layers: list[int], num_classes: int, prediction_task: str, shortcut_type: str = "B", no_cuda: bool = False):
         self.inplanes = 64
         self.no_cuda = no_cuda
         super().__init__()
@@ -324,7 +325,14 @@ class ResNet(nn.Module):
         )
 
         self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
+        # self.fc = nn.Linear(512 * block.expansion, num_classes)
+        self.fc = PredictionHead(
+            embedding_dim=512 * block.expansion,
+            prediction_task=prediction_task,
+            num_classes=num_classes, # for regression is specified to 1
+            hidden_dims=None,
+            dropout=0.0,
+        )
 
         for m in self.modules():
             if isinstance(m, nn.Conv3d):
@@ -677,7 +685,7 @@ def generate_model(opt: Any) -> ResNet:
     return model, model.parameters()
 
 
-class ResNet3DModel(LightningModel, nn.Module):
+class ResNet3DModelLite(LightningModel, nn.Module):
     """
     ResNet3DModel
     A wrapper around a 3D ResNet (resnet10) for medical-volume classification built on PyTorch.
@@ -711,6 +719,7 @@ class ResNet3DModel(LightningModel, nn.Module):
             weight_decay=kwargs.get("weight_decay", 1e-4),
             scheduler_type=kwargs.get("scheduler_type", "plateau"),
             optimizer_type=kwargs.get("optimizer_type", "adamw"),
+            prediction_task = kwargs.get("prediction_task", None)
         )
         self.run_id = kwargs.get("run_id", "unnamed_run")
         self.num_classes = num_classes
@@ -719,6 +728,7 @@ class ResNet3DModel(LightningModel, nn.Module):
         self.device_str = device
         self.fold_idx = kwargs.get("fold_idx", -1)
         self.epochs = kwargs.get("epochs", 100)
+        self.prediction_task = kwargs.get("prediction_task", None)
 
         self.save_hyperparameters()
 
@@ -741,16 +751,21 @@ class ResNet3DModel(LightningModel, nn.Module):
         """
         
         if self.model_depth == 10:
-            self.model = resnet10(num_classes=self.num_classes)
+            self.model = resnet10(num_classes=self.num_classes, prediction_task=self.prediction_task)
         elif self.model_depth == 18:
-            self.model = resnet18(num_classes=self.num_classes)
+            self.model = resnet18(num_classes=self.num_classes, prediction_task=self.prediction_task)
         elif self.model_depth == 34:
-            self.model = resnet34(num_classes=self.num_classes)
+            self.model = resnet34(num_classes=self.num_classes, prediction_task=self.prediction_task)
         elif self.model_depth == 50:
-            self.model = resnet50(num_classes=self.num_classes)
+            self.model = resnet50(num_classes=self.num_classes, prediction_task=self.prediction_task)
+        elif self.model_depth == 101:
+            self.model = resnet101(num_classes=self.num_classes, prediction_task=self.prediction_task)
+        elif self.model_depth == 152:
+            self.model = resnet152(num_classes=self.num_classes, prediction_task=self.prediction_task)
+        elif self.model_depth == 200:
+            self.model = resnet200(num_classes=self.num_classes, prediction_task=self.prediction_task)
         else:
             raise ValueError(f"Unsupported ResNet depth: {self.model_depth}")
-
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass of the model.
@@ -767,188 +782,102 @@ class ResNet3DModel(LightningModel, nn.Module):
             x = x.unsqueeze(1)  # (B, 1, D, H, W)
         return self.model(x)
 
-    def _train_val_loader_split(self, train_loader: DataLoader, val_ratio: float = 0.3) -> tuple[DataLoader, DataLoader]:
+def collate_with_augmentation(batch, transform: callable =None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """
+    Collates a batch of data with optional augmentation and normalization.
+    Args:
+        batch (list of tuples): A batch of data where each element is a tuple 
+            containing three tensors (x, y, g). `x` represents the input data, 
+            `y` represents the labels, and `g` represents additional metadata.
+        transform (callable, optional): A callable transformation function to 
+            apply to the input data `x`. Defaults to None.
+    Returns:
+        tuple[torch.Tensor, torch.Tensor, torch.Tensor]: A tuple containing:
+            - xs (torch.Tensor): The stacked and normalized input data tensor 
+                with shape (B, 1, D, H, W), where B is the batch size.
+            - ys (torch.Tensor): The stacked labels tensor.
+            - gs (torch.Tensor): The stacked metadata tensor.
+    Notes:
+        - The input data `x` is normalized using a mean of 0.5 and a standard 
+            deviation of 0.5.
+        - If a transformation function is provided, it should be applied to 
+            the input data before stacking.
+    """
+    
+    mean = 0.5
+    std = 0.5
+    xs, ys, gs = zip(*batch)
+    # xs = torch.stack(xs, dim=0)   # default stacking: (B, 1, D, H, W)
+    xs = torch.stack([x.unsqueeze(0) for x in xs], dim=0)
+    ys = torch.stack(ys)
+    gs = torch.stack(gs)
+
+    # Normalize: (x - mean) / std
+    xs = (xs - mean) / std
+
+    return xs, ys, gs
+
+
+class ResNet3DModel(TorchPipeline):
+    """
+    ResNet3DModel
+    A wrapper around a 3D ResNet (resnet10) for medical-volume classification built on PyTorch.
+    This class combines model construction, optional pretrained-weight loading, training (with
+    a simple inner-loop validation and early stopping), prediction, and lightweight logging.
+    - input_volumes: int, default 1
+        Kept for API compatibility; currently unused. The implementation expects input volumes
+        as 3D tensors and will add a channel dimension before forwarding (unsqueeze(1)).
+    - num_classes: int, default 2
+        Number of output classes for classification (final linear layer output dimension).
+    - device: str or torch.device, default "cuda"
+        Device used for model and tensor transfers.
+    - **kwargs: optional keyword arguments
+        - run_id: str, default "unnamed_run" -- identifier used to name saved model & logs.
+        - epochs: int, default 100 -- number of training epochs to iterate (outer loop).
+        - pretrain_path: str or Path, optional -- path to a checkpoint file; if provided, the
+          checkpoint is loaded (torch.load) and, if it contains a "state_dict" key that mapping
+          is used. load_state_dict(..., strict=False) is used to allow partial matches.
+        - learning_rate: float, default 1e-5 -- Adam optimizer learning rate.
+        - weight_decay: float, default 1e-4 -- Adam optimizer weight decay (L2).
+        (Other kwargs are ignored by the implementation.)
+    """
+
+    data_type = "images"
+
+    def _build_model(self, num_classes: int, model_depth=10, **kwargs) -> ResNet:
         """
-        Splits a given DataLoader into training and validation DataLoaders based on a specified validation ratio.
+        Build a ResNet model with the specified depth and number of classes.
         Args:
-            train_loader (DataLoader): The DataLoader containing the dataset to be split.
-            val_ratio (float, optional): The ratio of the dataset to be used for validation. Defaults to 0.3.
+            num_classes (int): The number of output classes for the model.
+            model_depth (int, optional): The depth of the ResNet model. Supported values are 
+                10, 18, 34, 50, 101, 152, and 200. Defaults to 10.
+            **kwargs: Additional keyword arguments. Supported keys:
+                - prediction_task (str, optional): Specifies the prediction task for the model.
         Returns:
-            tuple[DataLoader, DataLoader]: A tuple containing the new training DataLoader and validation DataLoader.
-        Notes:
-            - The split is stratified based on the 'gender' attribute of the dataset.
-            - The new DataLoaders are created with specific batch sizes, shuffling, and optional transform-aware collation.
-            - The random state for the split is fixed at 42 for reproducibility.
-        """
-        
-        dataset = train_loader.dataset  # access the underlying dataset
-        n = len(dataset)
-        genders = np.asarray(dataset.dataset.gender[dataset.indices])
-
-        indices = np.arange(n)
-        train_idx, val_idx = train_test_split(
-            indices, test_size=val_ratio, stratify=genders, random_state=42
-        )
-
-        train_subset = Subset(dataset, train_idx)
-        val_subset = Subset(dataset, val_idx)
-
-        # Transform-aware collation (optional)
-        train_loader_new = DataLoader(
-            train_subset,
-            batch_size=train_loader.batch_size,
-            shuffle=True,
-            num_workers=19,  # 0,#
-            pin_memory=False,
-            collate_fn=lambda batch: collate_with_augmentation(
-                batch, transform=train_transforms
-            ),
-        )
-        val_loader_new = DataLoader(
-            val_subset,
-            batch_size=1,
-            shuffle=False,
-            num_workers=19,  # 0,#10,
-            pin_memory=False,
-            collate_fn=lambda batch: collate_with_augmentation(
-                batch, transform=val_transforms
-            ),
-        )
-        return train_loader_new, val_loader_new
-
-    def _save_logs(self, history: list[dict], save_path: str):
-        """
-        Saves the provided history logs to a file in either JSON or CSV format.
-        Args:
-            history (list[dict]): A list of dictionaries containing the log data to save.
-            save_path (str): The file path where the logs should be saved. The file extension
-                             must be either '.json' or '.csv'.
+            ResNet: An instance of the ResNet model with the specified configuration.
         Raises:
-            ValueError: If the save_path does not end with '.json' or '.csv'.
-        Notes:
-            - If the save_path directory does not exist, it will be created.
-            - For JSON files, the entire history is serialized and saved.
-            - For CSV files, the keys of the first dictionary in the history list are used
-              as the column headers.
+            ValueError: If an unsupported ResNet depth is provided.
         """
         
-        path = Path(save_path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        if path.suffix == ".json":
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(history, f)
-        elif path.suffix == ".csv":
-            keys = history[0].keys()
-            with open(path, "w", encoding="utf-8", newline="") as f:
-                writer = csv.DictWriter(f, fieldnames=keys)
-                writer.writeheader()
-                writer.writerows(history)
+        prediction_task = kwargs.get("prediction_task", None)
+        # model = resnet10(num_classes=num_classes)
+        if model_depth == 10:
+            model = resnet10(num_classes=num_classes, prediction_task=prediction_task)
+        elif model_depth == 18:
+            model = resnet18(num_classes=num_classes, prediction_task=prediction_task)
+        elif model_depth == 34:
+            model = resnet34(num_classes=num_classes, prediction_task=prediction_task)
+        elif model_depth == 50:
+            model = resnet50(num_classes=num_classes, prediction_task=prediction_task)
+        elif model_depth == 101:
+            model = resnet101(num_classes=num_classes, prediction_task=prediction_task)
+        elif model_depth == 152:
+            model = resnet152(num_classes=num_classes, prediction_task=prediction_task)
+        elif model_depth == 200:
+            model = resnet200(num_classes=num_classes, prediction_task=prediction_task)
         else:
-            raise ValueError("Save path must end with .json or .csv")
-
-    def _save_logs(self, history: list[dict], save_path: str):
-        """
-        Saves the provided history logs to a file in either JSON or CSV format.
-        Args:
-            history (list[dict]): A list of dictionaries containing the log data to save.
-            save_path (str): The file path where the logs should be saved. 
-                             The file extension must be either '.json' or '.csv'.
-        Raises:
-            ValueError: If the save_path does not end with '.json' or '.csv'.
-        """
-        
-        path = Path(save_path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        if path.suffix == ".json":
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(history, f)
-        elif path.suffix == ".csv":
-            keys = history[0].keys()
-            with open(path, "w", encoding="utf-8", newline="") as f:
-                writer = csv.DictWriter(f, fieldnames=keys)
-                writer.writeheader()
-                writer.writerows(history)
-        else:
-            raise ValueError("Save path must end with .json or .csv")
-
-    def fit(self, dataloader: DataLoader):
-        """
-        Lightning-based fit function to preserve compatibility with the old API.
-        Splits the input dataloader into training and validation sets,
-        sets up the trainer with early stopping and checkpointing,
-        and runs Trainer.fit().
-        Args:
-            dataloader (DataLoader): The DataLoader containing the training data.
-        """
-        print(f"Device: {self.device_str}")
-        print(f"Fold index: {self.fold_idx}")
-
-        train_loader, val_loader = self._train_val_loader_split(dataloader)
-        print("Dataloaders created.")
-
-        trainer = create_trainer(
-            max_epochs=self.epochs,
-            monitor="val_accuracy",
-            mode="max",
-            patience=10,
-            accelerator="gpu" if "cuda" in self.device_str else "cpu",
-            devices=1,
-            save_dir=f"./data/results/checkpoints/{self.run_id}/fold_{self.fold_idx}",
-        )
-
-        trainer.fit(self, train_loader, val_loader)
-        self.trainer = trainer  # store for predict later
-
-        print(
-            f"[INFO] Training finished. Best model: {trainer.checkpoint_callback.best_model_path}"
-        )
-
-    def predict(self, dataloader: DataLoader) -> np.ndarray:
-        """
-        Lightning-based predict function to preserve the old API.
-        Automatically loads the best checkpoint from the Trainer.
-        Args:
-            dataloader (DataLoader): The DataLoader containing the data to predict on.
-        Returns:
-            np.ndarray: The predictions as a NumPy array.
-        """
-        dataset = dataloader.dataset
-        dataloader = DataLoader(
-            dataset,
-            batch_size=128,
-            shuffle=False,
-            num_workers=19,  # 0,#10,
-            pin_memory=False,
-            collate_fn=lambda batch: collate_with_augmentation(
-                batch, transform=val_transforms
-            ),
-        )
-        trainer = getattr(self, "trainer", None)
-        if trainer is None:
-            # If fit() hasn’t been run, create a default trainer
-            trainer = create_trainer(
-                accelerator="gpu" if "cuda" in self.device_str else "cpu",
-                devices=1,
-                max_epochs=1,
-            )
-
-        # Load best model checkpoint automatically
-        best_path = getattr(trainer.checkpoint_callback, "best_model_path", None)
-        # if best_path and Path(best_path).exists():
-        #     state_dict = torch.load(best_path, map_location=self.device_str)
-        #     self.load_state_dict(state_dict["state_dict"], strict=False)
-        #     print(f"[INFO] Loaded checkpoint from {best_path}")
-
-        self.eval()
-        # preds_all = trainer.predict(self, dataloaders=self.x_only_loader(dataloader))
-        if best_path and Path(best_path).exists():
-            preds_all = trainer.predict(
-                self, dataloaders=dataloader, ckpt_path=best_path
-            )
-        else:
-            preds_all = trainer.predict(
-                self, dataloaders=self.x_only_loader(dataloader)
-            )
-        # preds_all = trainer.predict(self, dataloaders=dataloader)
-        preds = torch.cat([p.cpu() for p in preds_all])
-        return preds.numpy()
+            raise ValueError(f"Unsupported ResNet depth: {model_depth}")
+        model.collate_with_augmentation = collate_with_augmentation
+        model.mean = 0.5
+        model.std = 0.5
+        return model

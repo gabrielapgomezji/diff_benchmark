@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torchvision import models
 
-from diff_benchmark.models.base import TorchPipeline, build_prediction_head
+from diff_benchmark.models.base import TorchPipeline, LightningModel, build_prediction_head
 from diff_benchmark.models.utils_models.prediction_head import PredictionHead
 
 
@@ -172,6 +172,17 @@ class ResNet3SliceMultihead(nn.Module):
         feats = self.dropout(feats)
         out = self.fc(feats)  # (B, num_classes)
         return out
+        # feats = []
+        # for i in range(num_subvols):
+        #     sv = subvols[:, i]  # (Batch, 3, Height, Width)
+        #     f = self.backbone(sv)  # (Batch, 512)
+        #     feats.append(f)
+
+        # feats = torch.cat(feats, dim=1)  # (Batch, num_subvols*512)
+        # feats = self.dropout(feats)
+        # # Normalization layer
+        # out = self.fc(feats)  # (Batch, num_classes)
+        # return out
 
 
 def collate_with_augmentation(batch: list, transform: callable = None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -257,3 +268,94 @@ class CNNTorchTrainModel(TorchPipeline):
         model.mean = 0.5
 
         return model
+
+class ResNet3SliceModel(LightningModel):
+    """
+    Lightning-based implementation of the 3-slice ResNet model.
+    Retains the same API as the original TorchAbstractModel (fit, predict),
+    but runs fully under the PyTorch Lightning training framework.
+    Attributes:
+        data_type (str): Type of data the model works with, set to "images".
+    Args:
+        input_slices (int): Number of input slices for the model.
+        num_classes (int, optional): Number of output classes. Default is 2.
+        device (str, optional): Device to run the model on. Default is "cuda".
+        **kwargs: Additional keyword arguments for model configuration.
+    Methods:
+        build_model():
+            Builds the ResNet3SliceClassifier model.
+        forward(x):
+            Forward pass of the model.
+        _train_val_loader_split(train_loader, val_ratio):
+            Splits the input dataloader into training and validation sets.
+        _save_logs(history, save_path):
+            Saves training logs to a specified path in JSON or CSV format.
+        fit(dataloader):
+            Fits the model using the provided dataloader.
+        x_only_loader(dl):
+            Creates a dataloader that yields only inputs (no labels).
+        predict(dataloader):
+            Predicts outputs using the provided dataloader.
+    """
+
+    data_type = "images"
+
+    def __init__(self, input_slices: int =145, num_classes: int =2, device: str ="cuda", **kwargs):
+        super().__init__(
+            learning_rate=kwargs.get("learning_rate", 1e-5),
+            weight_decay=kwargs.get("weight_decay", 1e-4),
+            average="binary",
+            scheduler_type=kwargs.get("weight_decay", "plateau"),
+            optimizer_type=kwargs.get("optimizer_type", "adamw"),
+            prediction_task=kwargs.get("prediction_task", None),
+        )
+
+        self.device_str = device
+        self.run_id = kwargs.get("run_id", "unnamed_run")
+        self.fold_idx = kwargs.get("fold_idx", -1)
+        self.epochs = kwargs.get("epochs", 100)
+        self.input_slices = input_slices
+        self.num_classes = num_classes
+        self.freeze_backbone = kwargs.get("freeze_backbone", True)
+        self.prediction_task = kwargs.get("prediction_task", None)
+        self.dropout = kwargs.get("dropout", 0.5)
+        self.pretrained = kwargs.get("pretrained", False)
+        self.trainable_blocks = kwargs.get("trainable_blocks", None)
+        self.prediction_task = kwargs.get("prediction_task", None)
+        self.save_hyperparameters()
+
+        # Build the model and loss
+        self.build_model()
+        self.criterion = nn.CrossEntropyLoss()
+
+    # ------------------------------------------------------------
+    # Model definition
+    # ------------------------------------------------------------
+    def build_model(self):
+        """Build the actual ResNet classifier."""
+        # To avoid repeating args as input_slices
+        model_kwargs = {
+            k: v
+            for k, v in vars(self.hparams).items()
+            if k
+            not in [
+                "input_slices",
+                "num_classes",
+                "learning_rate",
+                "weight_decay",
+                "average",
+            ]
+        }
+        
+        self.model = ResNet3SliceMultihead(
+            input_slices=self.input_slices,
+            num_classes=self.num_classes,
+            freeze_backbone=self.freeze_backbone,
+            dropout=self.dropout,
+            pretrained=self.pretrained,
+            trainable_blocks=self.trainable_blocks,
+            prediction_task=self.prediction_task,
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.model(x)

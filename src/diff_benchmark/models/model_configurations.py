@@ -1,10 +1,9 @@
 import hashlib
 import json
 
-from diff_benchmark.models.cnn_light import ResNet3SliceModel
 from diff_benchmark.models.classic_ml import PCARandomForestModel, PCASVMModel
-from diff_benchmark.models.medicalnet_torch import ResNet3DModel
-from diff_benchmark.models.cnn_torch import CNNTorchTrainModel
+from diff_benchmark.models.medicalnet import ResNet3DModelLite, ResNet3DModel
+from diff_benchmark.models.cnn import CNNTorchTrainModel, ResNet3SliceModel
 
 from diff_benchmark.models.dummy import DummyClassifier, DummyRegressor
 from diff_benchmark.models.logistic_regression import (
@@ -80,5 +79,8 @@ def get_model(name: str, config: dict) -> object:
 
     if name == "medicalnet":
         return ResNet3DModel(**config)
+    
+    if name == "medicalnet_lite":
+        return ResNet3DModelLite(**config)
 
     raise ValueError(f"Unknown model name: {name}")
