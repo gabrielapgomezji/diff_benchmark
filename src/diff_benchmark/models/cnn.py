@@ -93,6 +93,8 @@ class ResNet3SliceMultihead(nn.Module):
                 (batch, 1) for regression tasks.
     """
     
+    data_type = "images"
+    
     def __init__(
         self, input_slices: int, num_classes: int = 2, freeze_backbone: bool = True, dropout: float = 0.5, **kwargs
     ):
@@ -184,77 +186,233 @@ class ResNet3SliceMultihead(nn.Module):
         # out = self.fc(feats)  # (Batch, num_classes)
         # return out
 
+    def collate_with_augmentation(batch: list, transform: callable = None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch.
+        Args:
+            batch (list): A list of tuples, where each tuple contains (x, y, g) for a single sample.
+                        x is a 3D tensor (D, H, W), y is the label tensor, and g is the group tensor.
+            transform (callable, optional): A function that applies 2D augmentations to a single slice.
+                                            If None, no augmentation is applied. Default is None.
+        Returns:
+            tuple: A tuple containing:
+                - xs_aug (torch.Tensor): A tensor of shape (batch_size, C, D, H, W) with augmented slices.
+                - ys (torch.Tensor): A tensor of shape (batch_size,) containing the labels.
+                - gs (torch.Tensor): A tensor of shape (batch_size,) containing the group identifiers.
+        """
+        xs, ys, gs = zip(*batch)  # separate batch components
+        xs_aug = []
+        for x in xs:  # x shape: (D,H,W)
+            slices = []
+            for i in range(x.shape[0]):
+                slice_2d = x[i, :, :].unsqueeze(0)  # (1,H,W)
+                if transform:
+                    slice_2d = transform(slice_2d)
+                slices.append(slice_2d)
+            x_aug = torch.stack(slices, dim=0)  # (D,1,H,W)
+            x_aug = x_aug.permute(1, 0, 2, 3)  # (C=1,D,H,W)
+            xs_aug.append(x_aug)
+
+        xs_aug = torch.stack(xs_aug, dim=0)
+        ys = torch.stack(ys)
+        gs = torch.stack(gs)
+        return xs_aug.squeeze(1), ys, gs
 
 def collate_with_augmentation(batch: list, transform: callable = None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch.
-    Args:
-        batch (list): A list of tuples, where each tuple contains (x, y, g) for a single sample.
-                      x is a 3D tensor (D, H, W), y is the label tensor, and g is the group tensor.
-        transform (callable, optional): A function that applies 2D augmentations to a single slice.
-                                        If None, no augmentation is applied. Default is None.
-    Returns:
-        tuple: A tuple containing:
-            - xs_aug (torch.Tensor): A tensor of shape (batch_size, C, D, H, W) with augmented slices.
-            - ys (torch.Tensor): A tensor of shape (batch_size,) containing the labels.
-            - gs (torch.Tensor): A tensor of shape (batch_size,) containing the group identifiers.
+        """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch.
+        Args:
+            batch (list): A list of tuples, where each tuple contains (x, y, g) for a single sample.
+                        x is a 3D tensor (D, H, W), y is the label tensor, and g is the group tensor.
+            transform (callable, optional): A function that applies 2D augmentations to a single slice.
+                                            If None, no augmentation is applied. Default is None.
+        Returns:
+            tuple: A tuple containing:
+                - xs_aug (torch.Tensor): A tensor of shape (batch_size, C, D, H, W) with augmented slices.
+                - ys (torch.Tensor): A tensor of shape (batch_size,) containing the labels.
+                - gs (torch.Tensor): A tensor of shape (batch_size,) containing the group identifiers.
+        """
+        xs, ys, gs = zip(*batch)  # separate batch components
+        xs_aug = []
+        for x in xs:  # x shape: (D,H,W)
+            slices = []
+            for i in range(x.shape[0]):
+                slice_2d = x[i, :, :].unsqueeze(0)  # (1,H,W)
+                if transform:
+                    slice_2d = transform(slice_2d)
+                slices.append(slice_2d)
+            x_aug = torch.stack(slices, dim=0)  # (D,1,H,W)
+            x_aug = x_aug.permute(1, 0, 2, 3)  # (C=1,D,H,W)
+            xs_aug.append(x_aug)
+
+        xs_aug = torch.stack(xs_aug, dim=0)
+        ys = torch.stack(ys)
+        gs = torch.stack(gs)
+        return xs_aug.squeeze(1), ys, gs
+# class CNNTorchTrainModel(TorchPipeline):
+#     """CNN Torch Train Model class inheriting from TorchPipeline.
+#     Args:
+#         input_slices (int): Number of input slices.
+#         num_classes (int): Number of output classes.
+#         freeze_backbone (bool): Whether to freeze the backbone during training.
+#         dropout (float): Dropout rate.
+#         **kwargs: Additional keyword arguments.
+#     Attributes:
+#         data_type (str): Type of data, set to "images".
+#     Methods:
+#         _build_model(input_slices, num_classes, freeze_backbone, dropout, **kwargs):
+#             Builds and returns the ResNet3SliceMultihead model.
+#     """
+
+#     data_type = "images"
+
+#     def _build_model(
+#         self, input_slices: int, num_classes: int, freeze_backbone: bool, dropout: float, **kwargs
+#     ):
+#         """
+#         Build and configure a ResNet3SliceMultihead model.
+#         Args:
+#             input_slices (int): The number of input slices for the model.
+#             num_classes (int): The number of output classes for the model.
+#             freeze_backbone (bool): Whether to freeze the backbone of the model during training.
+#             dropout (float): The dropout rate to use in the model.
+#             **kwargs: Additional optional arguments:
+#                 - pretrained (bool): Whether to use a pretrained model. Default is False.
+#                 - trainable_blocks (Optional): Specifies which blocks of the model are trainable. Default is None.
+#                 - prediction_task (Optional): Specifies the prediction task for the model. Default is None.
+#         Returns:
+#             ResNet3SliceMultihead: A configured instance of the ResNet3SliceMultihead model.
+#         """
+#         pretrained = kwargs.get("pretrained", False)
+#         trainable_blocks = kwargs.get("trainable_blocks", None)
+#         prediction_task = kwargs.get("prediction_task", None)
+#         model = ResNet3SliceMultihead(
+#             input_slices=input_slices,
+#             num_classes=num_classes,
+#             freeze_backbone=freeze_backbone,
+#             dropout=dropout,
+#             pretrained=pretrained,
+#             trainable_blocks=trainable_blocks,
+#             prediction_task=prediction_task,
+#         )
+#         model.collate_with_augmentation = collate_with_augmentation
+#         model.std = 0.5
+#         model.mean = 0.5
+
+#         return model
+
+# class ResNet3SliceModel(LightningModel):
+#     """
+#     Lightning-based implementation of the 3-slice ResNet model.
+#     Retains the same API as the original TorchAbstractModel (fit, predict),
+#     but runs fully under the PyTorch Lightning training framework.
+#     Attributes:
+#         data_type (str): Type of data the model works with, set to "images".
+#     Args:
+#         input_slices (int): Number of input slices for the model.
+#         num_classes (int, optional): Number of output classes. Default is 2.
+#         device (str, optional): Device to run the model on. Default is "cuda".
+#         **kwargs: Additional keyword arguments for model configuration.
+#     Methods:
+#         build_model():
+#             Builds the ResNet3SliceClassifier model.
+#         forward(x):
+#             Forward pass of the model.
+#         _train_val_loader_split(train_loader, val_ratio):
+#             Splits the input dataloader into training and validation sets.
+#         _save_logs(history, save_path):
+#             Saves training logs to a specified path in JSON or CSV format.
+#         fit(dataloader):
+#             Fits the model using the provided dataloader.
+#         x_only_loader(dl):
+#             Creates a dataloader that yields only inputs (no labels).
+#         predict(dataloader):
+#             Predicts outputs using the provided dataloader.
+#     """
+
+#     data_type = "images"
+
+#     def __init__(self, input_slices: int =145, num_classes: int =2, device: str ="cuda", **kwargs):
+#         super().__init__(
+#             learning_rate=kwargs.get("learning_rate", 1e-5),
+#             weight_decay=kwargs.get("weight_decay", 1e-4),
+#             average="binary",
+#             scheduler_type=kwargs.get("weight_decay", "plateau"),
+#             optimizer_type=kwargs.get("optimizer_type", "adamw"),
+#             prediction_task=kwargs.get("prediction_task", None),
+#         )
+
+#         self.device_str = device
+#         self.run_id = kwargs.get("run_id", "unnamed_run")
+#         self.fold_idx = kwargs.get("fold_idx", -1)
+#         self.epochs = kwargs.get("epochs", 100)
+#         self.input_slices = input_slices
+#         self.num_classes = num_classes
+#         self.freeze_backbone = kwargs.get("freeze_backbone", True)
+#         self.prediction_task = kwargs.get("prediction_task", None)
+#         self.dropout = kwargs.get("dropout", 0.5)
+#         self.pretrained = kwargs.get("pretrained", False)
+#         self.trainable_blocks = kwargs.get("trainable_blocks", None)
+#         self.prediction_task = kwargs.get("prediction_task", None)
+#         self.save_hyperparameters()
+
+#         # Build the model and loss
+#         self.build_model()
+#         self.criterion = nn.CrossEntropyLoss()
+
+#     # ------------------------------------------------------------
+#     # Model definition
+#     # ------------------------------------------------------------
+#     def build_model(self):
+#         """Build the actual ResNet classifier."""
+#         # To avoid repeating args as input_slices
+#         model_kwargs = {
+#             k: v
+#             for k, v in vars(self.hparams).items()
+#             if k
+#             not in [
+#                 "input_slices",
+#                 "num_classes",
+#                 "learning_rate",
+#                 "weight_decay",
+#                 "average",
+#             ]
+#         }
+        
+#         self.model = ResNet3SliceMultihead(
+#             input_slices=self.input_slices,
+#             num_classes=self.num_classes,
+#             freeze_backbone=self.freeze_backbone,
+#             dropout=self.dropout,
+#             pretrained=self.pretrained,
+#             trainable_blocks=self.trainable_blocks,
+#             prediction_task=self.prediction_task,
+#             **model_kwargs,
+#         )
+#         self.model.collate_with_augmentation = collate_with_augmentation
+
+#     def forward(self, x: torch.Tensor) -> torch.Tensor:
+#         return self.model(x)
+
+
+class ResNet3SliceBackbone(nn.Module):
     """
-    xs, ys, gs = zip(*batch)  # separate batch components
-    xs_aug = []
-    for x in xs:  # x shape: (D,H,W)
-        slices = []
-        for i in range(x.shape[0]):
-            slice_2d = x[i, :, :].unsqueeze(0)  # (1,H,W)
-            if transform:
-                slice_2d = transform(slice_2d)
-            slices.append(slice_2d)
-        x_aug = torch.stack(slices, dim=0)  # (D,1,H,W)
-        x_aug = x_aug.permute(1, 0, 2, 3)  # (C=1,D,H,W)
-        xs_aug.append(x_aug)
-
-    xs_aug = torch.stack(xs_aug, dim=0)
-    ys = torch.stack(ys)
-    gs = torch.stack(gs)
-    return xs_aug.squeeze(1), ys, gs
-
-
-class CNNTorchTrainModel(TorchPipeline):
-    """CNN Torch Train Model class inheriting from TorchPipeline.
-    Args:
-        input_slices (int): Number of input slices.
-        num_classes (int): Number of output classes.
-        freeze_backbone (bool): Whether to freeze the backbone during training.
-        dropout (float): Dropout rate.
-        **kwargs: Additional keyword arguments.
-    Attributes:
-        data_type (str): Type of data, set to "images".
-    Methods:
-        _build_model(input_slices, num_classes, freeze_backbone, dropout, **kwargs):
-            Builds and returns the ResNet3SliceMultihead model.
+    Backend-agnostic CNN architecture.
     """
 
     data_type = "images"
 
-    def _build_model(
-        self, input_slices: int, num_classes: int, freeze_backbone: bool, dropout: float, **kwargs
+    def __init__(
+        self,
+        input_slices: int,
+        num_classes: int,
+        freeze_backbone: bool = True,
+        dropout: float = 0.5,
+        pretrained: bool = False,
+        trainable_blocks=None,
+        prediction_task=None,
     ):
-        """
-        Build and configure a ResNet3SliceMultihead model.
-        Args:
-            input_slices (int): The number of input slices for the model.
-            num_classes (int): The number of output classes for the model.
-            freeze_backbone (bool): Whether to freeze the backbone of the model during training.
-            dropout (float): The dropout rate to use in the model.
-            **kwargs: Additional optional arguments:
-                - pretrained (bool): Whether to use a pretrained model. Default is False.
-                - trainable_blocks (Optional): Specifies which blocks of the model are trainable. Default is None.
-                - prediction_task (Optional): Specifies the prediction task for the model. Default is None.
-        Returns:
-            ResNet3SliceMultihead: A configured instance of the ResNet3SliceMultihead model.
-        """
-        pretrained = kwargs.get("pretrained", False)
-        trainable_blocks = kwargs.get("trainable_blocks", None)
-        prediction_task = kwargs.get("prediction_task", None)
-        model = ResNet3SliceMultihead(
+        super().__init__()
+
+        self.net = ResNet3SliceMultihead(
             input_slices=input_slices,
             num_classes=num_classes,
             freeze_backbone=freeze_backbone,
@@ -263,101 +421,11 @@ class CNNTorchTrainModel(TorchPipeline):
             trainable_blocks=trainable_blocks,
             prediction_task=prediction_task,
         )
-        model.collate_with_augmentation = collate_with_augmentation
-        model.std = 0.5
-        model.mean = 0.5
 
-        return model
-
-class ResNet3SliceModel(LightningModel):
-    """
-    Lightning-based implementation of the 3-slice ResNet model.
-    Retains the same API as the original TorchAbstractModel (fit, predict),
-    but runs fully under the PyTorch Lightning training framework.
-    Attributes:
-        data_type (str): Type of data the model works with, set to "images".
-    Args:
-        input_slices (int): Number of input slices for the model.
-        num_classes (int, optional): Number of output classes. Default is 2.
-        device (str, optional): Device to run the model on. Default is "cuda".
-        **kwargs: Additional keyword arguments for model configuration.
-    Methods:
-        build_model():
-            Builds the ResNet3SliceClassifier model.
-        forward(x):
-            Forward pass of the model.
-        _train_val_loader_split(train_loader, val_ratio):
-            Splits the input dataloader into training and validation sets.
-        _save_logs(history, save_path):
-            Saves training logs to a specified path in JSON or CSV format.
-        fit(dataloader):
-            Fits the model using the provided dataloader.
-        x_only_loader(dl):
-            Creates a dataloader that yields only inputs (no labels).
-        predict(dataloader):
-            Predicts outputs using the provided dataloader.
-    """
-
-    data_type = "images"
-
-    def __init__(self, input_slices: int =145, num_classes: int =2, device: str ="cuda", **kwargs):
-        super().__init__(
-            learning_rate=kwargs.get("learning_rate", 1e-5),
-            weight_decay=kwargs.get("weight_decay", 1e-4),
-            average="binary",
-            scheduler_type=kwargs.get("weight_decay", "plateau"),
-            optimizer_type=kwargs.get("optimizer_type", "adamw"),
-            prediction_task=kwargs.get("prediction_task", None),
-        )
-
-        self.device_str = device
-        self.run_id = kwargs.get("run_id", "unnamed_run")
-        self.fold_idx = kwargs.get("fold_idx", -1)
-        self.epochs = kwargs.get("epochs", 100)
-        self.input_slices = input_slices
-        self.num_classes = num_classes
-        self.freeze_backbone = kwargs.get("freeze_backbone", True)
-        self.prediction_task = kwargs.get("prediction_task", None)
-        self.dropout = kwargs.get("dropout", 0.5)
-        self.pretrained = kwargs.get("pretrained", False)
-        self.trainable_blocks = kwargs.get("trainable_blocks", None)
-        self.prediction_task = kwargs.get("prediction_task", None)
-        self.save_hyperparameters()
-
-        # Build the model and loss
-        self.build_model()
-        self.criterion = nn.CrossEntropyLoss()
-
-    # ------------------------------------------------------------
-    # Model definition
-    # ------------------------------------------------------------
-    def build_model(self):
-        """Build the actual ResNet classifier."""
-        # To avoid repeating args as input_slices
-        model_kwargs = {
-            k: v
-            for k, v in vars(self.hparams).items()
-            if k
-            not in [
-                "input_slices",
-                "num_classes",
-                "learning_rate",
-                "weight_decay",
-                "average",
-            ]
-        }
-        
-        self.model = ResNet3SliceMultihead(
-            input_slices=self.input_slices,
-            num_classes=self.num_classes,
-            freeze_backbone=self.freeze_backbone,
-            dropout=self.dropout,
-            pretrained=self.pretrained,
-            trainable_blocks=self.trainable_blocks,
-            prediction_task=self.prediction_task,
-            **model_kwargs,
-        )
-        self.model.collate_with_augmentation = collate_with_augmentation
+        # dataset-specific metadata (OK here)
+        self.collate_with_augmentation = collate_with_augmentation
+        self.mean = 0.5
+        self.std = 0.5
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.model(x)
+        return self.net(x)
