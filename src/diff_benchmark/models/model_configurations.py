@@ -1,15 +1,19 @@
 import hashlib
 import json
+import torch.nn as nn
+
 
 from diff_benchmark.models.classic_ml import PCARandomForestModel, PCASVMModel
-from diff_benchmark.models.medicalnet import ResNet3DModelLite, ResNet3DModel
-from diff_benchmark.models.cnn import CNNTorchTrainModel, ResNet3SliceModel
+from diff_benchmark.models.medicalnet import ResNet3DModelLite, ResNet3DModel, MedicalNet
+from diff_benchmark.models.cnn import ResNet3SliceBackbone #CNNTorchTrainModel, ResNet3SliceModel, ResNet3SliceMultihead
 
 from diff_benchmark.models.dummy import DummyClassifier, DummyRegressor
 from diff_benchmark.models.logistic_regression import (
     LinearModel,
     PCALinearModel,
 )
+
+from diff_benchmark.models.base import TorchPipeline, LightningModel, NumpyAbstractModel
 
 
 def make_run_id(name: str, params: dict) -> str:
@@ -28,6 +32,104 @@ def make_run_id(name: str, params: dict) -> str:
     # Hash to avoid overly long filenames
     run_hash = hashlib.md5(params_str.encode()).hexdigest()[:8]
     return f"{name}_{run_hash}"
+
+
+
+
+
+
+
+
+# def create_model(
+#     model_name: str,
+#     model_kwargs: dict = {},
+# ):
+    
+#     """Creates a model instance based on the specified type.
+#     Args:
+#         model (str): The type of model to create (e.g., "torch", "lightning").
+#         model_kwargs (dict): Additional keyword arguments for the model.
+    
+#     Returns:
+#         nn.Module: Configured model instance for the specified type.
+#     """
+    
+    
+#     if model_name == "pca":
+#         return PCARandomForestModel(**model_kwargs)
+    
+#     elif model_name == "2dcnn":
+#         return ResNet3SliceMultihead(**model_kwargs)
+    
+#     elif model_name == "medicalnet":
+#         return MedicalNet(**model_kwargs)
+
+#     raise ValueError(f"Unknown model type: {model_name}")
+
+
+
+# def create_backend_trainer(
+#     model: nn.Module,
+#     backend: str,
+#     backend_kwargs: dict = {},
+# ):
+#     """Creates a Trainer for a specific backend model.
+#     Args:
+#         model (nn.Module): The model to be trained.
+#         backend (str): The backend type (e.g., "torch", "lightning").
+#         backend_kwargs (dict): Additional keyword arguments for the backend trainer.
+    
+#     Returns:
+#         Trainer: Configured Trainer instance for the specified backend.
+#     """
+#     if backend == "torch":
+#         model.std = 0.5
+#         model.mean = 0.5
+#         return TorchPipeline(model=model, **backend_kwargs)
+    
+#     elif backend == "lightning":
+#         return LightningModel(model=model, **backend_kwargs)
+    
+#     elif backend == "sklearn":
+#         return NumpyAbstractModel(model=model, **backend_kwargs)
+
+
+
+# def create_trainer(
+#     model_name: str,
+#     model_kwargs: dict = {},
+#     backend: str = "lightning",
+#     backend_kwargs: dict = {},
+# ):
+#     """Creates a Trainer for a specific model and backend.
+#     Args:
+#         model_name (str): The type of model to create (e.g., "2dcnn", "medicalnet").
+#         model_kwargs (dict): Additional keyword arguments for the model.
+#         backend (str): The backend type (e.g., "torch", "lightning").
+#         backend_kwargs (dict): Additional keyword arguments for the backend trainer.
+#     Returns:
+#         Trainer: Configured Trainer instance for the specified model and backend.
+#     """    
+#     model = create_model(model_name, model_kwargs)
+#     trainer = create_backend_trainer(model, backend, backend_kwargs)
+#     return trainer
+
+from diff_benchmark.models.utils_models.trainer import TorchTrainer, LightningTrainer
+def create_trainer(
+    model,
+    backend: str,
+    backend_kwargs: dict,
+):
+    backend = backend.lower()
+
+    if backend == "torch":
+        return TorchTrainer(model=model, **backend_kwargs)
+
+    if backend == "lightning":
+        return LightningTrainer(model=model, **backend_kwargs)
+
+    raise ValueError(f"Unknown backend: {backend}")
+
 
 
 def get_model(name: str, config: dict) -> object:
@@ -71,8 +173,59 @@ def get_model(name: str, config: dict) -> object:
     if name == "pca_svm":
         return PCASVMModel(**config)
 
-    if name == "2dcnn_torch":
-        return CNNTorchTrainModel(**config)
+    if name in {"2dcnn", "2dcnn_torch", "2dcnn_lite"}:
+        backbone = ResNet3SliceBackbone(
+            input_slices=config["input_slices"],
+            num_classes=config["num_classes"],
+            freeze_backbone=config.get("freeze_backbone", True),
+            dropout=config.get("dropout", 0.5),
+            pretrained=config.get("pretrained", False),
+            trainable_blocks=config.get("trainable_blocks", None),
+            prediction_task=config.get("prediction_task", None),
+        )
+
+        backend = "lightning" #"torch" # 
+        # For torch training
+        # backend_kwargs = {
+        #     "epochs": config.get("epochs", 100),
+        #     "learning_rate": config.get("learning_rate", 1e-4),
+        #     "weight_decay": config.get("weight_decay", 1e-4),
+        #     "prediction_task": config.get("prediction_task", "regression"),
+        # }
+        # For lightning training
+        backend_kwargs = {
+            "learning_rate": config.get("learning_rate", 1e-4),
+            "weight_decay": config.get("weight_decay", 1e-4),
+            "prediction_task": config.get("prediction_task", "regression"),
+            "trainer_kwargs": {
+                "max_epochs": config.get("epochs", 100),
+                "accelerator": "gpu",
+                "devices": 1,
+                "log_every_n_steps": 10,
+            },
+        }
+
+        return create_trainer(
+            model=backbone,
+            backend=backend,
+            backend_kwargs=backend_kwargs,
+        )
+    # if name == "2dcnn_torch":
+    #     return CNNTorchTrainModel(**config)
+    
+    return create_trainer(
+        model_name=name,
+        model_kwargs=config,
+        backend="lightning",
+        backend_kwargs={},
+    )
+
+    if name == "2dcnn":
+        return create_backend_trainer(
+            model=CNNTorchTrainModel(**config),
+            backend="lightning",
+            backend_kwargs={},
+        )
 
     if name == "2dcnn_lite":
         return ResNet3SliceModel(**config)
