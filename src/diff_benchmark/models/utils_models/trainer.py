@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader, random_split
 import torch
 from tqdm import tqdm
 import pytorch_lightning as pl
+from typing import Any
 
 
 class BaseTrainer(ABC):
@@ -78,6 +79,7 @@ class TorchTrainer(BaseTrainer):
         prediction_task: str = "classification",
         device: str = "cuda",
         val_ratio: float = 0.2,
+        **kwargs: Any,
     ):
         super().__init__(model)
 
@@ -116,7 +118,6 @@ class TorchTrainer(BaseTrainer):
                     y = y.long().to(self.device, non_blocking=True)
                 else:
                     y = y.float().to(self.device, non_blocking=True)
-
 
                 self.optimizer.zero_grad()
                 preds = self.model(x)
@@ -285,6 +286,7 @@ class LightningTrainer(BaseTrainer):
         weight_decay: float = 1e-4,
         prediction_task: str = "classification",
         val_ratio: float = 0.2,
+        **kwargs: Any,
     ):
         lightning_model = _LightningModuleAdapter(
             model=model,

@@ -4,7 +4,7 @@ import torch.nn as nn
 
 
 from diff_benchmark.models.classic_ml import PCARandomForestModel, PCASVMModel
-from diff_benchmark.models.medicalnet import ResNet3DModelLite, ResNet3DModel, MedicalNet
+from diff_benchmark.models.medicalnet import MedicalNet #ResNet3DModelLite, ResNet3DModel, 
 from diff_benchmark.models.cnn import ResNet3SliceBackbone #CNNTorchTrainModel, ResNet3SliceModel, ResNet3SliceMultihead
 
 from diff_benchmark.models.dummy import DummyClassifier, DummyRegressor
@@ -94,28 +94,31 @@ def make_run_id(name: str, params: dict) -> str:
 #         return NumpyAbstractModel(model=model, **backend_kwargs)
 
 
+def create_model(
+    model_name: str,
+    model_kwargs: dict = {},
+):
+    
+    """Creates a model instance based on the specified type.
+    Args:
+        model (str): The type of model to create (e.g., "torch", "lightning").
+        model_kwargs (dict): Additional keyword arguments for the model.
+    
+    Returns:
+        nn.Module: Configured model instance for the specified type.
+    """
+    
+    if model_name in {"2dcnn", "2dcnn_torch", "2dcnn_lite"}:
+        return ResNet3SliceBackbone(**model_kwargs)
+    
+    elif model_name in {"medicalnet", "medicalnet_lite"}:
+        return MedicalNet(**model_kwargs)
 
-# def create_trainer(
-#     model_name: str,
-#     model_kwargs: dict = {},
-#     backend: str = "lightning",
-#     backend_kwargs: dict = {},
-# ):
-#     """Creates a Trainer for a specific model and backend.
-#     Args:
-#         model_name (str): The type of model to create (e.g., "2dcnn", "medicalnet").
-#         model_kwargs (dict): Additional keyword arguments for the model.
-#         backend (str): The backend type (e.g., "torch", "lightning").
-#         backend_kwargs (dict): Additional keyword arguments for the backend trainer.
-#     Returns:
-#         Trainer: Configured Trainer instance for the specified model and backend.
-#     """    
-#     model = create_model(model_name, model_kwargs)
-#     trainer = create_backend_trainer(model, backend, backend_kwargs)
-#     return trainer
+    raise ValueError(f"Unknown model type: {model_name}")
+
 
 from diff_benchmark.models.utils_models.trainer import TorchTrainer, LightningTrainer
-def create_trainer(
+def create_backend_trainer(
     model,
     backend: str,
     backend_kwargs: dict,
@@ -130,6 +133,25 @@ def create_trainer(
 
     raise ValueError(f"Unknown backend: {backend}")
 
+
+def create_trainer(
+    model_name: str,
+    model_kwargs: dict = {},
+    backend: str = "lightning",
+    backend_kwargs: dict = {},
+):
+    """Creates a Trainer for a specific model and backend.
+    Args:
+        model_name (str): The type of model to create (e.g., "2dcnn", "medicalnet").
+        model_kwargs (dict): Additional keyword arguments for the model.
+        backend (str): The backend type (e.g., "torch", "lightning").
+        backend_kwargs (dict): Additional keyword arguments for the backend trainer.
+    Returns:
+        Trainer: Configured Trainer instance for the specified model and backend.
+    """    
+    model = create_model(model_name, model_kwargs)
+    trainer = create_backend_trainer(model, backend, backend_kwargs)
+    return trainer
 
 
 def get_model(name: str, config: dict) -> object:
@@ -154,6 +176,19 @@ def get_model(name: str, config: dict) -> object:
     """
 
     name = name.lower()
+    backend = "lightning" #"torch" #
+    if backend == "lightning":
+        config["trainer_kwargs"] = {
+                "max_epochs": config.get("epochs", 100),
+                "accelerator": "gpu",
+                "devices": 1,
+                "log_every_n_steps": 10,
+            }
+    return create_trainer(model_name=name,
+    model_kwargs={**config}, #model_kwargs,
+    backend=backend,
+    backend_kwargs={**config}, #backend_kwargs,
+    )
 
     if name == "dummy_classifier":
         return DummyClassifier()
@@ -204,6 +239,46 @@ def get_model(name: str, config: dict) -> object:
                 "log_every_n_steps": 10,
             },
         }
+
+        return create_trainer(
+            model=backbone,
+            backend=backend,
+            backend_kwargs=backend_kwargs,
+        )
+    if name in {"medicalnet", "medicalnet_lite"}:
+        backbone = MedicalNet(
+                depth = 50,
+                num_classes=2,
+                prediction_task="classification",
+                shortcut_type="B",
+                no_cuda=False,
+            )
+        backend_kwargs = {
+            "epochs": config.get("epochs", 100),
+            "learning_rate": config.get("learning_rate", 1e-4),
+            "weight_decay": config.get("weight_decay", 1e-4),
+            "prediction_task": config.get("prediction_task", "regression"),
+        }
+
+        # For Lightning backend
+        # backend_kwargs = {
+        #     "learning_rate": 1e-5,
+        #     "weight_decay": 1e-4,
+        #     "scheduler_type": "plateau",
+        #     "optimizer_type": "adamw",
+        #     "prediction_task": "classification",
+        #     "run_id": "lightning_run_01",
+        #     "fold_idx": 0,
+        #    "trainer_kwargs": {
+        #         "max_epochs": config.get("epochs", 100),
+        #         "accelerator": "gpu",
+        #         "devices": 1,
+        #         "log_every_n_steps": 10,
+        #     },
+        # }
+        
+        backend = "torch"
+        
 
         return create_trainer(
             model=backbone,
