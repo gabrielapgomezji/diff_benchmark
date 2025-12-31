@@ -1,4 +1,5 @@
 import numpy as np
+from diff_benchmark.models.base import NumpyAbstractModel, SklearnModel
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import GridSearchCV
@@ -7,19 +8,31 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC, SVR
 from torch.utils.data import DataLoader
 
-from diff_benchmark.models.base import NumpyAbstractModel
+from sklearn.base import BaseEstimator
 
 
-class PCARandomForestModel(NumpyAbstractModel):
+
+
+
+######
+######
+# first option: create a function that returns a GridSearchCV object with PCA + RF or PCA + SVM
+# second option: create a class that inherits from BaseEstimator and implements fit and predict methods
+# third option: create a base class that implements fit and predict from a self.model and then create two subclasses for PCA + RF and PCA + SVM
+# fourth option: create a class that inherits from NumpyAbstractModel
+######
+######
+
+
+
+
+class PCARandomForestModel(SklearnModel):
     """
     PCARandomForestModel combines PCA for dimensionality reduction
     with a Random Forest classifier for classification tasks.
     """
 
-    data_type = "array"
-
-    def __init__(self, **kwargs):
-        super().__init__()
+    def _build_model(self, **kwargs) -> BaseEstimator:
         self.prediction_task = kwargs.get("prediction_task", None)
         # Define pipeline: standardization -> PCA -> RandomForest
         # Choose RF head depending on task
@@ -57,8 +70,6 @@ class PCARandomForestModel(NumpyAbstractModel):
             verbose=1,
         )
 
-    def model(self):
-        return self.model
 
 class PCASVMModel(NumpyAbstractModel):
     """

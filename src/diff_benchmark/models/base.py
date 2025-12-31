@@ -13,6 +13,7 @@ from sklearn.metrics import (  # confusion_matrix,; roc_auc_score,
     recall_score,
 )
 from sklearn.model_selection import train_test_split
+from sklearn.base import BaseEstimator
 from torch import nn
 from torch.utils.data import DataLoader, Subset
 from torchvision import transforms
@@ -39,12 +40,38 @@ val_transforms = transforms.Compose(
 )
 
 
+
+class SklearnModel(ABC, BaseEstimator):
+    """
+    Base class for sklearn models.
+    Implements fit and predict methods.
+    """
+
+    data_type = "array"
+    
+    def __init__(self):
+        super().__init__()
+        self.model = self._build_model()
+    
+    @abstractmethod
+    def _build_model(self, **kwargs) -> BaseEstimator:
+        raise NotImplementedError
+
+    def fit(self, X: np.ndarray, y: np.ndarray):
+        self.model.fit(X, y)
+        return self
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        return self.model.predict(X)
+
+
 class NumpyAbstractModel(ABC):
     """
     Abstract base class for all models in the diff_benchmark framework.
     Defines the interface that all models must implement.
     """
-    def __init__(self):
+    def __init__(self, model: SklearnModel):
+        self.model = model
         self.output_dim = 1
     
     def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
@@ -69,12 +96,6 @@ class NumpyAbstractModel(ABC):
         targets = np.concatenate(targets_list, axis=0)
         return features, targets
     
-    @property
-    @abstractmethod
-    def model(self):
-        """Underlying sklearn-like model with fit/predict"""
-        pass
-    
     def _reshape_data(self, dataloader: DataLoader):
         features, targets = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
@@ -88,7 +109,6 @@ class NumpyAbstractModel(ABC):
         """
         features, targets = self._reshape_data(dataloader)
         self.model.fit(features, targets)
-        
 
     def predict(self, dataloader: DataLoader):
         """
@@ -132,7 +152,7 @@ class TorchPipeline:
     Extends TorchAbstractModel to include training-specific methods.
     """
 
-    def __init__(self, num_workers: int =10, device: torch.device =None, dtype: torch.dtype =None, **kwargs):
+    def __init__(self, model: nn.Module, num_workers: int =10, device: torch.device =None, dtype: torch.dtype =None, **kwargs):
 
         self.num_workers = num_workers
         self.device = (
@@ -148,7 +168,7 @@ class TorchPipeline:
         self.average = kwargs.get("average", "binary")
         self._prediction_task = kwargs.get("prediction_task", None)
 
-        self.model = self._build_model(**kwargs).to(self.device)
+        self.model = model.to(self.device)
 
         self.learning_rate = kwargs.get("learning_rate", 1e-4)
         self.weight_decay = kwargs.get("weight_decay", 1e-2)
@@ -190,25 +210,6 @@ class TorchPipeline:
     # @prediction_task.setter
     # def prediction_task(self, value):
     #     self._prediction_task = value
-
-    @abstractmethod
-    def _build_model(self, **kwargs):
-        """
-        Build and return a PyTorch model.
-        This method must be implemented in a subclass to define the architecture
-        of the model. It should return an instance of a PyTorch model.
-        Args:
-            **kwargs: Arbitrary keyword arguments that may be used to configure
-                      the model.
-        Raises:
-            NotImplementedError: If the method is not implemented in a subclass.
-        Returns:
-            torch.nn.Module: A PyTorch model instance.
-        """
-        
-        raise NotImplementedError(
-            "_build_model must be implemented and return a torch model."
-        )
 
     def _save_logs(self, history: dict, save_path: str):
         """
@@ -519,6 +520,7 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
 
     def __init__(
         self,
+        model: nn.Module,
         num_workers: int = 10,
         learning_rate: float = 1e-4,
         weight_decay: float = 1e-4,
@@ -535,15 +537,24 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
         self.average = average
         self.scheduler_type = scheduler_type
         self.optimizer_type = optimizer_type
+        self.prediction_task = kwargs.get("prediction_task", None)
+        
+        
+        # device str
+        # run id
+        # fold
+        # epochs
+        # freeze_backbone
 
         # Subclasses must define self.model and self.criterion
-        self.model = None
+        self.model = model
         # self.criterion = None
-        self.criterion = torch.nn.CrossEntropyLoss()
+        # self.criterion = torch.nn.CrossEntropyLoss()
+        if self.prediction_task == "classification":
+            self.criterion = nn.CrossEntropyLoss()
+        elif self.prediction_task == "regression":
+            self.criterion = nn.MSELoss()
 
-    @abstractmethod
-    def build_model(self):
-        """Define the network architecture and loss function."""
 
     def _train_val_loader_split(self, train_loader: DataLoader, val_ratio: float = 0.3) -> tuple[DataLoader, DataLoader]:
         """
@@ -636,10 +647,8 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
         else:
             raise ValueError("Save path must end with .json or .csv")
 
-    @abstractmethod
-    # def forward(self, x):
     def forward(self, *args, **kwargs):
-        """Forward pass."""
+        return self.model(*args, **kwargs)
 
     def fit(self, dataloader: DataLoader):
         """

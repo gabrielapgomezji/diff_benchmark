@@ -362,6 +362,8 @@ class ResNet(nn.Module):
         Returns:
             torch.Tensor: Output tensor after passing through the network.
         """
+        if x.ndim == 4:  # (B, D, H, W)
+            x = x.unsqueeze(1)  # → (B, 1, D, H, W)
         
         x = self.conv1(x)
         x = self.bn1(x)
@@ -378,466 +380,311 @@ class ResNet(nn.Module):
         return x
 
 
-def resnet10(**kwargs) -> ResNet:
+
+# class MedicalNet(ResNet):
+
+#     data_type = "images"
+
+#     def __init__(self, depth: int, num_classes, prediction_task, shortcut_type = "B", no_cuda = False):
+#         if depth == 10:
+#             block = BasicBlock
+#             layers = [1, 1, 1, 1]
+#         elif depth == 18:
+#             block = BasicBlock
+#             layers = [2, 2, 2, 2]
+#         elif depth == 34:
+#             block = BasicBlock
+#             layers = [3, 4, 6, 3]
+#         elif depth == 50:
+#             block = Bottleneck
+#             layers = [3, 4, 6, 3]
+#         elif depth == 101:
+#             block = Bottleneck
+#             layers = [3, 4, 23, 3]
+#         elif depth == 152:
+#             block = Bottleneck
+#             layers = [3, 8, 36, 3]
+#         elif depth == 200:
+#             block = Bottleneck
+#             layers = [3, 24, 36, 3]
+#         super().__init__(block, layers, num_classes, prediction_task, shortcut_type, no_cuda)
+
+
+#     def collate_with_augmentation(batch, transform: callable =None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+#         """
+#         Collates a batch of data with optional augmentation and normalization.
+#         Args:
+#             batch (list of tuples): A batch of data where each element is a tuple 
+#                 containing three tensors (x, y, g). `x` represents the input data, 
+#                 `y` represents the labels, and `g` represents additional metadata.
+#             transform (callable, optional): A callable transformation function to 
+#                 apply to the input data `x`. Defaults to None.
+#         Returns:
+#             tuple[torch.Tensor, torch.Tensor, torch.Tensor]: A tuple containing:
+#                 - xs (torch.Tensor): The stacked and normalized input data tensor 
+#                     with shape (B, 1, D, H, W), where B is the batch size.
+#                 - ys (torch.Tensor): The stacked labels tensor.
+#                 - gs (torch.Tensor): The stacked metadata tensor.
+#         Notes:
+#             - The input data `x` is normalized using a mean of 0.5 and a standard 
+#                 deviation of 0.5.
+#             - If a transformation function is provided, it should be applied to 
+#                 the input data before stacking.
+#         """
+        
+#         mean = 0.5
+#         std = 0.5
+#         xs, ys, gs = zip(*batch)
+#         # xs = torch.stack(xs, dim=0)   # default stacking: (B, 1, D, H, W)
+#         xs = torch.stack([x.unsqueeze(0) for x in xs], dim=0)
+#         ys = torch.stack(ys)
+#         gs = torch.stack(gs)
+
+#         # Normalize: (x - mean) / std
+#         xs = (xs - mean) / std
+
+#         return xs, ys, gs
+
+# First, define a mapping for depth → (block, layers)
+RESNET_DEPTHS = {
+    10:  (BasicBlock,  [1, 1, 1, 1]),
+    18:  (BasicBlock,  [2, 2, 2, 2]),
+    34:  (BasicBlock,  [3, 4, 6, 3]),
+    50:  (Bottleneck, [3, 4, 6, 3]),
+    101: (Bottleneck, [3, 4, 23, 3]),
+    152: (Bottleneck, [3, 8, 36, 3]),
+    200: (Bottleneck, [3, 24, 36, 3]),
+}
+
+
+class MedicalNet(ResNet):
     """
-    Constructs a ResNet-10 model.
-    This function creates a ResNet model with 10 layers using the BasicBlock
-    building block. The layer configuration is defined as [1, 1, 1, 1], which
-    specifies the number of blocks in each of the four layers of the network.
-    Args:
-        **kwargs: Additional keyword arguments passed to the ResNet constructor.
-    Returns:
-        ResNet: An instance of the ResNet-10 model.
-    """
-    
-    model = ResNet(BasicBlock, [1, 1, 1, 1], **kwargs)
-    return model
-
-
-def resnet18(**kwargs) -> ResNet:
-    """
-    Constructs a ResNet-18 model.
-    This function initializes a ResNet-18 model using the ResNet architecture
-    with BasicBlock layers and a predefined layer configuration of [2, 2, 2, 2].
-    Args:
-        **kwargs: Additional keyword arguments to be passed to the ResNet constructor.
-                  These can include parameters such as the number of input channels,
-                  the number of classes for classification, etc.
-    Returns:
-        ResNet: An instance of the ResNet-18 model.
-    """
-    
-    model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
-    return model
-
-
-def resnet34(**kwargs) -> ResNet:
-    """
-    Constructs a ResNet-34 model.
-    This function creates a ResNet-34 architecture using the ResNet class and 
-    the BasicBlock building block. The ResNet-34 model is defined by the 
-    layer configuration [3, 4, 6, 3], which specifies the number of blocks 
-    in each of the four layers of the network.
-    Args:
-        **kwargs: Additional keyword arguments passed to the ResNet class 
-                  constructor. These can include parameters such as the 
-                  number of input channels, number of classes, etc.
-    Returns:
-        ResNet: An instance of the ResNet-34 model.
-    """
-    
-    model = ResNet(BasicBlock, [3, 4, 6, 3], **kwargs)
-    return model
-
-
-def resnet50(**kwargs) -> ResNet:
-    """
-    Constructs a ResNet-50 model.
-    This function creates a ResNet-50 architecture using the Bottleneck block 
-    and a predefined layer configuration of [3, 4, 6, 3]. Additional arguments 
-    can be passed to customize the model.
-    Args:
-        **kwargs: Arbitrary keyword arguments passed to the ResNet constructor.
-    Returns:
-        ResNet: An instance of the ResNet-50 model.
-    """
-    
-    model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
-    return model
-
-
-def resnet101(**kwargs) -> ResNet:
-    """
-    Creates a ResNet-101 model.
-    This function constructs a ResNet-101 architecture using the `ResNet` class and the `Bottleneck` block. 
-    The ResNet-101 model is defined by the layer configuration [3, 4, 23, 3], which specifies the number 
-    of blocks in each of the four layers of the network.
-    Args:
-        **kwargs: Additional keyword arguments to be passed to the `ResNet` class.
-    Returns:
-        ResNet: An instance of the ResNet-101 model.
-    """
-    
-    model = ResNet(Bottleneck, [3, 4, 23, 3], **kwargs)
-    return model
-
-
-def resnet152(**kwargs) -> ResNet:
-    """
-    Constructs a ResNet-152 model.
-    ResNet-152 is a deep residual network architecture with 152 layers, 
-    which is commonly used for image recognition tasks. This function 
-    initializes the model using the Bottleneck block and a specific 
-    layer configuration.
-    Args:
-        **kwargs: Additional keyword arguments to customize the ResNet model. 
-                  These arguments are passed to the ResNet constructor.
-    Returns:
-        ResNet: An instance of the ResNet-152 model.
-    """
-    
-    model = ResNet(Bottleneck, [3, 8, 36, 3], **kwargs)
-    return model
-
-
-def resnet200(**kwargs) -> ResNet:
-    """
-    Constructs a ResNet-200 model.
-    This function initializes a ResNet-200 architecture using the Bottleneck
-    building block and a layer configuration of [3, 24, 36, 3]. The ResNet-200
-    model is a deep residual network designed for image or feature extraction tasks.
-    Args:
-        **kwargs: Additional keyword arguments to be passed to the ResNet constructor.
-                  These may include parameters such as the number of input channels,
-                  number of classes, or other model-specific configurations.
-    Returns:
-        ResNet: An instance of the ResNet-200 model.
-    """
-    
-    model = ResNet(Bottleneck, [3, 24, 36, 3], **kwargs)
-    return model
-
-
-def generate_model(opt: Any) -> ResNet:
-    """
-    Generates a ResNet model based on the provided options.
-    Args:
-        opt (Any): A configuration object containing the following attributes:
-            - model (str): The type of model to generate. Must be "resnet".
-            - model_depth (int): The depth of the ResNet model. Must be one of 
-              [10, 18, 34, 50, 101, 152, 200].
-            - input_W (int): The width of the input sample.
-            - input_H (int): The height of the input sample.
-            - input_D (int): The depth of the input sample.
-            - resnet_shortcut (str): The type of shortcut connection to use in ResNet.
-            - no_cuda (bool): Whether to disable CUDA (GPU) support.
-            - n_seg_classes (int): The number of segmentation classes.
-            - gpu_id (list[int]): List of GPU IDs to use for training.
-            - phase (str): The phase of the model, e.g., "train" or "test".
-            - pretrain_path (str): Path to the pretrained model file (if any).
-            - new_layer_names (list[str]): List of layer names to treat as new parameters.
-    Returns:
-        Tuple[ResNet, Union[Iterable[torch.nn.Parameter], Dict[str, Iterable[torch.nn.Parameter]]]]:
-            - The generated ResNet model.
-            - The model parameters or a dictionary containing base and new parameters 
-              (if pretrained model is loaded and new layers are specified).
-    Notes:
-        - If `opt.no_cuda` is False and multiple GPUs are specified in `opt.gpu_id`, 
-          the model is wrapped in `torch.nn.DataParallel`.
-        - If `opt.phase` is not "test" and `opt.pretrain_path` is provided, the model 
-          is initialized with the pretrained weights. New parameters are separated 
-          based on `opt.new_layer_names`.
-    """
-
-    assert opt.model in ["resnet"]
-
-    if opt.model == "resnet":
-        assert opt.model_depth in [10, 18, 34, 50, 101, 152, 200]
-
-        if opt.model_depth == 10:
-            model = resnet10(
-                sample_input_W=opt.input_W,
-                sample_input_H=opt.input_H,
-                sample_input_D=opt.input_D,
-                shortcut_type=opt.resnet_shortcut,
-                no_cuda=opt.no_cuda,
-                num_seg_classes=opt.n_seg_classes,
-            )
-        elif opt.model_depth == 18:
-            model = resnet18(
-                sample_input_W=opt.input_W,
-                sample_input_H=opt.input_H,
-                sample_input_D=opt.input_D,
-                shortcut_type=opt.resnet_shortcut,
-                no_cuda=opt.no_cuda,
-                num_seg_classes=opt.n_seg_classes,
-            )
-        elif opt.model_depth == 34:
-            model = resnet34(
-                sample_input_W=opt.input_W,
-                sample_input_H=opt.input_H,
-                sample_input_D=opt.input_D,
-                shortcut_type=opt.resnet_shortcut,
-                no_cuda=opt.no_cuda,
-                num_seg_classes=opt.n_seg_classes,
-            )
-        elif opt.model_depth == 50:
-            model = resnet50(
-                sample_input_W=opt.input_W,
-                sample_input_H=opt.input_H,
-                sample_input_D=opt.input_D,
-                shortcut_type=opt.resnet_shortcut,
-                no_cuda=opt.no_cuda,
-                num_seg_classes=opt.n_seg_classes,
-            )
-        elif opt.model_depth == 101:
-            model = resnet101(
-                sample_input_W=opt.input_W,
-                sample_input_H=opt.input_H,
-                sample_input_D=opt.input_D,
-                shortcut_type=opt.resnet_shortcut,
-                no_cuda=opt.no_cuda,
-                num_seg_classes=opt.n_seg_classes,
-            )
-        elif opt.model_depth == 152:
-            model = resnet152(
-                sample_input_W=opt.input_W,
-                sample_input_H=opt.input_H,
-                sample_input_D=opt.input_D,
-                shortcut_type=opt.resnet_shortcut,
-                no_cuda=opt.no_cuda,
-                num_seg_classes=opt.n_seg_classes,
-            )
-        elif opt.model_depth == 200:
-            model = resnet200(
-                sample_input_W=opt.input_W,
-                sample_input_H=opt.input_H,
-                sample_input_D=opt.input_D,
-                shortcut_type=opt.resnet_shortcut,
-                no_cuda=opt.no_cuda,
-                num_seg_classes=opt.n_seg_classes,
-            )
-
-    if not opt.no_cuda:
-        if len(opt.gpu_id) > 1:
-            model = model.cuda()
-            model = nn.DataParallel(model, device_ids=opt.gpu_id)
-            net_dict = model.state_dict()
-        else:
-            os.environ["CUDA_VISIBLE_DEVICES"] = str(opt.gpu_id[0])
-            model = model.cuda()
-            model = nn.DataParallel(model, device_ids=None)
-            net_dict = model.state_dict()
-    else:
-        net_dict = model.state_dict()
-
-    # load pretrain
-    if opt.phase != "test" and opt.pretrain_path:
-        print(f"loading pretrained model {opt.pretrain_path}")
-        pretrain = torch.load(opt.pretrain_path)
-        pretrain_dict = {
-            k: v for k, v in pretrain["state_dict"].items() if k in net_dict.keys()
-        }
-
-        net_dict.update(pretrain_dict)
-        model.load_state_dict(net_dict)
-
-        new_parameters = []
-        for pname, p in model.named_parameters():
-            for layer_name in opt.new_layer_names:
-                if pname.find(layer_name) >= 0:
-                    new_parameters.append(p)
-                    break
-
-        new_parameters_id = list(map(id, new_parameters))
-        base_parameters = list(
-            filter(lambda p: id(p) not in new_parameters_id, model.parameters())
-        )
-        parameters = {
-            "base_parameters": base_parameters,
-            "new_parameters": new_parameters,
-        }
-
-        return model, parameters
-
-    return model, model.parameters()
-
-def collate_with_augmentation(batch, transform: callable =None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """
-    Collates a batch of data with optional augmentation and normalization.
-    Args:
-        batch (list of tuples): A batch of data where each element is a tuple 
-            containing three tensors (x, y, g). `x` represents the input data, 
-            `y` represents the labels, and `g` represents additional metadata.
-        transform (callable, optional): A callable transformation function to 
-            apply to the input data `x`. Defaults to None.
-    Returns:
-        tuple[torch.Tensor, torch.Tensor, torch.Tensor]: A tuple containing:
-            - xs (torch.Tensor): The stacked and normalized input data tensor 
-                with shape (B, 1, D, H, W), where B is the batch size.
-            - ys (torch.Tensor): The stacked labels tensor.
-            - gs (torch.Tensor): The stacked metadata tensor.
-    Notes:
-        - The input data `x` is normalized using a mean of 0.5 and a standard 
-            deviation of 0.5.
-        - If a transformation function is provided, it should be applied to 
-            the input data before stacking.
-    """
-    
-    mean = 0.5
-    std = 0.5
-    xs, ys, gs = zip(*batch)
-    # xs = torch.stack(xs, dim=0)   # default stacking: (B, 1, D, H, W)
-    xs = torch.stack([x.unsqueeze(0) for x in xs], dim=0)
-    ys = torch.stack(ys)
-    gs = torch.stack(gs)
-
-    # Normalize: (x - mean) / std
-    xs = (xs - mean) / std
-
-    return xs, ys, gs
-
-
-class ResNet3DModelLite(LightningModel, nn.Module):
-    """
-    ResNet3DModel
-    A wrapper around a 3D ResNet (resnet10) for medical-volume classification built on PyTorch.
-    This class combines model construction, optional pretrained-weight loading, training (with
-    a simple inner-loop validation and early stopping), prediction, and lightweight logging.
-    - input_volumes: int, default 1
-        Kept for API compatibility; currently unused. The implementation expects input volumes
-        as 3D tensors and will add a channel dimension before forwarding (unsqueeze(1)).
-    - num_classes: int, default 2
-        Number of output classes for classification (final linear layer output dimension).
-    - device: str or torch.device, default "cuda"
-        Device used for model and tensor transfers.
-    - **kwargs: optional keyword arguments
-        - run_id: str, default "unnamed_run" -- identifier used to name saved model & logs.
-        - epochs: int, default 100 -- number of training epochs to iterate (outer loop).
-        - pretrain_path: str or Path, optional -- path to a checkpoint file; if provided, the
-          checkpoint is loaded (torch.load) and, if it contains a "state_dict" key that mapping
-          is used. load_state_dict(..., strict=False) is used to allow partial matches.
-        - learning_rate: float, default 1e-5 -- Adam optimizer learning rate.
-        - weight_decay: float, default 1e-4 -- Adam optimizer weight decay (L2).
-        (Other kwargs are ignored by the implementation.)
+    MedicalNet backbone.
+    Backend-agnostic (Torch / Lightning safe).
+    Encapsulates a 3D ResNet architecture based on the specified depth.
     """
 
     data_type = "images"
 
     def __init__(
-        self, device: torch.device, num_classes: int = 2, input_channels: int = 1, model_depth: int = 10, **kwargs
+        self,
+        depth: int,
+        num_classes: int,
+        prediction_task: str | None = None,
+        shortcut_type: str = "B",
+        no_cuda: bool = False,
+        **kwargs: Any,
     ):
+        if depth not in RESNET_DEPTHS:
+            raise ValueError(
+                f"Unsupported depth {depth}. Available depths: {sorted(RESNET_DEPTHS.keys())}"
+            )
+
+        block, layers = RESNET_DEPTHS[depth]
+
         super().__init__(
-            learning_rate=kwargs.get("learning_rate", 1e-5),
-            weight_decay=kwargs.get("weight_decay", 1e-4),
-            scheduler_type=kwargs.get("scheduler_type", "plateau"),
-            optimizer_type=kwargs.get("optimizer_type", "adamw"),
-            prediction_task = kwargs.get("prediction_task", None)
+            block=block,
+            layers=layers,
+            num_classes=num_classes,
+            prediction_task=prediction_task,
+            shortcut_type=shortcut_type,
+            no_cuda=no_cuda,
         )
-        self.run_id = kwargs.get("run_id", "unnamed_run")
-        self.num_classes = num_classes
-        self.input_channels = input_channels
-        self.model_depth = model_depth
-        self.device_str = device
-        self.fold_idx = kwargs.get("fold_idx", -1)
-        self.epochs = kwargs.get("epochs", 100)
-        self.prediction_task = kwargs.get("prediction_task", None)
-
-        self.save_hyperparameters()
-
-        self.build_model()  # required by parent
-        # criterion already set in LightningModel
-
-    def build_model(self):
-        """
-        Build the ResNet model based on the specified depth.
-        This method initializes the `self.model` attribute with a ResNet model
-        corresponding to the specified `self.model_depth`. The number of output
-        classes is determined by `self.num_classes`.
-        Supported ResNet depths:
-            - 10: Initializes a ResNet-10 model.
-            - 18: Initializes a ResNet-18 model.
-            - 34: Initializes a ResNet-34 model.
-            - 50: Initializes a ResNet-50 model.
-        Raises:
-            ValueError: If `self.model_depth` is not one of the supported depths.
-        """
+        self.collate_with_augmentation = self.collate_with_augmentation
+        self.mean = 0.5
+        self.std = 0.5
         
-        if self.model_depth == 10:
-            self.model = resnet10(num_classes=self.num_classes, prediction_task=self.prediction_task)
-        elif self.model_depth == 18:
-            self.model = resnet18(num_classes=self.num_classes, prediction_task=self.prediction_task)
-        elif self.model_depth == 34:
-            self.model = resnet34(num_classes=self.num_classes, prediction_task=self.prediction_task)
-        elif self.model_depth == 50:
-            self.model = resnet50(num_classes=self.num_classes, prediction_task=self.prediction_task)
-        elif self.model_depth == 101:
-            self.model = resnet101(num_classes=self.num_classes, prediction_task=self.prediction_task)
-        elif self.model_depth == 152:
-            self.model = resnet152(num_classes=self.num_classes, prediction_task=self.prediction_task)
-        elif self.model_depth == 200:
-            self.model = resnet200(num_classes=self.num_classes, prediction_task=self.prediction_task)
-        else:
-            raise ValueError(f"Unsupported ResNet depth: {self.model_depth}")
-        self.model.collate_with_augmentation = collate_with_augmentation
-        
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    @staticmethod
+    def collate_with_augmentation(batch, transform: callable = None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
-        Forward pass of the model.
+        Collates a batch of data with optional augmentation and normalization.
         Args:
-            x (torch.Tensor): Input tensor. Expected shape is either (B, C, D, H, W) 
-                              where C is the channel dimension, or (B, D, H, W) 
-                              if the channel dimension is omitted.
+            batch (list of tuples): Each element is (x, y, g).
+            transform (callable, optional): Transformation function to apply to x.
         Returns:
-            torch.Tensor: Output tensor after passing through the model.
+            tuple of torch.Tensor: (xs, ys, gs)
         """
+        mean = 0.5
+        std = 0.5
+
+        xs, ys, gs = zip(*batch)
+        if transform:
+            xs = [transform(x) for x in xs]
         
-        # If user supplies input without channel dim → add it
-        if x.ndim == 4:
-            x = x.unsqueeze(1)  # (B, 1, D, H, W)
-        return self.model(x)
+        xs = torch.stack([x.unsqueeze(0) for x in xs], dim=0)  # Add channel dim
+        # xs = torch.stack([x.unsqueeze(0) if x.ndim == 3 else x for x in xs], dim=0)
+        ys = torch.stack(ys)
+        gs = torch.stack(gs)
 
+        xs = (xs - mean) / std
+        return xs, ys, gs
+    # def forward(self, x: torch.Tensor) -> torch.Tensor:
+    #     x = x.unsqueeze(1)  # Add channel dimension
+    #     # if x.ndim == 4:
+    #     #     x = x.unsqueeze(1)  # (B, 1, D, H, W)
+    #     return x
 
-class ResNet3DModel(TorchPipeline):
-    """
-    ResNet3DModel
-    A wrapper around a 3D ResNet (resnet10) for medical-volume classification built on PyTorch.
-    This class combines model construction, optional pretrained-weight loading, training (with
-    a simple inner-loop validation and early stopping), prediction, and lightweight logging.
-    - input_volumes: int, default 1
-        Kept for API compatibility; currently unused. The implementation expects input volumes
-        as 3D tensors and will add a channel dimension before forwarding (unsqueeze(1)).
-    - num_classes: int, default 2
-        Number of output classes for classification (final linear layer output dimension).
-    - device: str or torch.device, default "cuda"
-        Device used for model and tensor transfers.
-    - **kwargs: optional keyword arguments
-        - run_id: str, default "unnamed_run" -- identifier used to name saved model & logs.
-        - epochs: int, default 100 -- number of training epochs to iterate (outer loop).
-        - pretrain_path: str or Path, optional -- path to a checkpoint file; if provided, the
-          checkpoint is loaded (torch.load) and, if it contains a "state_dict" key that mapping
-          is used. load_state_dict(..., strict=False) is used to allow partial matches.
-        - learning_rate: float, default 1e-5 -- Adam optimizer learning rate.
-        - weight_decay: float, default 1e-4 -- Adam optimizer weight decay (L2).
-        (Other kwargs are ignored by the implementation.)
-    """
+    
+# class ResNet3DModelLite(LightningModel, nn.Module):
+#     """
+#     ResNet3DModel
+#     A wrapper around a 3D ResNet (resnet10) for medical-volume classification built on PyTorch.
+#     This class combines model construction, optional pretrained-weight loading, training (with
+#     a simple inner-loop validation and early stopping), prediction, and lightweight logging.
+#     - input_volumes: int, default 1
+#         Kept for API compatibility; currently unused. The implementation expects input volumes
+#         as 3D tensors and will add a channel dimension before forwarding (unsqueeze(1)).
+#     - num_classes: int, default 2
+#         Number of output classes for classification (final linear layer output dimension).
+#     - device: str or torch.device, default "cuda"
+#         Device used for model and tensor transfers.
+#     - **kwargs: optional keyword arguments
+#         - run_id: str, default "unnamed_run" -- identifier used to name saved model & logs.
+#         - epochs: int, default 100 -- number of training epochs to iterate (outer loop).
+#         - pretrain_path: str or Path, optional -- path to a checkpoint file; if provided, the
+#           checkpoint is loaded (torch.load) and, if it contains a "state_dict" key that mapping
+#           is used. load_state_dict(..., strict=False) is used to allow partial matches.
+#         - learning_rate: float, default 1e-5 -- Adam optimizer learning rate.
+#         - weight_decay: float, default 1e-4 -- Adam optimizer weight decay (L2).
+#         (Other kwargs are ignored by the implementation.)
+#     """
 
-    data_type = "images"
+#     data_type = "images"
 
-    def _build_model(self, num_classes: int, model_depth=10, **kwargs) -> ResNet:
-        """
-        Build a ResNet model with the specified depth and number of classes.
-        Args:
-            num_classes (int): The number of output classes for the model.
-            model_depth (int, optional): The depth of the ResNet model. Supported values are 
-                10, 18, 34, 50, 101, 152, and 200. Defaults to 10.
-            **kwargs: Additional keyword arguments. Supported keys:
-                - prediction_task (str, optional): Specifies the prediction task for the model.
-        Returns:
-            ResNet: An instance of the ResNet model with the specified configuration.
-        Raises:
-            ValueError: If an unsupported ResNet depth is provided.
-        """
+#     def __init__(
+#         self, device: torch.device, num_classes: int = 2, input_channels: int = 1, model_depth: int = 10, **kwargs
+#     ):
+#         super().__init__(
+#             learning_rate=kwargs.get("learning_rate", 1e-5),
+#             weight_decay=kwargs.get("weight_decay", 1e-4),
+#             scheduler_type=kwargs.get("scheduler_type", "plateau"),
+#             optimizer_type=kwargs.get("optimizer_type", "adamw"),
+#             prediction_task = kwargs.get("prediction_task", None)
+#         )
+#         self.run_id = kwargs.get("run_id", "unnamed_run")
+#         self.num_classes = num_classes
+#         self.input_channels = input_channels
+#         self.model_depth = model_depth
+#         self.device_str = device
+#         self.fold_idx = kwargs.get("fold_idx", -1)
+#         self.epochs = kwargs.get("epochs", 100)
+#         self.prediction_task = kwargs.get("prediction_task", None)
+
+#         self.save_hyperparameters()
+
+#         self.build_model()  # required by parent
+#         # criterion already set in LightningModel
+
+#     def build_model(self):
+#         """
+#         Build the ResNet model based on the specified depth.
+#         This method initializes the `self.model` attribute with a ResNet model
+#         corresponding to the specified `self.model_depth`. The number of output
+#         classes is determined by `self.num_classes`.
+#         Supported ResNet depths:
+#             - 10: Initializes a ResNet-10 model.
+#             - 18: Initializes a ResNet-18 model.
+#             - 34: Initializes a ResNet-34 model.
+#             - 50: Initializes a ResNet-50 model.
+#         Raises:
+#             ValueError: If `self.model_depth` is not one of the supported depths.
+#         """
         
-        prediction_task = kwargs.get("prediction_task", None)
-        # model = resnet10(num_classes=num_classes)
-        if model_depth == 10:
-            model = resnet10(num_classes=num_classes, prediction_task=prediction_task)
-        elif model_depth == 18:
-            model = resnet18(num_classes=num_classes, prediction_task=prediction_task)
-        elif model_depth == 34:
-            model = resnet34(num_classes=num_classes, prediction_task=prediction_task)
-        elif model_depth == 50:
-            model = resnet50(num_classes=num_classes, prediction_task=prediction_task)
-        elif model_depth == 101:
-            model = resnet101(num_classes=num_classes, prediction_task=prediction_task)
-        elif model_depth == 152:
-            model = resnet152(num_classes=num_classes, prediction_task=prediction_task)
-        elif model_depth == 200:
-            model = resnet200(num_classes=num_classes, prediction_task=prediction_task)
-        else:
-            raise ValueError(f"Unsupported ResNet depth: {model_depth}")
-        model.collate_with_augmentation = collate_with_augmentation
-        model.mean = 0.5
-        model.std = 0.5
-        return model
+#         if self.model_depth == 10:
+#             self.model = resnet10(num_classes=self.num_classes, prediction_task=self.prediction_task)
+#         elif self.model_depth == 18:
+#             self.model = resnet18(num_classes=self.num_classes, prediction_task=self.prediction_task)
+#         elif self.model_depth == 34:
+#             self.model = resnet34(num_classes=self.num_classes, prediction_task=self.prediction_task)
+#         elif self.model_depth == 50:
+#             self.model = resnet50(num_classes=self.num_classes, prediction_task=self.prediction_task)
+#         elif self.model_depth == 101:
+#             self.model = resnet101(num_classes=self.num_classes, prediction_task=self.prediction_task)
+#         elif self.model_depth == 152:
+#             self.model = resnet152(num_classes=self.num_classes, prediction_task=self.prediction_task)
+#         elif self.model_depth == 200:
+#             self.model = resnet200(num_classes=self.num_classes, prediction_task=self.prediction_task)
+#         else:
+#             raise ValueError(f"Unsupported ResNet depth: {self.model_depth}")
+#         self.model.collate_with_augmentation = collate_with_augmentation
+        
+#     def forward(self, x: torch.Tensor) -> torch.Tensor:
+#         """
+#         Forward pass of the model.
+#         Args:
+#             x (torch.Tensor): Input tensor. Expected shape is either (B, C, D, H, W) 
+#                               where C is the channel dimension, or (B, D, H, W) 
+#                               if the channel dimension is omitted.
+#         Returns:
+#             torch.Tensor: Output tensor after passing through the model.
+#         """
+        
+#         # If user supplies input without channel dim → add it
+#         if x.ndim == 4:
+#             x = x.unsqueeze(1)  # (B, 1, D, H, W)
+#         return self.model(x)
+
+
+# class ResNet3DModel(TorchPipeline):
+#     """
+#     ResNet3DModel
+#     A wrapper around a 3D ResNet (resnet10) for medical-volume classification built on PyTorch.
+#     This class combines model construction, optional pretrained-weight loading, training (with
+#     a simple inner-loop validation and early stopping), prediction, and lightweight logging.
+#     - input_volumes: int, default 1
+#         Kept for API compatibility; currently unused. The implementation expects input volumes
+#         as 3D tensors and will add a channel dimension before forwarding (unsqueeze(1)).
+#     - num_classes: int, default 2
+#         Number of output classes for classification (final linear layer output dimension).
+#     - device: str or torch.device, default "cuda"
+#         Device used for model and tensor transfers.
+#     - **kwargs: optional keyword arguments
+#         - run_id: str, default "unnamed_run" -- identifier used to name saved model & logs.
+#         - epochs: int, default 100 -- number of training epochs to iterate (outer loop).
+#         - pretrain_path: str or Path, optional -- path to a checkpoint file; if provided, the
+#           checkpoint is loaded (torch.load) and, if it contains a "state_dict" key that mapping
+#           is used. load_state_dict(..., strict=False) is used to allow partial matches.
+#         - learning_rate: float, default 1e-5 -- Adam optimizer learning rate.
+#         - weight_decay: float, default 1e-4 -- Adam optimizer weight decay (L2).
+#         (Other kwargs are ignored by the implementation.)
+#     """
+
+#     data_type = "images"
+
+#     def _build_model(self, num_classes: int, model_depth=10, **kwargs) -> ResNet:
+#         """
+#         Build a ResNet model with the specified depth and number of classes.
+#         Args:
+#             num_classes (int): The number of output classes for the model.
+#             model_depth (int, optional): The depth of the ResNet model. Supported values are 
+#                 10, 18, 34, 50, 101, 152, and 200. Defaults to 10.
+#             **kwargs: Additional keyword arguments. Supported keys:
+#                 - prediction_task (str, optional): Specifies the prediction task for the model.
+#         Returns:
+#             ResNet: An instance of the ResNet model with the specified configuration.
+#         Raises:
+#             ValueError: If an unsupported ResNet depth is provided.
+#         """
+        
+#         prediction_task = kwargs.get("prediction_task", None)
+#         # model = resnet10(num_classes=num_classes)
+#         if model_depth == 10:
+#             model = resnet10(num_classes=num_classes, prediction_task=prediction_task)
+#         elif model_depth == 18:
+#             model = resnet18(num_classes=num_classes, prediction_task=prediction_task)
+#         elif model_depth == 34:
+#             model = resnet34(num_classes=num_classes, prediction_task=prediction_task)
+#         elif model_depth == 50:
+#             model = resnet50(num_classes=num_classes, prediction_task=prediction_task)
+#         elif model_depth == 101:
+#             model = resnet101(num_classes=num_classes, prediction_task=prediction_task)
+#         elif model_depth == 152:
+#             model = resnet152(num_classes=num_classes, prediction_task=prediction_task)
+#         elif model_depth == 200:
+#             model = resnet200(num_classes=num_classes, prediction_task=prediction_task)
+#         else:
+#             raise ValueError(f"Unsupported ResNet depth: {model_depth}")
+#         model.collate_with_augmentation = collate_with_augmentation
+#         model.mean = 0.5
+#         model.std = 0.5
+#         return model

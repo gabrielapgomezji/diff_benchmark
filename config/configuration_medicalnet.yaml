@@ -13,10 +13,11 @@ models:
     input_channels: 1
     num_workers: 5
     num_classes: 2
-    batch_size: 32
+    batch_size: 16
     epochs: 3
     device: cuda
-    model_depth: 18
+    # model_depth: 18
+    depth: 18
     dropout: 0 #0.5
     learning_rate: 1.0e-05
     weight_decay: 0.001

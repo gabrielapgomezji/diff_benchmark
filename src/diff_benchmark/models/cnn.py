@@ -4,6 +4,7 @@ from torchvision import models
 
 from diff_benchmark.models.base import TorchPipeline, LightningModel
 from diff_benchmark.models.utils_models.prediction_head import PredictionHead
+from typing import Any
 
 
 class ResNet18Backbone(nn.Module):
@@ -407,8 +408,9 @@ class ResNet3SliceBackbone(nn.Module):
         freeze_backbone: bool = True,
         dropout: float = 0.5,
         pretrained: bool = False,
-        trainable_blocks=None,
-        prediction_task=None,
+        trainable_blocks: Any =None,
+        prediction_task: str |None = None,
+        **kwargs: Any,
     ):
         super().__init__()
 
