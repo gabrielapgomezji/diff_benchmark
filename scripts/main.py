@@ -218,7 +218,6 @@ def run_single_model(model_name, model_config, general_config, results_path):
     save_model_results(summary, Path(results_path) / "analysis_results")
     return model_name, run_id
 
-
 models_to_run = model_config["models"]
 
 run_single_model(

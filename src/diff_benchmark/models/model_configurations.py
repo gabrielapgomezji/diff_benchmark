@@ -93,6 +93,15 @@ def make_run_id(name: str, params: dict) -> str:
 #     elif backend == "sklearn":
 #         return NumpyAbstractModel(model=model, **backend_kwargs)
 
+class TaskModel(nn.Module):
+    def __init__(self, backbone: nn.Module, head: nn.Module):
+        super().__init__()
+        self.backbone = backbone
+        self.head = head
+
+    def forward(self, x):
+        feats = self.backbone(x)
+        return self.head(feats)
 
 def create_model(
     model_name: str,
@@ -107,13 +116,21 @@ def create_model(
     Returns:
         nn.Module: Configured model instance for the specified type.
     """
-    
     if model_name in {"2dcnn", "2dcnn_torch", "2dcnn_lite"}:
+        # backbone = ResNet3SliceBackbone(**model_kwargs)
         return ResNet3SliceBackbone(**model_kwargs)
     
     elif model_name in {"medicalnet", "medicalnet_lite"}:
+        # backbone = MedicalNet(**model_kwargs)
         return MedicalNet(**model_kwargs)
-
+    
+    # head = build_prediction_head(
+    #     embedding_dim=backbone.out_dim,
+    #     prediction_task=model_kwargs.get("prediction_task", None),
+    #     num_classes=model_kwargs.get("num_classes", 2),
+    #     dropout=model_kwargs.get("dropout", 0.5),
+    # )
+    # return TaskModel(backbone, head)
     raise ValueError(f"Unknown model type: {model_name}")
 
 
@@ -176,7 +193,7 @@ def get_model(name: str, config: dict) -> object:
     """
 
     name = name.lower()
-    backend = "lightning" #"torch" #
+    backend = "torch" # "lightning" #
     if backend == "lightning":
         config["trainer_kwargs"] = {
                 "max_epochs": config.get("epochs", 100),
@@ -184,10 +201,11 @@ def get_model(name: str, config: dict) -> object:
                 "devices": 1,
                 "log_every_n_steps": 10,
             }
+    
     return create_trainer(model_name=name,
-    model_kwargs={**config}, #model_kwargs,
+    model_kwargs={**config["backbone"]},
     backend=backend,
-    backend_kwargs={**config}, #backend_kwargs,
+    backend_kwargs={**config["backend"]}, 
     )
 
     if name == "dummy_classifier":
