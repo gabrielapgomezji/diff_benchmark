@@ -1,0 +1,39 @@
+experiment:
+  name: 2dcnn_slices
+  comment: 2D CNN with 3-slice input
+
+data:
+  batch_size: 32
+  num_workers: 5
+  input_channels: 3   # number of slices
+  image_size: [224, 224]
+
+models:
+- name: 2dcnn
+
+  params:
+
+    backbone:
+      input_slices: 145
+      num_classes: 2
+      # architecture: resnet18
+      pretrained: true
+      input_channels: 3
+      freeze_backbone: true
+      trainable_blocks: 0
+
+    head:
+      task: regression        # or classification
+      num_classes: 1
+      dropout: 0.5
+    backend:
+      trainer_kwargs:
+        backend: torch
+        max_epochs: 50
+        accelerator: gpu
+        devices: 1
+
+      optim:
+        optimizer: adamw
+        lr: 1e-4
+        weight_decay: 1e-4
