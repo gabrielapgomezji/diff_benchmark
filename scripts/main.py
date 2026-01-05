@@ -113,15 +113,16 @@ def run_single_model(model_name, model_config, general_config, results_path):
             # print(
             #     f"Fold {fold_idx+1} - Train samples: {len(train_idx)}, test_samples: {len(test_idx)}"
             # )
+            # breakpoint()
             train_loader, test_loader = preprocessed.get_dataloader_fold(
-                dataset, fold_idx, indices, batch_size=local_config["batch_size"]
+                dataset, fold_idx, indices, batch_size=local_config["data"]["batch_size"]
             )
             train_idx, test_idx = indices[fold_idx]
             targets = dataset.targets.numpy()
             y_train = np.array(targets[train_idx]).squeeze()
             y_test = np.array(targets[test_idx]).squeeze()
 
-            local_config["prediction_task"] = config.get(
+            local_config["backbone"]["prediction_task"] = config.get(
                 "prediction_task", "regression"
             )
             model = get_model(model_name, local_config)
