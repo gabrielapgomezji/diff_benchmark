@@ -281,16 +281,16 @@ class ResNet(nn.Module):
         self.layer4 = self._make_layer(
             block, 512, layers[3], shortcut_type, stride=1, dilation=4
         )
-
+        self.out_dim = 512 * block.expansion
         self.avgpool = nn.AdaptiveAvgPool3d((1, 1, 1))
         # self.fc = nn.Linear(512 * block.expansion, num_classes)
-        self.fc = PredictionHead(
-            embedding_dim=512 * block.expansion,
-            prediction_task=prediction_task,
-            num_classes=num_classes, # for regression is specified to 1
-            hidden_dims=None,
-            dropout=0.0,
-        )
+        # self.fc = PredictionHead(
+        #     embedding_dim=512 * block.expansion,
+        #     prediction_task=prediction_task,
+        #     num_classes=num_classes, # for regression is specified to 1
+        #     hidden_dims=None,
+        #     dropout=0.0,
+        # )
 
         for m in self.modules():
             if isinstance(m, nn.Conv3d):
@@ -375,7 +375,7 @@ class ResNet(nn.Module):
         x = self.layer4(x)
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
-        x = self.fc(x)
+        # x = self.fc(x)
 
         return x
 
