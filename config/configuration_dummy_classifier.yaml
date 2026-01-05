@@ -8,4 +8,9 @@ models:
   params:
     name: dummy_classifier
     comment: Dummy Classifier. Testing new set up
-    batch_size: 32
+    data:
+      batch_size: 32
+    backbone:
+      prediction_task: classification
+    backend: 
+      num_classes: 1

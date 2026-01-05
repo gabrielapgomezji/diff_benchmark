@@ -7,5 +7,10 @@ models:
 - name: pca_svm
   params:
     name: pca_svm
-    comment: PCA SVM forest regression. Testing new dataloader
-    batch_size: 32
+    comment: PCA SVM forest regression. Test new conf
+    backend: 
+      num_classes: 1
+    data:
+      batch_size: 32
+    backbone:
+      prediction_task: regression

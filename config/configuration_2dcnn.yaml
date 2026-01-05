@@ -26,6 +26,7 @@ models:
       task: regression        # or classification
       num_classes: 1
       dropout: 0.5
+      
     backend:
       trainer_kwargs:
         backend: torch
@@ -37,3 +38,9 @@ models:
         optimizer: adamw
         lr: 1e-4
         weight_decay: 1e-4
+
+    data:
+      batch_size: 32
+      num_workers: 5
+      input_channels: 3   # number of slices
+      image_size: [224, 224]

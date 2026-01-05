@@ -7,5 +7,10 @@ models:
 - name: pca_forest
   params:
     name: pca_forest
-    comment: PCA random forest regression. Testing new dataloader
-    batch_size: 32
+    comment: PCA random forest reg. Test new conf
+    backend: 
+      num_classes: 1
+    data:
+      batch_size: 32
+    backbone:
+      prediction_task: regression
