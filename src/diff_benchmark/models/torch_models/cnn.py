@@ -101,21 +101,11 @@ class ResNet3SliceMultihead(nn.Module):
         self.backbone = ResNet18Backbone(**kwargs)
         self.num_subvols = input_slices // 3
         self.dropout = nn.Dropout(p=dropout) if dropout > 0 else nn.Identity()
-        # self.fc = nn.Linear(self.num_subvols * self.backbone.out_dim, num_classes)
-        # Aggregate subvolume embeddings into a single embedding (B, 512)
-        # learnable per-subvolume scalar weights (will be normalized via softmax in forward)
         self.aggregate_weights = nn.Parameter(
             torch.ones(self.num_subvols, dtype=torch.float32)
         )
         self.prediction_task = kwargs.get("prediction_task", None)
         self.out_dim = self.backbone.out_dim
-        # self.fc = PredictionHead(
-        #     embedding_dim=self.backbone.out_dim,
-        #     prediction_task=self.prediction_task,
-        #     num_classes=num_classes, # for regression is specified to 1
-        #     hidden_dims=[256],
-        #     dropout=dropout,
-        # )
         self.mean = 0.5
         self.std = 0.5
         if freeze_backbone:
@@ -172,8 +162,6 @@ class ResNet3SliceMultihead(nn.Module):
         # print(feats)
         # feats scalar product with weights. 1 embedding per features (B, 512).
         feats = self.dropout(feats)
-        # out = self.fc(feats)  # (B, num_classes)
-        # return out
         return feats
         
         ###
@@ -219,73 +207,3 @@ class ResNet3SliceMultihead(nn.Module):
         ys = torch.stack(ys)
         gs = torch.stack(gs)
         return xs_aug.squeeze(1), ys, gs
-
-def collate_with_augmentation(batch: list, transform: callable = None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch.
-        Args:
-            batch (list): A list of tuples, where each tuple contains (x, y, g) for a single sample.
-                        x is a 3D tensor (D, H, W), y is the label tensor, and g is the group tensor.
-            transform (callable, optional): A function that applies 2D augmentations to a single slice.
-                                            If None, no augmentation is applied. Default is None.
-        Returns:
-            tuple: A tuple containing:
-                - xs_aug (torch.Tensor): A tensor of shape (batch_size, C, D, H, W) with augmented slices.
-                - ys (torch.Tensor): A tensor of shape (batch_size,) containing the labels.
-                - gs (torch.Tensor): A tensor of shape (batch_size,) containing the group identifiers.
-        """
-        xs, ys, gs = zip(*batch)  # separate batch components
-        xs_aug = []
-        for x in xs:  # x shape: (D,H,W)
-            slices = []
-            for i in range(x.shape[0]):
-                slice_2d = x[i, :, :].unsqueeze(0)  # (1,H,W)
-                if transform:
-                    slice_2d = transform(slice_2d)
-                slices.append(slice_2d)
-            x_aug = torch.stack(slices, dim=0)  # (D,1,H,W)
-            x_aug = x_aug.permute(1, 0, 2, 3)  # (C=1,D,H,W)
-            xs_aug.append(x_aug)
-
-        xs_aug = torch.stack(xs_aug, dim=0)
-        ys = torch.stack(ys)
-        gs = torch.stack(gs)
-        return xs_aug.squeeze(1), ys, gs
-
-
-class ResNet3SliceBackbone(nn.Module):
-    """
-    Backend-agnostic CNN architecture.
-    """
-
-    data_type = "images"
-
-    def __init__(
-        self,
-        input_slices: int,
-        num_classes: int,
-        freeze_backbone: bool = True,
-        dropout: float = 0.5,
-        pretrained: bool = False,
-        trainable_blocks: Any =None,
-        prediction_task: str |None = None,
-        **kwargs: Any,
-    ):
-        super().__init__()
-
-        self.net = ResNet3SliceMultihead(
-            input_slices=input_slices,
-            num_classes=num_classes,
-            freeze_backbone=freeze_backbone,
-            dropout=dropout,
-            pretrained=pretrained,
-            trainable_blocks=trainable_blocks,
-            prediction_task=prediction_task,
-        )
-
-        # dataset-specific metadata (OK here)
-        self.collate_with_augmentation = collate_with_augmentation
-        self.mean = 0.5
-        self.std = 0.5
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.net(x)

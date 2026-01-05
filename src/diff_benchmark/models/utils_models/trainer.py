@@ -181,10 +181,6 @@ class TorchTrainer(BaseTrainer):
             else nn.MSELoss()
         )
         self.prediction_task = prediction_task
-    
-    # @property
-    # def data_type(self):
-    #     return self.model.data_type
 
     def fit(self, dataloader):
         train_loader, val_loader = split_loader(
@@ -383,11 +379,6 @@ class LightningTrainer(BaseTrainer):
 
         self.trainer = pl.Trainer(**trainer_kwargs)
         self.val_ratio = val_ratio
-    
-    # @property
-    # def data_type(self):
-    #     # Lightning adapter → real backbone
-    #     return getattr(self.model.model, "data_type", None)
 
     def fit(self, dataloader):
         train_loader, val_loader = split_loader(
