@@ -3,7 +3,7 @@
 # DATASET CONFIGURATION
 # ==============================
 datasets:
-  metric_to_compute: md # rtop # 
+  metric_to_compute: rtop # md # 
   scale: 1000
   datasets_list:
     - name: hcp
