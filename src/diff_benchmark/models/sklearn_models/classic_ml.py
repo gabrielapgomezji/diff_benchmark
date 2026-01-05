@@ -1,5 +1,5 @@
 import numpy as np
-from diff_benchmark.models.base import NumpyAbstractModel, SklearnModel
+from diff_benchmark.models.utils_models.trainer import SklearnModel
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import GridSearchCV
@@ -9,22 +9,6 @@ from sklearn.svm import SVC, SVR
 from torch.utils.data import DataLoader
 
 from sklearn.base import BaseEstimator
-
-
-
-
-
-######
-######
-# first option: create a function that returns a GridSearchCV object with PCA + RF or PCA + SVM
-# second option: create a class that inherits from BaseEstimator and implements fit and predict methods
-# third option: create a base class that implements fit and predict from a self.model and then create two subclasses for PCA + RF and PCA + SVM
-# fourth option: create a class that inherits from NumpyAbstractModel
-######
-######
-
-
-
 
 class PCARandomForestModel(SklearnModel):
     """
@@ -61,7 +45,7 @@ class PCARandomForestModel(SklearnModel):
         }
 
         # Define GridSearchCV
-        self.model = GridSearchCV(
+        return GridSearchCV(
             estimator=pipeline,
             param_grid=param_grid,
             scoring=scoring,
@@ -71,16 +55,12 @@ class PCARandomForestModel(SklearnModel):
         )
 
 
-class PCASVMModel(NumpyAbstractModel):
+class PCASVMModel(SklearnModel):
     """
     PCASVMModel combines PCA for dimensionality reduction
     with a Support Vector Machine classifier.
     """
-
-    data_type = "array"
-
-    def __init__(self, **kwargs):
-        super().__init__()
+    def _build_model(self, **kwargs) -> BaseEstimator:
         self.prediction_task = kwargs.get("prediction_task", None)
         if self.prediction_task == "classification":
             svm_head = SVC(probability=True)
@@ -110,7 +90,7 @@ class PCASVMModel(NumpyAbstractModel):
         }
 
         # Define GridSearchCV
-        self.model = GridSearchCV(
+        return GridSearchCV(
             estimator=pipeline,
             param_grid=param_grid,
             scoring=scoring,
@@ -118,6 +98,3 @@ class PCASVMModel(NumpyAbstractModel):
             n_jobs=-1,
             verbose=1,
         )
-        
-    def model(self):
-        return self.model
