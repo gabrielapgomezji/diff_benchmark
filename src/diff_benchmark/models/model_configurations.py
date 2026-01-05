@@ -170,7 +170,7 @@ def get_model(name: str, config: dict) -> object:
     """
 
     name = name.lower()
-    breakpoint()
+    
     backend = config["backend"]["backend"]
     if backend == "lightning":
         config["trainer_kwargs"] = {

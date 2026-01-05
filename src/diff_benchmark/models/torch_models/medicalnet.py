@@ -248,7 +248,7 @@ class ResNet(nn.Module):
                     num_classes is the number of output classes.
     """
 
-    def __init__(self, block: nn.Module, layers: list[int], num_classes: int, prediction_task: str, shortcut_type: str = "B", no_cuda: bool = False):
+    def __init__(self, block: nn.Module, layers: list[int], num_classes: int, prediction_task: str, shortcut_type: str = "B", no_cuda: bool = False, **kwargs: Any):
         self.inplanes = 64
         self.no_cuda = no_cuda
         super().__init__()
@@ -385,6 +385,8 @@ class MedicalNet(ResNet):
         prediction_task: str | None = None,
         shortcut_type: str = "B",
         no_cuda: bool = False,
+        pretrained: bool = False,
+        pretrain_path: str | None = None,
         **kwargs: Any,
     ):
         if depth not in RESNET_DEPTHS:
@@ -402,6 +404,32 @@ class MedicalNet(ResNet):
             shortcut_type=shortcut_type,
             no_cuda=no_cuda,
         )
+
+        if pretrained:
+            if pretrain_path is None:
+                raise ValueError("pretrained=True but no pretrain_path provided")
+
+            state = torch.load(pretrain_path, map_location="cpu")
+
+            # Handle common MedicalNet checkpoint formats
+            if "state_dict" in state:
+                state = state["state_dict"]
+
+            # Remove possible Lightning prefixes
+            new_state = {}
+            for k, v in state.items():
+                if k.startswith("module."):
+                    new_state[k[len("module."):]] = v
+                else:
+                    new_state[k] = v
+
+            missing, unexpected = self.load_state_dict(new_state, strict=False)
+
+            if missing:
+                print("[MedicalNet] Missing keys:", missing)
+            if unexpected:
+                print("[MedicalNet] Unexpected keys:", unexpected)
+                
         self.collate_with_augmentation = self.collate_with_augmentation
         self.mean = 0.5
         self.std = 0.5
