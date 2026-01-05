@@ -26,3 +26,5 @@ class DatasetConfig:
 
     nodif_mask_extension: str | None = None
     aparcaseg_extension: str | None = None
+    
+    region: str | None = None 

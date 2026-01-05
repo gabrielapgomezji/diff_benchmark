@@ -87,7 +87,7 @@ class DefaultPipeline(BrainDataPreparationPipeline):
                     0, 7
                 )
 
-                target = self.config["data_preparation"]["region"]
+                target = self.dataset_config.region
                 avg_data = extract_region_data(
                     left_data,
                     right_data,

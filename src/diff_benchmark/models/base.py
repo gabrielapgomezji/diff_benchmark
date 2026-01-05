@@ -13,6 +13,7 @@ from sklearn.metrics import (  # confusion_matrix,; roc_auc_score,
     recall_score,
 )
 from sklearn.model_selection import train_test_split
+from sklearn.base import BaseEstimator
 from torch import nn
 from torch.utils.data import DataLoader, Subset
 from torchvision import transforms
@@ -20,36 +21,7 @@ from tqdm import tqdm
 
 from diff_benchmark.utils.logger import TrainLogger
 from diff_benchmark.utils.scores import compute_metrics
-
-
-def collate_with_augmentation(batch: list, transform: transforms.Compose = None):
-    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch.
-    Args:
-        batch (list): List of tuples (x, y, g) where x is a 3D tensor (D,H,W), y is the label,
-                      and g is additional info (e.g., gender).
-        transform (transforms.Compose, optional): 2D transformations to apply to each slice.
-    Returns:
-        Tuple of tensors: (xs_aug, ys, gs) where xs_aug is the augmented batch of 3D volumes,
-                          ys are the labels, and gs are the additional info.
-    """
-    xs, ys, gs = zip(*batch)  # separate batch components
-    xs_aug = []
-    for x in xs:  # x shape: (D,H,W)
-        slices = []
-        for i in range(x.shape[0]):
-            slice_2d = x[i, :, :].unsqueeze(0)  # (1,H,W)
-            if transform:
-                slice_2d = transform(slice_2d)
-            slices.append(slice_2d)
-        x_aug = torch.stack(slices, dim=0)  # (D,1,H,W)
-        x_aug = x_aug.permute(1, 0, 2, 3)  # (C=1,D,H,W)
-        xs_aug.append(x_aug)
-
-
-#     xs_aug = torch.stack(xs_aug, dim=0)
-#     ys = torch.stack(ys)
-#     gs = torch.stack(gs)
-#     return xs_aug, ys, gs
+from diff_benchmark.models.utils import create_trainer
 
 
 train_transforms = transforms.Compose(
@@ -68,36 +40,87 @@ val_transforms = transforms.Compose(
 )
 
 
+
+class SklearnModel(ABC, BaseEstimator):
+    """
+    Base class for sklearn models.
+    Implements fit and predict methods.
+    """
+
+    data_type = "array"
+    
+    def __init__(self):
+        super().__init__()
+        self.model = self._build_model()
+    
+    @abstractmethod
+    def _build_model(self, **kwargs) -> BaseEstimator:
+        raise NotImplementedError
+
+    def fit(self, X: np.ndarray, y: np.ndarray):
+        self.model.fit(X, y)
+        return self
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        return self.model.predict(X)
+
+
 class NumpyAbstractModel(ABC):
     """
     Abstract base class for all models in the diff_benchmark framework.
     Defines the interface that all models must implement.
     """
-
-    @abstractmethod
-    def _dataloader_to_numpy(self, dataloader: DataLoader):
+    def __init__(self, model: SklearnModel):
+        self.model = model
+        self.output_dim = 1
+    
+    def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
         """
-        Convert a DataLoader to numpy arrays.
-        This method should be implemented by all subclasses to handle the conversion.
+        Converts a dataloader containing batches of data into NumPy arrays.
         Args:
-            dataloader (DataLoader): PyTorch DataLoader to convert.
+            dataloader (iterable): An iterable that yields batches of data in the form
+                                   (x_batch, y_batch, _), where x_batch and y_batch
+                                   are the input and target tensors, respectively.
+        Returns:
+            tuple: A tuple containing two NumPy arrays:
+                - features (np.ndarray): Concatenated array of input data.
+                - targets (np.ndarray): Concatenated array of target data.
         """
 
-    @abstractmethod
+        features_list = []
+        targets_list = []
+        for features_batch, targets_batch, _ in dataloader:
+            features_list.append(features_batch.numpy())
+            targets_list.append(targets_batch.numpy())
+        features = np.concatenate(features_list, axis=0)
+        targets = np.concatenate(targets_list, axis=0)
+        return features, targets
+    
+    def _reshape_data(self, dataloader: DataLoader):
+        features, targets = self._dataloader_to_numpy(dataloader)
+        features_reshaped = features.reshape(features.shape[0], -1)
+        return features_reshaped, targets.flatten()
+
     def fit(self, dataloader: DataLoader):
         """
         Fit the model to the training data.
         Args:
             dataloader (DataLoader): PyTorch DataLoader with training data.
         """
+        features, targets = self._reshape_data(dataloader)
+        self.model.fit(features, targets)
 
-    @abstractmethod
     def predict(self, dataloader: DataLoader):
         """
         Predict using the fitted model.
         Args:
             dataloader (DataLoader): PyTorch DataLoader with data to predict.
         """
+        features, _ = self._reshape_data(dataloader)
+        preds =  self.model.predict(features)
+        if self.output_dim == 2:
+            return preds.reshape(-1, 1)
+        return preds
 
 
 class TorchAbstractModel(ABC):
@@ -105,15 +128,6 @@ class TorchAbstractModel(ABC):
     Abstract base class for all models in the diff_benchmark framework.
     Defines the interface that all models must implement.
     """
-
-    @abstractmethod
-    def _dataloader_to_numpy(self, dataloader: DataLoader):
-        """
-        Convert a DataLoader to numpy arrays.
-        This method should be implemented by all subclasses to handle the conversion.
-        Args:
-            dataloader (DataLoader): PyTorch DataLoader to convert.
-        """
 
     @abstractmethod
     def fit(self, dataloader: DataLoader):
@@ -138,7 +152,7 @@ class TorchPipeline:
     Extends TorchAbstractModel to include training-specific methods.
     """
 
-    def __init__(self, num_workers: int =10, device: torch.device =None, dtype: torch.dtype =None, **kwargs):
+    def __init__(self, model: nn.Module, num_workers: int =10, device: torch.device =None, dtype: torch.dtype =None, **kwargs):
 
         self.num_workers = num_workers
         self.device = (
@@ -154,7 +168,7 @@ class TorchPipeline:
         self.average = kwargs.get("average", "binary")
         self._prediction_task = kwargs.get("prediction_task", None)
 
-        self.model = self._build_model(**kwargs).to(self.device)
+        self.model = model.to(self.device)
 
         self.learning_rate = kwargs.get("learning_rate", 1e-4)
         self.weight_decay = kwargs.get("weight_decay", 1e-2)
@@ -196,25 +210,6 @@ class TorchPipeline:
     # @prediction_task.setter
     # def prediction_task(self, value):
     #     self._prediction_task = value
-
-    @abstractmethod
-    def _build_model(self, **kwargs):
-        """
-        Build and return a PyTorch model.
-        This method must be implemented in a subclass to define the architecture
-        of the model. It should return an instance of a PyTorch model.
-        Args:
-            **kwargs: Arbitrary keyword arguments that may be used to configure
-                      the model.
-        Raises:
-            NotImplementedError: If the method is not implemented in a subclass.
-        Returns:
-            torch.nn.Module: A PyTorch model instance.
-        """
-        
-        raise NotImplementedError(
-            "_build_model must be implemented and return a torch model."
-        )
 
     def _save_logs(self, history: dict, save_path: str):
         """
@@ -525,6 +520,8 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
 
     def __init__(
         self,
+        model: nn.Module,
+        num_workers: int = 10,
         learning_rate: float = 1e-4,
         weight_decay: float = 1e-4,
         average: str = "binary",
@@ -534,39 +531,221 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
     ):
         super().__init__()
         self.save_hyperparameters()
+        self.num_workers = num_workers
         self.lr = learning_rate
         self.weight_decay = weight_decay
         self.average = average
         self.scheduler_type = scheduler_type
         self.optimizer_type = optimizer_type
+        self.prediction_task = kwargs.get("prediction_task", None)
+        
+        
+        # device str
+        # run id
+        # fold
+        # epochs
+        # freeze_backbone
 
         # Subclasses must define self.model and self.criterion
-        self.model = None
+        self.model = model
         # self.criterion = None
-        self.criterion = torch.nn.CrossEntropyLoss()
+        # self.criterion = torch.nn.CrossEntropyLoss()
+        if self.prediction_task == "classification":
+            self.criterion = nn.CrossEntropyLoss()
+        elif self.prediction_task == "regression":
+            self.criterion = nn.MSELoss()
 
-    @abstractmethod
-    def build_model(self):
-        """Define the network architecture and loss function."""
 
-    @abstractmethod
-    # def forward(self, x):
+    def _train_val_loader_split(self, train_loader: DataLoader, val_ratio: float = 0.3) -> tuple[DataLoader, DataLoader]:
+        """
+        Splits a given DataLoader into training and validation DataLoaders based on a specified validation ratio.
+        Args:
+            train_loader (DataLoader): The DataLoader containing the dataset to be split.
+            val_ratio (float, optional): The ratio of the dataset to be used for validation. Defaults to 0.3.
+        Returns:
+            tuple[DataLoader, DataLoader]: A tuple containing the new training DataLoader and validation DataLoader.
+        Notes:
+            - The split is stratified based on the 'gender' attribute of the dataset.
+            - The new DataLoaders are created with specific batch sizes, shuffling, and optional transform-aware collation.
+            - The random state for the split is fixed at 42 for reproducibility.
+        """
+        
+        dataset = train_loader.dataset  # access the underlying dataset
+        n = len(dataset)
+        genders = np.asarray(dataset.dataset.gender[dataset.indices])
+
+        indices = np.arange(n)
+        train_idx, val_idx = train_test_split(
+            indices, test_size=val_ratio, stratify=genders, random_state=42
+        )
+
+        train_subset = Subset(dataset, train_idx)
+        val_subset = Subset(dataset, val_idx)
+        collate_train = self.model.collate_with_augmentation
+        collate_val = self.model.collate_with_augmentation
+
+        train_loader_new = DataLoader(
+            train_subset,
+            batch_size=train_loader.batch_size,
+            shuffle=True,
+            num_workers=self.num_workers,
+            # collate_fn=lambda batch: collate_with_augmentation(
+            #     batch, transform=train_transforms
+            # ),
+            collate_fn=lambda batch: collate_train(batch, transform=train_transforms),
+        )
+        val_loader_new = DataLoader(
+            val_subset,
+            batch_size=64,
+            shuffle=False,
+            num_workers=self.num_workers,
+            # collate_fn=lambda batch: collate_with_augmentation(
+            #     batch, transform=val_transforms
+            # ),
+            collate_fn=lambda batch: collate_val(batch, transform=val_transforms),
+        )
+        # Transform-aware collation (optional)
+        # train_loader_new = DataLoader(
+        #     train_subset,
+        #     batch_size=train_loader.batch_size,
+        #     shuffle=True,
+        #     num_workers=19,  # 0,#
+        #     pin_memory=False,
+        #     collate_fn=lambda batch: collate_with_augmentation(
+        #         batch, transform=train_transforms
+        #     ),
+        # )
+        # val_loader_new = DataLoader(
+        #     val_subset,
+        #     batch_size=1,
+        #     shuffle=False,
+        #     num_workers=19,  # 0,#10,
+        #     pin_memory=False,
+        #     collate_fn=lambda batch: collate_with_augmentation(
+        #         batch, transform=val_transforms
+        #     ),
+        # )
+        return train_loader_new, val_loader_new
+    
+    def _save_logs(self, history: list[dict], save_path: str):
+        """Utility for saving training logs as JSON or CSV.
+        Args:
+            history (list): List of dictionaries containing training logs.
+            save_path (str): Path to save the logs, must end with .json or .csv.
+        """
+        path = Path(save_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.suffix == ".json":
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(history, f)
+        elif path.suffix == ".csv":
+            keys = history[0].keys()
+            with open(path, "w", encoding="utf-8", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=keys)
+                writer.writeheader()
+                writer.writerows(history)
+        else:
+            raise ValueError("Save path must end with .json or .csv")
+
     def forward(self, *args, **kwargs):
-        """Forward pass."""
+        return self.model(*args, **kwargs)
 
-    @abstractmethod
     def fit(self, dataloader: DataLoader):
-        """Fit the model to the training data.
-        Args:
-            dataloader (DataLoader): PyTorch DataLoader with training data.
         """
+        Lightning-based fit function to preserve compatibility with the old API.
+        Splits the input dataloader into training and validation sets,
+        sets up the trainer with early stopping and checkpointing,
+        and runs Trainer.fit().
+        Args:
+            dataloader (DataLoader): The DataLoader containing the training data.
+        """
+        print(f"Device: {self.device_str}")
+        print(f"Fold index: {self.fold_idx}")
 
-    @abstractmethod
-    def predict(self, dataloader: DataLoader):
-        """Predict using the fitted model.
+        train_loader, val_loader = self._train_val_loader_split(dataloader)
+        print("Dataloaders created.")
+
+        trainer = create_trainer(
+            max_epochs=self.epochs,
+            monitor="val_accuracy",
+            mode="max",
+            patience=10,
+            accelerator="gpu" if "cuda" in self.device_str else "cpu",
+            devices=1,
+            save_dir=f"./data/results/checkpoints/{self.run_id}/fold_{self.fold_idx}",
+        )
+
+        trainer.fit(self, train_loader, val_loader)
+        self.trainer = trainer  # store for predict later
+
+        print(
+            f"[INFO] Training finished. Best model: {trainer.checkpoint_callback.best_model_path}"
+        )
+    
+    def x_only_loader(self, dl: DataLoader):
+        """Utility to create a dataloader that yields only inputs (no labels).
         Args:
-            dataloader (DataLoader): PyTorch DataLoader with data to predict.
+            dl (DataLoader): Original dataloader yielding (x, y, g).
+        Yields:
+            tuple: A tuple containing only the input tensor x.
         """
+        for x, _, _ in dl:
+            if isinstance(x, list):
+                x = torch.stack(x)
+            # Ensure it’s a 5D tensor (B, 1, D, H, W)
+            if x.dim() == 4:
+                x = x.unsqueeze(1)
+            yield (x,)
+
+    def predict(self, dataloader: DataLoader) -> np.ndarray:
+        """
+        Lightning-based predict function to preserve the old API.
+        Automatically loads the best checkpoint from the Trainer.
+        Args:
+            dataloader (DataLoader): The DataLoader containing the data to predict on.
+        Returns:
+            np.ndarray: The predictions as a NumPy array.
+        """
+        dataset = dataloader.dataset
+        
+        dataloader = DataLoader(
+            dataset,
+            batch_size=128,
+            shuffle=False,
+            num_workers=19,  # 0,#10,
+            collate_fn=lambda batch: self.model.collate_with_augmentation(
+                batch, transform=val_transforms
+            ),
+        )
+        trainer = getattr(self, "trainer", None)
+        if trainer is None:
+            # If fit() hasn’t been run, create a default trainer
+            trainer = create_trainer(
+                accelerator="gpu" if "cuda" in self.device_str else "cpu",
+                devices=1,
+                max_epochs=1,
+            )
+
+        # Load best model checkpoint automatically
+        best_path = getattr(trainer.checkpoint_callback, "best_model_path", None)
+        # if best_path and Path(best_path).exists():
+        #     state_dict = torch.load(best_path, map_location=self.device_str)
+        #     self.load_state_dict(state_dict["state_dict"], strict=False)
+        #     print(f"[INFO] Loaded checkpoint from {best_path}")
+
+        self.eval()
+        # preds_all = trainer.predict(self, dataloaders=self.x_only_loader(dataloader))
+        if best_path and Path(best_path).exists():
+            preds_all = trainer.predict(
+                self, dataloaders=dataloader, ckpt_path=best_path
+            )
+        else:
+            preds_all = trainer.predict(
+                self, dataloaders=self.x_only_loader(dataloader)
+            )
+        # preds_all = trainer.predict(self, dataloaders=dataloader)
+        preds = torch.cat([p.cpu() for p in preds_all])
+        return preds.numpy()
 
     def compute_metrics(self, y_true: torch.Tensor, y_pred: torch.Tensor) -> dict:
         """Compute classification metrics.
@@ -634,7 +813,6 @@ class LightningModel(pl.LightningModule, ABC):  # pylint: disable=too-many-ances
             dict: A dictionary containing the validation loss under the key "val_loss" and additional 
                 computed metrics with keys prefixed by "val_".
         """
-        
         _ = batch_idx
         x, y, _ = batch
         logits = self(x)

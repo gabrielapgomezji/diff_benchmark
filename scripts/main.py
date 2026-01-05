@@ -22,7 +22,6 @@ from diff_benchmark.preprocessing.preprocess_demographic_data import (
 )
 from diff_benchmark.utils.config_loader import load_configs
 from diff_benchmark.utils.data_pipeline import get_data_pipeline
-# from diff_benchmark.utils.job_manager import run_jobs
 from diff_benchmark.utils.job_manager_wrap import run_jobs
 from diff_benchmark.utils.scores import accuracy_score, compute_metrics
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
@@ -47,6 +46,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
                 **dataset2prepare,
                 metric_to_compute=general_config["datasets"]["metric_to_compute"],
                 scale=general_config["datasets"]["scale"],
+                region=general_config["data_preparation"]["region"],
             )
             dataset2work = dataset
     
@@ -113,15 +113,16 @@ def run_single_model(model_name, model_config, general_config, results_path):
             # print(
             #     f"Fold {fold_idx+1} - Train samples: {len(train_idx)}, test_samples: {len(test_idx)}"
             # )
+            # breakpoint()
             train_loader, test_loader = preprocessed.get_dataloader_fold(
-                dataset, fold_idx, indices, batch_size=local_config["batch_size"]
+                dataset, fold_idx, indices, batch_size=local_config["data"]["batch_size"]
             )
             train_idx, test_idx = indices[fold_idx]
             targets = dataset.targets.numpy()
             y_train = np.array(targets[train_idx]).squeeze()
             y_test = np.array(targets[test_idx]).squeeze()
 
-            local_config["prediction_task"] = config.get(
+            local_config["backbone"]["prediction_task"] = config.get(
                 "prediction_task", "regression"
             )
             model = get_model(model_name, local_config)
@@ -217,7 +218,6 @@ def run_single_model(model_name, model_config, general_config, results_path):
 
     save_model_results(summary, Path(results_path) / "analysis_results")
     return model_name, run_id
-
 
 models_to_run = model_config["models"]
 

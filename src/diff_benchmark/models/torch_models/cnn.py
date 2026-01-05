@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torchvision import models
 
-from diff_benchmark.models.base import TorchPipeline
+from typing import Any
 
 
 class ResNet18Backbone(nn.Module):
@@ -92,6 +92,8 @@ class ResNet3SliceMultihead(nn.Module):
                 (batch, 1) for regression tasks.
     """
     
+    data_type = "images"
+    
     def __init__(
         self, input_slices: int, num_classes: int = 2, freeze_backbone: bool = True, dropout: float = 0.5, **kwargs
     ):
@@ -99,26 +101,13 @@ class ResNet3SliceMultihead(nn.Module):
         self.backbone = ResNet18Backbone(**kwargs)
         self.num_subvols = input_slices // 3
         self.dropout = nn.Dropout(p=dropout) if dropout > 0 else nn.Identity()
-        # self.fc = nn.Linear(self.num_subvols * self.backbone.out_dim, num_classes)
-        # Aggregate subvolume embeddings into a single embedding (B, 512)
-        # learnable per-subvolume scalar weights (will be normalized via softmax in forward)
         self.aggregate_weights = nn.Parameter(
             torch.ones(self.num_subvols, dtype=torch.float32)
         )
         self.prediction_task = kwargs.get("prediction_task", None)
-        if self.prediction_task == "classification":
-            self.fc = nn.Linear(self.backbone.out_dim, num_classes)
-        # elif self.prediction_task is None:
-        #     raise ValueError("prediction_task must be specified as 'classification' or 'regression'")
-        else:
-            # self.fc = nn.Linear(self.backbone.out_dim, 1)
-            self.fc = nn.Sequential(
-                nn.Linear(self.backbone.out_dim, 256),
-                nn.ReLU(),
-                self.dropout,
-                nn.Linear(256, 1),
-            )
-
+        self.out_dim = self.backbone.out_dim
+        self.mean = 0.5
+        self.std = 0.5
         if freeze_backbone:
             for param in self.backbone.parameters():
                 param.requires_grad = False
@@ -173,90 +162,48 @@ class ResNet3SliceMultihead(nn.Module):
         # print(feats)
         # feats scalar product with weights. 1 embedding per features (B, 512).
         feats = self.dropout(feats)
-        out = self.fc(feats)  # (B, num_classes)
-        return out
+        return feats
+        
+        ###
+        # feats = []
+        # for i in range(num_subvols):
+        #     sv = subvols[:, i]  # (Batch, 3, Height, Width)
+        #     f = self.backbone(sv)  # (Batch, 512)
+        #     feats.append(f)
 
+        # feats = torch.cat(feats, dim=1)  # (Batch, num_subvols*512)
+        # feats = self.dropout(feats)
+        # # Normalization layer
+        # out = self.fc(feats)  # (Batch, num_classes)
+        # return out
 
-def collate_with_augmentation(batch: list, transform: callable = None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch.
-    Args:
-        batch (list): A list of tuples, where each tuple contains (x, y, g) for a single sample.
-                      x is a 3D tensor (D, H, W), y is the label tensor, and g is the group tensor.
-        transform (callable, optional): A function that applies 2D augmentations to a single slice.
-                                        If None, no augmentation is applied. Default is None.
-    Returns:
-        tuple: A tuple containing:
-            - xs_aug (torch.Tensor): A tensor of shape (batch_size, C, D, H, W) with augmented slices.
-            - ys (torch.Tensor): A tensor of shape (batch_size,) containing the labels.
-            - gs (torch.Tensor): A tensor of shape (batch_size,) containing the group identifiers.
-    """
-    xs, ys, gs = zip(*batch)  # separate batch components
-    xs_aug = []
-    for x in xs:  # x shape: (D,H,W)
-        slices = []
-        for i in range(x.shape[0]):
-            slice_2d = x[i, :, :].unsqueeze(0)  # (1,H,W)
-            if transform:
-                slice_2d = transform(slice_2d)
-            slices.append(slice_2d)
-        x_aug = torch.stack(slices, dim=0)  # (D,1,H,W)
-        x_aug = x_aug.permute(1, 0, 2, 3)  # (C=1,D,H,W)
-        xs_aug.append(x_aug)
-
-    xs_aug = torch.stack(xs_aug, dim=0)
-    ys = torch.stack(ys)
-    gs = torch.stack(gs)
-    return xs_aug.squeeze(1), ys, gs
-
-
-class CNNRegTorchTrainModel(TorchPipeline):
-    """CNN Torch Train Model class inheriting from TorchPipeline.
-    Args:
-        input_slices (int): Number of input slices.
-        num_classes (int): Number of output classes.
-        freeze_backbone (bool): Whether to freeze the backbone during training.
-        dropout (float): Dropout rate.
-        **kwargs: Additional keyword arguments.
-    Attributes:
-        data_type (str): Type of data, set to "images".
-    Methods:
-        _build_model(input_slices, num_classes, freeze_backbone, dropout, **kwargs):
-            Builds and returns the ResNet3SliceMultihead model.
-    """
-
-    data_type = "images"
-
-    def _build_model(
-        self, input_slices: int, num_classes: int, freeze_backbone: bool, dropout: float, **kwargs
-    ):
-        """
-        Build and configure a ResNet3SliceMultihead model.
+    def collate_with_augmentation(self, batch: list, transform: callable = None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch.
         Args:
-            input_slices (int): The number of input slices for the model.
-            num_classes (int): The number of output classes for the model.
-            freeze_backbone (bool): Whether to freeze the backbone of the model during training.
-            dropout (float): The dropout rate to use in the model.
-            **kwargs: Additional optional arguments:
-                - pretrained (bool): Whether to use a pretrained model. Default is False.
-                - trainable_blocks (Optional): Specifies which blocks of the model are trainable. Default is None.
-                - prediction_task (Optional): Specifies the prediction task for the model. Default is None.
+            batch (list): A list of tuples, where each tuple contains (x, y, g) for a single sample.
+                        x is a 3D tensor (D, H, W), y is the label tensor, and g is the group tensor.
+            transform (callable, optional): A function that applies 2D augmentations to a single slice.
+                                            If None, no augmentation is applied. Default is None.
         Returns:
-            ResNet3SliceMultihead: A configured instance of the ResNet3SliceMultihead model.
+            tuple: A tuple containing:
+                - xs_aug (torch.Tensor): A tensor of shape (batch_size, C, D, H, W) with augmented slices.
+                - ys (torch.Tensor): A tensor of shape (batch_size,) containing the labels.
+                - gs (torch.Tensor): A tensor of shape (batch_size,) containing the group identifiers.
         """
-        pretrained = kwargs.get("pretrained", False)
-        trainable_blocks = kwargs.get("trainable_blocks", None)
-        prediction_task = kwargs.get("prediction_task", None)
-        model = ResNet3SliceMultihead(
-            input_slices=input_slices,
-            num_classes=num_classes,
-            freeze_backbone=freeze_backbone,
-            dropout=dropout,
-            pretrained=pretrained,
-            trainable_blocks=trainable_blocks,
-            prediction_task=prediction_task,
-        )
-        model.collate_with_augmentation = collate_with_augmentation
-        model.std = 0.5
-        model.mean = 0.5
+        xs, ys, gs = zip(*batch)  # separate batch components
+        xs_aug = []
+        for x in xs:  # x shape: (D,H,W)
+            slices = []
+            for i in range(x.shape[0]):
+                slice_2d = x[i, :, :].unsqueeze(0)  # (1,H,W)
+                if transform:
+                    slice_2d = transform(slice_2d)
+                slices.append(slice_2d)
+            x_aug = torch.stack(slices, dim=0)  # (D,1,H,W)
+            x_aug = x_aug.permute(1, 0, 2, 3)  # (C=1,D,H,W)
+            xs_aug.append(x_aug)
 
-        return model
+        xs_aug = torch.stack(xs_aug, dim=0)
+        ys = torch.stack(ys)
+        gs = torch.stack(gs)
+        return xs_aug.squeeze(1), ys, gs

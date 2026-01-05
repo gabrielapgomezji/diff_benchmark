@@ -1,11 +1,12 @@
-# ==============================
-# MODEL CONFIGURATION
-# ==============================
-pretrain_path: /data/parietal/store3/work/ggomezji/projects/diff_benchmark/MedicalNet_pytorch_files2/pretrain/resnet_10.pth
-
 models:
 - name: dummy_regressor
   params:
     name: dummy_regressor
-    comment: Dummy Regressor.
-    batch_size: 32
+    comment: Dummy Regressor. New configuration
+    data:
+      batch_size: 32
+    backbone:
+      prediction_task: regression
+    backend: 
+      backend: sklearn
+      num_classes: 1

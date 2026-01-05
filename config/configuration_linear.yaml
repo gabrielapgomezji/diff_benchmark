@@ -4,10 +4,10 @@
 pretrain_path: /data/parietal/store3/work/ggomezji/projects/diff_benchmark/MedicalNet_pytorch_files2/pretrain/resnet_10.pth
 
 models:
-- name: pca_svm
+- name: linear
   params:
-    name: pca_svm
-    comment: PCA SVM forest regression. Test new conf
+    name: linear
+    comment: PCA linear regression. Testnew conf
     backend: 
       backend: sklearn
       num_classes: 1
@@ -15,3 +15,4 @@ models:
       batch_size: 32
     backbone:
       prediction_task: regression
+    

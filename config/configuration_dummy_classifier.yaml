@@ -7,5 +7,11 @@ models:
 - name: dummy_classifier
   params:
     name: dummy_classifier
-    comment: Dummy Classifier. Testing new dataloader
-    batch_size: 32
+    comment: Dummy Classifier. Testing new set up
+    data:
+      batch_size: 32
+    backbone:
+      prediction_task: classification
+    backend: 
+      backend: sklearn
+      num_classes: 1

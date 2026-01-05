@@ -1,110 +1,47 @@
-# ==============================
-# MODEL CONFIGURATION
-# ==============================
-# base_lr < max_lr
-pretrain_path: /data/parietal/store3/work/ggomezji/projects/diff_benchmark/MedicalNet_pytorch_files2/pretrain/resnet_10.pth
+
+experiment:
+  name: medicalnet_depth18
+  comment: MedicalNet regression test
+  device: cuda
+
+data:
+  batch_size: 16
+  num_workers: 5
+  input_channels: 1
+  region_name: VisCent_ExStr
 
 models:
 - name: medicalnet
   params:
-    name: medicalnet
-    comment: Medicalnet. Depth 10. Test hyperparameters
-    region_name: VisCent_ExStr
-    input_channels: 1
-    num_workers: 5
-    num_classes: 2
-    batch_size: 32
-    epochs: 3
-    device: cuda
-    model_depth: 18
-    dropout: 0 #0.5
-    learning_rate: 1.0e-05
-    weight_decay: 0.001
-    max_lr: 3.0e-3
-    pct_start: 0.2
-    
-# - name: medicalnet
-#   params:
-#     name: medicalnet
-#     comment: Medicalnet. Depth 10. Test hyperparameters
-#     region_name: VisCent_ExStr
-#     input_channels: 1
-#     num_workers: 5
-#     num_classes: 2
-#     batch_size: 32
-#     epochs: 150
-#     device: cuda
-#     model_depth: 34
-#     dropout: 0 #0.5
-#     learning_rate: 1.0e-07
-#     weight_decay: 0.01
-#     max_lr: 3.0e-5
-#     pct_start: 0.2
-# - name: medicalnet
-#   params:
-#     name: medicalnet
-#     comment: Medicalnet. Depth 10. Test hyperparameters
-#     region_name: VisCent_ExStr
-#     input_channels: 1
-#     num_workers: 5
-#     num_classes: 2
-#     batch_size: 8
-#     epochs: 50
-#     device: cuda
-#     model_depth: 50
-#     dropout: 0 #0.5
-#     learning_rate: 1.0e-07
-#     weight_decay: 0.01
-#     max_lr: 3.0e-5
-#     pct_start: 0.2
-# - name: medicalnet
-#   params:
-#     name: medicalnet
-#     comment: Medicalnet. Depth 10. Test hyperparameters
-#     region_name: VisCent_ExStr
-#     input_channels: 1
-#     num_workers: 5
-#     num_classes: 2
-#     batch_size: 8
-#     epochs: 50
-#     device: cuda
-#     model_depth: 101
-#     dropout: 0 #0.5
-#     learning_rate: 1.0e-07
-#     weight_decay: 0.01
-#     max_lr: 3.0e-5
-#     pct_start: 0.2
-# - name: medicalnet
-#   params:
-#     name: medicalnet
-#     comment: Medicalnet. Depth 10. Test hyperparameters
-#     region_name: VisCent_ExStr
-#     input_channels: 1
-#     num_workers: 5
-#     num_classes: 2
-#     batch_size: 8
-#     epochs: 50
-#     device: cuda
-#     model_depth: 152
-#     dropout: 0 #0.5
-#     learning_rate: 1.0e-07
-#     weight_decay: 0.01
-#     max_lr: 3.0e-5
-#     pct_start: 0.2
-# - name: medicalnet
-#   params:
-#     name: medicalnet
-#     comment: Medicalnet. Depth 10. Test hyperparameters
-#     region_name: VisCent_ExStr
-#     input_channels: 1
-#     num_workers: 5
-#     num_classes: 2
-#     batch_size: 8
-#     epochs: 50
-#     device: cuda
-#     model_depth: 200
-#     dropout: 0 #0.5
-#     learning_rate: 1.0e-07
-#     weight_decay: 0.01
-#     max_lr: 3.0e-5
-#     pct_start: 0.2
+    backbone:
+      depth: 10
+      pretrained: true
+      pretrain_path: /data/parietal/store3/work/ggomezji/projects/diff_benchmark/MedicalNet_pytorch_files2/pretrain/resnet_10.pth
+      num_classes: 2
+      input_channels: 1
+
+    head:
+      task: classification
+      num_classes: 2
+      dropout: 0.0
+    backend:
+      backend: torch
+      trainer_kwargs:
+        max_epochs: 3
+        accelerator: gpu
+        devices: 1
+        log_every_n_steps: 10
+
+      optim:
+        optimizer: adamw
+        lr: 1.0e-5
+        weight_decay: 1e-3
+        scheduler:
+          type: onecycle
+          max_lr: 3.0e-3
+          pct_start: 0.2
+    data:
+      batch_size: 16
+      num_workers: 5
+      input_channels: 1
+      region_name: VisCent_ExStr

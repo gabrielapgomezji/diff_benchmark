@@ -2,6 +2,8 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 
 
+
+
 def create_trainer(
     max_epochs: int = 50,
     monitor: str ="val_accuracy",

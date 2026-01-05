@@ -1,19 +1,19 @@
 import hashlib
 import json
+import torch.nn as nn
 
-from diff_benchmark.models import cnn_with_base
-from diff_benchmark.models.classic_ml import PCARandomForestModel, PCASVMModel
-from diff_benchmark.models.cnn import ResNet3SliceModel
-from diff_benchmark.models.cnn_medicalnet import ResNet3DModel
-from diff_benchmark.models.cnn_torch_train import CNNTorchTrainModel
-from diff_benchmark.models.cnn_torch_train_reg import CNNRegTorchTrainModel
 
-from diff_benchmark.models.dummy import DummyClassifier, DummyRegressor
-from diff_benchmark.models.logistic_regression import (
-    LogisticRegressionModel,
+from diff_benchmark.models.sklearn_models.classic_ml import PCARandomForestModel, PCASVMModel
+from diff_benchmark.models.torch_models.medicalnet import MedicalNet
+from diff_benchmark.models.torch_models.cnn import ResNet3SliceMultihead
+from diff_benchmark.models.sklearn_models.dummy import DummyClassifierModel, DummyRegressorModel
+from diff_benchmark.models.sklearn_models.logistic_regression import (
+    LinearModel,
     PCALinearModel,
-    PCALogisticRegressionModel,
 )
+from diff_benchmark.models.utils_models.prediction_head import build_prediction_head
+from diff_benchmark.models.utils_models.trainer import TorchTrainer, LightningTrainer, SklearnTrainer
+
 
 
 def make_run_id(name: str, params: dict) -> str:
@@ -32,6 +32,120 @@ def make_run_id(name: str, params: dict) -> str:
     # Hash to avoid overly long filenames
     run_hash = hashlib.md5(params_str.encode()).hexdigest()[:8]
     return f"{name}_{run_hash}"
+
+
+class TaskModel(nn.Module):
+    def __init__(self, backbone: nn.Module, head: nn.Module):
+        super().__init__()
+        self.backbone = backbone
+        self.head = head
+        
+    @property
+    def data_type(self) -> str:
+        return self.backbone.data_type
+
+    def forward(self, x):
+        feats = self.backbone(x)
+        return self.head(feats)
+
+def create_model(
+    model_name: str,
+    model_kwargs: dict = {},
+):
+    
+    """Creates a model instance based on the specified type.
+    Args:
+        model (str): The type of model to create (e.g., "torch", "lightning").
+        model_kwargs (dict): Additional keyword arguments for the model.
+    
+    Returns:
+        nn.Module: Configured model instance for the specified type.
+    """
+    if model_name == "dummy_classifier":
+        backbone = DummyClassifierModel(**model_kwargs)
+        return backbone
+    
+    if model_name == "dummy_regressor":
+        backbone = DummyRegressorModel(**model_kwargs)
+        return backbone
+    
+    if model_name == "linear":
+        backbone = LinearModel(**model_kwargs)
+        return backbone
+    
+    if model_name == "pca_linear":
+        backbone = PCALinearModel(**model_kwargs)
+        return backbone
+    
+    if model_name == "pca_forest":
+        backbone = PCARandomForestModel(**model_kwargs)
+        return backbone
+    
+    if model_name == "pca_svm":
+        backbone = PCASVMModel(**model_kwargs)
+        return backbone
+
+    if model_name == "2dcnn":
+        backbone = ResNet3SliceMultihead(**model_kwargs)
+        head = build_prediction_head(
+        embedding_dim=backbone.out_dim,
+            prediction_task=model_kwargs.get("prediction_task", None),
+            num_classes=model_kwargs.get("num_classes", 2),
+            dropout=model_kwargs.get("dropout", 0.5),
+        )
+        return TaskModel(backbone, head)
+    
+    elif model_name == "medicalnet":
+        backbone = MedicalNet(**model_kwargs)
+        head = build_prediction_head(
+            embedding_dim=backbone.out_dim,
+            prediction_task=model_kwargs.get("prediction_task", None),
+            num_classes=model_kwargs.get("num_classes", 2),
+            dropout=model_kwargs.get("dropout", 0.5),
+        )
+        return TaskModel(backbone, head)
+    
+    else:
+        raise ValueError(f"Unknown model type: {model_name}")
+    
+
+def create_backend_trainer(
+    model,
+    backend: str,
+    backend_kwargs: dict,
+):
+    backend = backend.lower()
+    
+    if backend == "sklearn":
+        return SklearnTrainer(model=model, **backend_kwargs)
+
+    if backend == "torch":
+        return TorchTrainer(model=model, **backend_kwargs)
+
+    if backend == "lightning":
+        return LightningTrainer(model=model, **backend_kwargs)
+
+    raise ValueError(f"Unknown backend: {backend}")
+
+
+def create_trainer(
+    model_name: str,
+    model_kwargs: dict = {},
+    backend: str = "lightning",
+    backend_kwargs: dict = {},
+):
+    """Creates a Trainer for a specific model and backend.
+    Args:
+        model_name (str): The type of model to create (e.g., "2dcnn", "medicalnet").
+        model_kwargs (dict): Additional keyword arguments for the model.
+        backend (str): The backend type (e.g., "torch", "lightning").
+        backend_kwargs (dict): Additional keyword arguments for the backend trainer.
+    Returns:
+        Trainer: Configured Trainer instance for the specified model and backend.
+    """    
+    model = create_model(model_name, model_kwargs)
+    trainer = create_backend_trainer(model, backend, backend_kwargs)
+    return trainer
 
 
 def get_model(name: str, config: dict) -> object:
@@ -56,39 +170,19 @@ def get_model(name: str, config: dict) -> object:
     """
 
     name = name.lower()
+    
+    backend = config["backend"]["backend"]
+    if backend == "lightning":
+        config["trainer_kwargs"] = {
+                "max_epochs": config.get("epochs", 100),
+                "accelerator": "gpu",
+                "devices": 1,
+                "log_every_n_steps": 10,
+            }
 
-    if name == "dummy_classifier":
-        return DummyClassifier()
-
-    if name == "dummy_regressor":
-        return DummyRegressor()
-
-    if name == "pca_logistic":
-        return PCALogisticRegressionModel()
-
-    if name == "pca_linear":
-        return PCALinearModel(**config)
-
-    if name == "logistic_regression":
-        return LogisticRegressionModel()
-
-    if name == "pca_forest":
-        return PCARandomForestModel(**config)
-
-    if name == "pca_svm":
-        return PCASVMModel(**config)
-
-    if name == "2dcnn":
-        return ResNet3SliceModel(**config)
-
-    if name == "2dcnn_torch":
-        # return CNNTorchTrainModel(**config)
-        return CNNRegTorchTrainModel(**config)
-
-    if name == "2dcnn_lite":
-        return cnn_with_base.ResNet3SliceModel(**config)
-
-    if name == "medicalnet":
-        return ResNet3DModel(**config)
-
-    raise ValueError(f"Unknown model name: {name}")
+    return create_trainer(model_name=name,
+        model_kwargs={**config["backbone"]},
+        backend=backend,
+        backend_kwargs={**config["backend"]}, 
+    )
+    
