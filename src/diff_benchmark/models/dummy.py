@@ -1,115 +1,36 @@
-from collections import Counter
+from sklearn.dummy import DummyRegressor, DummyClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+from diff_benchmark.models.utils_models.trainer import SklearnModel
 
-import numpy as np
-
-from diff_benchmark.models.base import NumpyAbstractModel
-from torch.utils.data import DataLoader
-
-
-class DummyRegressor(NumpyAbstractModel):
+class DummyRegressorModel(SklearnModel):
     """
-    DummyRegressor is a simple regression model that predicts the mean of the target values
-    from the training data. It inherits from NumpyAbstractModel.
-    Methods:
-        - __init__: Initializes the DummyRegressor instance and sets the prediction attribute to None.
-        - _dataloader_to_numpy: Converts a dataloader containing batches of data into numpy arrays.
-            Args:
-                dataloader: A data loader that yields batches of (input, target, _) tuples.
-            Returns:
-                Tuple of numpy arrays (X, Y) where X is the input data and Y is the target data.
-        - fit: Fits the model to the provided dataloader by calculating the mean of the target values.
-            Args:
-                dataloader: A data loader containing batches of data for training.
-        - predict: Predicts target values for the given dataloader by returning the mean prediction.
-            Args:
-                dataloader: A data loader containing batches of input data for prediction.
-            Returns:
-                A numpy array filled with the mean prediction value for each input sample.
+    Unified dummy regressor compatible with the diff_benchmark pipeline.
     """
+    data_type = "array"  # so trainer knows it's array data
+    prediction_task = "regression"
+    output_dim = 1
 
+    def _build_model(self, **kwargs):
+        # Wrap in a simple pipeline (optional: scaling)
+        pipeline = Pipeline([
+            ("scaler", StandardScaler()),
+            ("regressor", DummyRegressor(strategy="mean")),
+        ])
+        return pipeline
+
+
+class DummyClassifierModel(SklearnModel):
+    """
+    Unified dummy classifier compatible with the diff_benchmark pipeline.
+    """
     data_type = "array"
-    prediction_task = None
+    prediction_task = "classification"
+    output_dim = 1  # for single-label classification
 
-    def __init__(self):
-        self.prediction_ = None
-        
-    def model(self):
-        return self.model == None
-
-    def fit(self, dataloader: DataLoader):
-        """
-        Fit the model using the provided dataloader.
-        This method converts the data from the dataloader into numpy arrays and computes
-        the mean of the target values. The computed mean is stored as the model's prediction.
-        Parameters:
-            dataloader (DataLoader): A DataLoader object containing the input data and target values.
-        Returns:
-            None
-        """
-
-        # Convert DataLoaders to numpy arrays
-        _, targets = self._dataloader_to_numpy(dataloader)
-        self.prediction_ = np.mean(targets)
-
-    def predict(self, dataloader: DataLoader) -> np.ndarray:
-        """
-        Predicts the output for the given dataloader.
-        Args:
-            dataloader (DataLoader): A PyTorch DataLoader object containing the input data.
-        Returns:
-            numpy.ndarray: An array filled with the predicted value for each input sample.
-        """
-
-        # Convert input dataloader to numpy
-        features, _ = self._dataloader_to_numpy(dataloader)
-
-        return np.full((len(features),), self.prediction_)
-
-
-class DummyClassifier(NumpyAbstractModel):
-    """
-    DummyClassifier is a simple classifier that predicts the most common class
-    from the training data. It inherits from NumpyAbstractModel.
-    Methods
-    -------
-    - __init__(): Initializes the DummyClassifier and sets the class_ attribute to None.
-    - _dataloader_to_numpy(dataloader): Converts the input dataloader into numpy arrays for features and labels.
-    - fit(dataloader): Fits the model to the data by determining the most common class in the labels.
-    - predict(dataloader): Predicts the class for the input data by returning the most common class for all samples.
-    """
-
-    data_type = "array"
-    prediction_task = None
-
-    def __init__(self):
-        self.class_ = None
-    
-    def model(self):
-        return self.model == None
-
-    def fit(self, dataloader: DataLoader):
-        """
-        Fit the model using the provided dataloader.
-        This method converts the data from the dataloader into numpy arrays and computes
-        the mean of the target values. The computed mean is stored as the model's prediction.
-        Parameters:
-            dataloader (DataLoader): A DataLoader object containing the input data and target values.
-        Returns:
-            None
-        """
-        # Convert DataLoaders to numpy arrays
-        _, targets = self._dataloader_to_numpy(dataloader)
-        self.class_ = Counter(targets.flatten()).most_common(1)[0][0]
-
-    def predict(self, dataloader: DataLoader) -> np.ndarray:
-        """
-        Predicts the output for the given dataloader.
-        Args:
-            dataloader (DataLoader): A PyTorch DataLoader object containing the input data.
-        Returns:
-            numpy.ndarray: An array filled with the predicted value for each input sample.
-        """
-        # Convert input dataloader to numpy
-        features, _ = self._dataloader_to_numpy(dataloader)
-
-        return np.full((len(features),), self.class_)
+    def _build_model(self, **kwargs):
+        pipeline = Pipeline([
+            ("scaler", StandardScaler()),
+            ("classifier", DummyClassifier(strategy="most_frequent")),
+        ])
+        return pipeline
