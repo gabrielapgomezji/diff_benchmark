@@ -5,17 +5,6 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-# __all__ = [
-#     "ResNet",
-#     "resnet10",
-#     "resnet18",
-#     "resnet34",
-#     "resnet50",
-#     "resnet101",
-#     "resnet152",
-#     "resnet200",
-# ]
-
 
 def conv3x3x3(
     in_planes: int, out_planes: int, stride: int = 1, dilation: int = 1

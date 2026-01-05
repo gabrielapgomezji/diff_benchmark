@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Callable
 
 import nibabel as nib
 import numpy as np
@@ -25,7 +26,7 @@ class CustomDataset(Dataset):
         features: pd.DataFrame,
         targets: np.ndarray,
         gender: np.ndarray,
-        transform=None,
+        transform: Callable = None,
     ):
         # self.features = torch.tensor(features, dtype=torch.float32)
         self.features = features.drop(columns=["subject_id"])

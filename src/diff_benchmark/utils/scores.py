@@ -75,7 +75,7 @@ def compute_metrics(
             "explained_variance": explained_variance_score(y_true, y_pred),
             "mape": mean_absolute_percentage_error(y_true, y_pred),
         }
-   
+
     raise ValueError(
         "Invalid prediction_task. Choose either 'classification' or 'regression'."
     )

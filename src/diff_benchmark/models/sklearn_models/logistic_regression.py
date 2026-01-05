@@ -41,7 +41,7 @@ class PCALinearModel(SklearnModel):
 
     def _build_model(self, **kwargs) -> BaseEstimator:
         self.prediction_task = kwargs.get("prediction_task", None)
-        self.output_dim = 1  # if self.prediction_task == "regression" else 2
+        self.output_dim = 1
         if self.prediction_task == "classification":
             head = LogisticRegression(max_iter=1000)
             scoring = "accuracy"
@@ -103,7 +103,7 @@ class LinearModel(SklearnModel):
 
     def _build_model(self, **kwargs) -> BaseEstimator:
         self.prediction_task = kwargs.get("prediction_task", None)
-        self.output_dim = 1  # 2 if self.prediction_task == "regression" else 1
+        self.output_dim = 1
 
         if self.prediction_task == "classification":
             head = LogisticRegression(max_iter=1000)

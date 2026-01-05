@@ -339,13 +339,6 @@ class BrainDataPreparationPipeline(ABC):
             )
             derivatives_dir.mkdir(parents=True, exist_ok=True)
 
-            # files = self._get_required_raw_files(subject_id)
-            # aparc_aseg = files["aparc+aseg"]
-            # labels = extract_selected_labels(aparc_aseg)
-            # dwi_nib = nib.load(files["DWI data"])
-            # bvals = np.loadtxt(files["bvals"])
-
-            # surfaces = {k.split("surface:")[1]: v for k, v in files.items() if k.startswith("surface:")}
             files = self._get_required_raw_files(subject_id)
             assert files is not None
 
