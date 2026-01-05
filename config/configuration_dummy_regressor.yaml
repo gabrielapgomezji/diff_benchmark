@@ -8,4 +8,5 @@ models:
     backbone:
       prediction_task: regression
     backend: 
+      backend: sklearn
       num_classes: 1

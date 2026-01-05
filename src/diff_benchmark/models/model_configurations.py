@@ -12,6 +12,7 @@ from diff_benchmark.models.sklearn_models.logistic_regression import (
     PCALinearModel,
 )
 from diff_benchmark.models.utils_models.prediction_head import build_prediction_head
+from diff_benchmark.models.utils_models.trainer import TorchTrainer, LightningTrainer, SklearnTrainer
 
 
 
@@ -93,26 +94,21 @@ def create_model(
             dropout=model_kwargs.get("dropout", 0.5),
         )
         return TaskModel(backbone, head)
-        # return ResNet3SliceBackbone(**model_kwargs)
     
     elif model_name == "medicalnet":
         backbone = MedicalNet(**model_kwargs)
-        # return MedicalNet(**model_kwargs)
+        head = build_prediction_head(
+            embedding_dim=backbone.out_dim,
+            prediction_task=model_kwargs.get("prediction_task", None),
+            num_classes=model_kwargs.get("num_classes", 2),
+            dropout=model_kwargs.get("dropout", 0.5),
+        )
+        return TaskModel(backbone, head)
     
     else:
         raise ValueError(f"Unknown model type: {model_name}")
-        
-    head = build_prediction_head(
-        embedding_dim=backbone.out_dim,
-        prediction_task=model_kwargs.get("prediction_task", None),
-        num_classes=model_kwargs.get("num_classes", 2),
-        dropout=model_kwargs.get("dropout", 0.5),
-        )
-    return TaskModel(backbone, head)
     
 
-
-from diff_benchmark.models.utils_models.trainer import TorchTrainer, LightningTrainer, SklearnTrainer
 def create_backend_trainer(
     model,
     backend: str,
@@ -174,8 +170,8 @@ def get_model(name: str, config: dict) -> object:
     """
 
     name = name.lower()
-    
-    backend = "sklearn" # "lightning" #
+    breakpoint()
+    backend = config["backend"]["backend"]
     if backend == "lightning":
         config["trainer_kwargs"] = {
                 "max_epochs": config.get("epochs", 100),

@@ -28,8 +28,8 @@ models:
       dropout: 0.5
       
     backend:
+      backend: torch
       trainer_kwargs:
-        backend: torch
         max_epochs: 50
         accelerator: gpu
         devices: 1

@@ -9,6 +9,7 @@ models:
     name: pca_linear
     comment: PCA linear regression. Test new conf
     backend: 
+      backend: sklearn
       num_classes: 1
     data:
       batch_size: 32
