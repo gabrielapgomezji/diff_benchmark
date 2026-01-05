@@ -14,7 +14,7 @@ from diff_benchmark.preprocessing.brain_data_preparation import (
     DefaultPipeline,
     ImagePipeline,
 )
-from diff_benchmark.preprocessing.wrapper_brain_data import DataPreparationBrain
+from diff_benchmark.preprocessing.wrapper_brain_base import DataPreparationBrain
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
 import bids
 from typing import List, Union

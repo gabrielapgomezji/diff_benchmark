@@ -21,8 +21,7 @@ from diff_benchmark.preprocessing.preprocess_demographic_data import (
     DefaultDemographicsPreprocessor,
 )
 from diff_benchmark.utils.config_loader import load_configs
-from diff_benchmark.utils.data_pipeline import get_data_pipeline
-from diff_benchmark.utils.job_manager_wrap import run_jobs
+from diff_benchmark.utils.job_manager import run_jobs
 from diff_benchmark.utils.scores import accuracy_score, compute_metrics
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
 from diff_benchmark.data.prepare_data import DatasetPreparation

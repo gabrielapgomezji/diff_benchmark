@@ -13,7 +13,7 @@ from diff_benchmark.preprocessing.brain_data_preparation import (
 )
 
 for dataset2prepare in general_config["datasets"]["datasets_list"]:
-    if dataset2prepare["name"] == "hcp":
+    if dataset2prepare["name"] == "abide":
         dataset = DatasetConfig(
             **dataset2prepare,
             metric_to_compute=general_config["datasets"]["metric_to_compute"],

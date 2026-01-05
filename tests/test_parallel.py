@@ -1,7 +1,7 @@
 import pytest
 import time
 
-from diff_benchmark.utils.job_manager_wrap import run_jobs
+from diff_benchmark.utils.job_manager import run_jobs
 
 @pytest.fixture
 def fn_to_parallelize(request):

@@ -25,7 +25,7 @@ from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
                     compute_save_and_project_metric
                 )
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
-from diff_benchmark.utils.job_manager_wrap import run_jobs
+from diff_benchmark.utils.job_manager import run_jobs
 
 @dataclass(frozen=True)
 class DiffusionInputs:
