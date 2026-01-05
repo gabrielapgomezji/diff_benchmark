@@ -10,7 +10,7 @@ from sklearn.metrics import mean_squared_error
 def summarize_folds_to_csv(fold_results_path: Path, output_csv_path: Path):
     """Summarizes fold results from a JSON file into a CSV file with per-feature MSE scores."""
     # Load fold results
-    with open(fold_results_path, "r") as f:
+    with open(fold_results_path, "r", encoding="utf-8") as f:
         fold_results = json.load(f)
 
     os.makedirs(output_csv_path.parent, exist_ok=True)
@@ -60,7 +60,7 @@ def summarize_folds_to_csv(fold_results_path: Path, output_csv_path: Path):
     test_std = np.std(test_scores, axis=0)
 
     # Write to CSV
-    with open(output_csv_path, "w", newline="") as f:
+    with open(output_csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(
             [
@@ -82,7 +82,7 @@ def summarize_folds_to_csv(fold_results_path: Path, output_csv_path: Path):
         output_csv_path.stem + "_per_fold.csv"
     )
 
-    with open(per_fold_csv_path, "w", newline="") as f:
+    with open(per_fold_csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["Model", "Fold", "Train MSE (avg)", "Test MSE (avg)"])
         for fold_idx in range(n_folds):

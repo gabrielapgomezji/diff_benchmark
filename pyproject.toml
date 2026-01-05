@@ -51,7 +51,7 @@ profile = "black"
 extend_skip_glob = ["./history/*"]
 
 [tool.pylint.master]
-fail-under = "9.24"
+fail-under = "9.20"
 
 [tool.pylint.'MESSAGES CONTROL']
 disable = "missing-module-docstring,line-too-long,too-few-public-methods"

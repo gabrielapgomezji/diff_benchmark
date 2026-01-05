@@ -2,8 +2,6 @@ import torch
 from torch import nn
 from torchvision import models
 
-from typing import Any
-
 
 class ResNet18Backbone(nn.Module):
     """ResNet18Backbone is a PyTorch neural network module that utilizes a pre-trained ResNet-18 model
@@ -26,7 +24,7 @@ class ResNet18Backbone(nn.Module):
                 torch.Tensor: A tensor of shape (B, 512) containing the extracted features.
     """
 
-    def __init__(self, pretrained: bool =True, trainable_blocks: int =0, **kwargs):
+    def __init__(self, pretrained: bool = True, trainable_blocks: int = 0, **kwargs):
         super().__init__()
         resnet = models.resnet18(
             weights=models.ResNet18_Weights.DEFAULT if pretrained else None
@@ -53,14 +51,14 @@ class ResNet18Backbone(nn.Module):
         Defines the forward pass of the model.
         Args:
             x (torch.Tensor): Input tensor of shape (B, C, H, W), where
-                B is the batch size, C is the number of channels, 
+                B is the batch size, C is the number of channels,
                 H is the height, and W is the width.
         Returns:
-            torch.Tensor: Output tensor of shape (B, 512), where 512 
-                represents the flattened feature vector extracted 
+            torch.Tensor: Output tensor of shape (B, 512), where 512
+                represents the flattened feature vector extracted
                 by the feature extractor.
         """
-        
+
         feats = self.feature_extractor(x)  # (B, 512, 1, 1)
         return feats.view(feats.size(0), -1)  # (B, 512)
 
@@ -91,11 +89,16 @@ class ResNet3SliceMultihead(nn.Module):
                 torch.Tensor: Output tensor of shape (batch, num_classes) for classification tasks or
                 (batch, 1) for regression tasks.
     """
-    
+
     data_type = "images"
-    
+
     def __init__(
-        self, input_slices: int, num_classes: int = 2, freeze_backbone: bool = True, dropout: float = 0.5, **kwargs
+        self,
+        input_slices: int,
+        num_classes: int = 2,
+        freeze_backbone: bool = True,
+        dropout: float = 0.5,
+        **kwargs,
     ):
         super().__init__()
         self.backbone = ResNet18Backbone(**kwargs)
@@ -163,7 +166,7 @@ class ResNet3SliceMultihead(nn.Module):
         # feats scalar product with weights. 1 embedding per features (B, 512).
         feats = self.dropout(feats)
         return feats
-        
+
         ###
         # feats = []
         # for i in range(num_subvols):
@@ -177,7 +180,9 @@ class ResNet3SliceMultihead(nn.Module):
         # out = self.fc(feats)  # (Batch, num_classes)
         # return out
 
-    def collate_with_augmentation(self, batch: list, transform: callable = None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def collate_with_augmentation(
+        self, batch: list, transform: callable = None
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch.
         Args:
             batch (list): A list of tuples, where each tuple contains (x, y, g) for a single sample.

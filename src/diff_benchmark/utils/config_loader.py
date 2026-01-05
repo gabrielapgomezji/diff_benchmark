@@ -1,5 +1,5 @@
-from pathlib import Path
 import argparse
+from pathlib import Path
 
 import yaml
 
@@ -9,7 +9,8 @@ def load_configs(args: argparse.Namespace) -> tuple[dict, dict]:
     Args:
         args (argparse.Namespace): Parsed command-line arguments containing 'methods'.
     Returns:
-        tuple[dict, dict]: A tuple containing the general configuration and the combined model configuration."""
+        tuple[dict, dict]: A tuple containing the general configuration and the combined model configuration.
+    """
     # =====================
     # Load general config
     # =====================

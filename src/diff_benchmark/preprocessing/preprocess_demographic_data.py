@@ -1,6 +1,7 @@
 from pathlib import Path
-import pandas as pd
 from typing import Iterable
+
+import pandas as pd
 
 COLUMN_ALIASES = {
     "Subject": {
@@ -69,21 +70,19 @@ class DefaultDemographicsPreprocessor:
     # ------------------------------------------------------------------
     # Path handling
     # ------------------------------------------------------------------
-    def _normalize_paths(
-        self, path: str | Path | list[str | Path]
-    ) -> list[Path]:
+    def _normalize_paths(self, path: str | Path | list[str | Path]) -> list[Path]:
         """
         Normalize input paths into a list of Path objects.
-        This method accepts a single path or a list of paths, where each path can 
+        This method accepts a single path or a list of paths, where each path can
         be a string or a Path object, and returns a list of Path objects.
         Args:
-            path (str | Path | list[str | Path]): A single path as a string or Path 
-                object, or a list of paths where each element is either a string 
+            path (str | Path | list[str | Path]): A single path as a string or Path
+                object, or a list of paths where each element is either a string
                 or a Path object.
         Returns:
             list[Path]: A list of Path objects.
         Raises:
-            TypeError: If the input is not a string, Path object, or a list of 
+            TypeError: If the input is not a string, Path object, or a list of
                 strings/Path objects.
         """
         if isinstance(path, (str, Path)):
@@ -92,9 +91,7 @@ class DefaultDemographicsPreprocessor:
         if isinstance(path, Iterable):
             return [Path(p) for p in path]
 
-        raise TypeError(
-            "path must be a str, Path, or list of str/Path"
-        )
+        raise TypeError("path must be a str, Path, or list of str/Path")
 
     def _normalize_subject_ids(self, df: pd.DataFrame) -> pd.DataFrame:
         if "Subject" in df.columns:
@@ -105,6 +102,7 @@ class DefaultDemographicsPreprocessor:
                 .str.replace(r"^sub-", "", regex=True)
             )
         return df
+
     # ------------------------------------------------------------------
     # Loading logic
     # ------------------------------------------------------------------
@@ -118,7 +116,7 @@ class DefaultDemographicsPreprocessor:
         Returns:
             pd.DataFrame: A concatenated DataFrame containing data from all specified paths.
         """
-        
+
         dfs = []
 
         for p in self.paths:
@@ -132,10 +130,10 @@ class DefaultDemographicsPreprocessor:
     def _load_single_path(self, path: Path) -> tuple[pd.DataFrame, str | None]:
         """
         Load a single file or directory containing demographic data.
-        This method handles both file and directory inputs. If the input is a file, 
-        it loads the file directly. If the input is a directory, it expects exactly 
-        one demographics file (with a `.tsv` or `.csv` extension) within the directory 
-        and loads it. The method also determines the site name based on the input path 
+        This method handles both file and directory inputs. If the input is a file,
+        it loads the file directly. If the input is a directory, it expects exactly
+        one demographics file (with a `.tsv` or `.csv` extension) within the directory
+        and loads it. The method also determines the site name based on the input path
         if the `is_multisite` attribute is set to True.
         Args:
             path (Path): The path to a file or directory containing demographic data.
@@ -144,11 +142,11 @@ class DefaultDemographicsPreprocessor:
                 - A pandas DataFrame with the loaded demographic data.
                 - The site name as a string if `is_multisite` is True, otherwise None.
         Raises:
-            ValueError: If the input is a directory and does not contain exactly one 
+            ValueError: If the input is a directory and does not contain exactly one
                         demographics file.
             FileNotFoundError: If the input path does not exist.
         """
-        
+
         if path.is_file():
             site = path.parent.name if self.is_multisite else None
             return self._load_file(path), site
@@ -180,9 +178,9 @@ class DefaultDemographicsPreprocessor:
         Returns:
             pd.DataFrame: A pandas DataFrame containing the data from the file.
         """
-        
+
         sep = "\t" if file_path.suffix == ".tsv" else ","
-        return pd.read_csv(file_path, sep=sep) #, index_col=0)
+        return pd.read_csv(file_path, sep=sep)  # , index_col=0)
 
     # ------------------------------------------------------------------
     # Preprocessing logic
@@ -203,11 +201,8 @@ class DefaultDemographicsPreprocessor:
             - The resulting DataFrame will include the "Subject" column, the specified `target_columns`, and optionally
               "Gender" and the site column if they exist in the input DataFrame.
         """
-        
-        if (
-            df.index.name
-            and df.index.name.lower() in COLUMN_ALIASES["Subject"]
-        ):
+
+        if df.index.name and df.index.name.lower() in COLUMN_ALIASES["Subject"]:
             df = df.reset_index()
 
         df = df.rename(
@@ -244,7 +239,7 @@ class DefaultDemographicsPreprocessor:
             pd.DataFrame: The DataFrame with the "Gender" column converted to numeric values,
                           if applicable. Other columns remain unchanged.
         """
-        
+
         if "Gender" in df.columns and df["Gender"].dtype == object:
             df["Gender"] = (
                 df["Gender"]

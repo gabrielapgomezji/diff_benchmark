@@ -12,10 +12,8 @@ from dipy.reconst.mapmri import MapmriModel
 from nilearn import image as nimage
 from nilearn import maskers
 from scipy import ndimage
-from scipy.linalg import LinAlgError
 from scipy.spatial import cKDTree
 from templateflow import api as tflow
-from tqdm import tqdm
 
 
 def read_label_file() -> dict:
@@ -91,7 +89,11 @@ def extract_selected_labels(nifti_path: Path, labels_dict: dict | None = None) -
         return labels_dict
 
 
-def create_masks(parcellation_img: nib.nifti1.Nifti1Image, labels: dict, selected_labels: list | None = None) -> tuple:
+def create_masks(
+    parcellation_img: nib.nifti1.Nifti1Image,
+    labels: dict,
+    selected_labels: list | None = None,
+) -> tuple:
     """Create context and ventricle masks from parcellation image.
     Args:
         parcellation_img (nib.Nifti1Image): Parcellation NIfTI image.
@@ -251,7 +253,12 @@ def compute_md(
 
 
 def project_to_surface(
-    micr_img: nib.nifti1.Nifti1Image, ctx_mask: nib.nifti1.Nifti1Image, surfaces: dict, output_dir: Path, subject_id: str, micr_metric: str
+    micr_img: nib.nifti1.Nifti1Image,
+    ctx_mask: nib.nifti1.Nifti1Image,
+    surfaces: dict,
+    output_dir: Path,
+    subject_id: str,
+    micr_metric: str,
 ):
     """
     Project image onto surface meshes and save as GIFTI files.
@@ -432,7 +439,9 @@ def load_rtop_data(config: dict) -> tuple[np.ndarray, np.ndarray]:
     return rtop_left, rtop_right
 
 
-def average_per_parcel(hem_left: np.ndarray, hem_right: np.ndarray, schaefer_resampled: dict) -> np.ndarray:
+def average_per_parcel(
+    hem_left: np.ndarray, hem_right: np.ndarray, schaefer_resampled: dict
+) -> np.ndarray:
     """
     Average RTOP values across parcels in both hemispheres.
     hem_left: RTOP/MD/microstructure values for left hemisphere
@@ -460,7 +469,11 @@ def average_per_parcel(hem_left: np.ndarray, hem_right: np.ndarray, schaefer_res
 
 
 def extract_region_data(
-    hem_left: np.ndarray, hem_right: np.ndarray, schaefer_resampled: dict, target_substring: str | None = None, average: bool = False
+    hem_left: np.ndarray,
+    hem_right: np.ndarray,
+    schaefer_resampled: dict,
+    target_substring: str | None = None,
+    average: bool = False,
 ):
     """
     Average microstructure values across selected parcels in both hemispheres.
@@ -524,10 +537,12 @@ def extract_region_data(
     # return region_data # returns dict and csv is a column per region with the corresponding arrays
     return region_values
 
+
 METRIC_COMPUTERS = {
     "rtop": compute_rtop,
     "md": compute_md,
 }
+
 
 def compute_save_and_project_metric(
     *,
@@ -545,7 +560,7 @@ def compute_save_and_project_metric(
     subject_id: str,
 ) -> nib.nifti1.Nifti1Image:
     """
-    Computes a specified diffusion metric, saves the resulting image to disk, 
+    Computes a specified diffusion metric, saves the resulting image to disk,
     and projects the metric onto cortical surfaces.
     Parameters:
         metric (str): The name of the diffusion metric to compute. Must be a key in `METRIC_COMPUTERS`.
@@ -565,7 +580,7 @@ def compute_save_and_project_metric(
     Raises:
         ValueError: If the specified metric is not found in `METRIC_COMPUTERS`.
     Notes:
-        - The computed metric image is saved to the `derivatives_dir` with a filename 
+        - The computed metric image is saved to the `derivatives_dir` with a filename
           formatted as `sub-{subject_id}_param-{metric}_dwimap.nii.gz`.
         - The metric is also projected onto cortical surfaces and saved in the same directory.
     """
@@ -573,7 +588,7 @@ def compute_save_and_project_metric(
         raise ValueError(f"Unknown metric: {metric}")
 
     compute_fn = METRIC_COMPUTERS[metric]
-    
+
     metric_img = compute_fn(
         dwi_nib,
         ctx_mask,
@@ -585,10 +600,7 @@ def compute_save_and_project_metric(
         big_delta_per_bvalue,
     )
 
-    out_file = (
-        derivatives_dir
-        / f"sub-{subject_id}_param-{metric}_dwimap.nii.gz"
-    )
+    out_file = derivatives_dir / f"sub-{subject_id}_param-{metric}_dwimap.nii.gz"
     nib.save(metric_img, out_file)
 
     project_to_surface(

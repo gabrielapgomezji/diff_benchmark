@@ -41,6 +41,7 @@ class ProcessingResult:
 
         self.invalid_subjects.append(subject_id)
 
+
 # DataPreparationBrain
 class BrainDataPreparationPipeline(ABC):
     """

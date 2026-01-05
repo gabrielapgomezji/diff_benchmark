@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import traceback as tb
+import warnings
 from dataclasses import dataclass
 from functools import wraps
 from typing import Any, Callable
 
-import warnings
 import submitit
 from joblib import Parallel, delayed
 
@@ -33,15 +34,16 @@ def fn_error_catcher(fn: Callable[..., Any]) -> Callable[..., JobResult]:
     Raises:
         None - All exceptions are caught and returned in the JobResult object.
     """
+
     @wraps(fn)
     def wrapped(kwargs) -> JobResult:
         try:
             return JobResult(ok=True, value=fn(**kwargs))
         except Exception as e:
-            import traceback as tb
-
             return JobResult(ok=False, error=str(e), traceback=tb.format_exc())
+
     return wrapped
+
 
 def run_jobs(
     run_fn: Callable[..., Any],
@@ -79,9 +81,7 @@ def run_jobs(
     if parallel_type == "joblib":
         if n_jobs <= 1:
             warnings.warn(f"n_jobs={n_jobs} may not provide parallel speedup.")
-        return Parallel(n_jobs=n_jobs)(
-            delayed(fn_to_run)(kw) for kw in fn_kwargs_list
-        )
+        return Parallel(n_jobs=n_jobs)(delayed(fn_to_run)(kw) for kw in fn_kwargs_list)
 
     if parallel_type == "slurm":
         if slurm_cfg is None:

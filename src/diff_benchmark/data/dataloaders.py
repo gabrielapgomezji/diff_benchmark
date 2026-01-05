@@ -49,7 +49,13 @@ class PreprocessedData:
             target count, and gender distribution.
     """
 
-    def __init__(self, features: np.ndarray, targets: np.ndarray, genders: np.ndarray, config: dict):
+    def __init__(
+        self,
+        features: np.ndarray,
+        targets: np.ndarray,
+        genders: np.ndarray,
+        config: dict,
+    ):
         self.features = features
         self.targets = targets
         self.genders = genders
@@ -113,7 +119,9 @@ class PreprocessedData:
 
         return train_loader, test_loader
 
-    def get_arrays_from_indices(self, dataset: TensorDataset, fold_idx: int, fold_indices: list) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def get_arrays_from_indices(
+        self, dataset: TensorDataset, fold_idx: int, fold_indices: list
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Given full arrays and fold index, return X, y, gender arrays for train/test sets.
         Args:
@@ -152,7 +160,9 @@ class PreprocessedData:
             torch.tensor(self.genders[idx], dtype=torch.int64),
         )
 
-    def get_folds_as_dataloaders(self, batch_size: int = 32, shuffle: bool = True) -> list[tuple[DataLoader, DataLoader]]:
+    def get_folds_as_dataloaders(
+        self, batch_size: int = 32, shuffle: bool = True
+    ) -> list[tuple[DataLoader, DataLoader]]:
         """Generates and returns DataLoaders for all folds.
         Args:
             batch_size (int, optional): The batch size for the DataLoaders. Defaults to 32.
@@ -175,7 +185,14 @@ class PreprocessedData:
 
         return folds
 
-    def get_folds_as_arrays(self) -> list[tuple[tuple[np.ndarray, np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray, np.ndarray]]]:
+    def get_folds_as_arrays(
+        self,
+    ) -> list[
+        tuple[
+            tuple[np.ndarray, np.ndarray, np.ndarray],
+            tuple[np.ndarray, np.ndarray, np.ndarray],
+        ]
+    ]:
         """Generates and returns arrays for all folds.
         Returns:
             list[tuple[tuple[np.ndarray, np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray, np.ndarray]]]:

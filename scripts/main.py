@@ -16,17 +16,16 @@ from diff_benchmark.analysis.scores_summary import summarize_folds_to_csv
 from diff_benchmark.analysis.true_vs_pred import plot_true_vs_pred
 from diff_benchmark.data.dataloaders import PreprocessedData
 from diff_benchmark.data.generate_dataset import CustomDataset
+from diff_benchmark.data.prepare_data import DatasetPreparation
 from diff_benchmark.models.model_configurations import get_model, make_run_id
+from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
 from diff_benchmark.preprocessing.preprocess_demographic_data import (
     DefaultDemographicsPreprocessor,
 )
 from diff_benchmark.utils.config_loader import load_configs
 from diff_benchmark.utils.job_manager import run_jobs
 from diff_benchmark.utils.scores import accuracy_score, compute_metrics
-from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
-from diff_benchmark.data.prepare_data import DatasetPreparation
-    
-    
+
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "--methods", nargs="+", type=str, default=["2dcnn_torch"], help="Method to use"
@@ -38,7 +37,7 @@ general_config, model_config = load_configs(args)
 
 def run_single_model(model_name, model_config, general_config, results_path):
     config = general_config
-    
+
     for dataset2prepare in general_config["datasets"]["datasets_list"]:
         if dataset2prepare["name"] == "hcp":
             dataset = DatasetConfig(
@@ -48,13 +47,13 @@ def run_single_model(model_name, model_config, general_config, results_path):
                 region=general_config["data_preparation"]["region"],
             )
             dataset2work = dataset
-    
+
     torch_dataset_preparator = DatasetPreparation(
-                model_name=model_name,
-                model_config=model_config,
-                general_config=general_config,
-                source_dataset=dataset2work,
-            )
+        model_name=model_name,
+        model_config=model_config,
+        general_config=general_config,
+        source_dataset=dataset2work,
+    )
     dataset, preprocessed = torch_dataset_preparator.pipeline()
 
     specs = preprocessed.get_specs()
@@ -114,7 +113,10 @@ def run_single_model(model_name, model_config, general_config, results_path):
             # )
             # breakpoint()
             train_loader, test_loader = preprocessed.get_dataloader_fold(
-                dataset, fold_idx, indices, batch_size=local_config["data"]["batch_size"]
+                dataset,
+                fold_idx,
+                indices,
+                batch_size=local_config["data"]["batch_size"],
             )
             train_idx, test_idx = indices[fold_idx]
             targets = dataset.targets.numpy()
@@ -218,6 +220,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
     save_model_results(summary, Path(results_path) / "analysis_results")
     return model_name, run_id
 
+
 models_to_run = model_config["models"]
 
 run_single_model(
@@ -227,23 +230,24 @@ run_single_model(
     results_path="./data/results",
 )
 # results = run_jobs(run_single_model, models_to_run, model_config, general_config)
-results = run_jobs(run_fn=run_single_model,
-                   fn_kwargs_list=[
-                       {
-                           "model_name": model["name"],
-                           "model_config": model["params"],
-                           "general_config": general_config,
-                       }
-                       for model in models_to_run
-                    ],
-                    parallel_type=None,
-                    slurm_cfg={
-                    "cpus_per_task": 1,
-                    "timeout_min": 900,
-                    "mem_gb": 50,
-                    },
-                    n_jobs=50,
-            )
+results = run_jobs(
+    run_fn=run_single_model,
+    fn_kwargs_list=[
+        {
+            "model_name": model["name"],
+            "model_config": model["params"],
+            "general_config": general_config,
+        }
+        for model in models_to_run
+    ],
+    parallel_type=None,
+    slurm_cfg={
+        "cpus_per_task": 1,
+        "timeout_min": 900,
+        "mem_gb": 50,
+    },
+    n_jobs=50,
+)
 
 # results is a list of (model_name, per_fold_results)
 # for model_name, run_id in results:

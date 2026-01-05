@@ -22,7 +22,7 @@ class MetricsManager:
                         ('binary', 'macro', 'micro', 'weighted')
     """
 
-    def __init__(self, average: str ="binary"):
+    def __init__(self, average: str = "binary"):
         self.average = average
         self.reset()
 
@@ -44,7 +44,9 @@ class MetricsManager:
         if y_scores is not None:
             self.y_scores.extend(y_scores)
 
-    def compute_batch(self, y_true: list, y_pred: list, y_scores: list | None = None) -> dict:
+    def compute_batch(
+        self, y_true: list, y_pred: list, y_scores: list | None = None
+    ) -> dict:
         """Compute metrics for a single batch only.
         return metrics for a single batch only.
         Args:
@@ -63,7 +65,9 @@ class MetricsManager:
         """
         return self._compute_core(self.y_true, self.y_pred, self.y_scores)
 
-    def _compute_core(self, y_true: list, y_pred: list, y_scores: list | None = None) -> dict:
+    def _compute_core(
+        self, y_true: list, y_pred: list, y_scores: list | None = None
+    ) -> dict:
         """
         Compute a dictionary of metrics.
 
@@ -113,10 +117,10 @@ class TrainLogger:
     def __init__(
         self,
         fold_idx: int,
-        run_id: str ="unnamed_run",
-        save_dir: str ="./data/results/logger",
-        monitor: str ="val_accuracy",
-        mode: str ="max",
+        run_id: str = "unnamed_run",
+        save_dir: str = "./data/results/logger",
+        monitor: str = "val_accuracy",
+        mode: str = "max",
     ):
         self.run_id = run_id
         self.fold_idx = fold_idx
@@ -176,7 +180,9 @@ class TrainLogger:
         """
         self.history["epoch"].append({"phase": phase, "epoch": epoch, **metrics})
 
-    def log_predictions(self, epoch: int, y_true: list, y_pred: list, scores: list | None = None):
+    def log_predictions(
+        self, epoch: int, y_true: list, y_pred: list, scores: list | None = None
+    ):
         """Log predictions for an epoch.
         Args:
             epoch (int): Current epoch.
@@ -224,7 +230,13 @@ class TrainLogger:
             return score < self.best_score
         raise ValueError("mode should be 'max' or 'min'")
 
-    def save_checkpoint(self, model: torch.nn.Module, epoch: int, current_score: float, is_last: bool = False):
+    def save_checkpoint(
+        self,
+        model: torch.nn.Module,
+        epoch: int,
+        current_score: float,
+        is_last: bool = False,
+    ):
         """
         Save model checkpoint if current score is the best.
 
@@ -255,7 +267,9 @@ class TrainLogger:
 
         print(f"[INFO] Logs saved at {json_path}")
 
-    def update_smooth_checkpoint(self, model: torch.nn.Module, epoch: int, val_score: float):
+    def update_smooth_checkpoint(
+        self, model: torch.nn.Module, epoch: int, val_score: float
+    ):
         """
         Check 3-step smoothed validation accuracy and save checkpoint
         only when improvement is stable.

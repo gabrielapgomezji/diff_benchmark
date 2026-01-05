@@ -1,22 +1,14 @@
 from pathlib import Path
-from typing import Dict, Union
 
-import bids
 import nibabel as nib
 import numpy as np
-from nibabel.filebasedimages import ImageFileError
-from nilearn import image as nimage
 from tqdm import tqdm
 
-from diff_benchmark.preprocessing.preparation_pipeline_unified import BrainDataPreparationPipeline
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
-from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
-    average_per_parcel,
-    extract_region_data,
-    extract_selected_labels,
-    project_to_surface,
-    resample_schaefer_onto_fs_lr,
+from diff_benchmark.preprocessing.preparation_pipeline_unified import (
+    BrainDataPreparationPipeline,
 )
+from diff_benchmark.preprocessing.wrapper_utils_brain_data import extract_region_data
 
 
 class DefaultPipeline(BrainDataPreparationPipeline):
@@ -121,6 +113,7 @@ class ImagePipeline(BrainDataPreparationPipeline):
         extract_features():
             Placeholder method for extracting features (to be implemented).
     """
+
     def __init__(self, dataset_config: DatasetConfig):
         super().__init__(dataset_config)
         # self.in_derivatives = self.base_dir / "derivatives"
@@ -170,4 +163,3 @@ class ImagePipeline(BrainDataPreparationPipeline):
                 self.results[subject_id] = file
             except (FileNotFoundError, OSError, ValueError, IndexError) as e:
                 print(f"[{subject_id}] Expected error during analysis: {e}")
-

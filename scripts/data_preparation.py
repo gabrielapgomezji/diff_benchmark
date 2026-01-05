@@ -2,15 +2,14 @@ from pathlib import Path
 
 import yaml
 
-
 general_config_path = Path(__file__).parent.parent / "config/configuration_general.yaml"
 with open(general_config_path, "r", encoding="utf-8") as f:
     general_config = yaml.safe_load(f)
-    
-from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
+
 from diff_benchmark.preprocessing.brain_data_preparation import (
     DefaultPipeline,
 )
+from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
 
 for dataset2prepare in general_config["datasets"]["datasets_list"]:
     if dataset2prepare["name"] == "abide":
@@ -24,7 +23,7 @@ for dataset2prepare in general_config["datasets"]["datasets_list"]:
         # subject_id = "01187" # wand
         # subject_id = "CC110037" # camcan
         # subject_id = "29182"  # abide
-        
+
         # from pathlib import Path
         # def parse_subject_ids(dataset):
         #     base = Path(dataset.base_dir)
@@ -51,10 +50,10 @@ for dataset2prepare in general_config["datasets"]["datasets_list"]:
         #     return sorted(subjects)
 
         # subject_list = parse_subject_ids(dataset)
-        
+
         # brain_preparator._get_required_raw_files(subject_list[0])
         brain_preparator.run_pipeline()
-        
+
         # subject_id = "76884" # wand
         # brain_preparator.verify_raw_files(subject_id)
         # brain_preparator.compute_microstructure(subject_id)
