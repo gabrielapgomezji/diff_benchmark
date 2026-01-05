@@ -87,3 +87,19 @@ class PredictionHead(nn.Module):
 
     def forward(self, x):
         return self.head(x)
+    
+def build_prediction_head(
+    embedding_dim: int,
+    prediction_task: str,
+    num_classes: int | None = None,
+    hidden_dims: list[int] | None = None,
+    dropout: float = 0.0,
+) -> nn.Module:
+    return PredictionHead(
+        embedding_dim=embedding_dim,
+        prediction_task=prediction_task,
+        num_classes=num_classes,
+        hidden_dims=hidden_dims,
+        dropout=dropout,
+    )
+

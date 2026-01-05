@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
 from torch import nn
 from torch.utils.data import DataLoader, random_split
+from sklearn.base import BaseEstimator
 import torch
 from tqdm import tqdm
 import pytorch_lightning as pl
 from typing import Any
-
+import numpy as np
 
 class BaseTrainer(ABC):
     """
@@ -31,6 +32,85 @@ class BaseTrainer(ABC):
         """Run inference and return predictions."""
         raise NotImplementedError
 
+class SklearnModel(ABC, BaseEstimator):
+    """
+    Base class for sklearn models.
+    Implements fit and predict methods.
+    """
+
+    data_type = "array"
+    
+    def __init__(self, **kwargs):
+        super().__init__()
+        self.model = self._build_model(**kwargs)
+    
+    @abstractmethod
+    def _build_model(self, **kwargs) -> BaseEstimator:
+        raise NotImplementedError
+
+    def fit(self, X: np.ndarray, y: np.ndarray):
+        self.model.fit(X, y)
+        return self
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        return self.model.predict(X)
+    
+class SklearnTrainer(BaseTrainer):
+    """
+    Abstract base class for all models in the diff_benchmark framework.
+    Defines the interface that all models must implement.
+    """
+    def __init__(self, model: SklearnModel, **kwargs):
+        self.model = model
+        self.output_dim = 1
+    
+    def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Converts a dataloader containing batches of data into NumPy arrays.
+        Args:
+            dataloader (iterable): An iterable that yields batches of data in the form
+                                   (x_batch, y_batch, _), where x_batch and y_batch
+                                   are the input and target tensors, respectively.
+        Returns:
+            tuple: A tuple containing two NumPy arrays:
+                - features (np.ndarray): Concatenated array of input data.
+                - targets (np.ndarray): Concatenated array of target data.
+        """
+
+        features_list = []
+        targets_list = []
+        for features_batch, targets_batch, _ in dataloader:
+            features_list.append(features_batch.numpy())
+            targets_list.append(targets_batch.numpy())
+        features = np.concatenate(features_list, axis=0)
+        targets = np.concatenate(targets_list, axis=0)
+        return features, targets
+    
+    def _reshape_data(self, dataloader: DataLoader):
+        features, targets = self._dataloader_to_numpy(dataloader)
+        features_reshaped = features.reshape(features.shape[0], -1)
+        return features_reshaped, targets.flatten()
+
+    def fit(self, dataloader: DataLoader):
+        """
+        Fit the model to the training data.
+        Args:
+            dataloader (DataLoader): PyTorch DataLoader with training data.
+        """
+        features, targets = self._reshape_data(dataloader)
+        self.model.fit(features, targets)
+
+    def predict(self, dataloader: DataLoader):
+        """
+        Predict using the fitted model.
+        Args:
+            dataloader (DataLoader): PyTorch DataLoader with data to predict.
+        """
+        features, _ = self._reshape_data(dataloader)
+        preds =  self.model.predict(features)
+        if self.output_dim == 2:
+            return preds.reshape(-1, 1)
+        return preds
 
 
 def split_loader(dataloader, val_ratio=0.2, seed=42):
@@ -101,6 +181,10 @@ class TorchTrainer(BaseTrainer):
             else nn.MSELoss()
         )
         self.prediction_task = prediction_task
+    
+    # @property
+    # def data_type(self):
+    #     return self.model.data_type
 
     def fit(self, dataloader):
         train_loader, val_loader = split_loader(
@@ -300,10 +384,10 @@ class LightningTrainer(BaseTrainer):
         self.trainer = pl.Trainer(**trainer_kwargs)
         self.val_ratio = val_ratio
     
-    @property
-    def data_type(self):
-        # Lightning adapter → real backbone
-        return getattr(self.model.model, "data_type", None)
+    # @property
+    # def data_type(self):
+    #     # Lightning adapter → real backbone
+    #     return getattr(self.model.model, "data_type", None)
 
     def fit(self, dataloader):
         train_loader, val_loader = split_loader(
