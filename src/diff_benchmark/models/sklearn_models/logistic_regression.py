@@ -1,4 +1,3 @@
-import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.model_selection import GridSearchCV
@@ -7,8 +6,6 @@ from sklearn.preprocessing import StandardScaler
 
 from diff_benchmark.models.utils_models.trainer import SklearnModel
 from sklearn.base import BaseEstimator
-
-from torch.utils.data import DataLoader
 
 
 class PCALinearModel(SklearnModel):

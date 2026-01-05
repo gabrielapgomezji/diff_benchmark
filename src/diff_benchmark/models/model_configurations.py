@@ -4,9 +4,8 @@ import torch.nn as nn
 
 
 from diff_benchmark.models.sklearn_models.classic_ml import PCARandomForestModel, PCASVMModel
-from diff_benchmark.models.torch_models.medicalnet import MedicalNet #ResNet3DModelLite, ResNet3DModel, 
-from diff_benchmark.models.torch_models.cnn import ResNet3SliceBackbone, ResNet3SliceMultihead #CNNTorchTrainModel, ResNet3SliceModel, ResNet3SliceMultihead
-
+from diff_benchmark.models.torch_models.medicalnet import MedicalNet
+from diff_benchmark.models.torch_models.cnn import ResNet3SliceMultihead
 from diff_benchmark.models.sklearn_models.dummy import DummyClassifierModel, DummyRegressorModel
 from diff_benchmark.models.sklearn_models.logistic_regression import (
     LinearModel,
@@ -14,7 +13,6 @@ from diff_benchmark.models.sklearn_models.logistic_regression import (
 )
 from diff_benchmark.models.utils_models.prediction_head import build_prediction_head
 
-from diff_benchmark.models.base import TorchPipeline, LightningModel, NumpyAbstractModel
 
 
 def make_run_id(name: str, params: dict) -> str:

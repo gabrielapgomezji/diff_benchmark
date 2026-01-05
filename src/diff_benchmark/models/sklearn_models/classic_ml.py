@@ -1,4 +1,3 @@
-import numpy as np
 from diff_benchmark.models.utils_models.trainer import SklearnModel
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
@@ -6,7 +5,6 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC, SVR
-from torch.utils.data import DataLoader
 
 from sklearn.base import BaseEstimator
 
