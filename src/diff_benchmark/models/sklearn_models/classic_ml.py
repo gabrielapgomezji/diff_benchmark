@@ -1,4 +1,4 @@
-from diff_benchmark.models.utils_models.trainer import SklearnModel
+from sklearn.base import BaseEstimator
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import GridSearchCV
@@ -6,7 +6,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC, SVR
 
-from sklearn.base import BaseEstimator
+from diff_benchmark.models.utils_models.trainer import SklearnModel
+
 
 class PCARandomForestModel(SklearnModel):
     """
@@ -58,6 +59,7 @@ class PCASVMModel(SklearnModel):
     PCASVMModel combines PCA for dimensionality reduction
     with a Support Vector Machine classifier.
     """
+
     def _build_model(self, **kwargs) -> BaseEstimator:
         self.prediction_task = kwargs.get("prediction_task", None)
         if self.prediction_task == "classification":
@@ -81,8 +83,8 @@ class PCASVMModel(SklearnModel):
 
         # Define hyperparameter grid
         param_grid = {
-            "pca__n_components": [50],#, 100, 400],
-            "svm__C": [0.1],#, 1, 10, 100],
+            "pca__n_components": [50],  # , 100, 400],
+            "svm__C": [0.1],  # , 1, 10, 100],
             "svm__kernel": ["linear", "rbf"],
             "svm__gamma": svm_gamma,
         }

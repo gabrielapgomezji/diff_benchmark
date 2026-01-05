@@ -1,10 +1,11 @@
 from pathlib import Path
+from typing import Callable
 
 import nibabel as nib
 import numpy as np
+import pandas as pd
 import torch
 from torch.utils.data import Dataset
-import pandas as pd
 
 
 class CustomDataset(Dataset):
@@ -20,7 +21,13 @@ class CustomDataset(Dataset):
         gender (torch.Tensor): A tensor representation of the gender information.
     """
 
-    def __init__(self, features: pd.DataFrame, targets: np.ndarray, gender: np.ndarray, transform=None):
+    def __init__(
+        self,
+        features: pd.DataFrame,
+        targets: np.ndarray,
+        gender: np.ndarray,
+        transform: Callable = None,
+    ):
         # self.features = torch.tensor(features, dtype=torch.float32)
         self.features = features.drop(columns=["subject_id"])
         self.targets = torch.tensor(targets, dtype=torch.float32)

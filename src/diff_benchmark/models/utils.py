@@ -2,16 +2,14 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 
 
-
-
 def create_trainer(
     max_epochs: int = 50,
-    monitor: str ="val_accuracy",
-    mode: str ="max",
-    patience: int =5,
-    accelerator: str ="auto",
-    devices: str ="auto",
-    save_dir: str ="./data/results/checkpoints",
+    monitor: str = "val_accuracy",
+    mode: str = "max",
+    patience: int = 5,
+    accelerator: str = "auto",
+    devices: str = "auto",
+    save_dir: str = "./data/results/checkpoints",
 ) -> Trainer:
     """Creates a PyTorch Lightning Trainer with early stopping and model checkpointing.
     Args:

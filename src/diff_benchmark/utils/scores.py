@@ -13,7 +13,9 @@ from sklearn.metrics import (
 __all__ = ["accuracy_score"]
 
 
-def compute_metrics_old(y_true: list, y_pred: list, average: str ="binary", zero_division: str ="warn") -> dict:
+def compute_metrics_old(
+    y_true: list, y_pred: list, average: str = "binary", zero_division: str = "warn"
+) -> dict:
     """Compute standard classification metrics.
     Parameters:
         y_true (list): True labels.
@@ -37,7 +39,11 @@ def compute_metrics_old(y_true: list, y_pred: list, average: str ="binary", zero
 
 
 def compute_metrics(
-    y_true: list, y_pred: list, prediction_task: str, average: str ="binary", zero_division: str ="warn"
+    y_true: list,
+    y_pred: list,
+    prediction_task: str,
+    average: str = "binary",
+    zero_division: str = "warn",
 ) -> dict:
     """Compute standard classification and regression metrics.
     Parameters:
@@ -62,14 +68,14 @@ def compute_metrics(
             "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
         }
 
-    elif prediction_task == "regression":
+    if prediction_task == "regression":
         return {
             "mse": mean_squared_error(y_true, y_pred),
             "r2": r2_score(y_true, y_pred),
             "explained_variance": explained_variance_score(y_true, y_pred),
             "mape": mean_absolute_percentage_error(y_true, y_pred),
         }
-    else:
-        raise ValueError(
-            "Invalid prediction_task. Choose either 'classification' or 'regression'."
-        )
+
+    raise ValueError(
+        "Invalid prediction_task. Choose either 'classification' or 'regression'."
+    )

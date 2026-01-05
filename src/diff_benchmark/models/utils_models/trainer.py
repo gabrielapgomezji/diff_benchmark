@@ -1,12 +1,14 @@
 from abc import ABC, abstractmethod
+from typing import Any
+
+import numpy as np
+import pytorch_lightning as pl
+import torch
+from sklearn.base import BaseEstimator
 from torch import nn
 from torch.utils.data import DataLoader, random_split
-from sklearn.base import BaseEstimator
-import torch
 from tqdm import tqdm
-import pytorch_lightning as pl
-from typing import Any
-import numpy as np
+
 
 class BaseTrainer(ABC):
     """
@@ -17,7 +19,7 @@ class BaseTrainer(ABC):
 
     def __init__(self, model: nn.Module):
         self.model = model
-    
+
     @property
     def data_type(self):
         return getattr(self.model, "data_type", None)
@@ -32,6 +34,7 @@ class BaseTrainer(ABC):
         """Run inference and return predictions."""
         raise NotImplementedError
 
+
 class SklearnModel(ABC, BaseEstimator):
     """
     Base class for sklearn models.
@@ -39,32 +42,83 @@ class SklearnModel(ABC, BaseEstimator):
     """
 
     data_type = "array"
-    
+
     def __init__(self, **kwargs):
         super().__init__()
         self.model = self._build_model(**kwargs)
-    
+
     @abstractmethod
     def _build_model(self, **kwargs) -> BaseEstimator:
+        """
+        Build and instantiate the machine learning model.
+        This is an abstract method that must be implemented by subclasses to define
+        the specific model architecture and configuration.
+        Parameters
+        ----------
+        **kwargs : dict
+            Additional keyword arguments for model configuration and customization.
+        Returns
+        -------
+        BaseEstimator
+            The instantiated and configured model object that follows the scikit-learn
+            estimator interface.
+        Raises
+        ------
+        NotImplementedError
+            This method must be implemented by subclasses.
+        """
+
         raise NotImplementedError
 
     def fit(self, X: np.ndarray, y: np.ndarray):
+        """
+        Fit the model to the training data.
+        Parameters
+        ----------
+        X : np.ndarray
+            Training feature matrix of shape (n_samples, n_features).
+        y : np.ndarray
+            Target variable of shape (n_samples,).
+        Returns
+        -------
+        self
+            Returns the fitted trainer instance for method chaining.
+        """
+
         self.model.fit(X, y)
         return self
 
     def predict(self, X: np.ndarray) -> np.ndarray:
+        """
+        Make predictions on input data using the trained model.
+        Parameters
+        ----------
+        X : np.ndarray
+            Input features for prediction. Shape should be (n_samples, n_features).
+        Returns
+        -------
+        np.ndarray
+            Predicted values from the model. Shape depends on the model type and task
+            (e.g., (n_samples,) for regression/binary classification,
+            (n_samples, n_classes) for multi-class classification).
+        """
+
         return self.model.predict(X)
-    
+
+
 class SklearnTrainer(BaseTrainer):
     """
     Abstract base class for all models in the diff_benchmark framework.
     Defines the interface that all models must implement.
     """
+
     def __init__(self, model: SklearnModel, **kwargs):
         self.model = model
         self.output_dim = 1
-    
-    def _dataloader_to_numpy(self, dataloader: DataLoader) -> tuple[np.ndarray, np.ndarray]:
+
+    def _dataloader_to_numpy(
+        self, dataloader: DataLoader
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Converts a dataloader containing batches of data into NumPy arrays.
         Args:
@@ -85,7 +139,7 @@ class SklearnTrainer(BaseTrainer):
         features = np.concatenate(features_list, axis=0)
         targets = np.concatenate(targets_list, axis=0)
         return features, targets
-    
+
     def _reshape_data(self, dataloader: DataLoader):
         features, targets = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
@@ -107,13 +161,38 @@ class SklearnTrainer(BaseTrainer):
             dataloader (DataLoader): PyTorch DataLoader with data to predict.
         """
         features, _ = self._reshape_data(dataloader)
-        preds =  self.model.predict(features)
+        preds = self.model.predict(features)
         if self.output_dim == 2:
             return preds.reshape(-1, 1)
         return preds
 
 
 def split_loader(dataloader, val_ratio=0.2, seed=42):
+    """
+    Split a PyTorch DataLoader into training and validation subsets.
+    This function takes an existing DataLoader and splits its underlying dataset
+    into training and validation sets based on a specified ratio. It creates new
+    DataLoaders with the same configuration as the input DataLoader while preserving
+    reproducibility through a fixed random seed.
+    Args:
+        dataloader (DataLoader): The original PyTorch DataLoader to split.
+        val_ratio (float, optional): Fraction of the dataset to use for validation.
+            Must be between 0 and 1. Defaults to 0.2 (20%).
+        seed (int, optional): Random seed for reproducibility of the split.
+            Defaults to 42.
+    Returns:
+        tuple[DataLoader, DataLoader]: A tuple containing:
+            - train_loader (DataLoader): DataLoader for the training subset with
+              shuffling enabled.
+            - val_loader (DataLoader): DataLoader for the validation subset with
+              shuffling disabled.
+    Example:
+        >>> train_loader, val_loader = split_loader(dataloader, val_ratio=0.2)
+        >>> for batch in train_loader:
+        ...     # process training batch
+        ...     pass
+    """
+
     dataset = dataloader.dataset
     n_total = len(dataset)
     n_val = int(n_total * val_ratio)
@@ -141,7 +220,6 @@ def split_loader(dataloader, val_ratio=0.2, seed=42):
     )
 
     return train_loader, val_loader
-
 
 
 class TorchTrainer(BaseTrainer):
@@ -183,9 +261,7 @@ class TorchTrainer(BaseTrainer):
         self.prediction_task = prediction_task
 
     def fit(self, dataloader):
-        train_loader, val_loader = split_loader(
-            dataloader, val_ratio=self.val_ratio
-        )
+        train_loader, val_loader = split_loader(dataloader, val_ratio=self.val_ratio)
 
         for epoch in range(self.epochs):
             self.model.train()
@@ -257,9 +333,26 @@ class TorchTrainer(BaseTrainer):
         return torch.cat(outputs).numpy()
 
     def save(self, path: str):
+        """
+        Save the model's state dictionary to a file.
+        Args:
+            path (str): The file path where the model state dictionary will be saved.
+        """
+
         torch.save(self.model.state_dict(), path)
 
     def load(self, path: str):
+        """
+        Load model weights from a checkpoint file.
+        Args:
+            path (str): Path to the checkpoint file containing the model state dictionary.
+        Returns:
+            None
+        Raises:
+            FileNotFoundError: If the checkpoint file does not exist at the specified path.
+            RuntimeError: If the checkpoint is incompatible with the current model architecture.
+        """
+
         self.model.load_state_dict(torch.load(path, map_location=self.device))
 
 
@@ -337,6 +430,7 @@ class _LightningModuleAdapter(pl.LightningModule):
             weight_decay=self.weight_decay,
         )
 
+
 def x_only_loader(dl: DataLoader):
     """Utility to create a dataloader that yields only inputs (no labels).
     Args:
@@ -351,6 +445,7 @@ def x_only_loader(dl: DataLoader):
         if x.dim() == 4:
             x = x.unsqueeze(1)
         yield (x,)
+
 
 class LightningTrainer(BaseTrainer):
     """
@@ -381,16 +476,12 @@ class LightningTrainer(BaseTrainer):
         self.val_ratio = val_ratio
 
     def fit(self, dataloader):
-        train_loader, val_loader = split_loader(
-            dataloader, val_ratio=self.val_ratio
-        )
+        train_loader, val_loader = split_loader(dataloader, val_ratio=self.val_ratio)
         self.trainer.fit(self.model, train_loader, val_loader)
 
     def predict(self, dataloader):
         # preds = self.trainer.predict(self.model, dataloader)
-        preds = self.trainer.predict(
-            dataloaders=x_only_loader(dataloader)
-        )
+        preds = self.trainer.predict(dataloaders=x_only_loader(dataloader))
         preds = torch.cat([p.cpu() for p in preds])
         return preds.numpy()
 

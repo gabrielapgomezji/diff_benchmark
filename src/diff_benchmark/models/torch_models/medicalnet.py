@@ -1,21 +1,14 @@
 from functools import partial
+from typing import Any
+
 import torch
 import torch.nn.functional as F
 from torch import nn
-from typing import Any
 
-__all__ = [
-    "ResNet",
-    "resnet10",
-    "resnet18",
-    "resnet34",
-    "resnet50",
-    "resnet101",
-    "resnet152",
-    "resnet200",
-]
 
-def conv3x3x3(in_planes: int, out_planes: int, stride: int = 1, dilation: int = 1) -> nn.Conv3d:
+def conv3x3x3(
+    in_planes: int, out_planes: int, stride: int = 1, dilation: int = 1
+) -> nn.Conv3d:
     """
     Creates a 3D convolutional layer with a 3x3x3 kernel.
     Args:
@@ -26,7 +19,7 @@ def conv3x3x3(in_planes: int, out_planes: int, stride: int = 1, dilation: int = 
     Returns:
         nn.Conv3d: A 3D convolutional layer with the specified parameters.
     """
-    
+
     # 3x3x3 convolution with padding
     return nn.Conv3d(
         in_planes,
@@ -39,7 +32,9 @@ def conv3x3x3(in_planes: int, out_planes: int, stride: int = 1, dilation: int = 
     )
 
 
-def downsample_basic_block(x: torch.Tensor, planes: int, stride: int, no_cuda: bool = False) -> torch.Tensor:
+def downsample_basic_block(
+    x: torch.Tensor, planes: int, stride: int, no_cuda: bool = False
+) -> torch.Tensor:
     """
     Downsamples a 3D tensor using average pooling and zero-padding.
     Args:
@@ -54,7 +49,7 @@ def downsample_basic_block(x: torch.Tensor, planes: int, stride: int, no_cuda: b
         torch.Tensor: The downsampled tensor with shape (N, planes, D', H', W'),
         where D', H', W' are the spatial dimensions after downsampling.
     """
-    
+
     out = F.avg_pool3d(x, kernel_size=1, stride=stride)
     zero_pads = torch.Tensor(
         out.size(0), planes - out.size(1), out.size(2), out.size(3), out.size(4)
@@ -79,7 +74,14 @@ class BasicBlock(nn.Module):
 
     expansion = 1
 
-    def __init__(self, inplanes: int, planes: int, stride: int = 1, dilation: int = 1, downsample: nn.Module = None):
+    def __init__(
+        self,
+        inplanes: int,
+        planes: int,
+        stride: int = 1,
+        dilation: int = 1,
+        downsample: nn.Module = None,
+    ):
         super().__init__()
         self.conv1 = conv3x3x3(inplanes, planes, stride=stride, dilation=dilation)
         self.bn1 = nn.BatchNorm3d(planes)
@@ -101,7 +103,7 @@ class BasicBlock(nn.Module):
             torch.Tensor: Output tensor after applying the convolutional layers,
             batch normalization, ReLU activation, and residual connection.
         """
-        
+
         residual = x
 
         out = self.conv1(x)
@@ -158,7 +160,14 @@ class Bottleneck(nn.Module):
 
     expansion = 4
 
-    def __init__(self, inplanes: int, planes: int, stride: int = 1, dilation: int = 1, downsample: nn.Module = None):
+    def __init__(
+        self,
+        inplanes: int,
+        planes: int,
+        stride: int = 1,
+        dilation: int = 1,
+        downsample: nn.Module = None,
+    ):
         super().__init__()
         self.conv1 = nn.Conv3d(inplanes, planes, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm3d(planes)
@@ -190,7 +199,7 @@ class Bottleneck(nn.Module):
             torch.Tensor: Output tensor after applying the convolutional layers,
             batch normalization, ReLU activation, and residual connection.
         """
-        
+
         residual = x
 
         out = self.conv1(x)
@@ -248,7 +257,16 @@ class ResNet(nn.Module):
                     num_classes is the number of output classes.
     """
 
-    def __init__(self, block: nn.Module, layers: list[int], num_classes: int, prediction_task: str, shortcut_type: str = "B", no_cuda: bool = False, **kwargs: Any):
+    def __init__(
+        self,
+        block: nn.Module,
+        layers: list[int],
+        num_classes: int,
+        prediction_task: str,
+        shortcut_type: str = "B",
+        no_cuda: bool = False,
+        **kwargs: Any,
+    ):
         self.inplanes = 64
         self.no_cuda = no_cuda
         super().__init__()
@@ -278,22 +296,30 @@ class ResNet(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-    def _make_layer(self, block: nn.Module, planes: int, blocks: int, shortcut_type: str, stride: int = 1, dilation: int = 1) -> nn.Sequential:
+    def _make_layer(
+        self,
+        block: nn.Module,
+        planes: int,
+        blocks: int,
+        shortcut_type: str,
+        stride: int = 1,
+        dilation: int = 1,
+    ) -> nn.Sequential:
         """
         Creates a sequential layer consisting of multiple blocks.
         Args:
             block (nn.Module): The building block module to be used in the layer.
             planes (int): The number of output channels for the blocks.
             blocks (int): The number of blocks to include in the layer.
-            shortcut_type (str): The type of shortcut connection to use. 
-                Options are "A" for basic block downsampling or other types for 
+            shortcut_type (str): The type of shortcut connection to use.
+                Options are "A" for basic block downsampling or other types for
                 convolutional downsampling.
             stride (int, optional): The stride to use for the first block. Defaults to 1.
             dilation (int, optional): The dilation rate for the convolutional layers. Defaults to 1.
         Returns:
             nn.Sequential: A sequential container of the constructed blocks.
         """
-        
+
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             if shortcut_type == "A":
@@ -343,7 +369,7 @@ class ResNet(nn.Module):
         """
         if x.ndim == 4:  # (B, D, H, W)
             x = x.unsqueeze(1)  # → (B, 1, D, H, W)
-        
+
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -359,10 +385,10 @@ class ResNet(nn.Module):
 
 # First, define a mapping for depth → (block, layers)
 RESNET_DEPTHS = {
-    10:  (BasicBlock,  [1, 1, 1, 1]),
-    18:  (BasicBlock,  [2, 2, 2, 2]),
-    34:  (BasicBlock,  [3, 4, 6, 3]),
-    50:  (Bottleneck, [3, 4, 6, 3]),
+    10: (BasicBlock, [1, 1, 1, 1]),
+    18: (BasicBlock, [2, 2, 2, 2]),
+    34: (BasicBlock, [3, 4, 6, 3]),
+    50: (Bottleneck, [3, 4, 6, 3]),
     101: (Bottleneck, [3, 4, 23, 3]),
     152: (Bottleneck, [3, 8, 36, 3]),
     200: (Bottleneck, [3, 24, 36, 3]),
@@ -419,7 +445,7 @@ class MedicalNet(ResNet):
             new_state = {}
             for k, v in state.items():
                 if k.startswith("module."):
-                    new_state[k[len("module."):]] = v
+                    new_state[k[len("module.") :]] = v
                 else:
                     new_state[k] = v
 
@@ -429,13 +455,15 @@ class MedicalNet(ResNet):
                 print("[MedicalNet] Missing keys:", missing)
             if unexpected:
                 print("[MedicalNet] Unexpected keys:", unexpected)
-                
+
         self.collate_with_augmentation = self.collate_with_augmentation
         self.mean = 0.5
         self.std = 0.5
-        
+
     @staticmethod
-    def collate_with_augmentation(batch, transform: callable = None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def collate_with_augmentation(
+        batch, transform: callable = None
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Collates a batch of data with optional augmentation and normalization.
         Args:
@@ -450,7 +478,7 @@ class MedicalNet(ResNet):
         xs, ys, gs = zip(*batch)
         if transform:
             xs = [transform(x) for x in xs]
-        
+
         xs = torch.stack([x.unsqueeze(0) for x in xs], dim=0)  # Add channel dim
         # xs = torch.stack([x.unsqueeze(0) if x.ndim == 3 else x for x in xs], dim=0)
         ys = torch.stack(ys)

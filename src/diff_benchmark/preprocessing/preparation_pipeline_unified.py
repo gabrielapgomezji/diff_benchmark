@@ -2,30 +2,70 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Dict
 
-import pandas as pd
-from joblib import Parallel, delayed
-from tqdm import tqdm
-from typing import Dict, Union
-
-from pathlib import Path
 import bids
 import nibabel as nib
 import numpy as np
+import pandas as pd
 from nibabel.filebasedimages import ImageFileError
 from nilearn import image as nimage
 
+from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
 from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
+    compute_save_and_project_metric,
+    create_masks,
     extract_selected_labels,
-    project_to_surface,
     resample_schaefer_onto_fs_lr,
 )
-from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
-                    create_masks,
-                    compute_save_and_project_metric
-                )
-from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
-from diff_benchmark.utils.job_manager_wrap import run_jobs
+from diff_benchmark.utils.job_manager import run_jobs
+
+
+@dataclass(frozen=True)
+class DiffusionInputs:
+    """
+    Data container for diffusion MRI preprocessing pipeline inputs.
+    Attributes:
+        dwi_data (Path): Path to diffusion weighted imaging (DWI) data file.
+        bvals (Path): Path to b-values file containing gradient strengths.
+        bvecs (Path): Path to b-vectors file containing gradient directions.
+        aparc_aseg (Path): Path to FreeSurfer aparc+aseg segmentation file.
+        nodif_mask (Path | None): Optional path to no-diffusion (b0) mask file. Defaults to None.
+        surfaces (Dict[str, Path]): Dictionary mapping surface identifiers to their file paths.
+            Common keys include 'white', 'pial', etc. Defaults to an empty dictionary.
+    """
+
+    dwi_data: Path
+    bvals: Path
+    bvecs: Path
+    aparc_aseg: Path
+    nodif_mask: Path | None = None
+    surfaces: Dict[str, Path] = field(default_factory=dict)
+
+    def iter_paths(self) -> Dict[str, Path]:
+        """
+        Iterate over all relevant file paths for the preprocessing pipeline.
+        Returns:
+            Dict[str, Path]: A dictionary containing paths to:
+                - dwi_data: Diffusion weighted imaging data file
+                - bvals: B-values file
+                - bvecs: B-vectors file
+                - aparc_aseg: Aparc+aseg segmentation file
+                - nodif_mask: (Optional) No diffusion mask file, only included if provided
+                - surface:<key>: Surface files, prefixed with "surface:" for each entry in self.surfaces
+        """
+
+        base = {
+            "dwi_data": self.dwi_data,
+            "bvals": self.bvals,
+            "bvecs": self.bvecs,
+            "aparc_aseg": self.aparc_aseg,
+        }
+        if self.nodif_mask is not None:
+            base["nodif_mask"] = self.nodif_mask
+
+        return {**base, **{f"surface:{k}": v for k, v in self.surfaces.items()}}
+
 
 def process_subject_wrapper(subject_id, pipeline_cls, dataset_config, recompute):
     """
@@ -35,6 +75,7 @@ def process_subject_wrapper(subject_id, pipeline_cls, dataset_config, recompute)
     # pipeline._process_subject(subject_id, recompute)
     pipeline = pipeline_cls(dataset_config)
     pipeline._process_subject(subject_id, recompute)
+
 
 @dataclass
 class ProcessingResult:
@@ -68,6 +109,7 @@ class ProcessingResult:
         """
 
         self.invalid_subjects.append(subject_id)
+
 
 class BrainDataPreparationPipeline(ABC):
     """
@@ -103,13 +145,13 @@ class BrainDataPreparationPipeline(ABC):
         self.small_delta = dataset_config.small_delta
         self.big_delta_per_bvalue = dataset_config.big_delta_per_bvalue
         self.results = {}
-        
+
         self.dwi_desc = dataset_config.dwi_desc
         self.bvec_extensions = dataset_config.bvec_extensions
         self.bval_extensions = dataset_config.bval_extensions
         self.nodif_mask_extension = dataset_config.nodif_mask_extension
         self.aparcaseg_extension = dataset_config.aparcaseg_extension
-        
+
         if "bids" in self.data_reading:
             # File extension
             # --- Detect uni vs multicenter automatically ---
@@ -128,21 +170,19 @@ class BrainDataPreparationPipeline(ABC):
                 )
                 for center in center_dirs
             ]
-    
+
     def get_subjects(self) -> list[str]:
-        """ 
+        """
         Retrieve a sorted list of unique subject identifiers from the layouts.
-        This method aggregates subject identifiers from all layouts associated 
+        This method aggregates subject identifiers from all layouts associated
         with the instance, removes duplicates, and returns them in sorted order.
         Returns:
             list[str]: A sorted list of unique subject identifiers.
         """
-        
-        return sorted({
-            subject
-            for layout in self.layouts
-            for subject in layout.get_subjects()
-        })
+
+        return sorted(
+            {subject for layout in self.layouts for subject in layout.get_subjects()}
+        )
 
     def get_layout_for_subject(self, subject_id: str) -> bids.BIDSLayout:
         """
@@ -158,8 +198,8 @@ class BrainDataPreparationPipeline(ABC):
             if subject_id in layout.get_subjects():
                 return layout
         raise ValueError(f"Subject {subject_id} not found in any center")
-       
-    def _get_required_raw_files(self, subject_id: str) -> Dict[str, Union[Path, Dict[str, Path]]]:
+
+    def _get_required_raw_files(self, subject_id: str) -> DiffusionInputs | None:
         """
         Retrieves the required raw files for a given subject ID based on the data reading method.
         Args:
@@ -173,7 +213,7 @@ class BrainDataPreparationPipeline(ABC):
             if self.data_reading == "hcp":
                 subject_dir = self.base_dir / subject_id
                 diffusion_dir = subject_dir / "T1w" / "Diffusion"
-                
+
                 surfaces = {
                     f"{h}.{s}": subject_dir
                     / "T1w"
@@ -182,21 +222,23 @@ class BrainDataPreparationPipeline(ABC):
                     for s in ("white", "pial")
                     for h in ("L", "R")
                 }
-                
 
-                return {
-                    "DWI data": diffusion_dir / self.dwi_desc,
-                    "bvals": diffusion_dir / self.bval_extensions,
-                    "bvecs": diffusion_dir / self.bvec_extensions,
-                    "nodif mask": diffusion_dir / self.nodif_mask_extension,
-                    "aparc+aseg": subject_dir / self.aparcaseg_extension,
-                    **{f"surface:{k}": v for k, v in surfaces.items()},
-                }
-            elif "bids" in self.data_reading:
+                return DiffusionInputs(
+                    dwi_data=diffusion_dir / self.dwi_desc,
+                    bvals=diffusion_dir / self.bval_extensions,
+                    bvecs=diffusion_dir / self.bvec_extensions,
+                    nodif_mask=diffusion_dir / self.nodif_mask_extension,
+                    aparc_aseg=subject_dir / self.aparcaseg_extension,
+                    surfaces=surfaces,
+                )
+            if "bids" in self.data_reading:
                 layout = self.get_layout_for_subject(subject_id)
-                
+
                 aparcaseg = layout.get(
-                    subject=subject_id, desc="aparcaseg", suffix="dseg", return_type="file"
+                    subject=subject_id,
+                    desc="aparcaseg",
+                    suffix="dseg",
+                    return_type="file",
                 )[0]
 
                 dwi_bids = layout.get(
@@ -219,31 +261,33 @@ class BrainDataPreparationPipeline(ABC):
                     extension=self.bvec_extensions,
                     return_type="file",
                 )[0]
-                
+
                 surfaces = {
-                    f"{h}.{s}": Path(layout.get(
-                        subject=subject_id,
-                        suffix=s,
-                        hemi=h,
-                        space=None,
-                        extension=".surf.gii",
-                        return_type="files",  # , density='32k'
-                    )[0])
+                    f"{h}.{s}": Path(
+                        layout.get(
+                            subject=subject_id,
+                            suffix=s,
+                            hemi=h,
+                            space=None,
+                            extension=".surf.gii",
+                            return_type="files",  # , density='32k'
+                        )[0]
+                    )
                     for s in ("white", "pial", "inflated")
                     for h in ("L", "R")
                 }
 
-                return {
-                    "DWI data": Path(dwi_bids.path),
-                    "bvals": Path(bvals),
-                    "bvecs": Path(bvecs),
-                    "aparc+aseg": Path(aparcaseg),
-                    **{f"surface:{k}": v for k, v in surfaces.items()},
-                }
+                return DiffusionInputs(
+                    dwi_data=Path(dwi_bids.path),
+                    bvals=Path(bvals),
+                    bvecs=Path(bvecs),
+                    aparc_aseg=Path(aparcaseg),
+                    nodif_mask=None,
+                    surfaces=surfaces,
+                )
         except (IndexError, KeyError):
             return None
 
-  
     def verify_raw_files(self, subject_id: str) -> bool:
         """
         Verifies the existence of raw files for a given subject ID.
@@ -257,7 +301,7 @@ class BrainDataPreparationPipeline(ABC):
             print(f"[SKIP] {subject_id}: required raw files not found")
             return False
         missing_or_empty = []
-        for name, path in required_files.items():
+        for name, path in required_files.iter_paths().items():
             if not path.exists():
                 missing_or_empty.append(f"{name} (missing)")
             elif path.is_file() and path.stat().st_size == 0:
@@ -283,7 +327,6 @@ class BrainDataPreparationPipeline(ABC):
             bool: True if the subject files are valid and exist, False otherwise.
         """
 
-
     def compute_microstructure(self, subject_id: str):
         """
         Compute the microstructure for a given subject.
@@ -297,15 +340,18 @@ class BrainDataPreparationPipeline(ABC):
             derivatives_dir.mkdir(parents=True, exist_ok=True)
 
             files = self._get_required_raw_files(subject_id)
-            aparc_aseg = files["aparc+aseg"]
+            assert files is not None
+
+            aparc_aseg = files.aparc_aseg
+            dwi_nib = nib.load(files.dwi_data)
+            bvals = np.loadtxt(files.bvals)
             labels = extract_selected_labels(aparc_aseg)
-            dwi_nib = nib.load(files["DWI data"])
-            bvals = np.loadtxt(files["bvals"])
-            
-            surfaces = {k.split("surface:")[1]: v for k, v in files.items() if k.startswith("surface:")}
-            
+
+            surfaces = files.surfaces
+
             if self.data_reading == "hcp":
-                bvecs = np.loadtxt(files["bvecs"]).T
+                nodif_mask = files.nodif_mask
+                bvecs = np.loadtxt(files.bvecs).T
                 nodif_mask = files["nodif mask"]
                 aparc_resampled = nimage.resample_to_img(
                     aparc_aseg,
@@ -314,11 +360,11 @@ class BrainDataPreparationPipeline(ABC):
                     force_resample=True,
                     copy_header=True,
                 )
-                
+
                 selected_labels = None
-                
+
             elif "bids" in self.data_reading:
-                bvecs = np.loadtxt(files["bvecs"])
+                bvecs = np.loadtxt(files.bvecs)
                 aparc_resampled = nimage.resample_img(
                     aparc_aseg,
                     target_affine=dwi_nib.affine,
@@ -327,7 +373,7 @@ class BrainDataPreparationPipeline(ABC):
                     force_resample=True,
                     copy_header=True,
                 )
-                
+
                 selected_labels = [
                     k
                     for k in labels
@@ -340,10 +386,8 @@ class BrainDataPreparationPipeline(ABC):
                     )
                 ]
 
-            ctx_mask, vent_mask = create_masks(
-                aparc_resampled, labels, selected_labels
-            )
-            
+            ctx_mask, vent_mask = create_masks(aparc_resampled, labels, selected_labels)
+
             compute_save_and_project_metric(
                 metric=self.metric,
                 dwi_nib=dwi_nib,
@@ -358,9 +402,15 @@ class BrainDataPreparationPipeline(ABC):
                 derivatives_dir=derivatives_dir,
                 subject_id=subject_id,
             )
-        except (FileNotFoundError, OSError, ImageFileError, KeyError, ValueError, IndexError) as e:
+        except (
+            FileNotFoundError,
+            OSError,
+            ImageFileError,
+            KeyError,
+            ValueError,
+            IndexError,
+        ) as e:
             print(f"[{subject_id}] Expected error during microstructure: {e}")
-
 
     @abstractmethod
     def run_analysis(self):
@@ -370,7 +420,6 @@ class BrainDataPreparationPipeline(ABC):
         specific analysis logic. Currently, it is a placeholder and does not
         perform any operations.
         """
-        
 
     def export_to_csv(self) -> pd.DataFrame:
         """
@@ -406,7 +455,7 @@ class BrainDataPreparationPipeline(ABC):
             self.compute_microstructure(subject_id)
         else:
             print(f"[{subject_id}] All files already present.")
-            
+
     def run_pipeline(self, recompute: bool = False) -> pd.DataFrame:
         """
         Main orchestration: ensures all required files exist before running analysis.
@@ -415,6 +464,7 @@ class BrainDataPreparationPipeline(ABC):
         Returns:
             pd.DataFrame: DataFrame containing the results after running the analysis.
         """
+
         def parse_subject_ids(dataset):
             base = Path(dataset.base_dir)
 
@@ -438,20 +488,25 @@ class BrainDataPreparationPipeline(ABC):
                 subjects.append(sid)
 
             return sorted(subjects)
+
         subject_list = parse_subject_ids(self.dataset_config)
-        
+
         run_jobs(
             run_fn=process_subject_wrapper,
             fn_kwargs_list=[
-                {"subject_id": subject_id, "pipeline_cls": type(self), "dataset_config": self.dataset_config, "recompute": recompute}
+                {
+                    "subject_id": subject_id,
+                    "pipeline_cls": type(self),
+                    "dataset_config": self.dataset_config,
+                    "recompute": recompute,
+                }
                 for subject_id in subject_list
             ],
             parallel_type="slurm",
-            slurm_cfg = {
+            slurm_cfg={
                 "cpus_per_task": 1,
                 "timeout_min": 900,
                 "mem_gb": 50,
-                
             },
             n_jobs=50,
         )

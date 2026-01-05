@@ -1,179 +1,99 @@
-from typing import Callable
+from __future__ import annotations
+
+import traceback as tb
+import warnings
+from dataclasses import dataclass
+from functools import wraps
+from typing import Any, Callable
 
 import submitit
 from joblib import Parallel, delayed
 
 
-def run_single_process(
-    run_fn: Callable,
-    models_to_run: list,
-    results_path: str,
-    general_config: dict,
-) -> list:
-    """Runs a specified function in a single process for multiple models.
-    Parameters:
-        run_fn (callable): The function to run for each model entry.
-        models_to_run (list): A list of model entries, each containing a 'name' and 'params'.
-        results_path (str): The path where results will be stored.
-        general_config (dict): General configuration dictionary to be passed to the run function.
+@dataclass
+class JobResult:
+    ok: bool
+    value: Any = None
+    error: str | None = None
+    traceback: str | None = None
+
+
+def fn_error_catcher(fn: Callable[..., Any]) -> Callable[..., JobResult]:
+    """
+    Decorator that wraps a function to catch exceptions and return a JobResult.
+    This decorator executes the wrapped function and captures its return value or any
+    exceptions that occur during execution. The result is returned as a JobResult object
+    that indicates success or failure along with relevant error information.
+    Args:
+        fn: A callable function to be wrapped.
     Returns:
-        list: A list of results returned by the run_fn for each model entry.
+        A wrapped function that takes a dictionary of keyword arguments and returns
+        a JobResult object. On successful execution, returns JobResult with ok=True
+        and the function's return value. On exception, returns JobResult with ok=False,
+        the error message as a string, and a formatted traceback.
+    Raises:
+        None - All exceptions are caught and returned in the JobResult object.
     """
-    results = []
-    for model in models_to_run:
-        results.append(
-            run_fn(
-                model["name"],
-                {**model["params"]},
-                general_config,
-                results_path,
-            )
-        )
-    return results
 
+    @wraps(fn)
+    def wrapped(kwargs) -> JobResult:
+        try:
+            return JobResult(ok=True, value=fn(**kwargs))
+        except Exception as e:
+            return JobResult(ok=False, error=str(e), traceback=tb.format_exc())
 
-def run_with_joblib(
-    run_fn: Callable,
-    models_to_run: list,
-    results_path: str,
-    general_config: dict,
-    n_jobs: int = 5,
-) -> list:
-    """
-    Runs a specified function in parallel using joblib's Parallel and delayed.
-    Parameters:
-        run_fn (callable): The function to run for each model entry.
-        models_to_run (list): A list of model entries, each containing a 'name' and 'params'.
-        results_path (str): The path where results will be stored.
-        general_config (dict): General configuration dictionary to be passed to the run function.
-        n_jobs (int): The number of parallel jobs to run.
-    Returns:
-        list: A list of results returned by the run_fn for each model entry.
-    """
-    results = Parallel(n_jobs=n_jobs)(
-        delayed(run_fn)(
-            model_entry["name"],
-            {**model_entry["params"]},
-            general_config,
-            results_path,
-        )
-        for model_entry in models_to_run
-    )
-    return results
-
-
-def run_with_slurm(
-    run_fn: Callable,
-    models_to_run: list,
-    results_path: str,
-    slurm_cfg: dict,
-    general_config: dict,
-) -> list:
-    """
-    Runs a function with SLURM job scheduling for multiple models.
-    Parameters:
-        run_fn (callable): The function to run for each model.
-        models_to_run (list): A list of dictionaries, each containing the model name and parameters.
-        results_path (str): The path where results will be stored.
-        slurm_cfg (dict): A configuration dictionary for SLURM parameters, including:
-            - log_folder (str): The folder for SLURM logs.
-            - mem_gb (int): Memory in GB to allocate for each job.
-            - gpus_per_node (int): Number of GPUs to allocate per node.
-            - cpus_per_task (int): Number of CPUs to allocate per task.
-            - timeout_min (int): Timeout in minutes for each job.
-            - partition (str): The SLURM partition to use.
-        general_config (dict): General configuration dictionary to be passed to the run function.
-    Returns:
-        list: A list of results returned by the run_fn for each model entry.
-    """
-    submitit.slurm.slurm.SlurmJob.USE_SQUEUE = True
-    executor = submitit.AutoExecutor(folder=slurm_cfg.get("log_folder", "./slurm_logs"))
-    if slurm_cfg["jean_zay"]:
-        executor.update_parameters(
-            tasks_per_node=1,
-            gpus_per_task=1,
-            cpus_per_task=slurm_cfg.get("cpus_per_task", 1),
-            timeout_min=slurm_cfg.get("timeout_min", 10),
-            slurm_additional_parameters={
-                "account": "qlr@v100",
-                "gres": "gpu:1",
-                "constraint": "v100-32g",
-            },
-            setup=["module purge", "module load pytorch-gpu/py3/2.4.0"],
-            slurm_setup=[
-                "export OMP_NUM_THREADS=1",
-                "export MKL_NUM_THREADS=1",
-                "export OPENBLAS_NUM_THREADS=1",
-                "export NUMEXPR_NUM_THREADS=1",
-            ],
-        )
-    else:
-        executor.update_parameters(
-            mem_gb=slurm_cfg.get("mem_gb", 32),
-            gpus_per_node=slurm_cfg.get("gpus_per_node", 0),
-            tasks_per_node=1,
-            cpus_per_task=slurm_cfg.get("cpus_per_task", 4),
-            timeout_min=slurm_cfg.get("timeout_min", 120),
-            slurm_partition=slurm_cfg.get("partition", "cpu"),
-        )
-
-    jobs = []
-    for model_entry in models_to_run:
-        job = executor.submit(
-            run_fn,
-            model_entry["name"],
-            {**model_entry["params"]},
-            general_config,
-            results_path,
-        )
-        jobs.append(job)
-
-    # This will block until results are ready (remove if you want async)
-    results = [job.result() for job in jobs]
-    return results
+    return wrapped
 
 
 def run_jobs(
-    run_fn: Callable,
-    models_to_run: list,
-    config: dict,
-    general_config: dict,
-) -> any:
-    """
-    Runs jobs using either SLURM, Joblib or single process based on the configuration provided.
+    run_fn: Callable[..., Any],
+    fn_kwargs_list: list[dict[str, Any]],
+    parallel_type: str | None,
+    n_jobs: int = 1,
+    slurm_cfg: dict[str, Any] | None = None,
+) -> list[JobResult]:
+    """Execute a function multiple times with different keyword arguments.
+    Supports sequential, joblib-based parallel, and SLURM-based distributed execution.
     Args:
-        run_fn (callable): The function to run for each job.
-        models_to_run (list): A list of models to be processed.
-        config (dict): Configuration dictionary (not used in this function).
-        general_config (dict): General configuration dictionary containing flags for SLURM and Joblib.
+        run_fn: The function to execute. Will be wrapped with error handling.
+        fn_kwargs_list: List of dictionaries containing keyword arguments for each function call.
+        parallel_type: Execution mode. One of:
+            - None: Sequential execution
+            - "joblib": Parallel execution using joblib
+            - "slurm": Distributed execution using SLURM
+        n_jobs: Number of parallel jobs. Default is 1.
+            For joblib: number of parallel workers.
+            For slurm: array parallelism level.
+        slurm_cfg: Configuration dictionary for SLURM execution. Required if parallel_type="slurm".
+            Can contain "log_folder" (default "./slurm_logs") and other SLURM parameters.
     Returns:
-        any: The results from the executed jobs, which depends on the implementation of
-        run_with_slurm or run_with_joblib.
+        List of JobResult objects containing the results of all function executions.
+    Raises:
+        ValueError: If parallel_type is "slurm" but slurm_cfg is None, or if parallel_type is unknown.
+    Warns:
+        UserWarning: If parallel_type="joblib" and n_jobs <= 1, as this may not provide speedup.
     """
-    if general_config.get("use_slurm", False):
-        print("Running with SLURM...")
-        return run_with_slurm(
-            run_fn,
-            models_to_run,
-            general_config.get("results_path_logs", "./data"),
-            general_config.get("slurm", {}),
-            general_config,
-        )
+    fn_to_run = fn_error_catcher(run_fn)
 
-    if general_config.get("use_joblib", False):
-        print("Running with Joblib...")
-        return run_with_joblib(
-            run_fn,
-            models_to_run,
-            general_config.get("results_path_logs", "./data"),
-            general_config,
-            general_config.get("n_jobs", 5),
-        )
+    if parallel_type is None:
+        return [fn_to_run(kw) for kw in fn_kwargs_list]
 
-    print("Running in a single process...")
-    return run_single_process(
-        run_fn,
-        models_to_run,
-        general_config.get("results_path_logs", "./data"),
-        general_config,
-    )
+    if parallel_type == "joblib":
+        if n_jobs <= 1:
+            warnings.warn(f"n_jobs={n_jobs} may not provide parallel speedup.")
+        return Parallel(n_jobs=n_jobs)(delayed(fn_to_run)(kw) for kw in fn_kwargs_list)
+
+    if parallel_type == "slurm":
+        if slurm_cfg is None:
+            raise ValueError("slurm_cfg must be provided for slurm mode")
+
+        log_folder = slurm_cfg.pop("log_folder", "./slurm_logs")
+
+        ex = submitit.AutoExecutor(folder=log_folder)
+        ex.update_parameters(**slurm_cfg, slurm_array_parallelism=n_jobs)
+
+        jobs = ex.map_array(fn_to_run, fn_kwargs_list)
+
+        return [j.result() for j in jobs]
+
+    raise ValueError(f"Unknown parallel_type: {parallel_type!r}")

@@ -3,19 +3,19 @@ from pathlib import Path
 import bids
 import yaml
 
-from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
-from diff_benchmark.preprocessing.preprocess_demographic_data import (
-    DefaultDemographicsPreprocessor,
-)
 from diff_benchmark.preprocessing.brain_data_preparation import (
     DefaultMulticenterPipeline,
     DefaultPipeline,
+)
+from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
+from diff_benchmark.preprocessing.preprocess_demographic_data import (
+    DefaultDemographicsPreprocessor,
 )
 
 general_config_path = Path(__file__).parent.parent / "config/configuration_general.yaml"
 with open(general_config_path, "r", encoding="utf-8") as f:
     general_config = yaml.safe_load(f)
-    
+
 for dataset_to_prepare in general_config["datasets"]["datasets_list"]:
     if dataset_to_prepare["name"] == "abide":
         dataset = DatasetConfig(
@@ -25,7 +25,8 @@ for dataset_to_prepare in general_config["datasets"]["datasets_list"]:
         )
         if dataset_to_prepare["name"] == "abide":
             center_dirs = [
-                p for p in Path(dataset.base_dir).iterdir()
+                p
+                for p in Path(dataset.base_dir).iterdir()
                 if p.is_dir() and not p.name.startswith(".")
             ]
             participants_files = []
