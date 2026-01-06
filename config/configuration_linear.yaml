@@ -6,8 +6,9 @@ pretrain_path: /data/parietal/store3/work/ggomezji/projects/diff_benchmark/Medic
 models:
 - name: linear
   params:
+    dataset: hcp
     name: linear
-    comment: PCA linear regression. Testnew conf
+    comment: PCA linear regression. Test saving parquet
     backend: 
       backend: sklearn
       num_classes: 1
