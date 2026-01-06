@@ -62,44 +62,19 @@ def run_single_model(model_name, model_config, general_config, results_path):
 
     targets_path = Path(results_path) / "parquet" / "data" / "targets.parquet"
     targets_path.parent.mkdir(parents=True, exist_ok=True)
-
-    if targets_path.exists():
-        df_existing = pd.read_parquet(targets_path)
-    else:
-        df_existing = pd.DataFrame(
-            columns=["dataset", "sample_id", "target", "value"]
-        )
-    targets = dataset.targets.numpy()
-    subject_ids = dataset.subject_ids
+    from diff_benchmark.utils.parquet_helper import ParquetSaver
     target_name = config["target_columns"][0]
-
-    df_new = pd.DataFrame([
-        {
-            "dataset": dataset_selected.name,
-            "sample_id": subject_id,
-            "target": target_name,
-            "value": float(value),
-        }
-        for subject_id, value in zip(subject_ids, targets)
-    ])
-    
-    if not df_existing.empty:
-        key_cols = ["dataset", "sample_id", "target"]
-
-        df_merged = df_new.merge(
-            df_existing[key_cols],
-            on=key_cols,
-            how="left",
-            indicator=True,
-        )
-
-        df_to_add = df_merged[df_merged["_merge"] == "left_only"].drop(columns="_merge")
-    else:
-        df_to_add = df_new
-    
-    if not df_to_add.empty:
-        df_out = pd.concat([df_existing, df_to_add], ignore_index=True)
-        df_out.to_parquet(targets_path, index=False)
+    rows = [
+        {"dataset": dataset_selected.name, "sample_id": sid, "target": target_name, "value": float(v)}
+        for sid, v in zip(dataset.subject_ids, dataset.targets.numpy())
+    ]
+    saver = ParquetSaver(
+        path=targets_path,
+        key_columns=["dataset", "sample_id", "target"],
+        columns=["dataset", "sample_id", "target", "value"]
+    )
+    saver.add_rows(rows)
+    saver.save()
 
     specs = preprocessed.get_specs()
     print(specs)
@@ -187,44 +162,29 @@ def run_single_model(model_name, model_config, general_config, results_path):
             train_preds.append(train_pred.tolist())
             train_targets.append(y_train.tolist())
 
-            predictions_path = (
-                Path(results_path)
-                / "parquet"
-                / "data"
-                / "predictions.parquet"
-            )
-            predictions_path.parent.mkdir(parents=True, exist_ok=True)
-            if predictions_path.exists():
-                df_existing = pd.read_parquet(predictions_path)
-            else:
-                df_existing = pd.DataFrame(
-                    columns=[
-                        "run_id",
-                        "model",
-                        "dataset",
-                        "fold",
-                        "split",
-                        "sample_id",
-                        "target",
-                        "prediction",
-                    ]
-                )
+            predictions_path = Path(results_path) / "parquet" / "data" / "predictions.parquet"
+            key_cols = ["run_id", "model", "dataset", "fold", "split", "sample_id", "target"]
+            pred_saver = ParquetSaver(predictions_path, key_columns=key_cols,
+                                    columns=[
+                                        "run_id", "model", "dataset", "fold", "split",
+                                        "sample_id", "target", "prediction"
+                                    ])
             
-            subject_ids = np.asarray(dataset.subject_ids)
-            train_subject_ids = subject_ids[train_idx]
-            df_train = pd.DataFrame([
+            train_subject_ids = np.asarray(dataset.subject_ids)[train_idx]
+            train_rows = [
                 {
                     "run_id": run_id,
                     "model": model_name,
                     "dataset": dataset_selected.name,
                     "fold": fold_idx,
                     "split": "train",
-                    "sample_id": subject_id,
+                    "sample_id": sid,
                     "target": target_name,
                     "prediction": float(pred),
                 }
-                for subject_id, pred in zip(train_subject_ids, train_pred)
-            ])
+                for sid, pred in zip(train_subject_ids, train_pred)
+            ]
+            pred_saver.add_rows(train_rows)
             
             test_pred = model.predict(test_loader)
             plot_true_vs_pred(
@@ -239,50 +199,24 @@ def run_single_model(model_name, model_config, general_config, results_path):
             test_preds.append(test_pred.tolist())
             test_targets.append(y_test.tolist())
 
-            test_subject_ids = subject_ids[test_idx]
-            target_name = config["target_columns"][0]
-
-            df_test = pd.DataFrame([
+            test_subject_ids = np.asarray(dataset.subject_ids)[test_idx]
+            test_rows = [
                 {
                     "run_id": run_id,
                     "model": model_name,
                     "dataset": dataset_selected.name,
                     "fold": fold_idx,
                     "split": "test",
-                    "sample_id": subject_id,
+                    "sample_id": sid,
                     "target": target_name,
                     "prediction": float(pred),
                 }
-                for subject_id, pred in zip(test_subject_ids, test_pred)
-            ])
-            df_new = pd.concat([df_train, df_test], ignore_index=True)
-            key_cols = [
-                "run_id",
-                "model",
-                "dataset",
-                "fold",
-                "split",
-                "sample_id",
-                "target",
+                for sid, pred in zip(test_subject_ids, test_pred)
             ]
-            if not df_existing.empty:
-                df_merged = df_new.merge(
-                    df_existing[key_cols],
-                    on=key_cols,
-                    how="left",
-                    indicator=True,
-                )
+            pred_saver.add_rows(test_rows)
 
-                df_to_add = (
-                    df_merged[df_merged["_merge"] == "left_only"]
-                    .drop(columns="_merge")
-                )
-            else:
-                df_to_add = df_new
-            
-            if not df_to_add.empty:
-                df_out = pd.concat([df_existing, df_to_add], ignore_index=True)
-                df_out.to_parquet(predictions_path, index=False)
+            # save both train and test at once
+            pred_saver.save()
     
             from diff_benchmark.utils.parquet_helper import metrics_to_rows
             metrics_rows.extend(

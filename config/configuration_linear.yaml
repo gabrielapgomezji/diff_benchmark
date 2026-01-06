@@ -8,7 +8,7 @@ models:
   params:
     dataset: hcp
     name: linear
-    comment: PCA linear regression. Test saving parquet
+    comment: PCA linear regression. Test new parquet func
     backend: 
       backend: sklearn
       num_classes: 1
