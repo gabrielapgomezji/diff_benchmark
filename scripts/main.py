@@ -3,6 +3,7 @@ import copy
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 from sklearn.metrics import mean_squared_error
 
 from diff_benchmark.analysis.plot_history import plot_history_from_file
@@ -36,24 +37,27 @@ general_config, model_config = load_configs(args)
 
 
 def run_single_model(model_name, model_config, general_config, results_path):
+    metrics_rows = []
+
     config = general_config
 
-    for dataset2prepare in general_config["datasets"]["datasets_list"]:
-        if dataset2prepare["name"] == "hcp":
-            dataset = DatasetConfig(
-                **dataset2prepare,
+    datasets_by_name = {
+        d["name"]: d for d in general_config["datasets"]["datasets_list"]
+    }
+    dataset_selected = datasets_by_name[model_config["dataset"]]
+    dataset_selected = DatasetConfig(
+                **dataset_selected,
                 metric_to_compute=general_config["datasets"]["metric_to_compute"],
                 scale=general_config["datasets"]["scale"],
                 region=general_config["data_preparation"]["region"],
             )
-            dataset2work = dataset
-
     torch_dataset_preparator = DatasetPreparation(
         model_name=model_name,
         model_config=model_config,
         general_config=general_config,
-        source_dataset=dataset2work,
+        source_dataset=dataset_selected,
     )
+    
     dataset, preprocessed = torch_dataset_preparator.pipeline()
 
     specs = preprocessed.get_specs()
@@ -133,9 +137,9 @@ def run_single_model(model_name, model_config, general_config, results_path):
             plot_true_vs_pred(
                 y_train, train_pred, fold_idx=fold_idx, run_id=run_id, type="train"
             )
-            train_score = mean_squared_error(y_train, train_pred)
+            # train_score = mean_squared_error(y_train, train_pred)
             # train_score = accuracy_score(y_train, train_pred)
-            # train_score = compute_metrics(y_train, train_pred, prediction_task=local_config["backbone"]["prediction_task"])
+            train_score = compute_metrics(y_train, train_pred, prediction_task=local_config["backbone"]["prediction_task"])
             print(train_score)
 
             train_scores.append(train_score)
@@ -146,25 +150,50 @@ def run_single_model(model_name, model_config, general_config, results_path):
             plot_true_vs_pred(
                 y_test, test_pred, fold_idx=fold_idx, run_id=run_id, type="test"
             )
-            test_score = mean_squared_error(y_test, test_pred)
+            # test_score = mean_squared_error(y_test, test_pred)
             # test_score = accuracy_score(y_test, test_pred)
-            # test_score = compute_metrics(y_test, test_pred, prediction_task=local_config["backbone"]["prediction_task"])
+            test_score = compute_metrics(y_test, test_pred, prediction_task=local_config["backbone"]["prediction_task"])
             print(test_score)
 
             test_scores.append(test_score)
             test_preds.append(test_pred.tolist())
             test_targets.append(y_test.tolist())
 
+            from diff_benchmark.utils.parquet_helper import metrics_to_rows
+            metrics_rows.extend(
+                metrics_to_rows(
+                    train_score,
+                    run_id=run_id,
+                    model_name=model_name,
+                    dataset=dataset_selected.name,
+                    prediction_task=local_config["backbone"]["prediction_task"],
+                    fold=fold_idx,
+                    split="train",
+                )
+            )
+            
+            metrics_rows.extend(
+                metrics_to_rows(
+                    test_score,
+                    run_id=run_id,
+                    model_name=model_name,
+                    dataset=dataset_selected.name,
+                    prediction_task=local_config["backbone"]["prediction_task"],
+                    fold=fold_idx,
+                    split="test",
+                )
+            )
+            primary_metric = {"classification": "accuracy", "regression": "mse"}.get(local_config["backbone"]["prediction_task"])
             summary["results"]["folds"][f"fold_{fold_idx+1}"] = {
                 "train": {
                     # "score": float(train_score),
-                    "score": train_score,
+                    "score": train_score[primary_metric],
                     "predictions": train_pred.tolist(),
                     "targets": y_train.tolist(),
                 },
                 "test": {
                     # "score": float(test_score),
-                    "score": test_score,
+                    "score": test_score[primary_metric],
                     "predictions": test_pred.tolist(),
                     "targets": y_test.tolist(),
                 },
@@ -176,13 +205,13 @@ def run_single_model(model_name, model_config, general_config, results_path):
                     "fold": fold_idx,
                     "train": {
                         # "score": float(train_score),
-                        "score": train_score,
+                        "score": train_score[primary_metric],
                         "predictions": train_pred.tolist(),
                         "targets": y_train.tolist(),
                     },
                     "test": {
                         # "score": float(test_score),
-                        "score": test_score,
+                        "score": test_score[primary_metric],
                         "predictions": test_pred.tolist(),
                         "targets": y_test.tolist(),
                     },
@@ -208,14 +237,27 @@ def run_single_model(model_name, model_config, general_config, results_path):
                 Path(results_path) / "analysis_results" / f"{run_id}_crashed.json",
             )
             raise
+    
+    metrics_path = Path(results_path) / "parquet" / "analysis_results" / f"metrics_{run_id}.parquet"
+    metrics_path.parent.mkdir(parents=True, exist_ok=True)
+
+    df = pd.DataFrame(metrics_rows)
+    # if metrics_path.exists():
+    #     df_existing = pd.read_parquet(metrics_path)
+    #     df = pd.concat([df_existing, df], ignore_index=True)
+    df.to_parquet(metrics_path, index=False)
+
+    
+    train_primary_scores = [fold[primary_metric] for fold in train_scores]
+    test_primary_scores = [fold[primary_metric] for fold in test_scores]
     # summary["results"]["train_average_score"] = float(np.mean(train_scores["accuracy"]))
     # summary["results"]["train_std_score"] = float(np.std(train_scores["accuracy"]))
     # summary["results"]["test_average_score"] = float(np.mean(test_scores["accuracy"]))
     # summary["results"]["test_std_score"] = float(np.std(test_scores["accuracy"]))
-    summary["results"]["train_average_score"] = float(np.mean(train_scores))
-    summary["results"]["train_std_score"] = float(np.std(train_scores))
-    summary["results"]["test_average_score"] = float(np.mean(test_scores))
-    summary["results"]["test_std_score"] = float(np.std(test_scores))
+    summary["results"]["train_average_score"] = float(np.mean(train_primary_scores))
+    summary["results"]["train_std_score"] = float(np.std(train_primary_scores))
+    summary["results"]["test_average_score"] = float(np.mean(test_primary_scores))
+    summary["results"]["test_std_score"] = float(np.std(test_primary_scores))
 
     save_model_results(summary, Path(results_path) / "analysis_results")
     return model_name, run_id
@@ -252,3 +294,31 @@ results = run_jobs(
 # results is a list of (model_name, per_fold_results)
 # for model_name, run_id in results:
 #     print(f"Completed model: {model_name}")
+
+metrics_dir = Path("./data/results/parquet/analysis_results/metrics")
+global_path = metrics_dir / "metrics.parquet"
+
+if global_path.exists():
+    df_global = pd.read_parquet(global_path)
+    existing_run_ids = set(df_global["run_id"].unique())
+else:
+    df_global = None
+    existing_run_ids = set()
+
+new_dfs = []
+
+for p in metrics_dir.glob("metrics_*.parquet"):
+    run_id = p.stem.replace("metrics_", "")
+    if run_id not in existing_run_ids:
+        new_dfs.append(pd.read_parquet(p))
+
+if new_dfs:
+    df_new = pd.concat(new_dfs, ignore_index=True)
+    if df_global is not None:
+        df_out = pd.concat([df_global, df_new], ignore_index=True)
+    else:
+        df_out = df_new
+
+    df_out.to_parquet(global_path, index=False)
+
+
