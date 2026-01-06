@@ -60,6 +60,47 @@ def run_single_model(model_name, model_config, general_config, results_path):
     
     dataset, preprocessed = torch_dataset_preparator.pipeline()
 
+    targets_path = Path(results_path) / "parquet" / "data" / "targets.parquet"
+    targets_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if targets_path.exists():
+        df_existing = pd.read_parquet(targets_path)
+    else:
+        df_existing = pd.DataFrame(
+            columns=["dataset", "sample_id", "target", "value"]
+        )
+    targets = dataset.targets.numpy()
+    subject_ids = dataset.subject_ids
+    target_name = config["target_columns"][0]
+
+    df_new = pd.DataFrame([
+        {
+            "dataset": dataset_selected.name,
+            "sample_id": subject_id,
+            "target": target_name,
+            "value": float(value),
+        }
+        for subject_id, value in zip(subject_ids, targets)
+    ])
+    
+    if not df_existing.empty:
+        key_cols = ["dataset", "sample_id", "target"]
+
+        df_merged = df_new.merge(
+            df_existing[key_cols],
+            on=key_cols,
+            how="left",
+            indicator=True,
+        )
+
+        df_to_add = df_merged[df_merged["_merge"] == "left_only"].drop(columns="_merge")
+    else:
+        df_to_add = df_new
+    
+    if not df_to_add.empty:
+        df_out = pd.concat([df_existing, df_to_add], ignore_index=True)
+        df_out.to_parquet(targets_path, index=False)
+
     specs = preprocessed.get_specs()
     print(specs)
 
@@ -146,6 +187,45 @@ def run_single_model(model_name, model_config, general_config, results_path):
             train_preds.append(train_pred.tolist())
             train_targets.append(y_train.tolist())
 
+            predictions_path = (
+                Path(results_path)
+                / "parquet"
+                / "data"
+                / "predictions.parquet"
+            )
+            predictions_path.parent.mkdir(parents=True, exist_ok=True)
+            if predictions_path.exists():
+                df_existing = pd.read_parquet(predictions_path)
+            else:
+                df_existing = pd.DataFrame(
+                    columns=[
+                        "run_id",
+                        "model",
+                        "dataset",
+                        "fold",
+                        "split",
+                        "sample_id",
+                        "target",
+                        "prediction",
+                    ]
+                )
+            
+            subject_ids = np.asarray(dataset.subject_ids)
+            train_subject_ids = subject_ids[train_idx]
+            df_train = pd.DataFrame([
+                {
+                    "run_id": run_id,
+                    "model": model_name,
+                    "dataset": dataset_selected.name,
+                    "fold": fold_idx,
+                    "split": "train",
+                    "sample_id": subject_id,
+                    "target": target_name,
+                    "prediction": float(pred),
+                }
+                for subject_id, pred in zip(train_subject_ids, train_pred)
+            ])
+            
             test_pred = model.predict(test_loader)
             plot_true_vs_pred(
                 y_test, test_pred, fold_idx=fold_idx, run_id=run_id, type="test"
@@ -159,6 +239,51 @@ def run_single_model(model_name, model_config, general_config, results_path):
             test_preds.append(test_pred.tolist())
             test_targets.append(y_test.tolist())
 
+            test_subject_ids = subject_ids[test_idx]
+            target_name = config["target_columns"][0]
+
+            df_test = pd.DataFrame([
+                {
+                    "run_id": run_id,
+                    "model": model_name,
+                    "dataset": dataset_selected.name,
+                    "fold": fold_idx,
+                    "split": "test",
+                    "sample_id": subject_id,
+                    "target": target_name,
+                    "prediction": float(pred),
+                }
+                for subject_id, pred in zip(test_subject_ids, test_pred)
+            ])
+            df_new = pd.concat([df_train, df_test], ignore_index=True)
+            key_cols = [
+                "run_id",
+                "model",
+                "dataset",
+                "fold",
+                "split",
+                "sample_id",
+                "target",
+            ]
+            if not df_existing.empty:
+                df_merged = df_new.merge(
+                    df_existing[key_cols],
+                    on=key_cols,
+                    how="left",
+                    indicator=True,
+                )
+
+                df_to_add = (
+                    df_merged[df_merged["_merge"] == "left_only"]
+                    .drop(columns="_merge")
+                )
+            else:
+                df_to_add = df_new
+            
+            if not df_to_add.empty:
+                df_out = pd.concat([df_existing, df_to_add], ignore_index=True)
+                df_out.to_parquet(predictions_path, index=False)
+    
             from diff_benchmark.utils.parquet_helper import metrics_to_rows
             metrics_rows.extend(
                 metrics_to_rows(
@@ -295,7 +420,7 @@ results = run_jobs(
 # for model_name, run_id in results:
 #     print(f"Completed model: {model_name}")
 
-metrics_dir = Path("./data/results/parquet/analysis_results/metrics")
+metrics_dir = Path("./data/results/parquet/analysis_results")
 global_path = metrics_dir / "metrics.parquet"
 
 if global_path.exists():

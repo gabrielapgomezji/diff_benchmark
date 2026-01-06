@@ -13,31 +13,6 @@ from sklearn.metrics import (
 __all__ = ["accuracy_score"]
 
 
-def compute_metrics_old(
-    y_true: list, y_pred: list, average: str = "binary", zero_division: str = "warn"
-) -> dict:
-    """Compute standard classification metrics.
-    Parameters:
-        y_true (list): True labels.
-        y_pred (list): Predicted labels.
-        average (str): Averaging method for multi-class classification.
-        zero_division (str): Handling of zero division cases.
-    Returns:
-        dict: A dictionary containing accuracy, precision, recall, f1 score, and confusion matrix.
-    """
-    return {
-        "accuracy": accuracy_score(y_true, y_pred),
-        "precision": precision_score(
-            y_true, y_pred, average=average, zero_division=zero_division
-        ),
-        "recall": recall_score(
-            y_true, y_pred, average=average, zero_division=zero_division
-        ),
-        "f1": f1_score(y_true, y_pred, average=average, zero_division=zero_division),
-        "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
-    }
-
-
 def compute_metrics(
     y_true: list,
     y_pred: list,
@@ -65,7 +40,7 @@ def compute_metrics(
             "f1": f1_score(
                 y_true, y_pred, average=average, zero_division=zero_division
             ),
-            "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
+            # "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
         }
 
     if prediction_task == "regression":
