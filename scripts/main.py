@@ -135,7 +135,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
             )
             train_score = mean_squared_error(y_train, train_pred)
             # train_score = accuracy_score(y_train, train_pred)
-            # train_score = compute_metrics(y_train, train_pred)
+            # train_score = compute_metrics(y_train, train_pred, prediction_task=local_config["backbone"]["prediction_task"])
             print(train_score)
 
             train_scores.append(train_score)
@@ -148,7 +148,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
             )
             test_score = mean_squared_error(y_test, test_pred)
             # test_score = accuracy_score(y_test, test_pred)
-            # test_score = compute_metrics(y_test, test_pred)
+            # test_score = compute_metrics(y_test, test_pred, prediction_task=local_config["backbone"]["prediction_task"])
             print(test_score)
 
             test_scores.append(test_score)
