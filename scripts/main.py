@@ -141,6 +141,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
             local_config["backbone"]["prediction_task"] = config.get(
                 "prediction_task", "regression"
             )
+            local_config["backend"]["run_id"] = run_id
             model = get_model(model_name, local_config)
 
             model.fit(train_loader)

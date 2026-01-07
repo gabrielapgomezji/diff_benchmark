@@ -101,6 +101,8 @@ class DatasetPreparation:
         """
         # -------- MODEL & PIPELINE --------
         model = get_model(self.model_name, self.model_config)
+        if hasattr(model, "model"):  # trainer wrapper
+            model = model.model
         data_type = model.data_type
 
         self.brain_preparator = get_data_pipeline(data_type, self.source_dataset)

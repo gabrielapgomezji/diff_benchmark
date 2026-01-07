@@ -28,6 +28,19 @@ def is_cached(
         result.get("pipeline", {}).get("run_id") == run_id for result in all_results
     )
 
+def make_json_serializable(obj):
+    """Recursively convert an object to a JSON-serializable version."""
+    if isinstance(obj, dict):
+        return {k: make_json_serializable(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [make_json_serializable(v) for v in obj]
+    elif isinstance(obj, (str, int, float, bool)) or obj is None:
+        return obj
+    else:
+        # Replace any other object with a string indicating its type
+        return f"<non-serializable: {obj.__class__.__name__}>"
+
+
 
 def save_model_results(
     summary: dict, output_dir: Path, results_filename="all_results.json"
@@ -58,7 +71,11 @@ def save_model_results(
                 with open(log_file, "r", encoding="utf-8") as f:
                     history = json.load(f)
                 # summary["history"] = history
-                folds[last_fold_name]["history"] = history
+                # folds[last_fold_name]["history"] = history
+                folds[last_fold_name]["history"] = [
+                    {k: float(v) for k, v in step.items() if isinstance(v, (int, float))}
+                    for step in history
+                ]
                 os.remove(log_file)  # cleanup
         else:
             summary["history"] = []
@@ -74,7 +91,7 @@ def save_model_results(
         else:
             all_results = []
 
-        all_results.append(summary)
+        all_results.append(make_json_serializable(summary))
 
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(all_results, f, indent=2)
