@@ -29,7 +29,7 @@ class CustomDataset(Dataset):
         transform: Callable = None,
     ):
         # self.features = torch.tensor(features, dtype=torch.float32)
-        self.subject_ids = features["subject_id"].tolist()
+        self._subject_ids = features["subject_id"].tolist()
         self.features = features.drop(columns=["subject_id"])
         self.targets = torch.tensor(targets, dtype=torch.float32)
         self.gender = torch.tensor(gender, dtype=torch.int64)
@@ -106,5 +106,9 @@ class CustomDataset(Dataset):
             self.mode = "paths"
         return self.mode
     
-    def get_subject_ids(self):
-        return self.subject_ids
+    # def get_subject_ids(self):
+    #     return self.subject_ids
+    @property
+    def subject_ids(self) -> list:
+        """List of subject IDs aligned with dataset indices."""
+        return self._subject_ids

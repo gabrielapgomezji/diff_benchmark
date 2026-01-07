@@ -37,7 +37,6 @@ def make_run_id(name: str, params: dict) -> str:
     """
 
     # Sort params to keep consistency
-    # params_str = json.dumps(params, sort_keys=True)
     try:
         params_str = json.dumps(params, sort_keys=True)
     except TypeError:

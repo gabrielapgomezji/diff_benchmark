@@ -71,7 +71,6 @@ def save_model_results(
                 with open(log_file, "r", encoding="utf-8") as f:
                     history = json.load(f)
                 # summary["history"] = history
-                # folds[last_fold_name]["history"] = history
                 folds[last_fold_name]["history"] = [
                     {k: float(v) for k, v in step.items() if isinstance(v, (int, float))}
                     for step in history
