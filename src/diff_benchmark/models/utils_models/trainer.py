@@ -306,48 +306,6 @@ class TorchTrainer(BaseTrainer):
                 if self.logger.enabled:
                     train_preds.append(preds.detach().cpu())
                     train_targets.append(y.detach().cpu())
-                # if self.debug:
-                #     train_preds.append(preds.detach().cpu())
-                #     train_targets.append(y.detach().cpu())
-                #     self._debug_records.append(
-                #         {
-                #             "split": "train",
-                #             "epoch": epoch,
-                #             "batch": batch_idx,
-                #             "loss": loss.item(),
-                #             # "metrics": None,
-                #             # "preds": None,      # intentionally None
-                #             # "targets": None,    # intentionally None
-                #         }
-                #     )
-            # if self.debug:
-            #     if self.prediction_task == "classification":
-            #         train_preds = torch.cat(train_preds).argmax(dim=1)
-            #     else:
-            #         train_preds = torch.cat(train_preds)
-            #     metrics = compute_metrics(
-            #                 y_true=torch.cat(train_targets).numpy(),
-            #                 y_pred=train_preds.numpy(),
-            #                 prediction_task=self.prediction_task,
-            #             )
-            #     records = (
-            #         {
-            #             "split": "train",
-            #             "epoch": epoch,
-            #             "batch": None,
-            #             "loss": train_loss / len(train_loader),
-            #             # "metrics": compute_metrics(
-            #             #     y_true=torch.cat(train_targets).numpy(),
-            #             #     y_pred=torch.cat(train_preds).numpy(),
-            #             #     prediction_task=self.prediction_task,
-            #             # ),
-            #             # "preds": None,
-            #             # "targets": None,
-            #         }
-            #     )
-            #     if metrics is not None:
-            #         records.update(metrics)
-            #     self._debug_records.append(records)
             
             metrics = None
             if self.logger.enabled:
@@ -406,24 +364,6 @@ class TorchTrainer(BaseTrainer):
                         y_pred=preds.numpy(),
                         prediction_task=self.prediction_task,
                     )
-            # records = (
-            #     {
-            #         "split": "val",
-            #         "epoch": epoch,
-            #         "batch": None,
-            #         "loss": val_loss,
-            #         # "metrics": compute_metrics(
-            #         #     y_true=torch.cat(all_targets).numpy(),
-            #         #     y_pred=torch.cat(all_preds).numpy(),
-            #         #     prediction_task=self.prediction_task,
-            #         # ),
-            #         # "preds": None, # torch.cat(all_preds).numpy(),
-            #         # "targets": None, # torch.cat(all_targets).numpy(),
-            #     }
-            # )
-            # if metrics is not None:
-            #     records.update(metrics)
-            # self._debug_records.append(records)
         self.logger.log_epoch(
         split="val",
         epoch=epoch,
