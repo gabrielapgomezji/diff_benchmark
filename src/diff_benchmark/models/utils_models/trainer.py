@@ -263,7 +263,7 @@ class TorchTrainer(BaseTrainer):
         self.run_id = kwargs.get("run_id", "default_run")
         
         self.debug = kwargs.get("debug", False)
-        self.debug_dir = "./data/parquet/debug/"
+        self.debug_dir = "./data/results/parquet/debug/"
         self._debug_records: list[dict] = []
 
     def fit(self, dataloader):
@@ -305,8 +305,8 @@ class TorchTrainer(BaseTrainer):
                             "batch": batch_idx,
                             "loss": loss.item(),
                             # "metrics": None,
-                            "preds": None,      # intentionally None
-                            "targets": None,    # intentionally None
+                            # "preds": None,      # intentionally None
+                            # "targets": None,    # intentionally None
                         }
                     )
             if self.debug:
@@ -330,8 +330,8 @@ class TorchTrainer(BaseTrainer):
                         #     y_pred=torch.cat(train_preds).numpy(),
                         #     prediction_task=self.prediction_task,
                         # ),
-                        "preds": None,
-                        "targets": None,
+                        # "preds": None,
+                        # "targets": None,
                     }
                 )
                 if metrics is not None:
@@ -391,8 +391,8 @@ class TorchTrainer(BaseTrainer):
                     #     y_pred=torch.cat(all_preds).numpy(),
                     #     prediction_task=self.prediction_task,
                     # ),
-                    "preds": None, # torch.cat(all_preds).numpy(),
-                    "targets": None, # torch.cat(all_targets).numpy(),
+                    # "preds": None, # torch.cat(all_preds).numpy(),
+                    # "targets": None, # torch.cat(all_targets).numpy(),
                 }
             )
             if metrics is not None:
@@ -566,7 +566,7 @@ class LightningTrainer(BaseTrainer):
         from diff_benchmark.utils.logger import LightningDebugLogger
         self.model = model
         debug = kwargs.get("debug", False)
-        debug_dir = "./data/parquet/debug/"
+        debug_dir = "./data/results/parquet/debug/"
         if debug:
             debug_cb = LightningDebugLogger(
                 prediction_task=prediction_task,

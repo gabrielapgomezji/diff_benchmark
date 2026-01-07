@@ -132,8 +132,8 @@ class LightningDebugLogger(pl.Callback):
                 "epoch": epoch,
                 "loss": float(np.mean(losses)),
                 "metrics": metrics,
-                "preds": preds,
-                "targets": targets,
+                # "preds": preds,
+                # "targets": targets,
             }
         )
 
