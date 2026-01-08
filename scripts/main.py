@@ -3,28 +3,21 @@ import copy
 from pathlib import Path
 
 import numpy as np
-from sklearn.metrics import mean_squared_error
+import pandas as pd
 
-from diff_benchmark.analysis.plot_history import plot_history_from_file
-from diff_benchmark.analysis.plot_results import plot_folds_predictions_vs_targets
 from diff_benchmark.analysis.save_results import (
     is_cached,
-    save_fold_results,
     save_model_results,
 )
-from diff_benchmark.analysis.scores_summary import summarize_folds_to_csv
 from diff_benchmark.analysis.true_vs_pred import plot_true_vs_pred
-from diff_benchmark.data.dataloaders import PreprocessedData
-from diff_benchmark.data.generate_dataset import CustomDataset
 from diff_benchmark.data.prepare_data import DatasetPreparation
 from diff_benchmark.models.model_configurations import get_model, make_run_id
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
-from diff_benchmark.preprocessing.preprocess_demographic_data import (
-    DefaultDemographicsPreprocessor,
-)
+from diff_benchmark.utils.parquet_helper import ParquetSaver, metrics_to_rows
 from diff_benchmark.utils.config_loader import load_configs
 from diff_benchmark.utils.job_manager import run_jobs
-from diff_benchmark.utils.scores import accuracy_score, compute_metrics
+from diff_benchmark.utils.scores import compute_metrics
+from diff_benchmark.utils.summary_saver import update_summary, compute_summary_stats
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -36,25 +29,44 @@ general_config, model_config = load_configs(args)
 
 
 def run_single_model(model_name, model_config, general_config, results_path):
+    metrics_rows = []
+
     config = general_config
 
-    for dataset2prepare in general_config["datasets"]["datasets_list"]:
-        if dataset2prepare["name"] == "hcp":
-            dataset = DatasetConfig(
-                **dataset2prepare,
+    datasets_by_name = {
+        d["name"]: d for d in general_config["datasets"]["datasets_list"]
+    }
+    dataset_selected = datasets_by_name[model_config["dataset"]]
+    dataset_selected = DatasetConfig(
+                **dataset_selected,
                 metric_to_compute=general_config["datasets"]["metric_to_compute"],
                 scale=general_config["datasets"]["scale"],
                 region=general_config["data_preparation"]["region"],
             )
-            dataset2work = dataset
-
     torch_dataset_preparator = DatasetPreparation(
         model_name=model_name,
         model_config=model_config,
         general_config=general_config,
-        source_dataset=dataset2work,
+        source_dataset=dataset_selected,
     )
+    
     dataset, preprocessed = torch_dataset_preparator.pipeline()
+
+    targets_path = Path(results_path) / "parquet" / "data" / "targets.parquet"
+    targets_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    target_name = config["target_columns"][0]
+    rows = [
+        {"dataset": dataset_selected.name, "sample_id": sid, "target": target_name, "value": float(v)}
+        for sid, v in zip(dataset.subject_ids, dataset.targets.numpy())
+    ]
+    saver = ParquetSaver(
+        path=targets_path,
+        key_columns=["dataset", "sample_id", "target"],
+        columns=["dataset", "sample_id", "target", "value"]
+    )
+    saver.add_rows(rows)
+    saver.save()
 
     specs = preprocessed.get_specs()
     print(specs)
@@ -74,7 +86,6 @@ def run_single_model(model_name, model_config, general_config, results_path):
     train_scores, test_scores = [], []
     train_preds, test_preds = [], []
     train_targets, test_targets = [], []
-    per_fold_results = []
 
     summary = {
         "model_name": model_name,
@@ -104,14 +115,18 @@ def run_single_model(model_name, model_config, general_config, results_path):
     save_model_results(
         summary, Path(results_path) / "analysis_results" / f"{run_id}_partial.json"
     )
+    
+    predictions_path = Path(results_path) / "parquet" / "data" / "predictions.parquet"
+    key_cols = ["run_id", "model", "dataset", "fold", "split", "sample_id", "target"]
+    pred_saver = ParquetSaver(predictions_path, key_columns=key_cols,
+                            columns=[
+                                "run_id", "model", "dataset", "fold", "split",
+                                "sample_id", "target", "prediction"
+                            ])
 
     for fold_idx, (train_idx, test_idx) in enumerate(indices):
         try:
             local_config["fold_idx"] = fold_idx
-            # print(
-            #     f"Fold {fold_idx+1} - Train samples: {len(train_idx)}, test_samples: {len(test_idx)}"
-            # )
-            # breakpoint()
             train_loader, test_loader = preprocessed.get_dataloader_fold(
                 dataset,
                 fold_idx,
@@ -126,6 +141,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
             local_config["backbone"]["prediction_task"] = config.get(
                 "prediction_task", "regression"
             )
+            local_config["backend"]["run_id"] = run_id
             model = get_model(model_name, local_config)
 
             model.fit(train_loader)
@@ -133,69 +149,84 @@ def run_single_model(model_name, model_config, general_config, results_path):
             plot_true_vs_pred(
                 y_train, train_pred, fold_idx=fold_idx, run_id=run_id, type="train"
             )
-            train_score = mean_squared_error(y_train, train_pred)
-            # train_score = accuracy_score(y_train, train_pred)
-            # train_score = compute_metrics(y_train, train_pred)
+            train_score = compute_metrics(y_train, train_pred, prediction_task=local_config["backbone"]["prediction_task"])
             print(train_score)
 
             train_scores.append(train_score)
             train_preds.append(train_pred.tolist())
             train_targets.append(y_train.tolist())
-
+            
+            train_subject_ids = np.asarray(dataset.subject_ids)[train_idx]
+            train_rows = [
+                {
+                    "run_id": run_id,
+                    "model": model_name,
+                    "dataset": dataset_selected.name,
+                    "fold": fold_idx,
+                    "split": "train",
+                    "sample_id": sid,
+                    "target": target_name,
+                    "prediction": float(pred),
+                }
+                for sid, pred in zip(train_subject_ids, train_pred)
+            ]
+            pred_saver.add_rows(train_rows)
+            
             test_pred = model.predict(test_loader)
             plot_true_vs_pred(
                 y_test, test_pred, fold_idx=fold_idx, run_id=run_id, type="test"
             )
-            test_score = mean_squared_error(y_test, test_pred)
-            # test_score = accuracy_score(y_test, test_pred)
-            # test_score = compute_metrics(y_test, test_pred)
+            test_score = compute_metrics(y_test, test_pred, prediction_task=local_config["backbone"]["prediction_task"])
             print(test_score)
 
             test_scores.append(test_score)
             test_preds.append(test_pred.tolist())
             test_targets.append(y_test.tolist())
 
-            summary["results"]["folds"][f"fold_{fold_idx+1}"] = {
-                "train": {
-                    # "score": float(train_score),
-                    "score": train_score,
-                    "predictions": train_pred.tolist(),
-                    "targets": y_train.tolist(),
-                },
-                "test": {
-                    # "score": float(test_score),
-                    "score": test_score,
-                    "predictions": test_pred.tolist(),
-                    "targets": y_test.tolist(),
-                },
-            }
-
-            per_fold_results.append(
+            test_subject_ids = np.asarray(dataset.subject_ids)[test_idx]
+            test_rows = [
                 {
+                    "run_id": run_id,
                     "model": model_name,
+                    "dataset": dataset_selected.name,
                     "fold": fold_idx,
-                    "train": {
-                        # "score": float(train_score),
-                        "score": train_score,
-                        "predictions": train_pred.tolist(),
-                        "targets": y_train.tolist(),
-                    },
-                    "test": {
-                        # "score": float(test_score),
-                        "score": test_score,
-                        "predictions": test_pred.tolist(),
-                        "targets": y_test.tolist(),
-                    },
+                    "split": "test",
+                    "sample_id": sid,
+                    "target": target_name,
+                    "prediction": float(pred),
                 }
+                for sid, pred in zip(test_subject_ids, test_pred)
+            ]
+            pred_saver.add_rows(test_rows)
+            pred_saver.save()
+
+            
+            primary_metric = {"classification": "accuracy", "regression": "mse"}[local_config["backbone"]["prediction_task"]]
+            summary = update_summary(summary, fold_idx, train_score, test_score, y_train, train_pred, y_test, test_pred, primary_metric)
+
+            metrics_rows.extend(
+                metrics_to_rows(
+                    train_score,
+                    run_id=run_id,
+                    model_name=model_name,
+                    dataset=dataset_selected.name,
+                    prediction_task=local_config["backbone"]["prediction_task"],
+                    fold=fold_idx,
+                    split="train",
+                )
             )
-            training_log_path = (
-                Path("./data/results/logs") / f"{run_id}_training_log.json"
+            
+            metrics_rows.extend(
+                metrics_to_rows(
+                    test_score,
+                    run_id=run_id,
+                    model_name=model_name,
+                    dataset=dataset_selected.name,
+                    prediction_task=local_config["backbone"]["prediction_task"],
+                    fold=fold_idx,
+                    split="test",
+                )
             )
-            training_log_path.parent.mkdir(parents=True, exist_ok=True)
-            training_history_plot_path = (
-                Path("./data/results/plots") / f"training_history_{run_id}.png"
-            )
-            training_history_plot_path.parent.mkdir(parents=True, exist_ok=True)
 
             save_model_results(
                 summary,
@@ -208,14 +239,15 @@ def run_single_model(model_name, model_config, general_config, results_path):
                 Path(results_path) / "analysis_results" / f"{run_id}_crashed.json",
             )
             raise
-    # summary["results"]["train_average_score"] = float(np.mean(train_scores["accuracy"]))
-    # summary["results"]["train_std_score"] = float(np.std(train_scores["accuracy"]))
-    # summary["results"]["test_average_score"] = float(np.mean(test_scores["accuracy"]))
-    # summary["results"]["test_std_score"] = float(np.std(test_scores["accuracy"]))
-    summary["results"]["train_average_score"] = float(np.mean(train_scores))
-    summary["results"]["train_std_score"] = float(np.std(train_scores))
-    summary["results"]["test_average_score"] = float(np.mean(test_scores))
-    summary["results"]["test_std_score"] = float(np.std(test_scores))
+    
+    metrics_path = Path(results_path) / "parquet" / "analysis_results" / f"metrics_{run_id}.parquet"
+    metrics_path.parent.mkdir(parents=True, exist_ok=True)
+
+    df = pd.DataFrame(metrics_rows)
+    df.to_parquet(metrics_path, index=False)
+
+    summary["results"]["train_average_score"], summary["results"]["train_std_score"] = compute_summary_stats(train_scores, primary_metric)
+    summary["results"]["test_average_score"], summary["results"]["test_std_score"] = compute_summary_stats(test_scores, primary_metric)
 
     save_model_results(summary, Path(results_path) / "analysis_results")
     return model_name, run_id
@@ -229,7 +261,7 @@ run_single_model(
     general_config=general_config,
     results_path="./data/results",
 )
-# results = run_jobs(run_single_model, models_to_run, model_config, general_config)
+
 results = run_jobs(
     run_fn=run_single_model,
     fn_kwargs_list=[
@@ -249,6 +281,31 @@ results = run_jobs(
     n_jobs=50,
 )
 
-# results is a list of (model_name, per_fold_results)
-# for model_name, run_id in results:
-#     print(f"Completed model: {model_name}")
+
+metrics_dir = Path("./data/results/parquet/analysis_results")
+global_path = metrics_dir / "metrics.parquet"
+
+if global_path.exists():
+    df_global = pd.read_parquet(global_path)
+    existing_run_ids = set(df_global["run_id"].unique())
+else:
+    df_global = None
+    existing_run_ids = set()
+
+new_dfs = []
+
+for p in metrics_dir.glob("metrics_*.parquet"):
+    run_id = p.stem.replace("metrics_", "")
+    if run_id not in existing_run_ids:
+        new_dfs.append(pd.read_parquet(p))
+
+if new_dfs:
+    df_new = pd.concat(new_dfs, ignore_index=True)
+    if df_global is not None:
+        df_out = pd.concat([df_global, df_new], ignore_index=True)
+    else:
+        df_out = df_new
+
+    df_out.to_parquet(global_path, index=False)
+
+

@@ -8,6 +8,8 @@ from sklearn.base import BaseEstimator
 from torch import nn
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
+from diff_benchmark.utils.scores import compute_metrics
+from diff_benchmark.utils.logger import TrainerLogRecord, TorchDebugLogger, LightningDebugLogger
 
 
 class BaseTrainer(ABC):
@@ -186,11 +188,6 @@ def split_loader(dataloader, val_ratio=0.2, seed=42):
               shuffling enabled.
             - val_loader (DataLoader): DataLoader for the validation subset with
               shuffling disabled.
-    Example:
-        >>> train_loader, val_loader = split_loader(dataloader, val_ratio=0.2)
-        >>> for batch in train_loader:
-        ...     # process training batch
-        ...     pass
     """
 
     dataset = dataloader.dataset
@@ -231,7 +228,7 @@ class TorchTrainer(BaseTrainer):
         self,
         model: nn.Module,
         *,
-        epochs: int = 100,
+        epochs: int = 5,
         learning_rate: float = 1e-4,
         weight_decay: float = 1e-4,
         prediction_task: str = "classification",
@@ -240,7 +237,6 @@ class TorchTrainer(BaseTrainer):
         **kwargs: Any,
     ):
         super().__init__(model)
-
         self.device = torch.device(device if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
 
@@ -259,6 +255,14 @@ class TorchTrainer(BaseTrainer):
             else nn.MSELoss()
         )
         self.prediction_task = prediction_task
+        self.run_id = kwargs["run_id"] if "run_id" in kwargs else "default_run"
+        
+        self.logger = TorchDebugLogger(
+            enabled=kwargs.get("debug", False),
+            run_id=self.run_id,
+            output_dir="./data/results/parquet/debug/",
+            prediction_task=self.prediction_task,
+        )
 
     def fit(self, dataloader):
         train_loader, val_loader = split_loader(dataloader, val_ratio=self.val_ratio)
@@ -266,8 +270,10 @@ class TorchTrainer(BaseTrainer):
         for epoch in range(self.epochs):
             self.model.train()
             train_loss = 0.0
+            train_preds = []
+            train_targets = []
 
-            for batch in tqdm(train_loader, desc=f"[Epoch {epoch+1}/{self.epochs}]"):
+            for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"[Epoch {epoch+1}/{self.epochs}]")):
                 x, y, *_ = batch
                 x = x.to(self.device, non_blocking=True)
                 if self.prediction_task == "classification":
@@ -286,12 +292,41 @@ class TorchTrainer(BaseTrainer):
                 self.optimizer.step()
 
                 train_loss += loss.item()
+                self.logger.log_batch(
+                    split="train",
+                    epoch=epoch,
+                    batch=batch_idx,
+                    loss=loss.item(),
+                )
+                if self.logger.enabled:
+                    train_preds.append(preds.detach().cpu())
+                    train_targets.append(y.detach().cpu())
+            
+            metrics = None
+            if self.logger.enabled:
+                preds = torch.cat(train_preds)
+                preds = self.logger.finalize_preds(preds, self.prediction_task)
+                metrics = compute_metrics(
+                    y_true=torch.cat(train_targets).numpy(),
+                    y_pred=preds.numpy(),
+                    prediction_task=self.prediction_task,
+                )
 
-            self._validate(val_loader)
+            self.logger.log_epoch(
+                split="train",
+                epoch=epoch,
+                loss=train_loss / len(train_loader),
+                metrics=metrics,
+            )
+                
+            self._validate(val_loader, epoch)
+        self.logger.flush()
 
-    def _validate(self, val_loader):
+    def _validate(self, val_loader, epoch):
         self.model.eval()
         val_loss = 0.0
+        all_preds = []
+        all_targets = []
 
         with torch.no_grad():
             for batch in val_loader:
@@ -309,8 +344,27 @@ class TorchTrainer(BaseTrainer):
                     preds = preds.squeeze(1)
                 loss = self.criterion(preds, y)
                 val_loss += loss.item()
+                
+                if self.logger.enabled:
+                    all_preds.append(preds.cpu())
+                    all_targets.append(y.cpu())
 
         val_loss /= len(val_loader)
+        metrics = None
+        if self.logger.enabled:
+            preds = torch.cat(all_preds)
+            preds = self.logger.finalize_preds(preds, self.prediction_task)
+            metrics = compute_metrics(
+                        y_true=torch.cat(all_targets).numpy(),
+                        y_pred=preds.numpy(),
+                        prediction_task=self.prediction_task,
+                    )
+        self.logger.log_epoch(
+        split="val",
+        epoch=epoch,
+        loss=val_loss,
+        metrics=metrics,
+    )
 
     def predict(self, dataloader):
         self.model.eval()
@@ -331,15 +385,6 @@ class TorchTrainer(BaseTrainer):
                 outputs.append(preds.cpu().detach())
 
         return torch.cat(outputs).numpy()
-
-    def save(self, path: str):
-        """
-        Save the model's state dictionary to a file.
-        Args:
-            path (str): The file path where the model state dictionary will be saved.
-        """
-
-        torch.save(self.model.state_dict(), path)
 
     def load(self, path: str):
         """
@@ -397,7 +442,7 @@ class _LightningModuleAdapter(pl.LightningModule):
         #     preds = preds.squeeze(1)
         # metrics
         self.log("train_loss", loss, prog_bar=True)
-        return loss
+        return {"loss": loss}
 
     def validation_step(self, batch, _):
         x, y, *_ = batch
@@ -413,6 +458,7 @@ class _LightningModuleAdapter(pl.LightningModule):
         #     preds = preds.squeeze(1)
         # metrics
         self.log("val_loss", loss, prog_bar=True)
+        return {"loss": loss}
 
     def predict_step(self, batch, _, __=None):
         x = batch[0] if isinstance(batch, (tuple, list)) else batch
@@ -463,30 +509,36 @@ class LightningTrainer(BaseTrainer):
         val_ratio: float = 0.2,
         **kwargs: Any,
     ):
-        lightning_model = _LightningModuleAdapter(
+        self.lightning_model = _LightningModuleAdapter(
             model=model,
             prediction_task=prediction_task,
             learning_rate=learning_rate,
             weight_decay=weight_decay,
         )
 
-        super().__init__(lightning_model)
+        super().__init__(model)
+        self.model = model
+        debug = kwargs.get("debug", False)
+        debug_dir = "./data/results/parquet/debug/"
+        if debug:
+            debug_cb = LightningDebugLogger(
+                prediction_task=prediction_task,
+                debug_dir=debug_dir,
+                enabled=True,
+            )
+            trainer_kwargs.setdefault("callbacks", []).append(debug_cb)
+        # trainer_kwargs = {k: v for k, v in trainer_kwargs.items() if k in pl.Trainer.__init__.__code__.co_varnames} 
 
         self.trainer = pl.Trainer(**trainer_kwargs)
         self.val_ratio = val_ratio
 
     def fit(self, dataloader):
         train_loader, val_loader = split_loader(dataloader, val_ratio=self.val_ratio)
-        self.trainer.fit(self.model, train_loader, val_loader)
+        # self.trainer.fit(self.model, train_loader, val_loader)
+        self.trainer.fit(self.lightning_model, train_loader, val_loader)
 
     def predict(self, dataloader):
         # preds = self.trainer.predict(self.model, dataloader)
-        preds = self.trainer.predict(dataloaders=x_only_loader(dataloader))
+        preds = self.trainer.predict(dataloaders=x_only_loader(dataloader), model=self.lightning_model)
         preds = torch.cat([p.cpu() for p in preds])
         return preds.numpy()
-
-    # def save(self, path: str):
-    #     torch.save(self.model.model.state_dict(), path)
-
-    # def load(self, path: str):
-    #     self.model.model.load_state_dict(torch.load(path))

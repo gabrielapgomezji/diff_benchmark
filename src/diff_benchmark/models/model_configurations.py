@@ -37,7 +37,11 @@ def make_run_id(name: str, params: dict) -> str:
     """
 
     # Sort params to keep consistency
-    params_str = json.dumps(params, sort_keys=True)
+    try:
+        params_str = json.dumps(params, sort_keys=True)
+    except TypeError:
+        # fallback: convert everything to string
+        params_str = repr(params)
     # Hash to avoid overly long filenames
     run_hash = hashlib.md5(params_str.encode()).hexdigest()[:8]
     return f"{name}_{run_hash}"
@@ -59,6 +63,11 @@ class TaskModel(nn.Module):
         super().__init__()
         self.backbone = backbone
         self.head = head
+        
+        if hasattr(backbone, "mean"):
+            self.mean = backbone.mean
+        if hasattr(backbone, "std"):
+            self.std = backbone.std
 
     @property
     def data_type(self) -> str:
@@ -231,7 +240,7 @@ def get_model(name: str, config: dict) -> object:
     backend = config["backend"]["backend"]
     if backend == "lightning":
         config["trainer_kwargs"] = {
-            "max_epochs": config.get("epochs", 100),
+            "max_epochs": 10,
             "accelerator": "gpu",
             "devices": 1,
             "log_every_n_steps": 10,

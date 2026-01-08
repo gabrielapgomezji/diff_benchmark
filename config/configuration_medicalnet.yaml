@@ -13,6 +13,7 @@ data:
 models:
 - name: medicalnet
   params:
+    dataset: hcp
     backbone:
       depth: 10
       pretrained: true

@@ -6,6 +6,7 @@ pretrain_path: /data/parietal/store3/work/ggomezji/projects/diff_benchmark/Medic
 models:
 - name: pca_linear
   params:
+    dataset: hcp
     name: pca_linear
     comment: PCA linear regression. Test new conf
     backend: 
