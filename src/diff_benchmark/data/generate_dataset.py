@@ -106,8 +106,6 @@ class CustomDataset(Dataset):
             self.mode = "paths"
         return self.mode
     
-    # def get_subject_ids(self):
-    #     return self.subject_ids
     @property
     def subject_ids(self) -> list:
         """List of subject IDs aligned with dataset indices."""

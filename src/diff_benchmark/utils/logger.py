@@ -8,6 +8,33 @@ import os
 import pandas as pd
 import torch
 
+from dataclasses import dataclass
+from typing import Dict, Optional, Literal
+
+
+@dataclass
+class TrainerLogRecord:
+    split: Literal["train", "val", "test"]
+    epoch: int
+    loss: float
+    # optional / event-dependent
+    batch: Optional[int] = None
+    metrics: Optional[Dict[str, float]] = None
+
+    def to_dict(self) -> dict:
+        """
+        Flatten metrics so Pandas gets nice columns.
+        """
+        base = {
+            "split": self.split,
+            "epoch": self.epoch,
+            "loss": self.loss,
+            "batch": self.batch,
+        }
+        if self.metrics:
+            base.update(self.metrics)
+        return base
+
 class TorchDebugLogger:
     def __init__(
         self,
@@ -42,12 +69,12 @@ class TorchDebugLogger:
             return
 
         self.records.append(
-            {
-                "split": split,
-                "epoch": epoch,
-                "batch": batch,
-                "loss": loss,
-            }
+            TrainerLogRecord(
+                split=split,
+                epoch=epoch,
+                batch=batch,
+                loss=loss,
+            )
         )
 
     # -------------------------
@@ -64,17 +91,14 @@ class TorchDebugLogger:
         if not self.enabled:
             return
 
-        record = {
-            "split": split,
-            "epoch": epoch,
-            "batch": None,
-            "loss": loss,
-        }
-
-        if metrics:
-            record.update(metrics)
-
-        self.records.append(record)
+        self.records.append(
+            TrainerLogRecord(
+                split=split,
+                epoch=epoch,
+                loss=loss,
+                metrics=metrics,
+            )
+        )
 
     # -------------------------
     # utils
@@ -89,7 +113,7 @@ class TorchDebugLogger:
         if not self.enabled or not self.records:
             return
 
-        df = pd.DataFrame(self.records)
+        df = pd.DataFrame(r.to_dict() for r in self.records)
         path = os.path.join(
             self.output_dir, f"torch_debug_{self.run_id}.parquet"
         )
@@ -100,11 +124,13 @@ class LightningDebugLogger(pl.Callback):
     def __init__(
         self,
         *,
+        run_id: str,
         prediction_task: str,
         average: str = "binary",
         debug_dir: str = "debug",
         enabled: bool = True,
     ):
+        self.run_id = run_id
         self.enabled = enabled
         self.prediction_task = prediction_task
         self.average = average
@@ -219,14 +245,12 @@ class LightningDebugLogger(pl.Callback):
         )
 
         self.records.append(
-            {
-                "split": split,
-                "epoch": epoch,
-                "loss": float(np.mean(losses)),
-                "metrics": metrics,
-                # "preds": preds,
-                # "targets": targets,
-            }
+            TrainerLogRecord(
+                split=split,
+                epoch=epoch,
+                loss=float(np.mean(losses)),
+                metrics=metrics,
+            )
         )
 
     # ---------- SAVE ----------
@@ -236,5 +260,5 @@ class LightningDebugLogger(pl.Callback):
             return
 
         os.makedirs(self.debug_dir, exist_ok=True)
-        df = pd.DataFrame(self.records)
-        df.to_parquet(os.path.join(self.debug_dir, "lightning_debug.parquet"))
+        df = pd.DataFrame(r.to_dict() for r in self.records)
+        df.to_parquet(os.path.join(self.debug_dir, f"lightning_debug_{self.run_id}.parquet"))

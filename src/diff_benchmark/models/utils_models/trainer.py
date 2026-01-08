@@ -9,7 +9,7 @@ from torch import nn
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 from diff_benchmark.utils.scores import compute_metrics
-from diff_benchmark.utils.logger import TorchDebugLogger, LightningDebugLogger
+from diff_benchmark.utils.logger import TrainerLogRecord, TorchDebugLogger, LightningDebugLogger
 
 
 class BaseTrainer(ABC):
@@ -188,11 +188,6 @@ def split_loader(dataloader, val_ratio=0.2, seed=42):
               shuffling enabled.
             - val_loader (DataLoader): DataLoader for the validation subset with
               shuffling disabled.
-    Example:
-        >>> train_loader, val_loader = split_loader(dataloader, val_ratio=0.2)
-        >>> for batch in train_loader:
-        ...     # process training batch
-        ...     pass
     """
 
     dataset = dataloader.dataset
@@ -391,19 +386,6 @@ class TorchTrainer(BaseTrainer):
 
         return torch.cat(outputs).numpy()
 
-    def _flush_debug(self):
-        if not self.debug or not self._debug_records:
-            return
-
-        import os
-        import pandas as pd
-
-        os.makedirs(self.debug_dir, exist_ok=True)
-
-        df = pd.DataFrame(self._debug_records)
-        path = os.path.join(self.debug_dir, f"torch_debug_{self.run_id}.parquet")
-        df.to_parquet(path)
-
     def load(self, path: str):
         """
         Load model weights from a checkpoint file.
@@ -560,9 +542,3 @@ class LightningTrainer(BaseTrainer):
         preds = self.trainer.predict(dataloaders=x_only_loader(dataloader), model=self.lightning_model)
         preds = torch.cat([p.cpu() for p in preds])
         return preds.numpy()
-
-    # def save(self, path: str):
-    #     torch.save(self.model.model.state_dict(), path)
-
-    # def load(self, path: str):
-    #     self.model.model.load_state_dict(torch.load(path))
