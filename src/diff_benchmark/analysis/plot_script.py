@@ -16,7 +16,7 @@ def load_predictions_and_targets(
 ):
     df_pred = pd.read_parquet(predictions_path)
     df_tgt = pd.read_parquet(targets_path)
-
+    
     df_pred = df_pred[df_pred["run_id"] == run_id]
 
     df = df_pred.merge(
@@ -220,7 +220,10 @@ if __name__ == "__main__":
     results_dir = Path(args.results_dir)
 
     plot_run(
-        run_id=args.run_id,
+        run_id=args.run_id, #2dcnn_be425892'2dcnn_08ef30ab', '2dcnn_341c8a9b', 
+        # '2dcnn_76059b89',
+    #    '2dcnn_be425892', 'linear_2ddaa507', 'linear_3addbf07',
+    #    'linear_cf6ab721'
         predictions_path=results_dir / "parquet/data/predictions.parquet",
         targets_path=results_dir / "parquet/data/targets.parquet",
         output_root=results_dir / "plots",
