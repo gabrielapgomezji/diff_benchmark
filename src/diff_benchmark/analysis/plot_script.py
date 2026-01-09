@@ -30,16 +30,17 @@ def load_predictions_and_targets(
     return df
 
 
-def infer_prediction_task(df: pd.DataFrame) -> str:
-    """
-    Infer regression vs classification from target values.
-    """
-    unique_targets = np.unique(df["true"])
+def load_metrics(metrics_path: Path, run_id: str) -> pd.DataFrame:
+    df = pd.read_parquet(metrics_path)
+    return df[df["run_id"] == run_id]
 
-    if np.issubdtype(unique_targets.dtype, np.integer) and len(unique_targets) <= 20:
-        return "classification"
 
-    return "regression"
+def get_prediction_task(metrics_df, run_id):
+    return (
+        metrics_df
+        .loc[metrics_df["run_id"] == run_id, "prediction_task"]
+        .iloc[0]
+    )
 
 
 def infer_classification_type(df: pd.DataFrame) -> str:
@@ -171,6 +172,57 @@ def plot_binary_roc(df, model, output_dir):
 
     fig.savefig(output_dir / "roc_curve.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
+    
+
+def plot_metrics_summary(metrics_df, model, output_dir):
+    """
+    One figure with subplots, one per metric.
+    Shows train vs test across folds.
+    """
+    metrics = sorted(metrics_df["metric"].unique())
+    n_metrics = len(metrics)
+
+    fig, axes = plt.subplots(
+        n_metrics, 1,
+        figsize=(6, 3 * n_metrics),
+        sharex=True,
+    )
+
+    if n_metrics == 1:
+        axes = [axes]
+
+    for ax, metric in zip(axes, metrics):
+        d = metrics_df[metrics_df["metric"] == metric]
+
+        for split, marker, alpha in [
+            ("train", "o", 0.5),
+            ("test", "s", 0.9),
+        ]:
+            ds = d[d["split"] == split]
+            ax.plot(
+                ds["fold"],
+                ds["value"],
+                marker=marker,
+                linestyle="--",
+                alpha=alpha,
+                label=split,
+            )
+
+        ax.set_title(metric)
+        ax.set_ylabel("value")
+        ax.grid(True)
+        ax.legend()
+
+    axes[-1].set_xlabel("fold")
+    fig.suptitle(f"{model} – metrics summary", y=1.02)
+
+    fig.tight_layout()
+    fig.savefig(
+        output_dir / "metrics_summary.png",
+        dpi=150,
+        bbox_inches="tight",
+    )
+    plt.close(fig)
 
 
 # ---------------------------------------------------------------------
@@ -179,16 +231,26 @@ def plot_binary_roc(df, model, output_dir):
 
 def plot_run(
     run_id: str,
+    metrics_dir: Path,
     predictions_path: Path,
     targets_path: Path,
     output_root: Path,
 ):
     df = load_predictions_and_targets(predictions_path, targets_path, run_id)
-
+    metrics_df = load_metrics(
+        metrics_dir,
+        run_id,
+    )
+    
     model = df["model"].iloc[0]
-    prediction_task = infer_prediction_task(df)
-
+    # prediction_task = infer_prediction_task(df)
+    prediction_task = get_prediction_task(
+        metrics_df,
+        run_id,
+    )
+    
     output_dir = output_root / run_id
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     if prediction_task == "regression":
         plot_true_vs_pred_regression(df, run_id, model, output_dir)
@@ -200,6 +262,8 @@ def plot_run(
 
         if clf_type == "binary":
             plot_binary_roc(df, model, output_dir)
+    
+    plot_metrics_summary(metrics_df, model, output_dir)
 
 
 # ---------------------------------------------------------------------
@@ -214,16 +278,21 @@ if __name__ == "__main__":
     parser.add_argument(
         "--results_dir", default="./data/results", type=str
     )
+    parser.add_argument(
+        "--metrics_dir", default="./data/results/parquet/analysis_results", type=str
+    )
 
     args = parser.parse_args()
 
     results_dir = Path(args.results_dir)
+    metrics_dir = Path(args.metrics_dir)
 
     plot_run(
         run_id=args.run_id, #2dcnn_be425892'2dcnn_08ef30ab', '2dcnn_341c8a9b', 
         # '2dcnn_76059b89',
     #    '2dcnn_be425892', 'linear_2ddaa507', 'linear_3addbf07',
     #    'linear_cf6ab721'
+        metrics_dir=metrics_dir / "metrics.parquet",
         predictions_path=results_dir / "parquet/data/predictions.parquet",
         targets_path=results_dir / "parquet/data/targets.parquet",
         output_root=results_dir / "plots",

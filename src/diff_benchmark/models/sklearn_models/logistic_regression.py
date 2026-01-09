@@ -47,8 +47,8 @@ class PCALinearModel(SklearnModel):
             scoring = "accuracy"
 
             param_grid = {
-                "pca__n_components": [10],  # [10, 50, 100],
-                "linear__C": [0.01, 0.1, 1],  # [0.01, 0.1, 1, 10, 100],
+                "pca__n_components": [10, 50, 100],
+                "linear__C": [0.01, 0.1, 1, 10, 100],
                 "linear__solver": ["lbfgs"],
                 "linear__penalty": ["l2"],
             }
