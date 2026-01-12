@@ -1,14 +1,19 @@
-# ==============================
-# MODEL CONFIGURATION
-# ==============================
-pretrain_path: /data/parietal/store3/work/ggomezji/projects/diff_benchmark/MedicalNet_pytorch_files2/pretrain/resnet_10.pth
+experiment:
+  name: pca_linear
+  comment: PCA linear regression. Test new conf
+
+# data:
+#   batch_size: 32
+#   num_workers: 5
+#   input_channels: 3   # number of slices
+#   image_size: [224, 224]
 
 models:
 - name: pca_linear
   params:
     dataset: hcp
     name: pca_linear
-    comment: PCA linear regression. Test new conf
+    comment: Test plots
     backend: 
       backend: sklearn
       num_classes: 1
