@@ -1,76 +1,3 @@
-# from pathlib import Path
-# import pandas as pd
-# import plotly.graph_objects as go
-# from plotly.subplots import make_subplots
-
-
-# def plot_metrics_summary(
-#     metrics_path: Path,
-#     output_dir: Path,
-# ):
-#     df = pd.read_parquet(metrics_path)
-
-#     # mean across folds
-#     df_mean = (
-#         df.groupby(
-#             ["model_name", "dataset", "prediction_task", "split", "metric"],
-#             as_index=False
-#         )["value"]
-#         .mean()
-#     )
-
-#     output_dir.mkdir(parents=True, exist_ok=True)
-
-#     for task in df_mean["prediction_task"].unique():
-#         df_task = df_mean[df_mean["prediction_task"] == task]
-
-#         metrics = sorted(df_task["metric"].unique())
-#         splits = ["train", "test"]
-
-#         fig = make_subplots(
-#             rows=len(metrics),
-#             cols=len(splits),
-#             shared_xaxes=True,
-#             subplot_titles=[
-#                 f"{m.upper()} – {s}"
-#                 for m in metrics
-#                 for s in splits
-#             ],
-#             vertical_spacing=0.06,
-#             horizontal_spacing=0.08,
-#         )
-
-#         for row_idx, metric in enumerate(metrics, start=1):
-#             for col_idx, split in enumerate(splits, start=1):
-#                 d = df_task[
-#                     (df_task["metric"] == metric)
-#                     & (df_task["split"] == split)
-#                 ]
-
-#                 if d.empty:
-#                     continue
-
-#                 fig.add_trace(
-#                     go.Bar(
-#                         x=d["model_name"],
-#                         y=d["value"],
-#                         name=f"{metric}-{split}",
-#                         showlegend=False,
-#                     ),
-#                     row=row_idx,
-#                     col=col_idx,
-#                 )
-
-#         fig.update_layout(
-#             title=f"Model comparison – {task.capitalize()} (mean over folds)",
-#             height=300 * len(metrics),
-#             template="plotly_white",
-#         )
-
-#         fig.update_xaxes(tickangle=45)
-
-#         fig.write_html(output_dir / f"metrics_summary_{task}.html")
-
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -78,7 +5,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 
-def plot_train_vs_test_scatter(
+def plot_metrics_summary(
     metrics_path: Path,
     output_dir: Path,
 ):
@@ -194,7 +121,7 @@ def plot_train_vs_test_scatter(
         )
 
         fig.write_html(
-            output_dir / f"train_vs_test_{task}.html"
+            output_dir / f"metrics_summary_{task}.html"
         )
 
 
@@ -222,11 +149,7 @@ if __name__ == "__main__":
     metrics_path = Path(args.metrics_path)
     output_dir = Path(args.output_dir)
 
-    # plot_metrics_summary(
-    #     metrics_path=metrics_path,
-    #     output_dir=output_dir,
-    # )
-    plot_train_vs_test_scatter(
+    plot_metrics_summary(
         metrics_path=metrics_path,
         output_dir=output_dir,
     )
