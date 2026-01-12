@@ -265,7 +265,7 @@ models_to_run = model_config["models"]
 # 1. Group the models by backend (deep learning vs sklearn)
 # 2. Get from the slurm config yaml the required ressources for each backend
 # 3. Start the jobs in parallel by backend groups, setting the slurm config accordingly + get submitit jobs
-# 4. Await the jobs and collect the results
+# 4. Await the jobs and collect the results 
 
 results = run_jobs(
     run_fn=run_single_model,
