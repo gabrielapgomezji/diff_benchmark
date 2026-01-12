@@ -33,10 +33,17 @@ def run_single_model(model_name, model_config, general_config, results_path):
 
     config = general_config
 
+    local_config = copy.deepcopy(model_config)
+    local_config["model_name"] = model_name
+    run_id = make_run_id(model_name, local_config)
+    local_config["run_id"] = run_id
+    local_config["backbone"]["prediction_task"] = config["prediction_task"]
+    local_config["backend"]["prediction_task"] = config["prediction_task"]
+            
     datasets_by_name = {
         d["name"]: d for d in general_config["datasets"]["datasets_list"]
     }
-    dataset_selected = datasets_by_name[model_config["dataset"]]
+    dataset_selected = datasets_by_name[local_config["dataset"]]
     dataset_selected = DatasetConfig(
                 **dataset_selected,
                 metric_to_compute=general_config["datasets"]["metric_to_compute"],
@@ -45,7 +52,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
             )
     torch_dataset_preparator = DatasetPreparation(
         model_name=model_name,
-        model_config=model_config,
+        model_config=local_config,
         general_config=general_config,
         source_dataset=dataset_selected,
     )
@@ -72,11 +79,6 @@ def run_single_model(model_name, model_config, general_config, results_path):
     print(specs)
 
     indices = preprocessed.get_fold_indices()
-
-    local_config = copy.deepcopy(model_config)
-    local_config["model_name"] = model_name
-    run_id = make_run_id(model_name, local_config)
-    local_config["run_id"] = run_id
 
     if is_cached(run_id, Path(results_path) / "analysis_results"):
         print(f"Skipping {model_name} (run_id={run_id}) - already cached.")
@@ -202,6 +204,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
 
             
             primary_metric = {"classification": "accuracy", "regression": "mse"}[local_config["backbone"]["prediction_task"]]
+            # primary_metric = {"binary_classification": "accuracy", "regression": "mse"}[local_config["backbone"]["prediction_task"]]
             summary = update_summary(summary, fold_idx, train_score, test_score, y_train, train_pred, y_test, test_pred, primary_metric)
 
             metrics_rows.extend(
@@ -278,7 +281,7 @@ results = run_jobs(
         }
         for model in models_to_run
     ],
-    parallel_type="slurm",
+    parallel_type="slurm", #None, #
     slurm_cfg={
         "slurm_partition": "parietal,normal,gpu",
         "tasks_per_node": 1,           # == --ntasks=1 (on 1 node)
@@ -292,7 +295,7 @@ results = run_jobs(
 import warnings
 for result in results:
     if not result.ok:
-        warnings.warn(f"Job failed with exception: {result.exception}") 
+        warnings.warn(f"Job failed:\n{result.traceback}")
 
 metrics_dir = Path("./data/results/parquet/analysis_results")
 global_path = metrics_dir / "metrics.parquet"

@@ -261,8 +261,6 @@ class ResNet(nn.Module):
         self,
         block: nn.Module,
         layers: list[int],
-        num_classes: int,
-        prediction_task: str,
         shortcut_type: str = "B",
         no_cuda: bool = False,
         **kwargs: Any,
@@ -407,8 +405,6 @@ class MedicalNet(ResNet):
     def __init__(
         self,
         depth: int,
-        num_classes: int,
-        prediction_task: str | None = None,
         shortcut_type: str = "B",
         no_cuda: bool = False,
         pretrained: bool = False,
@@ -425,8 +421,6 @@ class MedicalNet(ResNet):
         super().__init__(
             block=block,
             layers=layers,
-            num_classes=num_classes,
-            prediction_task=prediction_task,
             shortcut_type=shortcut_type,
             no_cuda=no_cuda,
         )

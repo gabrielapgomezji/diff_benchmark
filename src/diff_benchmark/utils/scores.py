@@ -29,6 +29,7 @@ def compute_metrics(
         zero_division (str): Handling of zero division cases.
     """
     if prediction_task == "classification":
+    # if prediction_task == "binary_classification":
         return {
             "accuracy": accuracy_score(y_true, y_pred),
             "precision": precision_score(

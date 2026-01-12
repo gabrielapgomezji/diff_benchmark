@@ -228,10 +228,10 @@ class TorchTrainer(BaseTrainer):
         self,
         model: nn.Module,
         *,
+        prediction_task,
         epochs: int = 5,
         learning_rate: float = 1e-4,
         weight_decay: float = 1e-4,
-        prediction_task: str = "classification",
         device: str = "cuda",
         val_ratio: float = 0.2,
         **kwargs: Any,
@@ -252,11 +252,12 @@ class TorchTrainer(BaseTrainer):
         self.criterion = (
             nn.CrossEntropyLoss()
             if prediction_task == "classification"
+            # if prediction_task == "binary_classification":
             else nn.MSELoss()
         )
         self.prediction_task = prediction_task
         self.run_id = kwargs["run_id"] if "run_id" in kwargs else "default_run"
-        
+
         self.logger = TorchDebugLogger(
             enabled=kwargs.get("debug", False),
             run_id=self.run_id,
@@ -277,6 +278,7 @@ class TorchTrainer(BaseTrainer):
                 x, y, *_ = batch
                 x = x.to(self.device, non_blocking=True)
                 if self.prediction_task == "classification":
+                # if self.prediction_task == "binary_classification":
                     y = y.long().to(self.device, non_blocking=True)
                 else:
                     y = y.float().to(self.device, non_blocking=True)
@@ -284,6 +286,7 @@ class TorchTrainer(BaseTrainer):
                 self.optimizer.zero_grad()
                 preds = self.model(x)
                 if self.prediction_task == "classification":
+                # if self.prediction_task == "binary_classification":
                     preds = preds
                 else:
                     preds = preds.squeeze(1)
@@ -333,12 +336,14 @@ class TorchTrainer(BaseTrainer):
                 x, y, *_ = batch
                 x = x.to(self.device, non_blocking=True)
                 if self.prediction_task == "classification":
+                # if self.prediction_task == "binary_classification":
                     y = y.long().to(self.device, non_blocking=True)
                 else:
                     y = y.float().to(self.device, non_blocking=True)
 
                 preds = self.model(x)
                 if self.prediction_task == "classification":
+                # if self.prediction_task == "binary_classification":
                     preds = preds
                 else:
                     preds = preds.squeeze(1)
@@ -379,6 +384,7 @@ class TorchTrainer(BaseTrainer):
                 x = x.to(self.device)
                 preds = self.model(x)
                 if self.prediction_task == "classification":
+                # if self.prediction_task == "binary_classification":
                     preds = preds.argmax(dim=1)
                 else:
                     preds = preds.squeeze(1)
@@ -421,6 +427,7 @@ class _LightningModuleAdapter(pl.LightningModule):
         self.criterion = (
             nn.CrossEntropyLoss()
             if prediction_task == "classification"
+            # if prediction_task == "binary_classification":
             else nn.MSELoss()
         )
         self.prediction_task = prediction_task
@@ -432,6 +439,7 @@ class _LightningModuleAdapter(pl.LightningModule):
         x, y, *_ = batch
         preds = self(x)
         if self.prediction_task == "classification":
+        # if self.prediction_task == "binary_classification":
             y = y.long()
         else:
             y = y.float()
@@ -448,6 +456,7 @@ class _LightningModuleAdapter(pl.LightningModule):
         x, y, *_ = batch
         preds = self(x)
         if self.prediction_task == "classification":
+        # if self.prediction_task == "binary_classification":
             y = y.long()
         else:
             y = y.float()
@@ -464,6 +473,7 @@ class _LightningModuleAdapter(pl.LightningModule):
         x = batch[0] if isinstance(batch, (tuple, list)) else batch
         preds = self(x)
         if self.prediction_task == "classification":
+        # if self.prediction_task == "binary_classification":
             preds = preds.argmax(dim=1)
         else:
             preds = preds.squeeze(1)
@@ -502,10 +512,10 @@ class LightningTrainer(BaseTrainer):
         self,
         model: nn.Module,
         *,
+        prediction_task, 
         trainer_kwargs: dict,
         learning_rate: float = 1e-4,
         weight_decay: float = 1e-4,
-        prediction_task: str = "classification",
         val_ratio: float = 0.2,
         **kwargs: Any,
     ):
@@ -521,7 +531,9 @@ class LightningTrainer(BaseTrainer):
         debug = kwargs.get("debug", False)
         debug_dir = "./data/results/parquet/debug/"
         if debug:
+            self.run_id = kwargs["run_id"] if "run_id" in kwargs else "default_run"
             debug_cb = LightningDebugLogger(
+                run_id=self.run_id,
                 prediction_task=prediction_task,
                 debug_dir=debug_dir,
                 enabled=True,

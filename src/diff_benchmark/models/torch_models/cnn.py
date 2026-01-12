@@ -95,7 +95,6 @@ class ResNet3SliceMultihead(nn.Module):
     def __init__(
         self,
         input_slices: int,
-        num_classes: int = 2,
         freeze_backbone: bool = True,
         dropout: float = 0.5,
         **kwargs,
@@ -107,7 +106,6 @@ class ResNet3SliceMultihead(nn.Module):
         self.aggregate_weights = nn.Parameter(
             torch.ones(self.num_subvols, dtype=torch.float32)
         )
-        self.prediction_task = kwargs.get("prediction_task", None)
         self.out_dim = self.backbone.out_dim
         self.mean = 0.5
         self.std = 0.5
