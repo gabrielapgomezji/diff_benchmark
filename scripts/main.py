@@ -254,13 +254,18 @@ def run_single_model(model_name, model_config, general_config, results_path):
 
 
 models_to_run = model_config["models"]
+# run_single_model(
+#     model_name=models_to_run[0]["name"],
+#     model_config=models_to_run[0]["params"],
+#     general_config=general_config,
+#     results_path="./data/results",
+# )
 
-run_single_model(
-    model_name=models_to_run[0]["name"],
-    model_config=models_to_run[0]["params"],
-    general_config=general_config,
-    results_path="./data/results",
-)
+
+# 1. Group the models by backend (deep learning vs sklearn)
+# 2. Get from the slurm config yaml the required ressources for each backend
+# 3. Start the jobs in parallel by backend groups, setting the slurm config accordingly + get submitit jobs
+# 4. Await the jobs and collect the results
 
 results = run_jobs(
     run_fn=run_single_model,
@@ -269,18 +274,25 @@ results = run_jobs(
             "model_name": model["name"],
             "model_config": model["params"],
             "general_config": general_config,
+            "results_path": "./data/results",
         }
         for model in models_to_run
     ],
-    parallel_type=None,
+    parallel_type="slurm",
     slurm_cfg={
-        "cpus_per_task": 1,
+        "slurm_partition": "parietal,normal,gpu",
+        "tasks_per_node": 1,           # == --ntasks=1 (on 1 node)
+        "slurm_gpus_per_task": 1,            # == --gpus-per-task=1 (recommended here)
+        "slurm_cpus_per_gpu": 10, 
         "timeout_min": 900,
-        "mem_gb": 50,
     },
     n_jobs=50,
 )
 
+import warnings
+for result in results:
+    if not result.ok:
+        warnings.warn(f"Job failed with exception: {result.exception}") 
 
 metrics_dir = Path("./data/results/parquet/analysis_results")
 global_path = metrics_dir / "metrics.parquet"
