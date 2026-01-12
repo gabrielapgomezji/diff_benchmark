@@ -202,9 +202,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
             pred_saver.add_rows(test_rows)
             pred_saver.save()
 
-            
-            primary_metric = {"classification": "accuracy", "regression": "mse"}[local_config["backbone"]["prediction_task"]]
-            # primary_metric = {"binary_classification": "accuracy", "regression": "mse"}[local_config["backbone"]["prediction_task"]]
+            primary_metric = {"binary_classification": "accuracy", "regression": "mse"}[local_config["backbone"]["prediction_task"]]
             summary = update_summary(summary, fold_idx, train_score, test_score, y_train, train_pred, y_test, test_pred, primary_metric)
 
             metrics_rows.extend(

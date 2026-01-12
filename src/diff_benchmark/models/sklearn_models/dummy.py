@@ -31,8 +31,7 @@ class DummyClassifierModel(SklearnModel):
     """
 
     data_type = "array"
-    prediction_task = "classification"
-    #  prediction_task = "binary_classification"
+    prediction_task = "binary_classification"
     output_dim = 1  # for single-label classification
 
     def _build_model(self, **kwargs):

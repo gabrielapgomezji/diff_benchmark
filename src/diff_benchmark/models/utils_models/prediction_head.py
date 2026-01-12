@@ -83,8 +83,7 @@ class PredictionHead(nn.Module):
         """
         super().__init__()
 
-        if prediction_task == "classification":
-        # if prediction_task == "binary_classification":
+        if prediction_task == "binary_classification":
             if num_classes is None:
                 raise ValueError("num_classes required for classification")
 
@@ -139,8 +138,8 @@ def build_prediction_head(
     Returns:
         nn.Module: A prediction head module configured for the specified task and parameters.
     """
-    # num_classes = 2 if prediction_task == "binary_classification" else 1 if prediction_task == "regression" else Exception(f"Unknown task: {prediction_task}. Prediction Head only implemented for binary classification and regression tasks.")
-    num_classes = 2 if prediction_task == "classification" else 1 if prediction_task == "regression" else Exception(f"Unknown task: {prediction_task}. Prediction Head only implemented for binary classification and regression tasks.")
+    num_classes = 2 if prediction_task == "binary_classification" else 1 if prediction_task == "regression" else Exception(f"Unknown task: {prediction_task}. Prediction Head only implemented for binary classification and regression tasks.")
+    
     return PredictionHead(
         embedding_dim=embedding_dim,
         prediction_task=prediction_task,

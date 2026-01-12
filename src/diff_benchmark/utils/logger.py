@@ -105,8 +105,7 @@ class TorchDebugLogger:
     # -------------------------
     @staticmethod
     def finalize_preds(preds: torch.Tensor, task: str) -> torch.Tensor:
-        if task == "classification":
-        # if task == "binary_classification":
+        if task == "binary_classification":
             return preds.argmax(dim=1)
         return preds
 
@@ -160,8 +159,7 @@ class LightningDebugLogger(pl.Callback):
         x, y, *_ = batch
         preds = pl_module(x)
 
-        if self.prediction_task == "classification":
-        # if self.prediction_task == "binary_classification":
+        if self.prediction_task == "binary_classification":
             y = y.long()
             preds_cls = preds.argmax(dim=1)
         else:
@@ -201,8 +199,7 @@ class LightningDebugLogger(pl.Callback):
         x, y, *_ = batch
         preds = pl_module(x)
 
-        if self.prediction_task == "classification":
-        # if self.prediction_task == "binary_classification":
+        if self.prediction_task == "binary_classification":
             y = y.long()
             preds_cls = preds.argmax(dim=1)
         else:

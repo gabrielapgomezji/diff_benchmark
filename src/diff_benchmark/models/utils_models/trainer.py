@@ -251,8 +251,7 @@ class TorchTrainer(BaseTrainer):
 
         self.criterion = (
             nn.CrossEntropyLoss()
-            if prediction_task == "classification"
-            # if prediction_task == "binary_classification":
+            if prediction_task == "binary_classification"
             else nn.MSELoss()
         )
         self.prediction_task = prediction_task
@@ -277,16 +276,14 @@ class TorchTrainer(BaseTrainer):
             for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"[Epoch {epoch+1}/{self.epochs}]")):
                 x, y, *_ = batch
                 x = x.to(self.device, non_blocking=True)
-                if self.prediction_task == "classification":
-                # if self.prediction_task == "binary_classification":
+                if self.prediction_task == "binary_classification":
                     y = y.long().to(self.device, non_blocking=True)
                 else:
                     y = y.float().to(self.device, non_blocking=True)
 
                 self.optimizer.zero_grad()
                 preds = self.model(x)
-                if self.prediction_task == "classification":
-                # if self.prediction_task == "binary_classification":
+                if self.prediction_task == "binary_classification":
                     preds = preds
                 else:
                     preds = preds.squeeze(1)
@@ -335,15 +332,13 @@ class TorchTrainer(BaseTrainer):
             for batch in val_loader:
                 x, y, *_ = batch
                 x = x.to(self.device, non_blocking=True)
-                if self.prediction_task == "classification":
-                # if self.prediction_task == "binary_classification":
+                if self.prediction_task == "binary_classification":
                     y = y.long().to(self.device, non_blocking=True)
                 else:
                     y = y.float().to(self.device, non_blocking=True)
 
                 preds = self.model(x)
-                if self.prediction_task == "classification":
-                # if self.prediction_task == "binary_classification":
+                if self.prediction_task == "binary_classification":
                     preds = preds
                 else:
                     preds = preds.squeeze(1)
@@ -383,8 +378,7 @@ class TorchTrainer(BaseTrainer):
                 x = (x - mean) / std
                 x = x.to(self.device)
                 preds = self.model(x)
-                if self.prediction_task == "classification":
-                # if self.prediction_task == "binary_classification":
+                if self.prediction_task == "binary_classification":
                     preds = preds.argmax(dim=1)
                 else:
                     preds = preds.squeeze(1)
@@ -426,8 +420,7 @@ class _LightningModuleAdapter(pl.LightningModule):
 
         self.criterion = (
             nn.CrossEntropyLoss()
-            if prediction_task == "classification"
-            # if prediction_task == "binary_classification":
+            if prediction_task == "binary_classification"
             else nn.MSELoss()
         )
         self.prediction_task = prediction_task
@@ -438,8 +431,7 @@ class _LightningModuleAdapter(pl.LightningModule):
     def training_step(self, batch, _):
         x, y, *_ = batch
         preds = self(x)
-        if self.prediction_task == "classification":
-        # if self.prediction_task == "binary_classification":
+        if self.prediction_task == "binary_classification":
             y = y.long()
         else:
             y = y.float()
@@ -455,8 +447,7 @@ class _LightningModuleAdapter(pl.LightningModule):
     def validation_step(self, batch, _):
         x, y, *_ = batch
         preds = self(x)
-        if self.prediction_task == "classification":
-        # if self.prediction_task == "binary_classification":
+        if self.prediction_task == "binary_classification":
             y = y.long()
         else:
             y = y.float()
@@ -472,8 +463,7 @@ class _LightningModuleAdapter(pl.LightningModule):
     def predict_step(self, batch, _, __=None):
         x = batch[0] if isinstance(batch, (tuple, list)) else batch
         preds = self(x)
-        if self.prediction_task == "classification":
-        # if self.prediction_task == "binary_classification":
+        if self.prediction_task == "binary_classification":
             preds = preds.argmax(dim=1)
         else:
             preds = preds.squeeze(1)

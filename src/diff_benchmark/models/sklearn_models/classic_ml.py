@@ -19,8 +19,7 @@ class PCARandomForestModel(SklearnModel):
         self.prediction_task = kwargs.get("prediction_task", None)
         # Define pipeline: standardization -> PCA -> RandomForest
         # Choose RF head depending on task
-        if self.prediction_task == "classification":
-        # if self.prediction_task == "binary_classification":
+        if self.prediction_task == "binary_classification":
             rf_head = RandomForestClassifier(random_state=42)
             scoring = "accuracy"
         else:  # if self.prediction_task == "regression":
@@ -63,8 +62,7 @@ class PCASVMModel(SklearnModel):
 
     def _build_model(self, **kwargs) -> BaseEstimator:
         self.prediction_task = kwargs.get("prediction_task", None)
-        if self.prediction_task == "classification":
-        # if self.prediction_task == "binary_classification":
+        if self.prediction_task == "binary_classification":
             svm_head = SVC(probability=True)
             scoring = "accuracy"
             svm_gamma = ["scale", "auto"]
