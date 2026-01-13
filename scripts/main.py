@@ -25,6 +25,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--methods", nargs="+", type=str, default=["2dcnn_torch"], help="Method to use"
 )
+parser.add_argument(
+    "--cluster", default="margaret", type=str, help="Cluster to use"
+)
 args = parser.parse_args()
 
 general_config, model_config = load_configs(args)
@@ -284,7 +287,7 @@ run_single_model(
 # 2. Get from the slurm config yaml the required ressources for each backend
 # 3. Start the jobs in parallel by backend groups, setting the slurm config accordingly + get submitit jobs
 # 4. Await the jobs and collect the results 
-
+slurm_cfg = general_config["cluster"][args.cluster]
 results = run_jobs(
     run_fn=run_single_model,
     fn_kwargs_list=[
@@ -297,13 +300,14 @@ results = run_jobs(
         for model in models_to_run
     ],
     parallel_type=None, #"slurm", #
-    slurm_cfg={
-        "slurm_partition": "parietal,normal,gpu",
-        "tasks_per_node": 1,           # == --ntasks=1 (on 1 node)
-        "slurm_gpus_per_task": 1,            # == --gpus-per-task=1 (recommended here)
-        "slurm_cpus_per_gpu": 10, 
-        "timeout_min": 900,
-    },
+    slurm_cfg=slurm_cfg,
+    # slurm_cfg={
+    #     "slurm_partition": "parietal,normal,gpu",
+    #     "tasks_per_node": 1,           # == --ntasks=1 (on 1 node)
+    #     "slurm_gpus_per_task": 1,            # == --gpus-per-task=1 (recommended here)
+    #     "slurm_cpus_per_gpu": 10, 
+    #     "timeout_min": 900,
+    # },
     n_jobs=50,
 )
 

@@ -145,3 +145,34 @@ slurm:
   cpus_per_task: 8
   timeout_min: 1000
   partition: parietal,normal-best
+# ==============================
+# SLURM CONFIGURATION
+# ==============================
+slurm_cfg:
+  margaret:
+    slurm_partition: "parietal,normal,gpu"
+    tasks_per_node: 1
+    slurm_gpus_per_task: 1
+    slurm_cpus_per_gpu: 10
+    timeout_min: 900
+
+  jean_zay:
+    log_folder: "./slurm_logs"
+    slurm_partition: "gpu"
+    tasks_per_node: 1
+    gpus_per_task: 1
+    cpus_per_task: 10
+    timeout_min: 1440   # 24 hours
+    slurm_additional_parameters:
+      account: "qlr@v100"
+      constraint: "v100-32g"
+    setup:
+      - "module purge"
+      - "module load pytorch-gpu/py3/2.8.0"
+    slurm_setup:
+      - "export OMP_NUM_THREADS=1"
+      - "export MKL_NUM_THREADS=1"
+      - "export OPENBLAS_NUM_THREADS=1"
+      - "export NUMEXPR_NUM_THREADS=1"
+
+
