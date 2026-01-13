@@ -272,12 +272,12 @@ logger.info("Starting diff_benchmark")
 # else:
 #     level = logging.WARNING
 
-# run_single_model(
-#     model_name=models_to_run[0]["name"],
-#     model_config=models_to_run[0]["params"],
-#     general_config=general_config,
-#     results_path="./data/results",
-# )
+run_single_model(
+    model_name=models_to_run[0]["name"],
+    model_config=models_to_run[0]["params"],
+    general_config=general_config,
+    results_path="./data/results",
+)
 
 
 # 1. Group the models by backend (deep learning vs sklearn)
@@ -296,7 +296,7 @@ results = run_jobs(
         }
         for model in models_to_run
     ],
-    parallel_type="slurm", #None, #
+    parallel_type=None, #"slurm", #
     slurm_cfg={
         "slurm_partition": "parietal,normal,gpu",
         "tasks_per_node": 1,           # == --ntasks=1 (on 1 node)

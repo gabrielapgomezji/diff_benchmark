@@ -9,8 +9,9 @@ from torch import nn
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 from diff_benchmark.utils.scores import compute_metrics
-from diff_benchmark.utils.logger import TrainerLogRecord, TorchDebugLogger, LightningDebugLogger
-
+from diff_benchmark.utils.logger import TrainerLogRecord, TorchDebugLogger, LightningDebugLogger, tqdm_if_enabled, LightningPrintLogger
+from collections import deque
+from diff_benchmark.utils.logger import setup_logger
 
 class BaseTrainer(ABC):
     """
@@ -256,7 +257,8 @@ class TorchTrainer(BaseTrainer):
         )
         self.prediction_task = prediction_task
         self.run_id = kwargs["run_id"] if "run_id" in kwargs else "default_run"
-
+        
+        self.log = setup_logger(__name__)
         self.logger = TorchDebugLogger(
             enabled=kwargs.get("debug", False),
             run_id=self.run_id,
@@ -266,14 +268,23 @@ class TorchTrainer(BaseTrainer):
 
     def fit(self, dataloader):
         train_loader, val_loader = split_loader(dataloader, val_ratio=self.val_ratio)
-
+        show_progress = not self.logger.enabled or self.logger.enabled 
+        
         for epoch in range(self.epochs):
             self.model.train()
             train_loss = 0.0
             train_preds = []
             train_targets = []
+            loss_window = deque(maxlen=20)  # smooth loss
+            pbar = tqdm_if_enabled(
+                enumerate(train_loader),
+                desc=f"Epoch {epoch+1}/{self.epochs}",
+                total=len(train_loader),
+                enabled=show_progress,
+            )
 
-            for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"[Epoch {epoch+1}/{self.epochs}]")):
+            # for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"[Epoch {epoch+1}/{self.epochs}]")):
+            for batch_idx, batch in pbar:
                 x, y, *_ = batch
                 x = x.to(self.device, non_blocking=True)
                 if self.prediction_task == "binary_classification":
@@ -292,6 +303,12 @@ class TorchTrainer(BaseTrainer):
                 self.optimizer.step()
 
                 train_loss += loss.item()
+                loss_window.append(loss)
+                if pbar is not train_loader:
+                    pbar.set_postfix(
+                        loss=f"{sum(loss_window)/len(loss_window):.4f}",
+                        lr=f"{self.optimizer.param_groups[0]['lr']:.2e}",
+                    )
                 self.logger.log_batch(
                     split="train",
                     epoch=epoch,
@@ -319,7 +336,14 @@ class TorchTrainer(BaseTrainer):
                 metrics=metrics,
             )
                 
-            self._validate(val_loader, epoch)
+            val_loss = self._validate(val_loader, epoch)
+            self.log.info(
+                f"[{self.run_id}] "
+                f"Epoch {epoch+1}/{self.epochs} | "
+                f"train_loss={train_loss / len(train_loader):.4f} | "
+                f"val_loss={val_loss:.4f}"
+            )
+        
         self.logger.flush()
 
     def _validate(self, val_loader, epoch):
@@ -360,11 +384,12 @@ class TorchTrainer(BaseTrainer):
                         prediction_task=self.prediction_task,
                     )
         self.logger.log_epoch(
-        split="val",
-        epoch=epoch,
-        loss=val_loss,
-        metrics=metrics,
-    )
+            split="val",
+            epoch=epoch,
+            loss=val_loss,
+            metrics=metrics,
+        )
+        return val_loss
 
     def predict(self, dataloader):
         self.model.eval()
@@ -441,8 +466,15 @@ class _LightningModuleAdapter(pl.LightningModule):
         # else:
         #     preds = preds.squeeze(1)
         # metrics
-        self.log("train_loss", loss, prog_bar=True)
-        return {"loss": loss}
+        self.log(
+            "train_loss",
+            loss,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
+            logger=False,  # IMPORTANT: we print ourselves
+        )
+        return loss
 
     def validation_step(self, batch, _):
         x, y, *_ = batch
@@ -457,8 +489,15 @@ class _LightningModuleAdapter(pl.LightningModule):
         # else:
         #     preds = preds.squeeze(1)
         # metrics
-        self.log("val_loss", loss, prog_bar=True)
-        return {"loss": loss}
+        self.log(
+            "val_loss",
+            loss,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
+            logger=False,
+        )
+        return loss
 
     def predict_step(self, batch, _, __=None):
         x = batch[0] if isinstance(batch, (tuple, list)) else batch
@@ -518,6 +557,15 @@ class LightningTrainer(BaseTrainer):
 
         super().__init__(model)
         self.model = model
+        self.run_id = kwargs.get("run_id", "default_run")
+        print_cb = LightningPrintLogger(
+            run_id=self.run_id,
+            epochs=trainer_kwargs.get("max_epochs"),
+        )
+        # trainer_kwargs.setdefault("callbacks", []).append(print_cb)
+        trainer_kwargs = dict(trainer_kwargs)
+        trainer_kwargs.setdefault("callbacks", []).append(print_cb)
+        
         debug = kwargs.get("debug", False)
         debug_dir = "./data/results/parquet/debug/"
         if debug:
@@ -528,6 +576,8 @@ class LightningTrainer(BaseTrainer):
                 debug_dir=debug_dir,
                 enabled=True,
             )
+            # trainer_kwargs.setdefault("callbacks", []).append(debug_cb)
+            trainer_kwargs = dict(trainer_kwargs)
             trainer_kwargs.setdefault("callbacks", []).append(debug_cb)
         # trainer_kwargs = {k: v for k, v in trainer_kwargs.items() if k in pl.Trainer.__init__.__code__.co_varnames} 
 

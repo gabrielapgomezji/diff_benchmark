@@ -211,7 +211,7 @@ if __name__ == "__main__":
     results_dir = Path(args.results_dir)
     
     plot_debug_run(
-        run_id=run_id, #2dcnn_2564ec4d
+        run_id=run_id, #2dcnn_a5942b19
         debug_dir=debug_dir,
         output_root=results_dir / "plots",
     )

@@ -15,6 +15,12 @@ import logging
 import sys
 from typing import Optional
 
+from tqdm import tqdm
+
+def tqdm_if_enabled(iterable, *, desc=None, total=None, enabled=True):
+    if not enabled or not sys.stdout.isatty():
+        return iterable
+    return tqdm(iterable, desc=desc, total=total, leave=False)
 
 @dataclass
 class TrainerLogRecord:
@@ -266,6 +272,32 @@ class LightningDebugLogger(pl.Callback):
         os.makedirs(self.debug_dir, exist_ok=True)
         df = pd.DataFrame(r.to_dict() for r in self.records)
         df.to_parquet(os.path.join(self.debug_dir, f"lightning_debug_{self.run_id}.parquet"))
+
+
+class LightningPrintLogger(pl.Callback):
+    def __init__(self, *, run_id: str, epochs: int):
+        self.run_id = run_id
+        self.epochs = epochs
+        self.log = setup_logger(__name__)
+
+    def on_train_epoch_end(self, trainer, pl_module):
+        metrics = trainer.callback_metrics
+
+        train_loss = metrics.get("train_loss")
+        val_loss = metrics.get("val_loss")
+
+        if train_loss is None or val_loss is None:
+            return
+
+        epoch = trainer.current_epoch
+
+        self.log.info(
+            f"[{self.run_id}] "
+            f"Epoch {epoch + 1}/{self.epochs} | "
+            f"train_loss={train_loss:.4f} | "
+            f"val_loss={val_loss:.4f}"
+        )
+
 
 # ------------------
 #   Print Logger
