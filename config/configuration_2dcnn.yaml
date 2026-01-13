@@ -25,7 +25,7 @@ models:
         hidden_dims: [256, 128]
       
     backend:
-      backend: lightning
+      backend: torch
       debug: true
       epochs: 5
       trainer_kwargs:
