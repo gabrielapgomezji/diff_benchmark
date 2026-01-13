@@ -158,9 +158,9 @@ class ResNet3SliceMultihead(nn.Module):
         # feats = feats.reshape(B, -1)
         w = torch.softmax(self.aggregate_weights, dim=0)  # (N,)
         w = w.view(1, N, 1)  # (1, N, 1)
-        # print(w)
+
         feats = (feats * w).sum(dim=1)  # (B, 512)
-        # print(feats)
+
         # feats scalar product with weights. 1 embedding per features (B, 512).
         feats = self.dropout(feats)
         return feats

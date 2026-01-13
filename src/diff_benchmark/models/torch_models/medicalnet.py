@@ -4,6 +4,9 @@ from typing import Any
 import torch
 import torch.nn.functional as F
 from torch import nn
+from diff_benchmark.utils.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 
 def conv3x3x3(
@@ -446,9 +449,9 @@ class MedicalNet(ResNet):
             missing, unexpected = self.load_state_dict(new_state, strict=False)
 
             if missing:
-                print("[MedicalNet] Missing keys:", missing)
+                logger.warning(f"[MedicalNet] Missing keys: {missing}")
             if unexpected:
-                print("[MedicalNet] Unexpected keys:", unexpected)
+                logger.warning(f"[MedicalNet] Unexpected keys: {unexpected}")
 
         self.collate_with_augmentation = self.collate_with_augmentation
         self.mean = 0.5

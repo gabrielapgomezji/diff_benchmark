@@ -133,8 +133,8 @@ def create_model(
         head = build_prediction_head(
             embedding_dim=backbone.out_dim,
             prediction_task=model_kwargs["prediction_task"],
-            # num_classes=model_kwargs["num_classes"],
-            dropout=model_kwargs["dropout"],
+            # dropout=model_kwargs["dropout"],
+            **model_kwargs["head"],
         )
         return TaskModel(backbone, head)
 
@@ -143,8 +143,8 @@ def create_model(
         head = build_prediction_head(
             embedding_dim=backbone.out_dim,
             prediction_task=model_kwargs["prediction_task"],
-            # num_classes=model_kwargs["num_classes"],
-            dropout=model_kwargs["dropout"],
+            # dropout=model_kwargs["dropout"],
+            **model_kwargs["head"],
         )
         return TaskModel(backbone, head)
 

@@ -19,7 +19,9 @@ from diff_benchmark.preprocessing.wrapper_utils_brain_data import (
     resample_schaefer_onto_fs_lr,
 )
 from diff_benchmark.utils.job_manager import run_jobs
+from diff_benchmark.utils.logger import setup_logger
 
+logger = setup_logger(__name__)
 
 @dataclass(frozen=True)
 class DiffusionInputs:
@@ -298,7 +300,7 @@ class BrainDataPreparationPipeline(ABC):
         """
         required_files = self._get_required_raw_files(subject_id)
         if required_files is None:
-            print(f"[SKIP] {subject_id}: required raw files not found")
+            logger.warning(f"[SKIP] {subject_id}: required raw files not found")
             return False
         missing_or_empty = []
         for name, path in required_files.iter_paths().items():
@@ -308,10 +310,7 @@ class BrainDataPreparationPipeline(ABC):
                 missing_or_empty.append(f"{name} (empty)")
 
         if missing_or_empty:
-            print(
-                f"[WARNING] Missing or empty files for subject {subject_id}: "
-                + ", ".join(missing_or_empty)
-            )
+            logger.warning(f"[WARNING] Missing or empty files for subject {subject_id}: " + ", ".join(missing_or_empty))
             return False
 
         return True
@@ -410,7 +409,7 @@ class BrainDataPreparationPipeline(ABC):
             ValueError,
             IndexError,
         ) as e:
-            print(f"[{subject_id}] Expected error during microstructure: {e}")
+            logger.error(f"[{subject_id}] Expected error during microstructure: {e}")
 
     @abstractmethod
     def run_analysis(self):
@@ -444,17 +443,17 @@ class BrainDataPreparationPipeline(ABC):
             recompute (bool): Whether to recompute microstructure even if files exist.
         """
         if not self.verify_raw_files(subject_id):
-            print(f"[{subject_id}] Missing raw files, skipping")
+            logger.warning(f"[{subject_id}] Missing raw files, skipping")
             return  # Skip this subject
 
         if self.verify_subject_files(subject_id, self.metric) and recompute:
-            print(f"[{subject_id}] Recomputing microstructure.")
+            logger.info(f"[{subject_id}] Recomputing microstructure.")
             self.compute_microstructure(subject_id)
         elif not self.verify_subject_files(subject_id, self.metric):
-            print(f"[{subject_id}] Computing microstructure.")
+            logger.info(f"[{subject_id}] Computing microstructure.")
             self.compute_microstructure(subject_id)
         else:
-            print(f"[{subject_id}] All files already present.")
+            logger.info(f"[{subject_id}] All files already present.")
 
     def run_pipeline(self, recompute: bool = False) -> pd.DataFrame:
         """
@@ -512,7 +511,7 @@ class BrainDataPreparationPipeline(ABC):
         )
 
         # Once all files are ready, run the analysis
-        print("All required files are ready. Now you can run analysis!")
+        logger.info("All required files are ready. Now you can run analysis!")
         # self.run_analysis()
         # df = self.export_to_csv()
         # return df
@@ -523,9 +522,7 @@ class BrainDataPreparationPipeline(ABC):
         Returns:
             pd.DataFrame: DataFrame containing the results after running the analysis.
         """
-        print(
-            "All data should be preprocessed already. Getting microstructure files..."
-        )
+        logger.info("All data should be preprocessed already. Getting microstructure files...")
         self.run_analysis()
         df = self.export_to_csv()
         return df

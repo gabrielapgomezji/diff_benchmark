@@ -16,6 +16,10 @@ from diff_benchmark.preprocessing.preprocess_demographic_data import (
     DefaultDemographicsPreprocessor,
 )
 from diff_benchmark.preprocessing.wrapper_brain_base import DataPreparationBrain
+from diff_benchmark.utils.logger import setup_logger
+
+logger = setup_logger(__name__)
+
 
 
 def get_data_pipeline(data_type: str, dataset: DatasetConfig) -> DataPreparationBrain:
@@ -29,10 +33,10 @@ def get_data_pipeline(data_type: str, dataset: DatasetConfig) -> DataPreparation
         ValueError: If an unknown data_type is provided.
     """
     if data_type == "images":
-        print("Using Image Pipeline")
+        logger.info("Using Image Pipeline")
         brain_preparator = ImagePipeline(dataset)
     elif data_type == "array":
-        print("Using Default Array Pipeline")
+        logger.info("Using Default Array Pipeline")
         brain_preparator = DefaultPipeline(dataset)
     else:
         raise ValueError(

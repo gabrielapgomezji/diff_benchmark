@@ -11,6 +11,10 @@ import torch
 from dataclasses import dataclass
 from typing import Dict, Optional, Literal
 
+import logging
+import sys
+from typing import Optional
+
 
 @dataclass
 class TrainerLogRecord:
@@ -262,3 +266,49 @@ class LightningDebugLogger(pl.Callback):
         os.makedirs(self.debug_dir, exist_ok=True)
         df = pd.DataFrame(r.to_dict() for r in self.records)
         df.to_parquet(os.path.join(self.debug_dir, f"lightning_debug_{self.run_id}.parquet"))
+
+# ------------------
+#   Print Logger
+# ------------------
+
+LOG_FORMAT = (
+    "%(levelname)s - %(asctime)s - %(name)s - %(message)s"
+)
+
+DATE_FORMAT = "%H:%M:%S"
+
+
+def setup_logger(
+    name: str,
+    level: int = logging.INFO,
+    log_file: Optional[str] = None,
+) -> logging.Logger:
+    logger = logging.getLogger(name)
+    logger.propagate = False  # CRITICAL for SLURM
+
+    if not logger.handlers:
+        formatter = logging.Formatter(
+            LOG_FORMAT,
+            datefmt=DATE_FORMAT,
+        )
+        # stdout handler
+        sh = logging.StreamHandler(sys.stdout)
+        sh.setFormatter(formatter)
+        logger.addHandler(sh)
+
+        # optional file handler
+        if log_file is not None:
+            fh = logging.FileHandler(log_file)
+            fh.setFormatter(formatter)
+            logger.addHandler(fh)
+
+    return logger
+
+
+def configure_logging(level: int):
+    """
+    Configure global logging level.
+    Call ONCE, from main.
+    """
+    logging.getLogger().setLevel(level)
+    

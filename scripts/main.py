@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+import logging
 from diff_benchmark.analysis.save_results import (
     is_cached,
     save_model_results,
@@ -18,6 +19,7 @@ from diff_benchmark.utils.config_loader import load_configs
 from diff_benchmark.utils.job_manager import run_jobs
 from diff_benchmark.utils.scores import compute_metrics
 from diff_benchmark.utils.summary_saver import update_summary, compute_summary_stats
+from diff_benchmark.utils.logger import setup_logger, configure_logging
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -29,6 +31,7 @@ general_config, model_config = load_configs(args)
 
 
 def run_single_model(model_name, model_config, general_config, results_path):
+    logger = setup_logger("Job.run_single_model")
     metrics_rows = []
 
     config = general_config
@@ -76,14 +79,14 @@ def run_single_model(model_name, model_config, general_config, results_path):
     saver.save()
 
     specs = preprocessed.get_specs()
-    print(specs)
+    logger.debug(f"Dataset specs: {specs}")
 
     indices = preprocessed.get_fold_indices()
 
     if is_cached(run_id, Path(results_path) / "analysis_results"):
-        print(f"Skipping {model_name} (run_id={run_id}) - already cached.")
+        logger.info(f"Skipping {model_name} (run_id={run_id}) - already cached.")
         return model_name, run_id
-    print(f"\nRunning model: {model_name} with run_id: {run_id}")
+    logger.info(f"Running model: {model_name} with run_id: {run_id}")
 
     train_scores, test_scores = [], []
     train_preds, test_preds = [], []
@@ -128,6 +131,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
 
     for fold_idx, (train_idx, test_idx) in enumerate(indices):
         try:
+            logger.info(f"Run ID: {run_id} - Fold {fold_idx+1}/{len(indices)}")
             local_config["fold_idx"] = fold_idx
             train_loader, test_loader = preprocessed.get_dataloader_fold(
                 dataset,
@@ -152,7 +156,6 @@ def run_single_model(model_name, model_config, general_config, results_path):
                 y_train, train_pred, fold_idx=fold_idx, run_id=run_id, type="train"
             )
             train_score = compute_metrics(y_train, train_pred, prediction_task=local_config["backbone"]["prediction_task"])
-            print(train_score)
 
             train_scores.append(train_score)
             train_preds.append(train_pred.tolist())
@@ -179,7 +182,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
                 y_test, test_pred, fold_idx=fold_idx, run_id=run_id, type="test"
             )
             test_score = compute_metrics(y_test, test_pred, prediction_task=local_config["backbone"]["prediction_task"])
-            print(test_score)
+            logger.debug(f"Fold {fold_idx} - Train score: {train_score}, Test score: {test_score}")
 
             test_scores.append(test_score)
             test_preds.append(test_pred.tolist())
@@ -235,6 +238,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
             )
         except Exception as e:
             print(f"Crash in fold {fold_idx} of {run_id}: {e}")
+            logger.exception(f"Crash in fold {fold_idx} of {run_id}: {e}")
             save_model_results(
                 summary,
                 Path(results_path) / "analysis_results" / f"{run_id}_crashed.json",
@@ -255,6 +259,19 @@ def run_single_model(model_name, model_config, general_config, results_path):
 
 
 models_to_run = model_config["models"]
+# logging.getLogger().setLevel(logging.DEBUG)
+configure_logging(logging.DEBUG)
+logger = setup_logger(__name__)
+logger.info("Starting diff_benchmark")
+# parallel_type = "slurm" # None, "joblib"
+
+# if parallel_type == "slurm":
+#     logging.getLogger().setLevel(logging.INFO)
+# else:
+#     logging.getLogger().setLevel(logging.DEBUG)
+# else:
+#     level = logging.WARNING
+
 # run_single_model(
 #     model_name=models_to_run[0]["name"],
 #     model_config=models_to_run[0]["params"],

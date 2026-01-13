@@ -14,6 +14,9 @@ from nilearn import maskers
 from scipy import ndimage
 from scipy.spatial import cKDTree
 from templateflow import api as tflow
+from diff_benchmark.utils.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 
 def read_label_file() -> dict:
@@ -76,11 +79,11 @@ def extract_selected_labels(nifti_path: Path, labels_dict: dict | None = None) -
             k: v for k, v in labels.items() if k.startswith("ctx") or "ventricle" in k
         }
     except Exception as e:
-        print(f"Error extracting labels from given file.")
+        logger.warning(f"Error extracting labels from given file: {e}")
         if labels_dict is not None:
-            print("Using provided labels_dict instead.")
+            logger.info("Using provided labels_dict instead.")
             return labels_dict
-        print("Loading labels from fs_labels.json")
+        logger.info("Loading labels from fs_labels.json")
         fs_labels = (
             Path(__file__).parent.parent.parent.parent / "aux_materials/fs_labels.json"
         )
@@ -248,7 +251,7 @@ def compute_md(
         nmd = nmd.clip(0, np.percentile(nmd[~np.isnan(nmd)], 99))
         nmd_img = masker.inverse_transform(nmd.T)
         return nmd_img
-    print("Be careful, this is not normalized MD!")
+    logger.warning("Be careful, this is not normalized MD!")
     return masker.inverse_transform(md.T)
 
 

@@ -15,23 +15,19 @@ models:
     dataset: hcp
     backbone:
       input_slices: 145
-      num_classes: 2
       # architecture: resnet18
       pretrained: true
       input_channels: 3
       freeze_backbone: true
       trainable_blocks: 0
-      dropout: 0
-
-    head:
-      task: classification
-      num_classes: 2
-      dropout: 0.5
+      head:
+        dropout: 0.5
+        hidden_dims: [256, 128]
       
     backend:
-      backend: lightning
+      backend: torch
       debug: true
-      epochs: 6 
+      epochs: 50
       trainer_kwargs:
         # epochs: 6 # if torch backend is used
         max_epochs: 3 # if lightning backend is used

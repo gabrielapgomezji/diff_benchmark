@@ -1,5 +1,7 @@
 from torch import nn
+from diff_benchmark.utils.logger import setup_logger
 
+logger = setup_logger(__name__)
 
 class MLPHead(nn.Module):
     def __init__(
@@ -103,7 +105,7 @@ class PredictionHead(nn.Module):
             )
 
         else:
-            print("No prediction task specified yet")
+            logger.warning(f"Unknown task: {prediction_task}. Prediction Head only implemented for binary classification and regression tasks.")
             # raise ValueError(f"Unknown task: {prediction_task}")
 
     def forward(self, x):
