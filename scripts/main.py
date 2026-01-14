@@ -140,6 +140,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
                 dataset,
                 fold_idx,
                 indices,
+                num_workers=local_config["data"]["num_workers"],
                 batch_size=local_config["data"]["batch_size"],
             )
             train_idx, test_idx = indices[fold_idx]
@@ -155,6 +156,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
 
             model.fit(train_loader)
             train_pred = model.predict(train_loader)
+
             plot_true_vs_pred(
                 y_train, train_pred, fold_idx=fold_idx, run_id=run_id, type="train"
             )
@@ -275,19 +277,20 @@ logger.info("Starting diff_benchmark")
 # else:
 #     level = logging.WARNING
 
-run_single_model(
-    model_name=models_to_run[0]["name"],
-    model_config=models_to_run[0]["params"],
-    general_config=general_config,
-    results_path="./data/results",
-)
+# run_single_model(
+#     model_name=models_to_run[0]["name"],
+#     model_config=models_to_run[0]["params"],
+#     general_config=general_config,
+#     results_path="./data/results",
+# )
 
 
 # 1. Group the models by backend (deep learning vs sklearn)
 # 2. Get from the slurm config yaml the required ressources for each backend
 # 3. Start the jobs in parallel by backend groups, setting the slurm config accordingly + get submitit jobs
 # 4. Await the jobs and collect the results 
-slurm_cfg = general_config["cluster"][args.cluster]
+slurm_cfg = general_config["slurm_cfg"][args.cluster]
+
 results = run_jobs(
     run_fn=run_single_model,
     fn_kwargs_list=[
@@ -299,7 +302,7 @@ results = run_jobs(
         }
         for model in models_to_run
     ],
-    parallel_type="slurm", #None, #
+    parallel_type=None, #"slurm", #
     slurm_cfg=slurm_cfg,
     # slurm_cfg={
     #     "slurm_partition": "parietal,normal,gpu",

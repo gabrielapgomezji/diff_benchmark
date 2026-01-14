@@ -68,6 +68,10 @@ class TaskModel(nn.Module):
             self.mean = backbone.mean
         if hasattr(backbone, "std"):
             self.std = backbone.std
+        if hasattr(backbone, "collate_with_augmentation"):
+            self.collate_fn = backbone.collate_with_augmentation
+        else:
+            self.collate_fn = None
 
     @property
     def data_type(self) -> str:
@@ -133,7 +137,6 @@ def create_model(
         head = build_prediction_head(
             embedding_dim=backbone.out_dim,
             prediction_task=model_kwargs["prediction_task"],
-            # dropout=model_kwargs["dropout"],
             **model_kwargs["head"],
         )
         return TaskModel(backbone, head)
@@ -143,7 +146,6 @@ def create_model(
         head = build_prediction_head(
             embedding_dim=backbone.out_dim,
             prediction_task=model_kwargs["prediction_task"],
-            # dropout=model_kwargs["dropout"],
             **model_kwargs["head"],
         )
         return TaskModel(backbone, head)

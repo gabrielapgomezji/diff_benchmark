@@ -278,7 +278,7 @@ class LightningPrintLogger(pl.Callback):
     def __init__(self, *, run_id: str, epochs: int):
         self.run_id = run_id
         self.epochs = epochs
-        self.log = setup_logger(__name__)
+        self.py_logger = setup_logger(__name__)
 
     def on_train_epoch_end(self, trainer, pl_module):
         metrics = trainer.callback_metrics
@@ -291,7 +291,7 @@ class LightningPrintLogger(pl.Callback):
 
         epoch = trainer.current_epoch
 
-        self.log.info(
+        self.py_logger.info(
             f"[{self.run_id}] "
             f"Epoch {epoch + 1}/{self.epochs} | "
             f"train_loss={train_loss:.4f} | "

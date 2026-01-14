@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Any
+from typing import Any, Callable
 
 import torch
 import torch.nn.functional as F
@@ -459,7 +459,7 @@ class MedicalNet(ResNet):
 
     @staticmethod
     def collate_with_augmentation(
-        batch, transform: callable = None
+        batch, transform: Callable = None
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Collates a batch of data with optional augmentation and normalization.

@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from torchvision import models
+from typing import Callable
 
 
 class ResNet18Backbone(nn.Module):
@@ -179,7 +180,7 @@ class ResNet3SliceMultihead(nn.Module):
         # return out
 
     def collate_with_augmentation(
-        self, batch: list, transform: callable = None
+        self, batch: list, transform: Callable = None
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch.
         Args:

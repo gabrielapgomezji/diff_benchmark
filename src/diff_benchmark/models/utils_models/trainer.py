@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 import pytorch_lightning as pl
 import torch
+from torchvision import transforms
 from sklearn.base import BaseEstimator
 from torch import nn
 from torch.utils.data import DataLoader, random_split
@@ -12,6 +13,22 @@ from diff_benchmark.utils.scores import compute_metrics
 from diff_benchmark.utils.logger import TrainerLogRecord, TorchDebugLogger, LightningDebugLogger, tqdm_if_enabled, LightningPrintLogger
 from collections import deque
 from diff_benchmark.utils.logger import setup_logger
+
+
+train_transforms = transforms.Compose(
+    [
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(15),
+        # transforms.RandomResizedCrop((224, 224), scale=(0.8, 1.0)),
+        transforms.Normalize(mean=[0.5], std=[0.5]),
+    ]
+)
+val_transforms = transforms.Compose(
+    [
+        # transforms.Resize((224, 224)),
+        transforms.Normalize(mean=[0.5], std=[0.5]),
+    ]
+)
 
 class BaseTrainer(ABC):
     """
@@ -170,7 +187,7 @@ class SklearnTrainer(BaseTrainer):
         return preds
 
 
-def split_loader(dataloader, val_ratio=0.2, seed=42):
+def split_loader(dataloader, collate_fn: Callable | None, val_ratio=0.2, seed=42):
     """
     Split a PyTorch DataLoader into training and validation subsets.
     This function takes an existing DataLoader and splits its underlying dataset
@@ -190,7 +207,6 @@ def split_loader(dataloader, val_ratio=0.2, seed=42):
             - val_loader (DataLoader): DataLoader for the validation subset with
               shuffling disabled.
     """
-
     dataset = dataloader.dataset
     n_total = len(dataset)
     n_val = int(n_total * val_ratio)
@@ -198,13 +214,21 @@ def split_loader(dataloader, val_ratio=0.2, seed=42):
 
     generator = torch.Generator().manual_seed(seed)
     train_ds, val_ds = random_split(dataset, [n_train, n_val], generator)
+    # genders = np.asarray(dataset.dataset.gender[dataset.indices])
+    # idx = np.arange(len(dataset))
+    # train_ds, val_ds = train_test_split(
+    #     idx,
+    #     test_size=val_ratio,
+    #     stratify=genders,
+    #     random_state=42,
+    # )
 
     train_loader = DataLoader(
         train_ds,
         batch_size=dataloader.batch_size,
         shuffle=True,
         num_workers=dataloader.num_workers,
-        collate_fn=dataloader.collate_fn,
+        collate_fn=dataloader.collate_fn if collate_fn is None else lambda batch: collate_fn(batch, transform=train_transforms),
         pin_memory=True,
     )
 
@@ -213,7 +237,7 @@ def split_loader(dataloader, val_ratio=0.2, seed=42):
         batch_size=dataloader.batch_size,
         shuffle=False,
         num_workers=dataloader.num_workers,
-        collate_fn=dataloader.collate_fn,
+        collate_fn=dataloader.collate_fn if collate_fn is None else lambda batch: collate_fn(batch, transform=val_transforms),
         pin_memory=True,
     )
 
@@ -244,10 +268,22 @@ class TorchTrainer(BaseTrainer):
         self.epochs = epochs
         self.val_ratio = val_ratio
 
-        self.optimizer = torch.optim.AdamW(
+        # self.optimizer = torch.optim.AdamW(
+        #     self.model.parameters(),
+        #     lr=learning_rate,
+        #     weight_decay=weight_decay,
+        # )
+        self.optimizer = torch.optim.Adam(
             self.model.parameters(),
-            lr=learning_rate,
+            lr=learning_rate,   # default to 1e-5
             weight_decay=weight_decay,
+        )
+        
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            self.optimizer,
+            mode="min",
+            factor=0.5,
+            patience=10,
         )
 
         self.criterion = (
@@ -267,7 +303,7 @@ class TorchTrainer(BaseTrainer):
         )
 
     def fit(self, dataloader):
-        train_loader, val_loader = split_loader(dataloader, val_ratio=self.val_ratio)
+        train_loader, val_loader = split_loader(dataloader, collate_fn=self.model.collate_fn, val_ratio=self.val_ratio)
         show_progress = not self.logger.enabled or self.logger.enabled 
         
         for epoch in range(self.epochs):
@@ -318,7 +354,11 @@ class TorchTrainer(BaseTrainer):
                 if self.logger.enabled:
                     train_preds.append(preds.detach().cpu())
                     train_targets.append(y.detach().cpu())
-            
+                
+
+                # breakpoint()
+                # self.model.train()
+    
             metrics = None
             if self.logger.enabled:
                 preds = torch.cat(train_preds)
@@ -328,15 +368,15 @@ class TorchTrainer(BaseTrainer):
                     y_pred=preds.numpy(),
                     prediction_task=self.prediction_task,
                 )
-
+            
             self.logger.log_epoch(
                 split="train",
                 epoch=epoch,
                 loss=train_loss / len(train_loader),
                 metrics=metrics,
             )
-                
             val_loss = self._validate(val_loader, epoch)
+            self.scheduler.step(val_loss)
             self.log.info(
                 f"[{self.run_id}] "
                 f"Epoch {epoch+1}/{self.epochs} | "
@@ -395,12 +435,21 @@ class TorchTrainer(BaseTrainer):
         self.model.eval()
         outputs = []
 
-        mean = self.model.mean
-        std = self.model.std
+        collate_fn = self.model.collate_fn
+
+        predict_dataloader = DataLoader(
+            dataloader.dataset,
+            batch_size=dataloader.batch_size,
+            shuffle=False,
+            num_workers=dataloader.num_workers,
+            collate_fn=dataloader.collate_fn if collate_fn is None else lambda batch: collate_fn(batch, transform=val_transforms),
+            pin_memory=False,
+        )
+
         with torch.no_grad():
-            for batch in dataloader:
+            for batch in predict_dataloader:
                 x, *_ = batch
-                x = (x - mean) / std
+                
                 x = x.to(self.device)
                 preds = self.model(x)
                 if self.prediction_task == "binary_classification":
@@ -474,7 +523,7 @@ class _LightningModuleAdapter(pl.LightningModule):
             prog_bar=False,
             logger=False,  # IMPORTANT: we print ourselves
         )
-        return loss
+        return {"loss": loss}
 
     def validation_step(self, batch, _):
         x, y, *_ = batch
@@ -497,7 +546,7 @@ class _LightningModuleAdapter(pl.LightningModule):
             prog_bar=False,
             logger=False,
         )
-        return loss
+        return {"loss": loss}
 
     def predict_step(self, batch, _, __=None):
         x = batch[0] if isinstance(batch, (tuple, list)) else batch
@@ -509,9 +558,14 @@ class _LightningModuleAdapter(pl.LightningModule):
         return preds
 
     def configure_optimizers(self):
-        return torch.optim.AdamW(
+        # return torch.optim.AdamW(
+        #     self.parameters(),
+        #     lr=self.learning_rate,
+        #     weight_decay=self.weight_decay,
+        # )
+        return torch.optim.Adam(
             self.parameters(),
-            lr=self.learning_rate,
+            lr=self.learning_rate,   # default to 1e-5
             weight_decay=self.weight_decay,
         )
 
