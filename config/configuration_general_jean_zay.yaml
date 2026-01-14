@@ -109,7 +109,7 @@ data_paths:
   # deen_left: /data/parietal/store2/work/ggomezji/projects/graph_dmri/deen_parcellation_left.func.gii
   # deen_right: /data/parietal/store2/work/ggomezji/projects/graph_dmri/deen_parcellation_right.func.gii
   
-  csv_file: /lustre/fswork/projects/rech/qlr/commun/Merged_HCP_Demographics.csv
+  csv_file: /lustre/fswork/projects/rech/qlr/commun/HCP900/Merged_HCP_Demographics.csv
 
 target_columns:
 - Gender
