@@ -41,7 +41,7 @@ models:
       #   weight_decay: 0.01
 
     data:
-      batch_size: 128
+      batch_size: 32
       num_workers: 0
       # input_channels: 3   # number of slices
       image_size: [224, 224]
