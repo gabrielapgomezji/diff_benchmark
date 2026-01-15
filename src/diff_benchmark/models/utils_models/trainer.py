@@ -338,11 +338,15 @@ class TorchTrainer(BaseTrainer):
 
                 train_loss += loss.item()
                 loss_window.append(loss)
-                if pbar is not train_loader:
-                    pbar.set_postfix(
-                        loss=f"{sum(loss_window)/len(loss_window):.4f}",
-                        lr=f"{self.optimizer.param_groups[0]['lr']:.2e}",
-                    )
+                # if pbar is not train_loader:
+                #     pbar.set_postfix(
+                #         loss=f"{sum(loss_window)/len(loss_window):.4f}",
+                #         lr=f"{self.optimizer.param_groups[0]['lr']:.2e}",
+                #     )
+                pbar.set_postfix(
+                    loss=f"{sum(loss_window)/len(loss_window):.4f}",
+                    lr=f"{self.optimizer.param_groups[0]['lr']:.2e}",
+                )
                 self.logger.log_batch(
                     split="train",
                     epoch=epoch,

@@ -18,9 +18,13 @@ from typing import Optional
 from tqdm import tqdm
 
 def tqdm_if_enabled(iterable, *, desc=None, total=None, enabled=True):
-    if not enabled or not sys.stdout.isatty():
-        return iterable
-    return tqdm(iterable, desc=desc, total=total, leave=False)
+    return tqdm(
+        iterable,
+        desc=desc,
+        total=total,
+        leave=False,
+        disable=not enabled or not sys.stdout.isatty(),
+    )
 
 @dataclass
 class TrainerLogRecord:
