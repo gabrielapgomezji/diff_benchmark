@@ -1,0 +1,2 @@
+prediction_task: binary_classification
+dropout: 0.5

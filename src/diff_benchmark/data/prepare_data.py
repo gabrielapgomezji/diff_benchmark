@@ -17,6 +17,7 @@ from diff_benchmark.preprocessing.preprocess_demographic_data import (
 )
 from diff_benchmark.preprocessing.wrapper_brain_base import DataPreparationBrain
 from diff_benchmark.utils.logger import setup_logger
+from omegaconf import DictConfig, OmegaConf
 
 logger = setup_logger(__name__)
 
@@ -57,17 +58,14 @@ class DatasetPreparation:
 
     def __init__(
         self,
-        model_name: str,
-        model_config: dict,
-        general_config: dict,
+        cfg: DictConfig,
         source_dataset: DatasetConfig,
     ):
         """
         Initialize the data preparation process.
         """
-        self.model_name = model_name
-        self.model_config = model_config
-        self.general_config = general_config
+        self.cfg = cfg
+        self.model_name = cfg.model.name
         self.source_dataset = source_dataset
 
     def _extract_participants_files_from_layouts(
@@ -104,7 +102,11 @@ class DatasetPreparation:
             pd.DataFrame: Preprocessed brain features DataFrame.
         """
         # -------- MODEL & PIPELINE --------
-        model = get_model(self.model_name, self.model_config)
+
+        model = get_model(self.model_name, 
+                          OmegaConf.to_container(self.cfg, resolve=True),
+                         )
+        breakpoint()
         if hasattr(model, "model"):  # trainer wrapper
             model = model.model
         data_type = model.data_type
@@ -121,14 +123,14 @@ class DatasetPreparation:
         """
         # -------- DEMOGRAPHICS --------
         if self.source_dataset.name == "hcp":
-            cog_file = self.general_config["data_paths"]["csv_file"]
+            cog_file = self.cfg.cluster.paths[self.source_dataset.name].csv_file
 
         else:
             cog_file = self._extract_participants_files_from_layouts(
                 self.brain_preparator.layouts
             )
         preprocessor = DefaultDemographicsPreprocessor(cog_file)
-        demographics_df = preprocessor.preprocess(self.general_config["target_columns"])
+        demographics_df = preprocessor.preprocess(self.cfg.target.target_column)
         return demographics_df
 
     def _filter_dfs(
