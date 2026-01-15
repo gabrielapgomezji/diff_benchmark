@@ -229,7 +229,6 @@ def split_loader(dataloader, collate_fn: Callable | None, val_ratio=0.2, seed=42
         shuffle=True,
         num_workers=dataloader.num_workers,
         collate_fn=dataloader.collate_fn if collate_fn is None else lambda batch: collate_fn(batch, transform=train_transforms),
-        pin_memory=True,
     )
 
     val_loader = DataLoader(
@@ -238,7 +237,6 @@ def split_loader(dataloader, collate_fn: Callable | None, val_ratio=0.2, seed=42
         shuffle=False,
         num_workers=dataloader.num_workers,
         collate_fn=dataloader.collate_fn if collate_fn is None else lambda batch: collate_fn(batch, transform=val_transforms),
-        pin_memory=True,
     )
 
     return train_loader, val_loader
