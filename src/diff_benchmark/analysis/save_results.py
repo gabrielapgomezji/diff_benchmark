@@ -4,7 +4,8 @@ from pathlib import Path
 
 import numpy as np
 from filelock import FileLock
-
+from diff_benchmark.utils.logger import setup_logger
+logger = setup_logger(__name__)
 
 def is_cached(
     run_id: str, output_dir: Path, results_filename="all_results.json"
@@ -94,8 +95,7 @@ def save_model_results(
 
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(all_results, f, indent=2)
-
-        print(
+        logger.info(
             f"Saved results for {summary['model_name']} (run_id={summary['pipeline']['run_id']})"
         )
 
@@ -118,7 +118,7 @@ def save_fold_results(
     out_path = output_dir / f"{model_name}_fold_results.json"
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(fold_results, f, indent=2)
-    print(f"Saved per-fold results to: {out_path}")
+    logger.info(f"Saved per-fold results to: {out_path}")
 
 
 def save_summary_results(
@@ -163,4 +163,4 @@ def save_summary_results(
 
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
-    print(f"Saved summary results to {out_path}")
+    logger.info(f"Saved summary results to {out_path}")
