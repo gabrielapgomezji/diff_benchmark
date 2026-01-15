@@ -27,7 +27,7 @@ models:
     backend:
       backend: torch
       debug: true
-      epochs: 50
+      epochs: 1
       lr: 1e-5
       weight_decay: 0.01
       trainer_kwargs:

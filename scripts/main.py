@@ -318,6 +318,8 @@ import warnings
 for result in results:
     if not result.ok:
         warnings.warn(f"Job failed:\n{result.traceback}")
+    else:
+        logger.info(f"Job succeeded: {result.result}")
 
 metrics_dir = Path("./data/results/parquet/analysis_results")
 global_path = metrics_dir / "metrics.parquet"
