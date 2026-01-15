@@ -319,6 +319,7 @@ class TorchTrainer(BaseTrainer):
                 enabled=show_progress,
             )
             self.log.info(f"Epoch {epoch+1}/{self.epochs}")
+            print(f"Epoch {epoch+1}/{self.epochs}")
 
             # for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"[Epoch {epoch+1}/{self.epochs}]")):
             for batch_idx, batch in pbar:
