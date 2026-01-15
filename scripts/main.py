@@ -302,7 +302,7 @@ results = run_jobs(
         }
         for model in models_to_run
     ],
-    parallel_type=None, #"slurm", #
+    parallel_type="slurm", #None, #
     slurm_cfg=slurm_cfg,
     # slurm_cfg={
     #     "slurm_partition": "parietal,normal,gpu",
