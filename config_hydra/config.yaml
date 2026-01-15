@@ -1,0 +1,10 @@
+defaults:
+  - dataset: hcp
+  - model: 2dcnn
+  - pred_head: classification
+  - backend: torch
+  - data: default
+  - training: default
+  - experiment: 2dcnn_slices
+  - cluster: margaret
+  - _self_

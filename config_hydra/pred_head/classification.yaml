@@ -1,0 +1,4 @@
+head:
+  task: classification
+  num_classes: 1
+  dropout: 0.5

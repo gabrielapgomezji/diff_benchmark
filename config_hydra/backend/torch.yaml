@@ -1,0 +1,12 @@
+backend: torch
+debug: true
+
+trainer:
+  epochs: 6
+  accelerator: gpu
+  devices: 1
+
+optim:
+  optimizer: adamw
+  lr: 1e-4
+  weight_decay: 1e-4
