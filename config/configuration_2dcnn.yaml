@@ -42,7 +42,7 @@ models:
 
     data:
       batch_size: 128
-      num_workers: 10
+      num_workers: 0
       # input_channels: 3   # number of slices
       image_size: [224, 224]
 # - name: 2dcnn
