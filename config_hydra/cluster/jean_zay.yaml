@@ -25,7 +25,7 @@ slurm_cfg:
   tasks_per_node: 1
   gpus_per_task: 1
   cpus_per_task: 20
-  timeout_min: 60 #1440   # 24 hours
+  timeout_min: 280 #1440   # 24 hours
   slurm_additional_parameters:
     account: "qlr@v100"
     constraint: "v100-32g"
