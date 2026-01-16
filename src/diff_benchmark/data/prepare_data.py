@@ -35,9 +35,11 @@ def get_data_pipeline(data_type: str, dataset: DatasetConfig) -> DataPreparation
     """
     if data_type == "images":
         logger.info("Using Image Pipeline")
+        print("Using Image Pipeline")
         brain_preparator = ImagePipeline(dataset)
     elif data_type == "array":
         logger.info("Using Default Array Pipeline")
+        print("Using Default Array Pipeline")
         brain_preparator = DefaultPipeline(dataset)
     else:
         raise ValueError(

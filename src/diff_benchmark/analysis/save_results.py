@@ -120,6 +120,7 @@ def save_fold_results(
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(fold_results, f, indent=2)
     logger.info(f"Saved per-fold results to: {out_path}")
+    print(f"Saved per-fold results to: {out_path}")
 
 
 def save_summary_results(
@@ -165,3 +166,4 @@ def save_summary_results(
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
     logger.info(f"Saved summary results to {out_path}")
+    print(f"Saved summary results to {out_path}")

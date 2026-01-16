@@ -36,15 +36,15 @@ from omegaconf import OmegaConf
 # general_config, model_config = load_configs(args)
 #############
 
-def run_single_model(cfg, model_name, results_path):
-    cfg = OmegaConf.copy(cfg)
+def run_single_model(cfg_og, model_name, results_path):
+
+    cfg = OmegaConf.merge(cfg_og)
     logger = setup_logger("Job.run_single_model")
     metrics_rows = []
 
     run_id = make_run_id(cfg.model.name, cfg)
     cfg.runtime.run_id = run_id
-    
-    
+ 
     dataset_selected = DatasetConfig(
         **OmegaConf.to_container(cfg.dataset, resolve=True)
     )
@@ -52,7 +52,7 @@ def run_single_model(cfg, model_name, results_path):
         cfg=cfg,
         source_dataset=dataset_selected,
     )
-    
+
     dataset, preprocessed = torch_dataset_preparator.pipeline()
 
     targets_path = Path(results_path) / "parquet" / "data" / "targets.parquet"
@@ -73,13 +73,16 @@ def run_single_model(cfg, model_name, results_path):
 
     specs = preprocessed.get_specs()
     logger.debug(f"Dataset specs: {specs}")
+    print(f"Dataset specs: {specs}")
 
     indices = preprocessed.get_fold_indices()
 
     if is_cached(run_id, Path(results_path) / "analysis_results"):
         logger.info(f"Skipping {model_name} (run_id={run_id}) - already cached.")
+        print(f"Skipping {model_name} (run_id={run_id}) - already cached.")
         return model_name, run_id
     logger.info(f"Running model: {model_name} with run_id: {run_id}")
+    print(f"Running model: {model_name} with run_id: {run_id}")
 
     train_scores, test_scores = [], []
     train_preds, test_preds = [], []
@@ -99,12 +102,6 @@ def run_single_model(cfg, model_name, results_path):
     }
     # cfg_path = Path(results_path) / "analysis_results" / f"{run_id}_config.yaml" # CHECK TO INCLUDE
     # OmegaConf.save(cfg, cfg_path) # CHECK TO INCLUDE
-    
-    
-    # exclude_keys = {"comment", "name", "model_name"}
-    # for key, value in local_config.items():
-    #     if key not in exclude_keys:
-    #         summary["pipeline"][key] = value
 
     save_model_results(
         summary, Path(results_path) / "analysis_results" / f"{run_id}_partial.json"
@@ -121,6 +118,7 @@ def run_single_model(cfg, model_name, results_path):
     for fold_idx, (train_idx, test_idx) in enumerate(indices):
         try:
             logger.info(f"Run ID: {run_id} - Fold {fold_idx+1}/{len(indices)}")
+            print(f"Run ID: {run_id} - Fold {fold_idx+1}/{len(indices)}")
             # local_config["fold_idx"] = fold_idx
             train_loader, test_loader = preprocessed.get_dataloader_fold(
                 dataset,
@@ -175,6 +173,7 @@ def run_single_model(cfg, model_name, results_path):
             )
             test_score = compute_metrics(y_test, test_pred, prediction_task=cfg.pred_head.prediction_task)
             logger.info(f"Fold {fold_idx} - Train score: {train_score}, Test score: {test_score}")
+            print(f"Fold {fold_idx} - Train score: {train_score}, Test score: {test_score}")
 
             test_scores.append(test_score)
             test_preds.append(test_pred.tolist())
@@ -230,6 +229,7 @@ def run_single_model(cfg, model_name, results_path):
             )
         except Exception as e:
             logger.exception(f"Crash in fold {fold_idx} of {run_id}: {e}")
+            print(f"Crash in fold {fold_idx} of {run_id}: {e}")
             save_model_results(
                 summary,
                 Path(results_path) / "analysis_results" / f"{run_id}_crashed.json",
@@ -327,16 +327,18 @@ def main(cfg: DictConfig):
     #     results_path=results_path,
     # )
 
+    parallel_type = None if cfg.cluster.conf.parallel_type not in ["slurm", "joblib"] else cfg.cluster.conf.parallel_type
+
     results = run_jobs(
         run_fn=run_single_model,
         fn_kwargs_list=[
             {   
-                "cfg": cfg,
+                "cfg_og": cfg,
                 "model_name": cfg.model.name,
                 "results_path": results_path,
             }
         ],
-        parallel_type=cfg.cluster.conf.parallel_type,
+        parallel_type=parallel_type,
         slurm_cfg=cfg.cluster.slurm_cfg,
         n_jobs=50,
     )
