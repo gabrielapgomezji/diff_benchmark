@@ -238,7 +238,7 @@ def get_model(name: str, config: dict) -> object:
     """
 
     name = name.lower()
-
+    config["backend"]["run_id"] = config["runtime"]["run_id"]
     return create_trainer(
         model_name=name,
         model_kwargs={**config["model"]["backbone"]},

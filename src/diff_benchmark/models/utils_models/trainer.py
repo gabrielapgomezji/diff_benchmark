@@ -251,7 +251,7 @@ class TorchTrainer(BaseTrainer):
         self,
         model: nn.Module,
         *,
-        prediction_task,
+        prediction_task: str,
         epochs: int = 5,
         learning_rate: float = 1e-4,
         weight_decay: float = 1e-4,
