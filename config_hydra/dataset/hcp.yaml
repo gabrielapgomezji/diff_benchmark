@@ -1,6 +1,6 @@
 name: hcp
-base_dir: /data/parietal/store4/data/HCP
-results_dir: /data/parietal/store3/work/ggomezji/benchmark/HCP900
+# base_dir: /data/parietal/store4/data/HCP
+# results_dir: /data/parietal/store3/work/ggomezji/benchmark/HCP900
 data_reading: hcp
 
 metric_to_compute: rtop

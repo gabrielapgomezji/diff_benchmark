@@ -44,10 +44,19 @@ def run_single_model(cfg_og, model_name, results_path):
 
     run_id = make_run_id(cfg.model.name, cfg)
     cfg.runtime.run_id = run_id
- 
+
+    dataset_cfg = OmegaConf.to_container(cfg.dataset, resolve=True)
+    cluster_cfg = cfg.cluster.paths[dataset_cfg["name"]]
+
     dataset_selected = DatasetConfig(
-        **OmegaConf.to_container(cfg.dataset, resolve=True)
+        **dataset_cfg,
+        base_dir=Path(cluster_cfg.base_dir),
+        results_dir=Path(cluster_cfg.results_dir),
     )
+    # dataset_selected = DatasetConfig(
+    #     **OmegaConf.to_container(cfg.dataset, resolve=True)
+    # )
+
     torch_dataset_preparator = DatasetPreparation(
         cfg=cfg,
         source_dataset=dataset_selected,
