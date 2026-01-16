@@ -430,6 +430,7 @@ class BrainDataPreparationPipeline(ABC):
         """
         if not self.results:
             raise ValueError("No results to save.")
+        print("Exporting data to DataFrame...")
         df = pd.DataFrame.from_dict(self.results, orient="index")
         df.index.name = "subject_id"
         return df

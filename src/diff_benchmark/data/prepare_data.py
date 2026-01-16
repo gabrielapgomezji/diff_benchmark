@@ -182,11 +182,15 @@ class DatasetPreparation:
         Returns:
             Tuple[CustomDataset, PreprocessedData]: The prepared dataset and preprocessed data.
         """
+        print("Preparing brain data...")
         brain_df = self._get_brain_df()
+        print("Preparing demographics data...")
         demographics_df = self._get_demographics_df()
+        print("Aligning and filtering data...")
         brain_filtered, demographics_filtered = self._filter_dfs(
             brain_df, demographics_df
         )
+        print("Creating dataset...")
         torch_dataset, preprocessed = self._create_torch_dataset(
             brain_filtered, demographics_filtered
         )

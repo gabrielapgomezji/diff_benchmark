@@ -52,9 +52,9 @@ def run_single_model(cfg_og, model_name, results_path):
         cfg=cfg,
         source_dataset=dataset_selected,
     )
-
+    
     dataset, preprocessed = torch_dataset_preparator.pipeline()
-
+    print("Data preparation completed.")
     targets_path = Path(results_path) / "parquet" / "data" / "targets.parquet"
     targets_path.parent.mkdir(parents=True, exist_ok=True)
     
