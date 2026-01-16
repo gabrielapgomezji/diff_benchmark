@@ -409,6 +409,7 @@ class BrainDataPreparationPipeline(ABC):
             ValueError,
             IndexError,
         ) as e:
+            print(f"[{subject_id}] Expected error during microstructure: {e}")
             logger.error(f"[{subject_id}] Expected error during microstructure: {e}")
 
     @abstractmethod
@@ -512,6 +513,7 @@ class BrainDataPreparationPipeline(ABC):
         )
 
         # Once all files are ready, run the analysis
+        print("All required files are ready. Now you can run analysis!")
         logger.info("All required files are ready. Now you can run analysis!")
         # self.run_analysis()
         # df = self.export_to_csv()
@@ -525,5 +527,6 @@ class BrainDataPreparationPipeline(ABC):
         """
         logger.info("All data should be preprocessed already. Getting microstructure files...")
         self.run_analysis()
+        print("Computing df...")
         df = self.export_to_csv()
         return df

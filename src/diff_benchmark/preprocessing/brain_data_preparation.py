@@ -92,6 +92,7 @@ class DefaultPipeline(BrainDataPreparationPipeline):
                 )
                 self.results[subject_id] = avg_data
             except (FileNotFoundError, OSError, ValueError, IndexError) as e:
+                print(f"[{subject_id}] Expected error during analysis: {e}")
                 logger.warning(f"[{subject_id}] Expected error during analysis: {e}")
 
 
@@ -166,3 +167,4 @@ class ImagePipeline(BrainDataPreparationPipeline):
                 self.results[subject_id] = file
             except (FileNotFoundError, OSError, ValueError, IndexError) as e:
                 logger.warning(f"[{subject_id}] Expected error during analysis: {e}")
+                print(f"[{subject_id}] Expected error during analysis: {e}")
