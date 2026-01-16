@@ -6,6 +6,9 @@ from pathlib import Path
 import pandas as pd
 from joblib import Parallel, delayed
 from tqdm import tqdm
+from diff_benchmark.utils.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 
 @dataclass
@@ -155,10 +158,10 @@ class DataPreparationBrain(ABC):
                     )
                     and recompute
                 ):
-                    print(f"[{subject_id}] Recomputing microstructure.")
+                    logger.info(f"[{subject_id}] Recomputing microstructure.")
                     self.compute_microstructure(subject_id)
                 else:
-                    print(f"[{subject_id}] Missing files — computing microstructure.")
+                    logger.info(f"[{subject_id}] Computing microstructure.")
                     self.compute_microstructure(subject_id)
             # else:
             #     print(f"[{subject_id}] All required files found.")
@@ -169,7 +172,7 @@ class DataPreparationBrain(ABC):
         )
 
         # Once all files are ready, run the analysis
-        print("All required files are ready. Now you can run analysis!")
+        logger.info("All required files are ready. Now you can run analysis!")
         # self.run_analysis()
         # df = self.export_to_csv()
         # return df
@@ -180,7 +183,7 @@ class DataPreparationBrain(ABC):
         Returns:
             DataFrame: A pandas DataFrame containing the exported results.
         """
-        print(
+        logger.info(
             "All data should be preprocessed already. Getting microstructure files..."
         )
         self.run_analysis()

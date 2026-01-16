@@ -1,0 +1,39 @@
+name: jean_zay
+
+paths:
+  hcp:
+    base_dir: /lustre/fswork/projects/rech/qlr/commun/HCP900
+    results_dir: /lustre/fswork/projects/rech/qlr/commun/HCP900
+    csv_file: /lustre/fswork/projects/rech/qlr/commun/HCP900/Merged_HCP_Demographics.csv
+  # camcan:
+  #   base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/camcan
+  #   results_dir: /data/parietal/store3/work/ggomezji/benchmark/CamCAN
+  # wand:
+  #   base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/WAND-concat
+  #   results_dir: /data/parietal/store3/work/ggomezji/benchmark/WAND
+  # abide:
+  #   base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/abide
+  #   results_dir: /data/parietal/store3/work/ggomezji/benchmark/abide
+
+conf:
+  enabled: true
+  parallel_type: slurm
+
+slurm_cfg:
+  # log_folder: "./slurm_logs"
+  # slurm_partition: "gpu"
+  tasks_per_node: 1
+  gpus_per_task: 1
+  cpus_per_task: 20
+  timeout_min: 280 #1440   # 24 hours
+  slurm_additional_parameters:
+    account: "qlr@v100"
+    constraint: "v100-32g"
+  setup:
+    - "module purge"
+    - "module load pytorch-gpu/py3/2.8.0"
+  slurm_setup:
+    - "export OMP_NUM_THREADS=1"
+    - "export MKL_NUM_THREADS=1"
+    - "export OPENBLAS_NUM_THREADS=1"
+    - "export NUMEXPR_NUM_THREADS=1"

@@ -15,8 +15,12 @@ def load_configs(args: argparse.Namespace) -> tuple[dict, dict]:
     # Load general config
     # =====================
     general_config_path = (
-        Path(__file__).parent.parent.parent.parent / "config/configuration_general.yaml"
+        Path(__file__).parent.parent.parent.parent / f"config/configuration_general_{getattr(args, "cluster")}.yaml"
     )
+    if not general_config_path.exists():
+        general_config_path = (
+            Path(__file__).parent.parent.parent.parent / "config/configuration_general.yaml"
+        )
     with open(general_config_path, "r", encoding="utf-8") as f:
         general_config = yaml.safe_load(f)
 

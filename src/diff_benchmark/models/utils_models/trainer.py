@@ -1,16 +1,34 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 import pytorch_lightning as pl
 import torch
+from torchvision import transforms
 from sklearn.base import BaseEstimator
 from torch import nn
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 from diff_benchmark.utils.scores import compute_metrics
-from diff_benchmark.utils.logger import TrainerLogRecord, TorchDebugLogger, LightningDebugLogger
+from diff_benchmark.utils.logger import TrainerLogRecord, TorchDebugLogger, LightningDebugLogger, tqdm_if_enabled, LightningPrintLogger
+from collections import deque
+from diff_benchmark.utils.logger import setup_logger
 
+
+train_transforms = transforms.Compose(
+    [
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(15),
+        # transforms.RandomResizedCrop((224, 224), scale=(0.8, 1.0)),
+        transforms.Normalize(mean=[0.5], std=[0.5]),
+    ]
+)
+val_transforms = transforms.Compose(
+    [
+        # transforms.Resize((224, 224)),
+        transforms.Normalize(mean=[0.5], std=[0.5]),
+    ]
+)
 
 class BaseTrainer(ABC):
     """
@@ -169,7 +187,7 @@ class SklearnTrainer(BaseTrainer):
         return preds
 
 
-def split_loader(dataloader, val_ratio=0.2, seed=42):
+def split_loader(dataloader, collate_fn: Callable | None, val_ratio=0.2, seed=42):
     """
     Split a PyTorch DataLoader into training and validation subsets.
     This function takes an existing DataLoader and splits its underlying dataset
@@ -189,7 +207,6 @@ def split_loader(dataloader, val_ratio=0.2, seed=42):
             - val_loader (DataLoader): DataLoader for the validation subset with
               shuffling disabled.
     """
-
     dataset = dataloader.dataset
     n_total = len(dataset)
     n_val = int(n_total * val_ratio)
@@ -197,14 +214,21 @@ def split_loader(dataloader, val_ratio=0.2, seed=42):
 
     generator = torch.Generator().manual_seed(seed)
     train_ds, val_ds = random_split(dataset, [n_train, n_val], generator)
+    # genders = np.asarray(dataset.dataset.gender[dataset.indices])
+    # idx = np.arange(len(dataset))
+    # train_ds, val_ds = train_test_split(
+    #     idx,
+    #     test_size=val_ratio,
+    #     stratify=genders,
+    #     random_state=42,
+    # )
 
     train_loader = DataLoader(
         train_ds,
         batch_size=dataloader.batch_size,
         shuffle=True,
         num_workers=dataloader.num_workers,
-        collate_fn=dataloader.collate_fn,
-        pin_memory=True,
+        collate_fn=dataloader.collate_fn if collate_fn is None else lambda batch: collate_fn(batch, transform=train_transforms),
     )
 
     val_loader = DataLoader(
@@ -212,8 +236,7 @@ def split_loader(dataloader, val_ratio=0.2, seed=42):
         batch_size=dataloader.batch_size,
         shuffle=False,
         num_workers=dataloader.num_workers,
-        collate_fn=dataloader.collate_fn,
-        pin_memory=True,
+        collate_fn=dataloader.collate_fn if collate_fn is None else lambda batch: collate_fn(batch, transform=val_transforms),
     )
 
     return train_loader, val_loader
@@ -228,10 +251,10 @@ class TorchTrainer(BaseTrainer):
         self,
         model: nn.Module,
         *,
+        prediction_task: str,
         epochs: int = 5,
         learning_rate: float = 1e-4,
         weight_decay: float = 1e-4,
-        prediction_task: str = "classification",
         device: str = "cuda",
         val_ratio: float = 0.2,
         **kwargs: Any,
@@ -243,20 +266,33 @@ class TorchTrainer(BaseTrainer):
         self.epochs = epochs
         self.val_ratio = val_ratio
 
-        self.optimizer = torch.optim.AdamW(
+        # self.optimizer = torch.optim.AdamW(
+        #     self.model.parameters(),
+        #     lr=learning_rate,
+        #     weight_decay=weight_decay,
+        # )
+        self.optimizer = torch.optim.Adam(
             self.model.parameters(),
-            lr=learning_rate,
+            lr=learning_rate,   # default to 1e-5
             weight_decay=weight_decay,
+        )
+        
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            self.optimizer,
+            mode="min",
+            factor=0.5,
+            patience=10,
         )
 
         self.criterion = (
             nn.CrossEntropyLoss()
-            if prediction_task == "classification"
+            if prediction_task == "binary_classification"
             else nn.MSELoss()
         )
         self.prediction_task = prediction_task
         self.run_id = kwargs["run_id"] if "run_id" in kwargs else "default_run"
         
+        self.log = setup_logger(__name__)
         self.logger = TorchDebugLogger(
             enabled=kwargs.get("debug", False),
             run_id=self.run_id,
@@ -265,25 +301,38 @@ class TorchTrainer(BaseTrainer):
         )
 
     def fit(self, dataloader):
-        train_loader, val_loader = split_loader(dataloader, val_ratio=self.val_ratio)
-
+        train_loader, val_loader = split_loader(dataloader, collate_fn=self.model.collate_fn, val_ratio=self.val_ratio)
+        show_progress = not self.logger.enabled or self.logger.enabled
+        
+        self.log.info(f"Starting training for {self.epochs} epochs...") 
+        
         for epoch in range(self.epochs):
             self.model.train()
             train_loss = 0.0
             train_preds = []
             train_targets = []
+            loss_window = deque(maxlen=20)  # smooth loss
+            pbar = tqdm_if_enabled(
+                enumerate(train_loader),
+                desc=f"Epoch {epoch+1}/{self.epochs}",
+                total=len(train_loader),
+                enabled=show_progress,
+            )
+            self.log.info(f"Epoch {epoch+1}/{self.epochs}")
+            print(f"Epoch {epoch+1}/{self.epochs}")
 
-            for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"[Epoch {epoch+1}/{self.epochs}]")):
+            # for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"[Epoch {epoch+1}/{self.epochs}]")):
+            for batch_idx, batch in pbar:
                 x, y, *_ = batch
                 x = x.to(self.device, non_blocking=True)
-                if self.prediction_task == "classification":
+                if self.prediction_task == "binary_classification":
                     y = y.long().to(self.device, non_blocking=True)
                 else:
                     y = y.float().to(self.device, non_blocking=True)
 
                 self.optimizer.zero_grad()
                 preds = self.model(x)
-                if self.prediction_task == "classification":
+                if self.prediction_task == "binary_classification":
                     preds = preds
                 else:
                     preds = preds.squeeze(1)
@@ -292,6 +341,16 @@ class TorchTrainer(BaseTrainer):
                 self.optimizer.step()
 
                 train_loss += loss.item()
+                loss_window.append(loss)
+                # if pbar is not train_loader:
+                #     pbar.set_postfix(
+                #         loss=f"{sum(loss_window)/len(loss_window):.4f}",
+                #         lr=f"{self.optimizer.param_groups[0]['lr']:.2e}",
+                #     )
+                pbar.set_postfix(
+                    loss=f"{sum(loss_window)/len(loss_window):.4f}",
+                    lr=f"{self.optimizer.param_groups[0]['lr']:.2e}",
+                )
                 self.logger.log_batch(
                     split="train",
                     epoch=epoch,
@@ -301,7 +360,11 @@ class TorchTrainer(BaseTrainer):
                 if self.logger.enabled:
                     train_preds.append(preds.detach().cpu())
                     train_targets.append(y.detach().cpu())
-            
+                
+
+                # breakpoint()
+                # self.model.train()
+    
             metrics = None
             if self.logger.enabled:
                 preds = torch.cat(train_preds)
@@ -311,15 +374,22 @@ class TorchTrainer(BaseTrainer):
                     y_pred=preds.numpy(),
                     prediction_task=self.prediction_task,
                 )
-
+            
             self.logger.log_epoch(
                 split="train",
                 epoch=epoch,
                 loss=train_loss / len(train_loader),
                 metrics=metrics,
             )
-                
-            self._validate(val_loader, epoch)
+            val_loss = self._validate(val_loader, epoch)
+            self.scheduler.step(val_loss)
+            self.log.info(
+                f"[{self.run_id}] "
+                f"Epoch {epoch+1}/{self.epochs} | "
+                f"train_loss={train_loss / len(train_loader):.4f} | "
+                f"val_loss={val_loss:.4f}"
+            )
+        
         self.logger.flush()
 
     def _validate(self, val_loader, epoch):
@@ -332,13 +402,13 @@ class TorchTrainer(BaseTrainer):
             for batch in val_loader:
                 x, y, *_ = batch
                 x = x.to(self.device, non_blocking=True)
-                if self.prediction_task == "classification":
+                if self.prediction_task == "binary_classification":
                     y = y.long().to(self.device, non_blocking=True)
                 else:
                     y = y.float().to(self.device, non_blocking=True)
 
                 preds = self.model(x)
-                if self.prediction_task == "classification":
+                if self.prediction_task == "binary_classification":
                     preds = preds
                 else:
                     preds = preds.squeeze(1)
@@ -360,25 +430,35 @@ class TorchTrainer(BaseTrainer):
                         prediction_task=self.prediction_task,
                     )
         self.logger.log_epoch(
-        split="val",
-        epoch=epoch,
-        loss=val_loss,
-        metrics=metrics,
-    )
+            split="val",
+            epoch=epoch,
+            loss=val_loss,
+            metrics=metrics,
+        )
+        return val_loss
 
     def predict(self, dataloader):
         self.model.eval()
         outputs = []
 
-        mean = self.model.mean
-        std = self.model.std
+        collate_fn = self.model.collate_fn
+
+        predict_dataloader = DataLoader(
+            dataloader.dataset,
+            batch_size=dataloader.batch_size,
+            shuffle=False,
+            num_workers=dataloader.num_workers,
+            collate_fn=dataloader.collate_fn if collate_fn is None else lambda batch: collate_fn(batch, transform=val_transforms),
+            pin_memory=False,
+        )
+
         with torch.no_grad():
-            for batch in dataloader:
+            for batch in predict_dataloader:
                 x, *_ = batch
-                x = (x - mean) / std
+                
                 x = x.to(self.device)
                 preds = self.model(x)
-                if self.prediction_task == "classification":
+                if self.prediction_task == "binary_classification":
                     preds = preds.argmax(dim=1)
                 else:
                     preds = preds.squeeze(1)
@@ -420,7 +500,7 @@ class _LightningModuleAdapter(pl.LightningModule):
 
         self.criterion = (
             nn.CrossEntropyLoss()
-            if prediction_task == "classification"
+            if prediction_task == "binary_classification"
             else nn.MSELoss()
         )
         self.prediction_task = prediction_task
@@ -431,7 +511,7 @@ class _LightningModuleAdapter(pl.LightningModule):
     def training_step(self, batch, _):
         x, y, *_ = batch
         preds = self(x)
-        if self.prediction_task == "classification":
+        if self.prediction_task == "binary_classification":
             y = y.long()
         else:
             y = y.float()
@@ -441,13 +521,20 @@ class _LightningModuleAdapter(pl.LightningModule):
         # else:
         #     preds = preds.squeeze(1)
         # metrics
-        self.log("train_loss", loss, prog_bar=True)
+        self.log(
+            "train_loss",
+            loss,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
+            logger=False,  # IMPORTANT: we print ourselves
+        )
         return {"loss": loss}
 
     def validation_step(self, batch, _):
         x, y, *_ = batch
         preds = self(x)
-        if self.prediction_task == "classification":
+        if self.prediction_task == "binary_classification":
             y = y.long()
         else:
             y = y.float()
@@ -457,22 +544,34 @@ class _LightningModuleAdapter(pl.LightningModule):
         # else:
         #     preds = preds.squeeze(1)
         # metrics
-        self.log("val_loss", loss, prog_bar=True)
+        self.log(
+            "val_loss",
+            loss,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
+            logger=False,
+        )
         return {"loss": loss}
 
     def predict_step(self, batch, _, __=None):
         x = batch[0] if isinstance(batch, (tuple, list)) else batch
         preds = self(x)
-        if self.prediction_task == "classification":
+        if self.prediction_task == "binary_classification":
             preds = preds.argmax(dim=1)
         else:
             preds = preds.squeeze(1)
         return preds
 
     def configure_optimizers(self):
-        return torch.optim.AdamW(
+        # return torch.optim.AdamW(
+        #     self.parameters(),
+        #     lr=self.learning_rate,
+        #     weight_decay=self.weight_decay,
+        # )
+        return torch.optim.Adam(
             self.parameters(),
-            lr=self.learning_rate,
+            lr=self.learning_rate,   # default to 1e-5
             weight_decay=self.weight_decay,
         )
 
@@ -502,10 +601,10 @@ class LightningTrainer(BaseTrainer):
         self,
         model: nn.Module,
         *,
+        prediction_task, 
         trainer_kwargs: dict,
         learning_rate: float = 1e-4,
         weight_decay: float = 1e-4,
-        prediction_task: str = "classification",
         val_ratio: float = 0.2,
         **kwargs: Any,
     ):
@@ -518,14 +617,27 @@ class LightningTrainer(BaseTrainer):
 
         super().__init__(model)
         self.model = model
+        self.run_id = kwargs.get("run_id", "default_run")
+        print_cb = LightningPrintLogger(
+            run_id=self.run_id,
+            epochs=trainer_kwargs.get("max_epochs"),
+        )
+        # trainer_kwargs.setdefault("callbacks", []).append(print_cb)
+        trainer_kwargs = dict(trainer_kwargs)
+        trainer_kwargs.setdefault("callbacks", []).append(print_cb)
+        
         debug = kwargs.get("debug", False)
         debug_dir = "./data/results/parquet/debug/"
         if debug:
+            self.run_id = kwargs["run_id"] if "run_id" in kwargs else "default_run"
             debug_cb = LightningDebugLogger(
+                run_id=self.run_id,
                 prediction_task=prediction_task,
                 debug_dir=debug_dir,
                 enabled=True,
             )
+            # trainer_kwargs.setdefault("callbacks", []).append(debug_cb)
+            trainer_kwargs = dict(trainer_kwargs)
             trainer_kwargs.setdefault("callbacks", []).append(debug_cb)
         # trainer_kwargs = {k: v for k, v in trainer_kwargs.items() if k in pl.Trainer.__init__.__code__.co_varnames} 
 

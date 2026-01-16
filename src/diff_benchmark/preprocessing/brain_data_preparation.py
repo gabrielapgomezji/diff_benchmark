@@ -9,6 +9,9 @@ from diff_benchmark.preprocessing.preparation_pipeline_unified import (
     BrainDataPreparationPipeline,
 )
 from diff_benchmark.preprocessing.wrapper_utils_brain_data import extract_region_data
+from diff_benchmark.utils.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 
 class DefaultPipeline(BrainDataPreparationPipeline):
@@ -90,6 +93,7 @@ class DefaultPipeline(BrainDataPreparationPipeline):
                 self.results[subject_id] = avg_data
             except (FileNotFoundError, OSError, ValueError, IndexError) as e:
                 print(f"[{subject_id}] Expected error during analysis: {e}")
+                logger.warning(f"[{subject_id}] Expected error during analysis: {e}")
 
 
 class ImagePipeline(BrainDataPreparationPipeline):
@@ -163,3 +167,4 @@ class ImagePipeline(BrainDataPreparationPipeline):
                 self.results[subject_id] = file
             except (FileNotFoundError, OSError, ValueError, IndexError) as e:
                 print(f"[{subject_id}] Expected error during analysis: {e}")
+                logger.warning(f"[{subject_id}] Expected error during analysis: {e}")

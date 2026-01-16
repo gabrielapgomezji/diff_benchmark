@@ -156,7 +156,7 @@ def infer_prediction_task(df: pd.DataFrame) -> str:
     }
 
     if present_metrics & classification_metrics:
-        return "classification"
+        return "binary_classification"
     if present_metrics & regression_metrics:
         return "regression"
 
@@ -175,7 +175,7 @@ def plot_debug_run(
 
     output_dir = output_root / run_id / "debug"
 
-    if prediction_task == "classification":
+    if prediction_task == "binary_classification":
         plot_classification_debug(df, run_id, output_dir)
     else:
         plot_regression_debug(df, run_id, output_dir)
@@ -211,7 +211,7 @@ if __name__ == "__main__":
     results_dir = Path(args.results_dir)
     
     plot_debug_run(
-        run_id=run_id, #2dcnn_2564ec4d
+        run_id=run_id, #2dcnn_a5942b19
         debug_dir=debug_dir,
         output_root=results_dir / "plots",
     )

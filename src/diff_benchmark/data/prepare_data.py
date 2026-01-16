@@ -16,6 +16,11 @@ from diff_benchmark.preprocessing.preprocess_demographic_data import (
     DefaultDemographicsPreprocessor,
 )
 from diff_benchmark.preprocessing.wrapper_brain_base import DataPreparationBrain
+from diff_benchmark.utils.logger import setup_logger
+from omegaconf import DictConfig, OmegaConf
+
+logger = setup_logger(__name__)
+
 
 
 def get_data_pipeline(data_type: str, dataset: DatasetConfig) -> DataPreparationBrain:
@@ -29,9 +34,11 @@ def get_data_pipeline(data_type: str, dataset: DatasetConfig) -> DataPreparation
         ValueError: If an unknown data_type is provided.
     """
     if data_type == "images":
+        logger.info("Using Image Pipeline")
         print("Using Image Pipeline")
         brain_preparator = ImagePipeline(dataset)
     elif data_type == "array":
+        logger.info("Using Default Array Pipeline")
         print("Using Default Array Pipeline")
         brain_preparator = DefaultPipeline(dataset)
     else:
@@ -53,17 +60,14 @@ class DatasetPreparation:
 
     def __init__(
         self,
-        model_name: str,
-        model_config: dict,
-        general_config: dict,
+        cfg: DictConfig,
         source_dataset: DatasetConfig,
     ):
         """
         Initialize the data preparation process.
         """
-        self.model_name = model_name
-        self.model_config = model_config
-        self.general_config = general_config
+        self.cfg = cfg
+        self.model_name = cfg.model.name
         self.source_dataset = source_dataset
 
     def _extract_participants_files_from_layouts(
@@ -100,7 +104,11 @@ class DatasetPreparation:
             pd.DataFrame: Preprocessed brain features DataFrame.
         """
         # -------- MODEL & PIPELINE --------
-        model = get_model(self.model_name, self.model_config)
+
+        model = get_model(self.model_name, 
+                          OmegaConf.to_container(self.cfg, resolve=True),
+                         )
+
         if hasattr(model, "model"):  # trainer wrapper
             model = model.model
         data_type = model.data_type
@@ -117,14 +125,14 @@ class DatasetPreparation:
         """
         # -------- DEMOGRAPHICS --------
         if self.source_dataset.name == "hcp":
-            cog_file = self.general_config["data_paths"]["csv_file"]
+            cog_file = self.cfg.cluster.paths[self.source_dataset.name].csv_file
 
         else:
             cog_file = self._extract_participants_files_from_layouts(
                 self.brain_preparator.layouts
             )
         preprocessor = DefaultDemographicsPreprocessor(cog_file)
-        demographics_df = preprocessor.preprocess(self.general_config["target_columns"])
+        demographics_df = preprocessor.preprocess(self.cfg.target.target_column)
         return demographics_df
 
     def _filter_dfs(
@@ -162,10 +170,10 @@ class DatasetPreparation:
         """
         # -------- DATASET CREATION --------
         X = brain_filtered
-        y = np.asarray(demographics_filtered[self.general_config["target_columns"][0]])
+        y = np.asarray(demographics_filtered[self.cfg.target.target_column[0]])
         gender = np.asarray(demographics_filtered["Gender"])
         torch_dataset = CustomDataset(X, y, gender)
-        preprocessed = PreprocessedData(X, y, gender, config=self.general_config)
+        preprocessed = PreprocessedData(X, y, gender, config=self.cfg)
         return torch_dataset, preprocessed
 
     def pipeline(self) -> Tuple[CustomDataset, PreprocessedData]:
@@ -174,11 +182,15 @@ class DatasetPreparation:
         Returns:
             Tuple[CustomDataset, PreprocessedData]: The prepared dataset and preprocessed data.
         """
+        print("Preparing brain data...")
         brain_df = self._get_brain_df()
+        print("Preparing demographics data...")
         demographics_df = self._get_demographics_df()
+        print("Aligning and filtering data...")
         brain_filtered, demographics_filtered = self._filter_dfs(
             brain_df, demographics_df
         )
+        print("Creating dataset...")
         torch_dataset, preprocessed = self._create_torch_dataset(
             brain_filtered, demographics_filtered
         )

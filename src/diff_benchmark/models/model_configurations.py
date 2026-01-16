@@ -1,6 +1,7 @@
 import hashlib
 import json
 
+from omegaconf import OmegaConf
 from torch import nn
 
 from diff_benchmark.models.sklearn_models.classic_ml import (
@@ -68,6 +69,10 @@ class TaskModel(nn.Module):
             self.mean = backbone.mean
         if hasattr(backbone, "std"):
             self.std = backbone.std
+        if hasattr(backbone, "collate_with_augmentation"):
+            self.collate_fn = backbone.collate_with_augmentation
+        else:
+            self.collate_fn = None
 
     @property
     def data_type(self) -> str:
@@ -95,6 +100,7 @@ class TaskModel(nn.Module):
 def create_model(
     model_name: str,
     model_kwargs: dict = {},
+    pred_head: dict = {},
 ):
     """Creates a model instance based on the specified type.
     Args:
@@ -132,9 +138,7 @@ def create_model(
         backbone = ResNet3SliceMultihead(**model_kwargs)
         head = build_prediction_head(
             embedding_dim=backbone.out_dim,
-            prediction_task=model_kwargs.get("prediction_task", None),
-            num_classes=model_kwargs.get("num_classes", 2),
-            dropout=model_kwargs.get("dropout", 0.5),
+            **pred_head,
         )
         return TaskModel(backbone, head)
 
@@ -142,9 +146,7 @@ def create_model(
         backbone = MedicalNet(**model_kwargs)
         head = build_prediction_head(
             embedding_dim=backbone.out_dim,
-            prediction_task=model_kwargs.get("prediction_task", None),
-            num_classes=model_kwargs.get("num_classes", 2),
-            dropout=model_kwargs.get("dropout", 0.5),
+            **pred_head,
         )
         return TaskModel(backbone, head)
 
@@ -154,7 +156,6 @@ def create_model(
 
 def create_backend_trainer(
     model,
-    backend: str,
     backend_kwargs: dict,
 ):
     """
@@ -180,8 +181,8 @@ def create_backend_trainer(
     ValueError
         If the backend string does not match any of the supported backends.
     """
-    backend = backend.lower()
-
+    backend = backend_kwargs["backend"].lower()
+    
     if backend == "sklearn":
         return SklearnTrainer(model=model, **backend_kwargs)
 
@@ -197,7 +198,7 @@ def create_backend_trainer(
 def create_trainer(
     model_name: str,
     model_kwargs: dict = {},
-    backend: str = "lightning",
+    pred_head: dict = {},
     backend_kwargs: dict = {},
 ):
     """Creates a Trainer for a specific model and backend.
@@ -209,8 +210,9 @@ def create_trainer(
     Returns:
         Trainer: Configured Trainer instance for the specified model and backend.
     """
-    model = create_model(model_name, model_kwargs)
-    trainer = create_backend_trainer(model, backend, backend_kwargs)
+    model = create_model(model_name, model_kwargs, pred_head)
+    backend_kwargs["prediction_task"] = pred_head["prediction_task"]
+    trainer = create_backend_trainer(model, backend_kwargs)
     return trainer
 
 
@@ -236,19 +238,10 @@ def get_model(name: str, config: dict) -> object:
     """
 
     name = name.lower()
-
-    backend = config["backend"]["backend"]
-    if backend == "lightning":
-        config["trainer_kwargs"] = {
-            "max_epochs": 10,
-            "accelerator": "gpu",
-            "devices": 1,
-            "log_every_n_steps": 10,
-        }
-
+    config["backend"]["run_id"] = config["runtime"]["run_id"]
     return create_trainer(
         model_name=name,
-        model_kwargs={**config["backbone"]},
-        backend=backend,
+        model_kwargs={**config["model"]["backbone"]},
+        pred_head={**config["pred_head"]},
         backend_kwargs={**config["backend"]},
     )

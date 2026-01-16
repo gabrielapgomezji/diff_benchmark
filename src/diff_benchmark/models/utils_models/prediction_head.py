@@ -1,5 +1,7 @@
 from torch import nn
+from diff_benchmark.utils.logger import setup_logger
 
+logger = setup_logger(__name__)
 
 class MLPHead(nn.Module):
     def __init__(
@@ -83,7 +85,7 @@ class PredictionHead(nn.Module):
         """
         super().__init__()
 
-        if prediction_task == "classification":
+        if prediction_task == "binary_classification":
             if num_classes is None:
                 raise ValueError("num_classes required for classification")
 
@@ -103,7 +105,7 @@ class PredictionHead(nn.Module):
             )
 
         else:
-            print("No prediction task specified yet")
+            logger.warning(f"Unknown task: {prediction_task}. Prediction Head only implemented for binary classification and regression tasks.")
             # raise ValueError(f"Unknown task: {prediction_task}")
 
     def forward(self, x):
@@ -121,7 +123,7 @@ class PredictionHead(nn.Module):
 def build_prediction_head(
     embedding_dim: int,
     prediction_task: str,
-    num_classes: int | None = None,
+    # num_classes: int | None = None,
     hidden_dims: list[int] | None = None,
     dropout: float = 0.0,
 ) -> nn.Module:
@@ -138,6 +140,8 @@ def build_prediction_head(
     Returns:
         nn.Module: A prediction head module configured for the specified task and parameters.
     """
+    num_classes = 2 if prediction_task == "binary_classification" else 1 if prediction_task == "regression" else Exception(f"Unknown task: {prediction_task}. Prediction Head only implemented for binary classification and regression tasks.")
+    
     return PredictionHead(
         embedding_dim=embedding_dim,
         prediction_task=prediction_task,

@@ -60,9 +60,9 @@ class PreprocessedData:
         self.targets = targets
         self.genders = genders
         self.skf = StratifiedKFold(
-            n_splits=config["data_partition"]["n_splits"],
+            n_splits=config.data.data_partition["n_splits"],
             shuffle=True,
-            random_state=config["random_state"],
+            random_state=config.random_state,
         )
         self.config = config
 
@@ -88,6 +88,7 @@ class PreprocessedData:
         dataset: TensorDataset,
         fold_idx: int,
         fold_indices: list,
+        num_workers: int = 0,
         batch_size: int = 32,  # shuffle=True
     ) -> tuple[DataLoader, DataLoader]:
         """
@@ -106,14 +107,14 @@ class PreprocessedData:
             Subset(dataset, train_idx),
             batch_size=batch_size,
             shuffle=False,
-            num_workers=self.config["dataloaders"]["num_workers"],
+            num_workers=num_workers,
             collate_fn=self.safe_collate,
         )
         test_loader = DataLoader(
             Subset(dataset, test_idx),
             batch_size=batch_size,
             shuffle=False,
-            num_workers=self.config["dataloaders"]["num_workers"],
+            num_workers=num_workers,
             collate_fn=self.safe_collate,
         )
 

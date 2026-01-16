@@ -11,6 +11,20 @@ import torch
 from dataclasses import dataclass
 from typing import Dict, Optional, Literal
 
+import logging
+import sys
+from typing import Optional
+
+from tqdm import tqdm
+
+def tqdm_if_enabled(iterable, *, desc=None, total=None, enabled=True):
+    return tqdm(
+        iterable,
+        desc=desc,
+        total=total,
+        leave=False,
+        disable=not enabled or not sys.stdout.isatty(),
+    )
 
 @dataclass
 class TrainerLogRecord:
@@ -105,7 +119,7 @@ class TorchDebugLogger:
     # -------------------------
     @staticmethod
     def finalize_preds(preds: torch.Tensor, task: str) -> torch.Tensor:
-        if task == "classification":
+        if task == "binary_classification":
             return preds.argmax(dim=1)
         return preds
 
@@ -159,7 +173,7 @@ class LightningDebugLogger(pl.Callback):
         x, y, *_ = batch
         preds = pl_module(x)
 
-        if self.prediction_task == "classification":
+        if self.prediction_task == "binary_classification":
             y = y.long()
             preds_cls = preds.argmax(dim=1)
         else:
@@ -199,7 +213,7 @@ class LightningDebugLogger(pl.Callback):
         x, y, *_ = batch
         preds = pl_module(x)
 
-        if self.prediction_task == "classification":
+        if self.prediction_task == "binary_classification":
             y = y.long()
             preds_cls = preds.argmax(dim=1)
         else:
@@ -262,3 +276,86 @@ class LightningDebugLogger(pl.Callback):
         os.makedirs(self.debug_dir, exist_ok=True)
         df = pd.DataFrame(r.to_dict() for r in self.records)
         df.to_parquet(os.path.join(self.debug_dir, f"lightning_debug_{self.run_id}.parquet"))
+
+
+class LightningPrintLogger(pl.Callback):
+    def __init__(self, *, run_id: str, epochs: int):
+        self.run_id = run_id
+        self.epochs = epochs
+        self.py_logger = setup_logger(__name__)
+
+    def on_train_epoch_end(self, trainer, pl_module):
+        metrics = trainer.callback_metrics
+
+        train_loss = metrics.get("train_loss")
+        val_loss = metrics.get("val_loss")
+
+        if train_loss is None or val_loss is None:
+            return
+
+        epoch = trainer.current_epoch
+
+        self.py_logger.info(
+            f"[{self.run_id}] "
+            f"Epoch {epoch + 1}/{self.epochs} | "
+            f"train_loss={train_loss:.4f} | "
+            f"val_loss={val_loss:.4f}"
+        )
+
+
+# ------------------
+#   Print Logger
+# ------------------
+
+LOG_FORMAT = (
+    "%(levelname)s - %(asctime)s - %(name)s - %(message)s"
+)
+
+DATE_FORMAT = "%H:%M:%S"
+
+
+def setup_logger(
+    name: str,
+    level: int = logging.INFO,
+    log_file: Optional[str] = None,
+) -> logging.Logger:
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.propagate = True  # CRITICAL for SLURM
+
+    if not logger.handlers:
+        formatter = logging.Formatter(
+            LOG_FORMAT,
+            datefmt=DATE_FORMAT,
+        )
+        # stdout handler
+        sh = logging.StreamHandler(sys.stdout)
+        sh.setLevel(level)
+        sh.setFormatter(formatter)
+        logger.addHandler(sh)
+
+        # optional file handler
+        if log_file is not None:
+            fh = logging.FileHandler(log_file)
+            fh.setLevel(level)
+            fh.setFormatter(formatter)
+            logger.addHandler(fh)
+
+    return logger
+
+
+def configure_logging(level=logging.DEBUG):
+    """
+    Configure global logging level.
+    Call ONCE, from main.
+    """
+    # logging.getLogger().setLevel(level)
+    root = logging.getLogger()
+    root.setLevel(level)
+
+    if not root.handlers:
+        formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
+        sh = logging.StreamHandler(sys.stdout)
+        sh.setFormatter(formatter)
+        root.addHandler(sh)
+    

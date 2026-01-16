@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from torchvision import models
+from typing import Callable
 
 
 class ResNet18Backbone(nn.Module):
@@ -95,7 +96,6 @@ class ResNet3SliceMultihead(nn.Module):
     def __init__(
         self,
         input_slices: int,
-        num_classes: int = 2,
         freeze_backbone: bool = True,
         dropout: float = 0.5,
         **kwargs,
@@ -107,7 +107,6 @@ class ResNet3SliceMultihead(nn.Module):
         self.aggregate_weights = nn.Parameter(
             torch.ones(self.num_subvols, dtype=torch.float32)
         )
-        self.prediction_task = kwargs.get("prediction_task", None)
         self.out_dim = self.backbone.out_dim
         self.mean = 0.5
         self.std = 0.5
@@ -160,9 +159,9 @@ class ResNet3SliceMultihead(nn.Module):
         # feats = feats.reshape(B, -1)
         w = torch.softmax(self.aggregate_weights, dim=0)  # (N,)
         w = w.view(1, N, 1)  # (1, N, 1)
-        # print(w)
+
         feats = (feats * w).sum(dim=1)  # (B, 512)
-        # print(feats)
+
         # feats scalar product with weights. 1 embedding per features (B, 512).
         feats = self.dropout(feats)
         return feats
@@ -181,7 +180,7 @@ class ResNet3SliceMultihead(nn.Module):
         # return out
 
     def collate_with_augmentation(
-        self, batch: list, transform: callable = None
+        self, batch: list, transform: Callable = None
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Custom collate function that applies 2D augmentations to each slice of 3D volumes in the batch.
         Args:
