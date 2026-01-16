@@ -88,7 +88,7 @@ def run_jobs(
         if slurm_cfg is None:
             raise ValueError("slurm_cfg must be provided for slurm mode")
 
-        log_folder = slurm_cfg.pop("log_folder", "./slurm_logs")
+        log_folder = slurm_cfg.get("log_folder", "./slurm_logs")
 
         ex = submitit.AutoExecutor(folder=log_folder)
         ex.update_parameters(**slurm_cfg, slurm_array_parallelism=n_jobs)

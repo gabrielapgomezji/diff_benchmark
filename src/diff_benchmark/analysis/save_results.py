@@ -95,8 +95,9 @@ def save_model_results(
 
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(all_results, f, indent=2)
-        logger.info(
-            f"Saved results for {summary['model_name']} (run_id={summary['pipeline']['run_id']})"
+
+        print(
+            f"Saved results for {summary['model_name']} (run_id={summary["config"]["runtime"]["run_id"]})"
         )
 
 

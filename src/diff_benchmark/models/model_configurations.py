@@ -1,6 +1,7 @@
 import hashlib
 import json
 
+from omegaconf import OmegaConf
 from torch import nn
 
 from diff_benchmark.models.sklearn_models.classic_ml import (
@@ -99,6 +100,7 @@ class TaskModel(nn.Module):
 def create_model(
     model_name: str,
     model_kwargs: dict = {},
+    pred_head: dict = {},
 ):
     """Creates a model instance based on the specified type.
     Args:
@@ -136,8 +138,7 @@ def create_model(
         backbone = ResNet3SliceMultihead(**model_kwargs)
         head = build_prediction_head(
             embedding_dim=backbone.out_dim,
-            prediction_task=model_kwargs["prediction_task"],
-            **model_kwargs["head"],
+            **pred_head,
         )
         return TaskModel(backbone, head)
 
@@ -145,8 +146,7 @@ def create_model(
         backbone = MedicalNet(**model_kwargs)
         head = build_prediction_head(
             embedding_dim=backbone.out_dim,
-            prediction_task=model_kwargs["prediction_task"],
-            **model_kwargs["head"],
+            **pred_head,
         )
         return TaskModel(backbone, head)
 
@@ -198,6 +198,7 @@ def create_backend_trainer(
 def create_trainer(
     model_name: str,
     model_kwargs: dict = {},
+    pred_head: dict = {},
     backend_kwargs: dict = {},
 ):
     """Creates a Trainer for a specific model and backend.
@@ -209,7 +210,8 @@ def create_trainer(
     Returns:
         Trainer: Configured Trainer instance for the specified model and backend.
     """
-    model = create_model(model_name, model_kwargs)
+    model = create_model(model_name, model_kwargs, pred_head)
+    backend_kwargs["prediction_task"] = pred_head["prediction_task"]
     trainer = create_backend_trainer(model, backend_kwargs)
     return trainer
 
@@ -239,6 +241,7 @@ def get_model(name: str, config: dict) -> object:
 
     return create_trainer(
         model_name=name,
-        model_kwargs={**config["backbone"]},
+        model_kwargs={**config["model"]["backbone"]},
+        pred_head={**config["pred_head"]},
         backend_kwargs={**config["backend"]},
     )

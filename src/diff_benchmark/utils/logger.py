@@ -320,7 +320,8 @@ def setup_logger(
     log_file: Optional[str] = None,
 ) -> logging.Logger:
     logger = logging.getLogger(name)
-    logger.propagate = False  # CRITICAL for SLURM
+    logger.setLevel(level)
+    logger.propagate = True  # CRITICAL for SLURM
 
     if not logger.handlers:
         formatter = logging.Formatter(
@@ -329,22 +330,32 @@ def setup_logger(
         )
         # stdout handler
         sh = logging.StreamHandler(sys.stdout)
+        sh.setLevel(level)
         sh.setFormatter(formatter)
         logger.addHandler(sh)
 
         # optional file handler
         if log_file is not None:
             fh = logging.FileHandler(log_file)
+            fh.setLevel(level)
             fh.setFormatter(formatter)
             logger.addHandler(fh)
 
     return logger
 
 
-def configure_logging(level: int):
+def configure_logging(level=logging.DEBUG):
     """
     Configure global logging level.
     Call ONCE, from main.
     """
-    logging.getLogger().setLevel(level)
+    # logging.getLogger().setLevel(level)
+    root = logging.getLogger()
+    root.setLevel(level)
+
+    if not root.handlers:
+        formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
+        sh = logging.StreamHandler(sys.stdout)
+        sh.setFormatter(formatter)
+        root.addHandler(sh)
     
