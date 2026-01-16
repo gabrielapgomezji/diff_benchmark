@@ -1,0 +1,16 @@
+name: hcp
+# base_dir: /data/parietal/store4/data/HCP
+# results_dir: /data/parietal/store3/work/ggomezji/benchmark/HCP900
+data_reading: hcp
+
+metric_to_compute: rtop
+scale: 1000
+
+big_delta: 0.0431
+small_delta: 0.0106
+
+dwi_desc: data.nii.gz
+bvec_extensions: bvecs
+bval_extensions: bvals
+nodif_mask_extension: nodif_brain_mask.nii.gz
+aparcaseg_extension: T1w/aparc+aseg.nii.gz
