@@ -37,6 +37,7 @@ from omegaconf import OmegaConf
 #############
 
 def run_single_model(cfg, model_name, results_path):
+    cfg = OmegaConf.copy(cfg)
     logger = setup_logger("Job.run_single_model")
     metrics_rows = []
 
