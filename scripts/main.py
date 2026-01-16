@@ -242,8 +242,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
                 Path(results_path) / "analysis_results" / f"{run_id}_partial.json",
             )
         except Exception as e:
-            print(f"Crash in fold {fold_idx} of {run_id}: {e}")
-            logger.exception(f"Crash in fold {fold_idx} of {run_id}: {e}")
+            logger.info(f"Crash in fold {fold_idx} of {run_id}: {e}")
             save_model_results(
                 summary,
                 Path(results_path) / "analysis_results" / f"{run_id}_crashed.json",
@@ -318,6 +317,7 @@ import warnings
 for result in results:
     if not result.ok:
         warnings.warn(f"Job failed:\n{result.traceback}")
+
 
 metrics_dir = Path("./data/results/parquet/analysis_results")
 global_path = metrics_dir / "metrics.parquet"

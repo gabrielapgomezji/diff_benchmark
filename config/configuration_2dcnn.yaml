@@ -27,7 +27,7 @@ models:
     backend:
       backend: torch
       debug: true
-      epochs: 50
+      epochs: 1
       lr: 1e-5
       weight_decay: 0.01
       trainer_kwargs:
@@ -42,7 +42,7 @@ models:
 
     data:
       batch_size: 32
-      num_workers: 0
+      num_workers: 5
       # input_channels: 3   # number of slices
       image_size: [224, 224]
 # - name: 2dcnn

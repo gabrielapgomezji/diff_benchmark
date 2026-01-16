@@ -302,7 +302,9 @@ class TorchTrainer(BaseTrainer):
 
     def fit(self, dataloader):
         train_loader, val_loader = split_loader(dataloader, collate_fn=self.model.collate_fn, val_ratio=self.val_ratio)
-        show_progress = not self.logger.enabled or self.logger.enabled 
+        show_progress = not self.logger.enabled or self.logger.enabled
+        
+        self.log.info(f"Starting training for {self.epochs} epochs...") 
         
         for epoch in range(self.epochs):
             self.model.train()
@@ -316,6 +318,8 @@ class TorchTrainer(BaseTrainer):
                 total=len(train_loader),
                 enabled=show_progress,
             )
+            self.log.info(f"Epoch {epoch+1}/{self.epochs}")
+            print(f"Epoch {epoch+1}/{self.epochs}")
 
             # for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"[Epoch {epoch+1}/{self.epochs}]")):
             for batch_idx, batch in pbar:
