@@ -1,6 +1,6 @@
 backend: torch
 debug: true
-epochs: 6
+epochs: 1
 accelerator: gpu
 devices: 1
 lr: 1e-4

@@ -96,7 +96,7 @@ def save_model_results(
             json.dump(all_results, f, indent=2)
 
         print(
-            f"Saved results for {summary['model_name']} (run_id={summary['pipeline']['run_id']})"
+            f"Saved results for {summary['model_name']} (run_id={summary["config"]["runtime"]["run_id"]})"
         )
 
 

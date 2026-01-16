@@ -181,7 +181,6 @@ def create_backend_trainer(
     ValueError
         If the backend string does not match any of the supported backends.
     """
-    breakpoint()
     backend = backend_kwargs["backend"].lower()
     
     if backend == "sklearn":
@@ -212,6 +211,7 @@ def create_trainer(
         Trainer: Configured Trainer instance for the specified model and backend.
     """
     model = create_model(model_name, model_kwargs, pred_head)
+    backend_kwargs["prediction_task"] = pred_head["prediction_task"]
     trainer = create_backend_trainer(model, backend_kwargs)
     return trainer
 

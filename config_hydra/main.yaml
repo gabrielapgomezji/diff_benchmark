@@ -10,6 +10,7 @@ defaults:
   - cluster: margaret
   - _self_
 
+random_state: 42
 runtime:
   run_id: null
   # fold_idx: null

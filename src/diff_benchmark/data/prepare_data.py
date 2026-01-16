@@ -106,7 +106,7 @@ class DatasetPreparation:
         model = get_model(self.model_name, 
                           OmegaConf.to_container(self.cfg, resolve=True),
                          )
-        breakpoint()
+
         if hasattr(model, "model"):  # trainer wrapper
             model = model.model
         data_type = model.data_type
@@ -168,10 +168,10 @@ class DatasetPreparation:
         """
         # -------- DATASET CREATION --------
         X = brain_filtered
-        y = np.asarray(demographics_filtered[self.general_config["target_columns"][0]])
+        y = np.asarray(demographics_filtered[self.cfg.target.target_column[0]])
         gender = np.asarray(demographics_filtered["Gender"])
         torch_dataset = CustomDataset(X, y, gender)
-        preprocessed = PreprocessedData(X, y, gender, config=self.general_config)
+        preprocessed = PreprocessedData(X, y, gender, config=self.cfg)
         return torch_dataset, preprocessed
 
     def pipeline(self) -> Tuple[CustomDataset, PreprocessedData]:

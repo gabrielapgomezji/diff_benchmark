@@ -15,12 +15,13 @@ paths:
     base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/abide
     results_dir: /data/parietal/store3/work/ggomezji/benchmark/abide
 
-slurm_cfg:
+conf:
   enabled: true
   parallel_type: slurm
 
+slurm_cfg:
   slurm_partition: parietal,normal,gpu,gpu-best
   tasks_per_node: 1
   slurm_gpus_per_task: 1
   slurm_cpus_per_gpu: 10
-  timeout_min: 900
+  timeout_min: 60

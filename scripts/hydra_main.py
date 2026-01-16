@@ -20,6 +20,7 @@ from diff_benchmark.utils.job_manager import run_jobs
 from diff_benchmark.utils.scores import compute_metrics
 from diff_benchmark.utils.summary_saver import update_summary, compute_summary_stats
 from diff_benchmark.utils.logger import setup_logger, configure_logging
+from omegaconf import OmegaConf
 
 #############
 # KEEP FOR ARGPARSE CONFIG LOADING
@@ -35,31 +36,14 @@ from diff_benchmark.utils.logger import setup_logger, configure_logging
 # general_config, model_config = load_configs(args)
 #############
 
-def run_single_model(cfg, model_name, model_config, general_config, results_path):
+def run_single_model(cfg, model_name, results_path):
     logger = setup_logger("Job.run_single_model")
     metrics_rows = []
 
-    config = general_config
-
-    local_config = copy.deepcopy(model_config)
-
-    # local_config["model_name"] = model_name
-    cfg.runtime.run_id = make_run_id(cfg.model.name, cfg)
+    run_id = make_run_id(cfg.model.name, cfg)
+    cfg.runtime.run_id = run_id
     
-    # local_config["backbone"]["prediction_task"] = config["prediction_task"] # CHECK
-    # local_config["backend"]["prediction_task"] = config["prediction_task"] # CHECK
-            
-    # datasets_by_name = {
-    #     d["name"]: d for d in general_config["datasets"]["datasets_list"]
-    # }
-    # dataset_selected = datasets_by_name[local_config["dataset"]]
-    # dataset_selected = DatasetConfig(
-    #             **dataset_selected,
-    #             metric_to_compute=general_config["datasets"]["metric_to_compute"],
-    #             scale=general_config["datasets"]["scale"],
-    #             region=general_config["data_preparation"]["region"],
-    #         )
-    from omegaconf import OmegaConf
+    
     dataset_selected = DatasetConfig(
         **OmegaConf.to_container(cfg.dataset, resolve=True)
     )
@@ -73,7 +57,7 @@ def run_single_model(cfg, model_name, model_config, general_config, results_path
     targets_path = Path(results_path) / "parquet" / "data" / "targets.parquet"
     targets_path.parent.mkdir(parents=True, exist_ok=True)
     
-    target_name = config["target_columns"][0]
+    target_name = cfg.target.target_column[0]
     rows = [
         {"dataset": dataset_selected.name, "sample_id": sid, "target": target_name, "value": float(v)}
         for sid, v in zip(dataset.subject_ids, dataset.targets.numpy())
@@ -102,15 +86,7 @@ def run_single_model(cfg, model_name, model_config, general_config, results_path
 
     summary = {
         "model_name": model_name,
-        # "preprocessing": {
-        #     "data_type": config.get("data_type", "images"),
-        #     "csv_file": str(config.get("csv_file", "")),
-        #     "target_columns": config.get("target_columns", [])
-        # },
-        "pipeline": {
-            "run_id": run_id,
-            "comment": local_config.get("comment", ""),
-        },
+        "config": OmegaConf.to_container(cfg, resolve=True),
         "results": {
             "train_average_score": None,  # will fill after loop
             "train_std_score": None,  # will fill after loop
@@ -120,10 +96,14 @@ def run_single_model(cfg, model_name, model_config, general_config, results_path
             "folds": {},  # will fill inside loop
         },
     }
-    exclude_keys = {"comment", "name", "model_name"}
-    for key, value in local_config.items():
-        if key not in exclude_keys:
-            summary["pipeline"][key] = value
+    # cfg_path = Path(results_path) / "analysis_results" / f"{run_id}_config.yaml" # CHECK TO INCLUDE
+    # OmegaConf.save(cfg, cfg_path) # CHECK TO INCLUDE
+    
+    
+    # exclude_keys = {"comment", "name", "model_name"}
+    # for key, value in local_config.items():
+    #     if key not in exclude_keys:
+    #         summary["pipeline"][key] = value
 
     save_model_results(
         summary, Path(results_path) / "analysis_results" / f"{run_id}_partial.json"
@@ -140,24 +120,25 @@ def run_single_model(cfg, model_name, model_config, general_config, results_path
     for fold_idx, (train_idx, test_idx) in enumerate(indices):
         try:
             logger.info(f"Run ID: {run_id} - Fold {fold_idx+1}/{len(indices)}")
-            local_config["fold_idx"] = fold_idx
+            # local_config["fold_idx"] = fold_idx
             train_loader, test_loader = preprocessed.get_dataloader_fold(
                 dataset,
                 fold_idx,
                 indices,
-                num_workers=local_config["data"]["num_workers"],
-                batch_size=local_config["data"]["batch_size"],
+                num_workers=cfg.data.num_workers,
+                batch_size=cfg.data.batch_size,
             )
             train_idx, test_idx = indices[fold_idx]
             targets = dataset.targets.numpy()
             y_train = np.array(targets[train_idx]).squeeze()
             y_test = np.array(targets[test_idx]).squeeze()
 
-            local_config["backbone"]["prediction_task"] = config.get(
-                "prediction_task", "regression"
-            )
-            local_config["backend"]["run_id"] = run_id
-            model = get_model(model_name, local_config)
+            # local_config["backbone"]["prediction_task"] = config.get(
+            #     "prediction_task", "regression"
+            # )
+            # local_config["backend"]["run_id"] = run_id
+            model = get_model(cfg.model.name, 
+                          OmegaConf.to_container(cfg, resolve=True),)
 
             model.fit(train_loader)
             train_pred = model.predict(train_loader)
@@ -165,7 +146,7 @@ def run_single_model(cfg, model_name, model_config, general_config, results_path
             plot_true_vs_pred(
                 y_train, train_pred, fold_idx=fold_idx, run_id=run_id, type="train"
             )
-            train_score = compute_metrics(y_train, train_pred, prediction_task=local_config["backbone"]["prediction_task"])
+            train_score = compute_metrics(y_train, train_pred, prediction_task=cfg.pred_head.prediction_task)
 
             train_scores.append(train_score)
             train_preds.append(train_pred.tolist())
@@ -191,8 +172,8 @@ def run_single_model(cfg, model_name, model_config, general_config, results_path
             plot_true_vs_pred(
                 y_test, test_pred, fold_idx=fold_idx, run_id=run_id, type="test"
             )
-            test_score = compute_metrics(y_test, test_pred, prediction_task=local_config["backbone"]["prediction_task"])
-            logger.debug(f"Fold {fold_idx} - Train score: {train_score}, Test score: {test_score}")
+            test_score = compute_metrics(y_test, test_pred, prediction_task=cfg.pred_head.prediction_task)
+            logger.info(f"Fold {fold_idx} - Train score: {train_score}, Test score: {test_score}")
 
             test_scores.append(test_score)
             test_preds.append(test_pred.tolist())
@@ -215,7 +196,7 @@ def run_single_model(cfg, model_name, model_config, general_config, results_path
             pred_saver.add_rows(test_rows)
             pred_saver.save()
 
-            primary_metric = {"binary_classification": "accuracy", "regression": "mse"}[local_config["backbone"]["prediction_task"]]
+            primary_metric = {"binary_classification": "accuracy", "regression": "mse"}[cfg.pred_head.prediction_task]
             summary = update_summary(summary, fold_idx, train_score, test_score, y_train, train_pred, y_test, test_pred, primary_metric)
 
             metrics_rows.extend(
@@ -224,7 +205,7 @@ def run_single_model(cfg, model_name, model_config, general_config, results_path
                     run_id=run_id,
                     model_name=model_name,
                     dataset=dataset_selected.name,
-                    prediction_task=local_config["backbone"]["prediction_task"],
+                    prediction_task=cfg.pred_head.prediction_task,
                     fold=fold_idx,
                     split="train",
                 )
@@ -236,7 +217,7 @@ def run_single_model(cfg, model_name, model_config, general_config, results_path
                     run_id=run_id,
                     model_name=model_name,
                     dataset=dataset_selected.name,
-                    prediction_task=local_config["backbone"]["prediction_task"],
+                    prediction_task=cfg.pred_head.prediction_task,
                     fold=fold_idx,
                     split="test",
                 )
@@ -247,7 +228,6 @@ def run_single_model(cfg, model_name, model_config, general_config, results_path
                 Path(results_path) / "analysis_results" / f"{run_id}_partial.json",
             )
         except Exception as e:
-            print(f"Crash in fold {fold_idx} of {run_id}: {e}")
             logger.exception(f"Crash in fold {fold_idx} of {run_id}: {e}")
             save_model_results(
                 summary,
@@ -267,28 +247,6 @@ def run_single_model(cfg, model_name, model_config, general_config, results_path
     save_model_results(summary, Path(results_path) / "analysis_results")
     return model_name, run_id
 
-##############
-# KEEP FOR LOCAL TESTING
-# models_to_run = model_config["models"]
-# # logging.getLogger().setLevel(logging.DEBUG)
-# configure_logging(logging.DEBUG)
-# logger = setup_logger(__name__)
-# logger.info("Starting diff_benchmark")
-# # parallel_type = "slurm" # None, "joblib"
-
-# # if parallel_type == "slurm":
-# #     logging.getLogger().setLevel(logging.INFO)
-# # else:
-# #     logging.getLogger().setLevel(logging.DEBUG)
-# # else:
-# #     level = logging.WARNING
-
-# # run_single_model(
-# #     model_name=models_to_run[0]["name"],
-# #     model_config=models_to_run[0]["params"],
-# #     general_config=general_config,
-# #     results_path="./data/results",
-# # )
 ##############
 # KEEP FOR SLURM JOB SUBMISSION
 # slurm_cfg = general_config["slurm_cfg"][args.cluster]
@@ -360,12 +318,26 @@ def main(cfg: DictConfig):
 
     results_path = "./data/results"
     # SINGLE MODEL, SINGLE RUN
-    run_single_model(
-        cfg=cfg,
-        model_name=cfg.model.name,
-        model_config=cfg.model,
-        general_config=cfg,
-        results_path=results_path,
+    # run_single_model(
+    #     cfg=cfg,
+    #     model_name=cfg.model.name,
+    #     model_config=cfg.model,
+    #     general_config=cfg,
+    #     results_path=results_path,
+    # )
+
+    results = run_jobs(
+        run_fn=run_single_model,
+        fn_kwargs_list=[
+            {   
+                "cfg": cfg,
+                "model_name": cfg.model.name,
+                "results_path": results_path,
+            }
+        ],
+        parallel_type=cfg.cluster.conf.parallel_type,
+        slurm_cfg=cfg.cluster.slurm_cfg,
+        n_jobs=50,
     )
 
 

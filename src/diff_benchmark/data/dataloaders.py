@@ -60,9 +60,9 @@ class PreprocessedData:
         self.targets = targets
         self.genders = genders
         self.skf = StratifiedKFold(
-            n_splits=config["data_partition"]["n_splits"],
+            n_splits=config.data.data_partition["n_splits"],
             shuffle=True,
-            random_state=config["random_state"],
+            random_state=config.random_state,
         )
         self.config = config
 
