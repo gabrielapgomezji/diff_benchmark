@@ -5,10 +5,10 @@ import numpy as np
 from tqdm import tqdm
 
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
-from diff_benchmark.preprocessing.preparation_pipeline_unified import (
+from diff_benchmark.preprocessing.preparation_pipeline import (
     BrainDataPreparationPipeline,
 )
-from diff_benchmark.preprocessing.wrapper_utils_brain_data import extract_region_data
+from diff_benchmark.preprocessing.utils_brain_feature_extraction import extract_region_data
 from diff_benchmark.utils.logger import setup_logger
 
 logger = setup_logger(__name__)

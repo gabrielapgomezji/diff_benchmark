@@ -17,7 +17,7 @@ paths:
 
 conf:
   enabled: true
-  parallel_type: slurm #None #
+  parallel_type: None #slurm #
 
 slurm_cfg:
   slurm_partition: parietal,normal,gpu,gpu-best

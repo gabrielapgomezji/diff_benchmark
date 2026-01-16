@@ -7,15 +7,12 @@ import pandas as pd
 from diff_benchmark.data.dataloaders import PreprocessedData
 from diff_benchmark.data.generate_dataset import CustomDataset
 from diff_benchmark.models.model_configurations import get_model
-from diff_benchmark.preprocessing.brain_data_preparation import (
+from diff_benchmark.preprocessing.brain_feature_extraction import (
     DefaultPipeline,
     ImagePipeline,
 )
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
-from diff_benchmark.preprocessing.preprocess_demographic_data import (
-    DefaultDemographicsPreprocessor,
-)
-from diff_benchmark.preprocessing.wrapper_brain_base import DataPreparationBrain
+from diff_benchmark.preprocessing.preparation_pipeline import DemographicsPreparationPipeline, BrainDataPreparationPipeline
 from diff_benchmark.utils.logger import setup_logger
 from omegaconf import DictConfig, OmegaConf
 
@@ -23,7 +20,7 @@ logger = setup_logger(__name__)
 
 
 
-def get_data_pipeline(data_type: str, dataset: DatasetConfig) -> DataPreparationBrain:
+def get_data_pipeline(data_type: str, dataset: DatasetConfig) -> BrainDataPreparationPipeline:
     """Factory function to get the appropriate data pipeline based on data_type.
     Args:
         data_type (str): Type of data pipeline to use. One of ['images', 'array'].
@@ -131,7 +128,7 @@ class DatasetPreparation:
             cog_file = self._extract_participants_files_from_layouts(
                 self.brain_preparator.layouts
             )
-        preprocessor = DefaultDemographicsPreprocessor(cog_file)
+        preprocessor = DemographicsPreparationPipeline(cog_file)
         demographics_df = preprocessor.preprocess(self.cfg.target.target_column)
         return demographics_df
 
