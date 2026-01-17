@@ -6,7 +6,7 @@ general_config_path = Path(__file__).parent.parent / "config/configuration_gener
 with open(general_config_path, "r", encoding="utf-8") as f:
     general_config = yaml.safe_load(f)
 
-from diff_benchmark.preprocessing.brain_data_preparation import (
+from diff_benchmark.preprocessing.brain_feature_extraction import (
     DefaultPipeline,
 )
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig

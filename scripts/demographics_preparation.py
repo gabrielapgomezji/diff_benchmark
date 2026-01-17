@@ -3,14 +3,12 @@ from pathlib import Path
 import bids
 import yaml
 
-from diff_benchmark.preprocessing.brain_data_preparation import (
+from diff_benchmark.preprocessing.brain_feature_extraction import (
     DefaultMulticenterPipeline,
     DefaultPipeline,
 )
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
-from diff_benchmark.preprocessing.preprocess_demographic_data import (
-    DefaultDemographicsPreprocessor,
-)
+from diff_benchmark.preprocessing.preparation_pipeline import DemographicsPreparationPipeline
 
 general_config_path = Path(__file__).parent.parent / "config/configuration_general.yaml"
 with open(general_config_path, "r", encoding="utf-8") as f:
@@ -49,5 +47,5 @@ for dataset_to_prepare in general_config["datasets"]["datasets_list"]:
             )
             cog_file = layout.get_file("participants.tsv").path
 
-        preprocessor = DefaultDemographicsPreprocessor(cog_file)
+        preprocessor = DemographicsPreparationPipeline(cog_file)
         demographics_df = preprocessor.preprocess(general_config["target_columns"])
