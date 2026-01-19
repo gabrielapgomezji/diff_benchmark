@@ -1,0 +1,5 @@
+backbone:
+  depth: 10
+  pretrained: true
+  pretrain_path: /data/parietal/store3/work/ggomezji/projects/diff_benchmark/MedicalNet_pytorch_files2/pretrain/resnet_10.pth
+  input_channels: 1

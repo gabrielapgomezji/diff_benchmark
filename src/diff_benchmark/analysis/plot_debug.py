@@ -25,7 +25,7 @@ def load_debug_logs(run_id: str, debug_dir: Path) -> pd.DataFrame:
         raise FileNotFoundError(
             f"No debug logs found for run_id={run_id}"
         )
-
+    breakpoint()
     # keep epoch-level rows only
     df = df[df["batch"].isna()].copy()
     return df
@@ -170,6 +170,7 @@ def plot_debug_run(
     debug_dir: Path,
     output_root: Path,
 ):
+    breakpoint()
     df = load_debug_logs(run_id, debug_dir)
     prediction_task = infer_prediction_task(df)
 

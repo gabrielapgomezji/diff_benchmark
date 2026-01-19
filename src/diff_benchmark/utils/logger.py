@@ -34,6 +34,7 @@ class TrainerLogRecord:
     # optional / event-dependent
     batch: Optional[int] = None
     metrics: Optional[Dict[str, float]] = None
+    fold: Optional[int] = None
 
     def to_dict(self) -> dict:
         """
@@ -44,6 +45,7 @@ class TrainerLogRecord:
             "epoch": self.epoch,
             "loss": self.loss,
             "batch": self.batch,
+            "fold": self.fold,
         }
         if self.metrics:
             base.update(self.metrics)
@@ -78,6 +80,7 @@ class TorchDebugLogger:
         epoch: int,
         batch: int,
         loss: float,
+        fold: Optional[int] = None,
     ):
         if not self.enabled:
             return
@@ -87,6 +90,7 @@ class TorchDebugLogger:
                 split=split,
                 epoch=epoch,
                 batch=batch,
+                fold=fold,
                 loss=loss,
             )
         )
@@ -101,6 +105,7 @@ class TorchDebugLogger:
         epoch: int,
         loss: float,
         metrics: Optional[Dict[str, float]] = None,
+        fold: Optional[int] = None,
     ):
         if not self.enabled:
             return
@@ -109,6 +114,7 @@ class TorchDebugLogger:
             TrainerLogRecord(
                 split=split,
                 epoch=epoch,
+                fold=fold,
                 loss=loss,
                 metrics=metrics,
             )

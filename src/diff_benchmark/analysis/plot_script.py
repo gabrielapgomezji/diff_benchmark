@@ -238,12 +238,11 @@ def plot_run(
     output_root: Path,
 ):
     df = load_predictions_and_targets(predictions_path, targets_path, run_id)
-    breakpoint()
     metrics_df = load_metrics(
         metrics_dir,
         run_id,
     )
-    
+    breakpoint()
     model = df["model"].iloc[0]
     # prediction_task = infer_prediction_task(df)
     prediction_task = get_prediction_task(

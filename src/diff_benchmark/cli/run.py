@@ -129,6 +129,8 @@ def run_single_model(cfg_og, model_name, results_path):
             model = get_model(cfg.model.name, 
                           OmegaConf.to_container(cfg, resolve=True),)
 
+
+            model.set_fold(fold_idx)
             model.fit(train_loader)
             train_pred = model.predict(train_loader)
 

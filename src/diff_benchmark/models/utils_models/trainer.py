@@ -39,6 +39,7 @@ class BaseTrainer(ABC):
 
     def __init__(self, model: nn.Module):
         self.model = model
+        self.fold_idx: int | None = None  # add fold placeholder
 
     @property
     def data_type(self):
@@ -53,6 +54,10 @@ class BaseTrainer(ABC):
     def predict(self, dataloader):
         """Run inference and return predictions."""
         raise NotImplementedError
+    
+    def set_fold(self, fold_idx: int):
+        """Set the current fold for logging/tracking purposes."""
+        self.fold_idx = fold_idx
 
 
 class SklearnModel(ABC, BaseEstimator):
@@ -164,6 +169,9 @@ class SklearnTrainer(BaseTrainer):
         features, targets = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
         return features_reshaped, targets.flatten()
+    
+    def set_fold(self, fold_idx: int):
+        super().set_fold(fold_idx)
 
     def fit(self, dataloader: DataLoader):
         """
@@ -300,6 +308,9 @@ class TorchTrainer(BaseTrainer):
             prediction_task=self.prediction_task,
         )
 
+    def set_fold(self, fold_idx: int):
+        super().set_fold(fold_idx)
+            
     def fit(self, dataloader):
         train_loader, val_loader = split_loader(dataloader, collate_fn=self.model.collate_fn, val_ratio=self.val_ratio)
         show_progress = not self.logger.enabled or self.logger.enabled
@@ -319,7 +330,7 @@ class TorchTrainer(BaseTrainer):
                 enabled=show_progress,
             )
             self.log.info(f"Epoch {epoch+1}/{self.epochs}")
-            print(f"Epoch {epoch+1}/{self.epochs}")
+            print(f"Epoch {epoch+1}/{self.epochs} of fold {self.fold_idx}")
 
             # for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"[Epoch {epoch+1}/{self.epochs}]")):
             for batch_idx, batch in pbar:
@@ -356,6 +367,7 @@ class TorchTrainer(BaseTrainer):
                     epoch=epoch,
                     batch=batch_idx,
                     loss=loss.item(),
+                    fold= self.fold_idx if self.fold_idx is not None else -1,
                 )
                 if self.logger.enabled:
                     train_preds.append(preds.detach().cpu())
@@ -380,6 +392,7 @@ class TorchTrainer(BaseTrainer):
                 epoch=epoch,
                 loss=train_loss / len(train_loader),
                 metrics=metrics,
+                fold= self.fold_idx if self.fold_idx is not None else -1,
             )
             val_loss = self._validate(val_loader, epoch)
             self.scheduler.step(val_loss)
@@ -434,6 +447,7 @@ class TorchTrainer(BaseTrainer):
             epoch=epoch,
             loss=val_loss,
             metrics=metrics,
+            fold= self.fold_idx if self.fold_idx is not None else -1,
         )
         return val_loss
 
@@ -644,6 +658,12 @@ class LightningTrainer(BaseTrainer):
         self.trainer = pl.Trainer(**trainer_kwargs)
         self.val_ratio = val_ratio
 
+    def set_fold(self, fold_idx: int):
+        super().set_fold(fold_idx)
+        for cb in self.trainer.callbacks:
+            if isinstance(cb, LightningDebugLogger):
+                cb.set_fold(fold_idx)
+                
     def fit(self, dataloader):
         train_loader, val_loader = split_loader(dataloader, val_ratio=self.val_ratio)
         # self.trainer.fit(self.model, train_loader, val_loader)
