@@ -403,7 +403,7 @@ class TorchTrainer(BaseTrainer):
                 f"val_loss={val_loss:.4f}"
             )
         
-        self.logger.flush()
+        self.logger.flush(model=self.model)
 
     def _validate(self, val_loader, epoch):
         self.model.eval()

@@ -55,7 +55,7 @@ def main(cfg: DictConfig) -> None:
         metrics_dir=metrics_dir,
         output_path=metrics_path,
     )
-    run_id = "2dcnn_39fc8501"
+    run_id = "2dcnn_890f275e" #"2dcnn_39fc8501"
     # 2) Per-run plots
     if run_id:
         plot_debug_run(

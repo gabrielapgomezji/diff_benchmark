@@ -129,13 +129,24 @@ class TorchDebugLogger:
             return preds.argmax(dim=1)
         return preds
 
-    def flush(self):
+    def flush(self, model: Optional[object] = None):
         if not self.enabled or not self.records:
             return
 
         df = pd.DataFrame(r.to_dict() for r in self.records)
+        
+        fold_idx = None
+        if model is not None and hasattr(model, "fold_idx"):
+            fold_idx = model.fold_idx
+
+        if fold_idx is not None:
+            df["fold"] = fold_idx
+            suffix = f"_fold{fold_idx}"
+        else:
+            suffix = ""
+        
         path = os.path.join(
-            self.output_dir, f"torch_debug_{self.run_id}.parquet"
+            self.output_dir, f"torch_debug_{self.run_id}{suffix}.parquet"
         )
         df.to_parquet(path)
 
