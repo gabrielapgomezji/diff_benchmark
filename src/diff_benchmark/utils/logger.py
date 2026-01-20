@@ -141,7 +141,10 @@ class TorchDebugLogger:
             suffix = f"_fold{fold_idx}"
         else:
             suffix = ""
-            
+        
+        run_dir = os.path.join(self.output_dir, self.run_id)
+        os.makedirs(run_dir, exist_ok=True) 
+    
         path = os.path.join(
             self.output_dir, f"{self.run_id}/torch_debug_{self.run_id}{suffix}.parquet"
         )
