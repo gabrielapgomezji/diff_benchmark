@@ -13,6 +13,8 @@ from diff_benchmark.utils.scores import compute_metrics
 from diff_benchmark.utils.logger import TrainerLogRecord, TorchDebugLogger, LightningDebugLogger, tqdm_if_enabled, LightningPrintLogger
 from collections import deque
 from diff_benchmark.utils.logger import setup_logger
+from sklearn.model_selection import train_test_split
+from torch.utils.data import Subset
 
 
 train_transforms = transforms.Compose(
@@ -216,20 +218,22 @@ def split_loader(dataloader, collate_fn: Callable | None, val_ratio=0.2, seed=42
               shuffling disabled.
     """
     dataset = dataloader.dataset
-    n_total = len(dataset)
-    n_val = int(n_total * val_ratio)
-    n_train = n_total - n_val
+    # n_total = len(dataset)
+    # n_val = int(n_total * val_ratio)
+    # n_train = n_total - n_val
+    # generator = torch.Generator().manual_seed(seed)
+    # train_ds, val_ds = random_split(dataset, [n_train, n_val], generator)
+    genders = np.asarray(dataset.dataset.gender[dataset.indices])
+    idx = np.arange(len(dataset))
+    train_idx, val_idx = train_test_split(
+        idx,
+        test_size=val_ratio,
+        stratify=genders,
+        random_state=42,
+    )
 
-    generator = torch.Generator().manual_seed(seed)
-    train_ds, val_ds = random_split(dataset, [n_train, n_val], generator)
-    # genders = np.asarray(dataset.dataset.gender[dataset.indices])
-    # idx = np.arange(len(dataset))
-    # train_ds, val_ds = train_test_split(
-    #     idx,
-    #     test_size=val_ratio,
-    #     stratify=genders,
-    #     random_state=42,
-    # )
+    train_ds = Subset(dataset, train_idx)
+    val_ds = Subset(dataset, val_idx)
 
     train_loader = DataLoader(
         train_ds,
@@ -353,11 +357,7 @@ class TorchTrainer(BaseTrainer):
 
                 train_loss += loss.item()
                 loss_window.append(loss)
-                # if pbar is not train_loader:
-                #     pbar.set_postfix(
-                #         loss=f"{sum(loss_window)/len(loss_window):.4f}",
-                #         lr=f"{self.optimizer.param_groups[0]['lr']:.2e}",
-                #     )
+
                 pbar.set_postfix(
                     loss=f"{sum(loss_window)/len(loss_window):.4f}",
                     lr=f"{self.optimizer.param_groups[0]['lr']:.2e}",
@@ -372,10 +372,6 @@ class TorchTrainer(BaseTrainer):
                 if self.logger.enabled:
                     train_preds.append(preds.detach().cpu())
                     train_targets.append(y.detach().cpu())
-                
-
-                # breakpoint()
-                # self.model.train()
     
             metrics = None
             if self.logger.enabled:
@@ -403,7 +399,7 @@ class TorchTrainer(BaseTrainer):
                 f"val_loss={val_loss:.4f}"
             )
         
-        self.logger.flush(model=self.model)
+        self.logger.flush(trainer=self)
 
     def _validate(self, val_loader, epoch):
         self.model.eval()
