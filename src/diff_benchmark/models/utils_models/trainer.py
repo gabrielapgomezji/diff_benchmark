@@ -656,9 +656,8 @@ class LightningTrainer(BaseTrainer):
 
     def set_fold(self, fold_idx: int):
         super().set_fold(fold_idx)
-        for cb in self.trainer.callbacks:
-            if isinstance(cb, LightningDebugLogger):
-                cb.set_fold(fold_idx)
+
+        self.trainer.fold_idx = fold_idx
                 
     def fit(self, dataloader):
         train_loader, val_loader = split_loader(dataloader, val_ratio=self.val_ratio)

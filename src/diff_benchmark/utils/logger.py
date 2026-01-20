@@ -143,7 +143,7 @@ class TorchDebugLogger:
             suffix = ""
             
         path = os.path.join(
-            self.output_dir, f"torch_debug_{self.run_id}{suffix}.parquet"
+            self.output_dir, f"{self.run_id}/torch_debug_{self.run_id}{suffix}.parquet"
         )
         df.to_parquet(path)
 
@@ -204,11 +204,13 @@ class LightningDebugLogger(pl.Callback):
             return
 
         self._flush_epoch(
+            trainer=trainer, 
             split="train",
             epoch=trainer.current_epoch,
             losses=self._train_losses,
             preds=self._train_preds,
             targets=self._train_targets,
+            fold=getattr(trainer, "fold_idx", None),
         )
 
         self._train_preds.clear()
@@ -244,6 +246,7 @@ class LightningDebugLogger(pl.Callback):
             return
 
         self._flush_epoch(
+            trainer=trainer, 
             split="val",
             epoch=trainer.current_epoch,
             losses=self._val_losses,
@@ -258,7 +261,7 @@ class LightningDebugLogger(pl.Callback):
 
     # ---------- CORE ----------
 
-    def _flush_epoch(self, *, split, epoch, losses, preds, targets):
+    def _flush_epoch(self, *, split, epoch, losses, preds, targets, fold=None):
         import numpy as np
         from diff_benchmark.utils.scores import compute_metrics
         
@@ -278,6 +281,7 @@ class LightningDebugLogger(pl.Callback):
                 epoch=epoch,
                 loss=float(np.mean(losses)),
                 metrics=metrics,
+                fold=fold,
             )
         )
 
@@ -286,10 +290,12 @@ class LightningDebugLogger(pl.Callback):
     def on_fit_end(self, trainer, pl_module):
         if not self.enabled or not self.records:
             return
+        fold_idx = getattr(trainer, "fold_idx", None)
+        suffix = f"_fold{fold_idx}" if fold_idx is not None else ""
 
-        os.makedirs(self.debug_dir, exist_ok=True)
+        os.makedirs(os.path.join(self.debug_dir, self.run_id), exist_ok=True)
         df = pd.DataFrame(r.to_dict() for r in self.records)
-        df.to_parquet(os.path.join(self.debug_dir, f"lightning_debug_{self.run_id}.parquet"))
+        df.to_parquet(os.path.join(self.debug_dir, f"{self.run_id}/lightning_debug_{self.run_id}.parquet"))
 
 
 class LightningPrintLogger(pl.Callback):
