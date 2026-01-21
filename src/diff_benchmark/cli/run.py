@@ -298,7 +298,7 @@ def main(cfg: DictConfig):
         }
         for cfg_i in all_cfgs
     ]
-    breakpoint()
+
     parallel_type = None if cfg.cluster.conf.parallel_type not in ["slurm", "joblib"] else cfg.cluster.conf.parallel_type
 
     results = run_jobs(
