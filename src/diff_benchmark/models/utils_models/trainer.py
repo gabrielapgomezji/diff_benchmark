@@ -289,11 +289,9 @@ class TorchTrainer(BaseTrainer):
             weight_decay=weight_decay,
         )
         
-        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        self.scheduler = torch.optim.lr_scheduler.ExponentialLR(
             self.optimizer,
-            mode="min",
-            factor=0.5,
-            patience=10,
+            gamma=0.95,  # multiply LR by 0.95 every epoch
         )
 
         self.criterion = (
@@ -391,7 +389,7 @@ class TorchTrainer(BaseTrainer):
                 fold= self.fold_idx if self.fold_idx is not None else -1,
             )
             val_loss = self._validate(val_loader, epoch)
-            self.scheduler.step(val_loss)
+            self.scheduler.step()
             self.log.info(
                 f"[{self.run_id}] "
                 f"Epoch {epoch+1}/{self.epochs} | "

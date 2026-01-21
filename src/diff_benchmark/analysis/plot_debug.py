@@ -13,21 +13,34 @@ METRIC_LINESTYLE = {
     "dashed": "--",
 }
 
-def load_debug_logs(run_id: str, debug_dir: Path) -> pd.DataFrame:
-    torch_path = debug_dir / f"torch_debug_{run_id}.parquet"
-    lightning_path = debug_dir / f"lightning_debug_{run_id}.parquet"
+# def load_debug_logs(run_id: str, debug_dir: Path) -> pd.DataFrame:
+#     torch_path = debug_dir / f"torch_debug_{run_id}.parquet"
+#     lightning_path = debug_dir / f"lightning_debug_{run_id}.parquet"
 
-    if torch_path.exists():
-        df = pd.read_parquet(torch_path)
-    elif lightning_path.exists():
-        df = pd.read_parquet(lightning_path)
+#     if torch_path.exists():
+#         df = pd.read_parquet(torch_path)
+#     elif lightning_path.exists():
+#         df = pd.read_parquet(lightning_path)
+#     else:
+#         raise FileNotFoundError(
+#             f"No debug logs found for run_id={run_id}"
+#         )
+#     breakpoint()
+#     # keep epoch-level rows only
+#     df = df[df["batch"].isna()].copy()
+#     return df
+
+def load_debug_logs(file_path: Path) -> pd.DataFrame:
+    df = pd.read_parquet(file_path)
+    df = df[df["batch"].isna()].copy()  # keep only epoch-level rows
+    
+    # Extract fold from filename
+    fold_str = file_path.stem.split("_")[-1]
+    if fold_str.startswith("fold"):
+        df["fold"] = int(fold_str.replace("fold", ""))
     else:
-        raise FileNotFoundError(
-            f"No debug logs found for run_id={run_id}"
-        )
-    breakpoint()
-    # keep epoch-level rows only
-    df = df[df["batch"].isna()].copy()
+        df["fold"] = None
+    
     return df
 
 
@@ -108,7 +121,7 @@ def plot_classification_debug(df, run_id, output_dir):
 
     fig.suptitle(f"{run_id} – Classification debug", fontsize=14)
     output_dir.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_dir / "debug_training.png", dpi=150, bbox_inches="tight")
+    fig.savefig(output_dir / f"debug_training_{run_id}.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -134,7 +147,7 @@ def plot_regression_debug(df, run_id, output_dir):
 
     fig.suptitle(f"{run_id} – Regression debug", fontsize=14)
     output_dir.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_dir / "debug_training.png", dpi=150, bbox_inches="tight")
+    fig.savefig(output_dir / f"debug_training_{run_id}.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -170,16 +183,30 @@ def plot_debug_run(
     debug_dir: Path,
     output_root: Path,
 ):
-    breakpoint()
-    df = load_debug_logs(run_id, debug_dir)
+    torch_files = list(debug_dir.glob(f"torch_debug_{run_id}*.parquet"))
+    lightning_files = list(debug_dir.glob(f"lightning_debug_{run_id}*.parquet"))
+    all_files = torch_files + lightning_files
+
+    if not all_files:
+        raise FileNotFoundError(f"No debug logs found for run_id={run_id}")
+    
+    df_list = [load_debug_logs(f) for f in all_files]
+    df = pd.concat(df_list, ignore_index=True)
+
     prediction_task = infer_prediction_task(df)
 
     output_dir = output_root / run_id / "debug"
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    if prediction_task == "binary_classification":
-        plot_classification_debug(df, run_id, output_dir)
-    else:
-        plot_regression_debug(df, run_id, output_dir)
+    for fold in df["fold"].dropna().unique():
+        df_fold = df[df["fold"] == fold]
+        prediction_task = infer_prediction_task(df_fold)
+
+        fold_id = f"_fold{int(fold)}"
+        if prediction_task == "binary_classification":
+            plot_classification_debug(df_fold, f"{run_id}{fold_id}", output_dir)
+        else:
+            plot_regression_debug(df_fold, f"{run_id}{fold_id}", output_dir)
 
 
 if __name__ == "__main__":

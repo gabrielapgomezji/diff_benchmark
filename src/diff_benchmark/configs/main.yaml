@@ -14,3 +14,9 @@ random_state: 42
 runtime:
   run_id: null
   # fold_idx: null
+
+# pred_head:
+#   dropout: [0, 0.5]
+
+# backend:
+#   lr: [1e-4, 1e-5]

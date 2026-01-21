@@ -242,7 +242,7 @@ def plot_run(
         metrics_dir,
         run_id,
     )
-    breakpoint()
+
     model = df["model"].iloc[0]
     # prediction_task = infer_prediction_task(df)
     prediction_task = get_prediction_task(

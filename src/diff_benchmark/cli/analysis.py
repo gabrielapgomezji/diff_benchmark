@@ -55,30 +55,27 @@ def main(cfg: DictConfig) -> None:
         metrics_dir=metrics_dir,
         output_path=metrics_path,
     )
-    run_id = "2dcnn_890f275e" #"2dcnn_39fc8501"
+    run_id = cfg.runtime.run_id #"2dcnn_6ac42ad3" #"2dcnn_39fc8501"
     # 2) Per-run plots
     if run_id:
         plot_debug_run(
             run_id=run_id,
-            debug_dir=debug_dir,
+            debug_dir=debug_dir / str(run_id),
             output_root=results_dir / "plots",
         )
-        plot_run(
-            run_id=run_id, #2dcnn_be425892'2dcnn_08ef30ab', '2dcnn_341c8a9b', 
-            # '2dcnn_76059b89',
-        #    '2dcnn_be425892', 'linear_2ddaa507', 'linear_3addbf07',
-        #    'linear_cf6ab721'
-            metrics_dir=metrics_dir / "metrics.parquet",
-            predictions_path=results_dir / "parquet/data/predictions.parquet",
-            targets_path=results_dir / "parquet/data/targets.parquet",
-            output_root=results_dir / "plots",
-        )
+        # plot_run(
+        #     run_id=run_id,
+        #     metrics_dir=metrics_dir / "metrics.parquet",
+        #     predictions_path=results_dir / "parquet/data/predictions.parquet",
+        #     targets_path=results_dir / "parquet/data/targets.parquet",
+        #     output_root=results_dir / "plots",
+        # )
 
-    # 3) Global summary
-    plot_metrics_summary(
-        metrics_path=metrics_path,
-        output_dir=results_dir / "plots",
-    )
+    # # 3) Global summary
+    # plot_metrics_summary(
+    #     metrics_path=metrics_path,
+    #     output_dir=results_dir / "plots",
+    # )
 
 if __name__ == "__main__":
     main()
