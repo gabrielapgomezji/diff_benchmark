@@ -133,7 +133,7 @@ def run_single_model(cfg_og, model_name, results_path):
             model.set_fold(fold_idx)
             model.fit(train_loader)
             train_pred = model.predict(train_loader)
-
+            
             plot_true_vs_pred(
                 y_train, train_pred, fold_idx=fold_idx, run_id=run_id, type="train"
             )

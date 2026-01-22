@@ -119,18 +119,22 @@ def create_model(
         return backbone
 
     if model_name == "linear":
+        model_kwargs["prediction_task"]=pred_head["prediction_task"]
         backbone = LinearModel(**model_kwargs)
         return backbone
 
     if model_name == "pca_linear":
+        model_kwargs["prediction_task"]=pred_head["prediction_task"]
         backbone = PCALinearModel(**model_kwargs)
         return backbone
 
     if model_name == "pca_forest":
+        model_kwargs["prediction_task"]=pred_head["prediction_task"]
         backbone = PCARandomForestModel(**model_kwargs)
         return backbone
 
     if model_name == "pca_svm":
+        model_kwargs["prediction_task"]=pred_head["prediction_task"]
         backbone = PCASVMModel(**model_kwargs)
         return backbone
 
@@ -182,7 +186,6 @@ def create_backend_trainer(
         If the backend string does not match any of the supported backends.
     """
     backend = backend_kwargs["backend"].lower()
-    
     if backend == "sklearn":
         return SklearnTrainer(model=model, **backend_kwargs)
 

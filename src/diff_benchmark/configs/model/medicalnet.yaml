@@ -1,3 +1,5 @@
+name: medicalnet
+
 backbone:
   depth: 10
   pretrained: true
