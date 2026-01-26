@@ -12,12 +12,71 @@ from itertools import product
 from omegaconf import OmegaConf
 from copy import deepcopy
 
+
+
+CHOICE_KEY = "_choices_"
+
+
+def split_base_and_axes(obj):
+    """
+    Returns (base, axes)
+    - base: same structure but sweep nodes replaced by a single default (first value)
+    - axes: dict mapping "dot.path" -> list_of_values
+    """
+    axes = {}
+    base = deepcopy(OmegaConf.to_container(obj, resolve=False))
+
+    def rec(node, path=()):
+        if isinstance(node, dict):
+            if CHOICE_KEY in node and isinstance(node[CHOICE_KEY], list):
+                p = ".".join(path)
+                axes[p] = node[CHOICE_KEY]
+                # replace in base with first value as a default
+                return node[CHOICE_KEY][0]
+            # normal dict: recurse
+            out = {}
+            for k, v in node.items():
+                out[k] = rec(v, path + (k,))
+            return out
+        elif isinstance(node, list):
+            # lists are treated as data unless explicitly marked
+            return node
+        else:
+            return node
+
+    base = rec(base, ())
+    return base, axes
+
+def set_by_dotpath(d, dotpath, value):
+    keys = dotpath.split(".")
+    cur = d
+    for k in keys[:-1]:
+        cur = cur[k]
+    cur[keys[-1]] = value
+
+def cartesian_cfgs(cfg: DictConfig):
+    base, axes = split_base_and_axes(cfg)
+
+    axis_paths = list(axes.keys())
+    axis_vals = [axes[p] for p in axis_paths]
+
+    cfgs = []
+    for combo in product(*axis_vals):
+        inst = deepcopy(base)
+        for p, v in zip(axis_paths, combo):
+            set_by_dotpath(inst, p, v)
+        cfgs.append(OmegaConf.create(inst))
+
+    return cfgs
+
+
+
+
 def build_config_grid(cfg: DictConfig):
     """
     Expand list-valued fields into a list of configs,
     where each config has a single value per hyperparameter.
     """
-    # 1️⃣ Collect all list-valued leaves
     def find_list_leaves(cfg, prefix=""):
         leaves = {}
         for k, v in cfg.items():

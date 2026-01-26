@@ -3,10 +3,11 @@ debug: true
 epochs: 50
 accelerator: gpu
 devices: 1
-lr: 1e-4
+lr: 
+  _choices_: [1e-4, 1e-5]
 weight_decay: 1e-4
 
-optim:
-  optimizer: adamw
-  lr: 1e-4
-  weight_decay: 1e-4
+# optim:
+#   optimizer: adamw
+#   lr: 1e-4
+#   weight_decay: 1e-4

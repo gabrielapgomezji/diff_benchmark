@@ -18,7 +18,7 @@ from diff_benchmark.utils.scores import compute_metrics
 from diff_benchmark.utils.summary_saver import update_summary, compute_summary_stats
 from diff_benchmark.utils.logger import setup_logger, configure_logging
 from omegaconf import OmegaConf
-from diff_benchmark.cli.utils import build_config_grid
+from diff_benchmark.cli.utils import build_config_grid, cartesian_cfgs
 
 def run_single_model(cfg_og, model_name, results_path):
 
@@ -276,108 +276,62 @@ def run_single_model(cfg_og, model_name, results_path):
 
 import hydra
 from omegaconf import DictConfig
+import itertools
+
+
+def cartesian_overrides(sweep_cfg: DictConfig):
+    keys = list(sweep_cfg.keys())
+    vals = [list(sweep_cfg[k]) for k in keys]
+
+    overrides = []
+    for combo in itertools.product(*vals):
+        overrides.append(
+            [f"{k}={v}" for k, v in zip(keys, combo)]
+        )
+
+    return overrides
+
 
 CONFIG_DIR = str(Path(__file__).parent.parent / "configs")
-@hydra.main(
-    version_base="1.3",
-    config_path="pkg://diff_benchmark.configs",
-    config_name="main",
-)
-def main(cfg: DictConfig):
+def main():
     configure_logging(logging.DEBUG)
-
     results_path = "./data/results"
-    
-    all_cfgs = build_config_grid(cfg)
-    
+    # 1) compose base once
+    with hydra.initialize(version_base="1.3", config_path="pkg://diff_benchmark.configs"):
+        base = hydra.compose(config_name="main")
+
+        override_sets = cartesian_overrides(base.choices)
+        job_cfgs = [hydra.compose(config_name="main", overrides=ovr) for ovr in override_sets]
+
+    # 2) job_cfgs are fully composed, each with different defaults selections
+    all_confs = []
+    for job_cfg in job_cfgs:
+        all_confs.extend(cartesian_cfgs(job_cfg))  # or just run_one(job_cfg)
+
     fn_kwargs_list = [
         {
             "cfg_og": cfg_i,
             "model_name": cfg_i.model.name,
             "results_path": results_path,
         }
-        for cfg_i in all_cfgs
+        for cfg_i in all_confs
     ]
 
-    parallel_type = None if cfg.cluster.conf.parallel_type not in ["slurm", "joblib"] else cfg.cluster.conf.parallel_type
+    cluster_cfg = all_confs[0].cluster
+    parallel_type = (
+        None
+        if cluster_cfg.conf.parallel_type not in ["slurm", "joblib"]
+        else cluster_cfg.conf.parallel_type
+    )
 
     results = run_jobs(
         run_fn=run_single_model,
         fn_kwargs_list=fn_kwargs_list,
-        # fn_kwargs_list=[
-        #     {   
-        #         "cfg_og": cfg,
-        #         "model_name": cfg.model.name,
-        #         "results_path": results_path,
-        #     }
-        # ],
         parallel_type=parallel_type,
-        slurm_cfg=cfg.cluster.slurm_cfg,
+        slurm_cfg=cluster_cfg.slurm_cfg,
         n_jobs=50,
+        wait_for_results=False,
     )
 
 if __name__ == "__main__":
     main()
-
-# import logging
-# from pathlib import Path
-# from omegaconf import DictConfig, OmegaConf
-# from hydra_zen import launch
-# from diff_benchmark.utils.logger import configure_logging
-# from hydra import initialize, compose
-
-# def main():#cfg: DictConfig):
-#     """
-#     Main function adapted to use hydra-zen for in-memory multirun.
-#     Collects all configs (all list-valued parameters expanded)
-#     and passes them to run_jobs as fn_kwargs_list.
-#     """
-#     configure_logging(logging.DEBUG)
-#     results_path = "./data/results"
-
-#     # Step 1: Initialize Hydra and load your main.yaml
-#     with initialize(config_path="pkg://diff_benchmark.configs"):
-#         cfg: DictConfig = compose(config_name="main")
-
-#     # Step 2: Collect all configs in memory
-#     all_cfgs = build_config_grid(cfg)
-
-#     # Build fn_kwargs_list for run_jobs
-#     fn_kwargs_list = [
-#         {
-#             "cfg_og": cfg_i,
-#             "model_name": getattr(cfg_i.model, "name", "unknown"),
-#             "results_path": results_path,
-#         }
-#         for cfg_i in all_cfgs
-#     ]
-
-#     # breakpoint()  # Optional: debug
-
-#     # Determine parallel_type
-#     parallel_type = None
-#     if cfg.cluster.conf.parallel_type in ["slurm", "joblib"]:
-#         parallel_type = cfg.cluster.conf.parallel_type
-
-#     # Run jobs
-#     results = run_jobs(
-#         run_fn=run_single_model,
-#         fn_kwargs_list=fn_kwargs_list,
-#         parallel_type=parallel_type,
-#         slurm_cfg=cfg.cluster.slurm_cfg,
-#         n_jobs=50,
-#     )
-
-# if __name__ == "__main__":
-#     import hydra
-#     from omegaconf import DictConfig
-
-#     @hydra.main(
-#         version_base="1.3",
-#         config_path="pkg://diff_benchmark.configs",
-#         config_name="main",
-#     )
-#     def hydra_entry(cfg: DictConfig):
-#         main(cfg)
-
-#     hydra_entry()

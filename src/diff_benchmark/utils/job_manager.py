@@ -52,6 +52,7 @@ def run_jobs(
     parallel_type: str | None,
     n_jobs: int = 1,
     slurm_cfg: dict[str, Any] | None = None,
+    wait_for_results: bool = True,
 ) -> list[JobResult]:
     """Execute a function multiple times with different keyword arguments.
     Supports sequential, joblib-based parallel, and SLURM-based distributed execution.
@@ -95,6 +96,8 @@ def run_jobs(
 
         jobs = ex.map_array(fn_to_run, fn_kwargs_list)
 
-        return [j.result() for j in jobs]
+        if wait_for_results:
+            return [j.result() for j in jobs]
+        return jobs
 
     raise ValueError(f"Unknown parallel_type: {parallel_type!r}")
