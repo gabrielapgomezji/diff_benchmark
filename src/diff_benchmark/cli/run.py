@@ -28,7 +28,20 @@ def run_single_model(cfg_og, model_name, results_path):
 
     run_id = make_run_id(cfg.model.name, cfg)
     cfg.runtime.run_id = run_id
+    
+    experiment_dir = (
+        Path(results_path)
+        / "experiments"
+        / f"exp_{run_id}"
+    )
+    # Create directory tree
+    (experiment_dir / "metrics").mkdir(parents=True, exist_ok=True)
+    (experiment_dir / "predictions").mkdir(parents=True, exist_ok=True)
+    (experiment_dir / "debug").mkdir(parents=True, exist_ok=True)
+    (experiment_dir / "logs").mkdir(parents=True, exist_ok=True)
 
+    OmegaConf.save(cfg, experiment_dir / "config.yaml")
+    
     dataset_cfg = OmegaConf.to_container(cfg.dataset, resolve=True)
     cluster_cfg = cfg.cluster.paths[dataset_cfg["name"]]
 
@@ -46,7 +59,7 @@ def run_single_model(cfg_og, model_name, results_path):
     
     dataset, preprocessed = torch_dataset_preparator.pipeline()
     print("Data preparation completed.")
-    targets_path = Path(results_path) / "parquet" / "data" / "targets.parquet"
+    targets_path = experiment_dir / "predictions" / "targets.parquet"
     targets_path.parent.mkdir(parents=True, exist_ok=True)
 
     target_name = cfg.target.target_column[0]
@@ -98,7 +111,7 @@ def run_single_model(cfg_og, model_name, results_path):
         summary, Path(results_path) / "analysis_results" / f"{run_id}_partial.json"
     )
     
-    predictions_path = Path(results_path) / "parquet" / "data" / "predictions.parquet"
+    predictions_path = experiment_dir / "predictions" / "predictions.parquet"
     key_cols = ["run_id", "model", "dataset", "fold", "split", "sample_id", "target"]
     pred_saver = ParquetSaver(predictions_path, key_columns=key_cols,
                             columns=[
@@ -228,7 +241,7 @@ def run_single_model(cfg_og, model_name, results_path):
             )
             raise
     
-    metrics_path = Path(results_path) / "parquet" / "analysis_results" / f"metrics_{run_id}.parquet"
+    metrics_path = experiment_dir / "metrics" / "fold_metrics.parquet"
     metrics_path.parent.mkdir(parents=True, exist_ok=True)
 
     df = pd.DataFrame(metrics_rows)
@@ -295,7 +308,7 @@ def cartesian_overrides(sweep_cfg: DictConfig):
 CONFIG_DIR = str(Path(__file__).parent.parent / "configs")
 def main():
     configure_logging(logging.DEBUG)
-    results_path = "./data/results"
+    results_path = ".exp_outputs"
     # 1) compose base once
     with hydra.initialize(version_base="1.3", config_path="pkg://diff_benchmark.configs"):
         base = hydra.compose(config_name="main")
