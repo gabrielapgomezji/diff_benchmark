@@ -1,0 +1,18 @@
+name: wand
+data_reading: bids
+
+metric_to_compute: rtop
+scale: 1000
+
+big_delta: 0.024
+small_delta: 0.007
+
+big_delta_per_bvalue:
+  2200: 24
+  4000: 30
+  4400: 24
+  8000: 30
+  5800: 42
+  7750: 55
+  11600: 42
+  15500: 55

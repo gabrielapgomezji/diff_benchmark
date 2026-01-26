@@ -1,0 +1,12 @@
+name: camcan
+data_reading: bids
+
+metric_to_compute: rtop
+scale: 1000
+
+big_delta: 0.024
+small_delta: 0.007
+
+big_delta_per_bvalue:
+  1000: 24
+  2000: 30

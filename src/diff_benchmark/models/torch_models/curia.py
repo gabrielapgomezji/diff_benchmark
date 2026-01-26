@@ -6,22 +6,23 @@ from diff_benchmark.utils.logger import setup_logger
 logger = setup_logger(__name__)
 
 
-class DinoViTBackbone(nn.Module):
+class CuriaBackbone(nn.Module):
     """
-    Hugging Face DINO Vision Transformer backbone adapted for 3D volumes
+    CURIA medical foundation model adapted for 3D volumes
     via slice-wise processing.
     """
 
-    data_type = "images"
+    data_type = "image"
 
     def __init__(
         self,
-        model_name: str = "facebook/dinov2-base",
+        model_name: str = "curia/curia-vit-base",  # adjust if needed
         freeze_backbone: bool = False,
-        slice_axis: int = 2,  # axial slices
+        slice_axis: int = 2,  # axial by default
         pooling: str = "mean",  # mean | max | cls
     ):
         super().__init__()
+
         self.slice_axis = slice_axis
         self.pooling = pooling
 
@@ -35,7 +36,7 @@ class DinoViTBackbone(nn.Module):
                 p.requires_grad = False
 
         logger.info(
-            f"Loaded DINO backbone {model_name} "
+            f"Loaded CURIA backbone {model_name} "
             f"(embedding_dim={self.embedding_dim})"
         )
 
@@ -46,15 +47,16 @@ class DinoViTBackbone(nn.Module):
         Returns:
             Tensor of shape (B, embedding_dim)
         """
-        # B, C, D, H, W = x.unsqueeze(1).shape
-        # assert C == 1, "Expected single-channel MRI volumes"
 
-        # # (B, D, H, W)
-        # x = x.squeeze(1)
         B, D, H, W = x.shape
-        # Reorder slices depending on axis
+        # assert C == 1, "Expected single-channel medical volumes"
+
+        # # Remove channel dimension
+        # x = x.squeeze(1)  # (B, D, H, W)
+
+        # Slice selection
         if self.slice_axis == 0:
-            slices = x  # (B, D, H, W)
+            slices = x
         elif self.slice_axis == 1:
             slices = x.permute(0, 2, 1, 3)
         else:
@@ -65,7 +67,7 @@ class DinoViTBackbone(nn.Module):
         # Flatten slices into batch
         slices = slices.reshape(B * num_slices, H, W)
 
-        # Convert grayscale → 3 channels
+        # CURIA usually supports grayscale, but be safe:
         slices = slices.unsqueeze(1).repeat(1, 3, 1, 1)
 
         inputs = self.processor(
@@ -73,19 +75,18 @@ class DinoViTBackbone(nn.Module):
             return_tensors="pt",
             do_rescale=False,
         )
-
         inputs = {k: v.to(x.device) for k, v in inputs.items()}
 
-        with torch.no_grad():
-            outputs = self.backbone(**inputs)
+        outputs = self.backbone(**inputs)
         tokens = outputs.last_hidden_state  # (B*S, N, C)
 
+        # Slice-level pooling
         if self.pooling == "cls":
             slice_embeds = tokens[:, 0]
         else:
             slice_embeds = tokens.mean(dim=1)
 
-        # (B, S, C)
+        # Volume-level aggregation
         slice_embeds = slice_embeds.view(B, num_slices, -1)
 
         if self.pooling == "max":
