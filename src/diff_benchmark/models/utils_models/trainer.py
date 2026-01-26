@@ -217,12 +217,8 @@ def split_loader(dataloader, collate_fn: Callable | None, val_ratio=0.2, seed=42
             - val_loader (DataLoader): DataLoader for the validation subset with
               shuffling disabled.
     """
+    print(f"Val ratio: {val_ratio}, seed: {seed}")
     dataset = dataloader.dataset
-    # n_total = len(dataset)
-    # n_val = int(n_total * val_ratio)
-    # n_train = n_total - n_val
-    # generator = torch.Generator().manual_seed(seed)
-    # train_ds, val_ds = random_split(dataset, [n_train, n_val], generator)
     genders = np.asarray(dataset.dataset.gender[dataset.indices])
     idx = np.arange(len(dataset))
     train_idx, val_idx = train_test_split(
@@ -269,6 +265,7 @@ class TorchTrainer(BaseTrainer):
         weight_decay: float = 1e-4,
         device: str = "cuda",
         val_ratio: float = 0.2,
+        seed: int = 42,
         **kwargs: Any,
     ):
         super().__init__(model)
@@ -277,6 +274,7 @@ class TorchTrainer(BaseTrainer):
 
         self.epochs = epochs
         self.val_ratio = val_ratio
+        self.seed = seed
 
         # self.optimizer = torch.optim.AdamW(
         #     self.model.parameters(),
@@ -314,7 +312,7 @@ class TorchTrainer(BaseTrainer):
         super().set_fold(fold_idx)
             
     def fit(self, dataloader):
-        train_loader, val_loader = split_loader(dataloader, collate_fn=self.model.collate_fn, val_ratio=self.val_ratio)
+        train_loader, val_loader = split_loader(dataloader, collate_fn=self.model.collate_fn, val_ratio=self.val_ratio, seed=self.seed)
         show_progress = not self.logger.enabled or self.logger.enabled
         
         self.log.info(f"Starting training for {self.epochs} epochs...") 
@@ -614,6 +612,7 @@ class LightningTrainer(BaseTrainer):
         learning_rate: float = 1e-4,
         weight_decay: float = 1e-4,
         val_ratio: float = 0.2,
+        seed: int = 42,
         **kwargs: Any,
     ):
         self.lightning_model = _LightningModuleAdapter(
@@ -651,6 +650,7 @@ class LightningTrainer(BaseTrainer):
 
         self.trainer = pl.Trainer(**trainer_kwargs)
         self.val_ratio = val_ratio
+        self.seed = seed
 
     def set_fold(self, fold_idx: int):
         super().set_fold(fold_idx)
@@ -658,7 +658,7 @@ class LightningTrainer(BaseTrainer):
         self.trainer.fold_idx = fold_idx
                 
     def fit(self, dataloader):
-        train_loader, val_loader = split_loader(dataloader, val_ratio=self.val_ratio)
+        train_loader, val_loader = split_loader(dataloader, val_ratio=self.val_ratio, seed=self.seed)
         # self.trainer.fit(self.model, train_loader, val_loader)
         self.trainer.fit(self.lightning_model, train_loader, val_loader)
 

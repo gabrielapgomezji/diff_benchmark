@@ -7,7 +7,7 @@ import nilearn as ni
 import numpy as np
 import pandas as pd
 from dipy.core.gradients import gradient_table
-from dipy.reconst import dti
+from dipy.reconst import dti, dki
 from dipy.reconst.mapmri import MapmriModel
 from nilearn import image as nimage
 from nilearn import maskers
@@ -253,6 +253,74 @@ def compute_md(
         return nmd_img
     logger.warning("Be careful, this is not normalized MD!")
     return masker.inverse_transform(md.T)
+
+
+def compute_mk(
+    dwi_nib: nib.nifti1.Nifti1Image,
+    mask_img: nib.nifti1.Nifti1Image,
+    normalization_mask_img: nib.nifti1.Nifti1Image,
+    bvals: np.ndarray,
+    bvecs: np.ndarray,
+    big_delta: float,
+    small_delta: float,
+    delta_per_bvalue: dict | None = None,
+):
+    """Compute Mean Kurtosis (MK) from DWI data.
+    Args:
+        dwi_nib (nib.Nifti1Image): DWI NIfTI image.
+        mask_img (nib.Nifti1Image): Brain mask NIfTI image.
+        normalization_mask_img (nib.Nifti1Image): Normalization mask NIfTI image.
+        bvals (np.ndarray): Array of b-values.
+        bvecs (np.ndarray): Array of b-vectors.
+        big_delta (float): Big delta value.
+        small_delta (float): Small delta value.
+        delta_per_bvalue (dict | None): Optional dictionary mapping b-values to delta values.
+    Returns:
+        nib.Nifti1Image: MK NIfTI image.
+    """
+    b0 = nimage.index_img(dwi_nib, 0)
+
+    masker = maskers.NiftiMasker(mask_img)
+    masker.fit(b0)
+    dwi_data = masker.transform(dwi_nib)
+
+    if delta_per_bvalue is not None:
+        selected_bvals = [0] + [
+            k for k, v in delta_per_bvalue.items() if v == big_delta * 1000
+        ]
+        bvals_mask = np.any([bvals == s for s in selected_bvals], axis=0)
+        dwi_data = dwi_data[bvals_mask, :]
+    else:
+        bvals_mask = np.ones_like(bvals, dtype=bool)
+
+    gtab = gradient_table(
+        bvals=bvals[bvals_mask],
+        bvecs=bvecs[bvals_mask],
+        small_delta=small_delta,
+        big_delta=big_delta,
+    )
+
+    dki_model = dki.DiffusionKurtosisModel(gtab)
+    dki_fit = dki_model.fit(dwi_data.T)
+
+    mk = dki_fit.mk
+
+    if normalization_mask_img is not None:
+        norm_masker = maskers.NiftiMasker(normalization_mask_img)
+        norm_masker.fit(b0)
+
+        dwi_ventricles = norm_masker.transform(dwi_nib)
+        if delta_per_bvalue is not None:
+            dwi_ventricles = dwi_ventricles[bvals_mask, :]
+
+        mk_ventricles = dki_model.fit(dwi_ventricles.T).mk
+
+        nmk = mk / mk_ventricles[~np.isnan(mk_ventricles)].mean()
+        nmk = nmk.clip(0, np.percentile(nmk[~np.isnan(nmk)], 99))
+        return masker.inverse_transform(nmk.T)
+
+    logger.warning("Be careful, this is not normalized MK!")
+    return masker.inverse_transform(mk.T)
 
 
 def project_to_surface(
@@ -544,6 +612,7 @@ def extract_region_data(
 METRIC_COMPUTERS = {
     "rtop": compute_rtop,
     "md": compute_md,
+    "mk": compute_mk,
 }
 
 

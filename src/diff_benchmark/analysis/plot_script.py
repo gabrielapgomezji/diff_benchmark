@@ -36,7 +36,7 @@ def load_metrics(metrics_path: Path, run_id: str) -> pd.DataFrame:
 
 
 def get_prediction_task(metrics_df, run_id):
-    breakpoint()
+    # breakpoint()
     return (
         metrics_df
         .loc[metrics_df["run_id"] == run_id, "prediction_task"]

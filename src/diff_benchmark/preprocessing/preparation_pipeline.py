@@ -505,13 +505,13 @@ class BrainDataPreparationPipeline(ABC):
                 }
                 for subject_id in subject_list
             ],
-            parallel_type="slurm",
+            parallel_type="slurm", #None, #
             slurm_cfg={
                 "cpus_per_task": 1,
                 "timeout_min": 900,
                 "mem_gb": 50,
             },
-            n_jobs=50,
+            n_jobs=35,
         )
 
         # Once all files are ready, run the analysis

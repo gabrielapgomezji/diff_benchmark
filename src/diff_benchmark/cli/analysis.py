@@ -8,6 +8,7 @@ from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
 from diff_benchmark.analysis.plot_debug import plot_debug_run
 from diff_benchmark.analysis.plot_script import plot_run
 from diff_benchmark.analysis.plot_summary import plot_metrics_summary
+from diff_benchmark.analysis.print_summary_table import load_all_runs, print_table, select_best_runs, table_best_means, table_detailed, table_folds_wide
 from pathlib import Path
 import pandas as pd
 
@@ -55,7 +56,31 @@ def main(cfg: DictConfig) -> None:
         metrics_dir=metrics_dir,
         output_path=metrics_path,
     )
-    run_id = cfg.runtime.run_id #"2dcnn_6ac42ad3" #"2dcnn_39fc8501"
+    
+    all_results_path = Path(results_dir) / "analysis_results" / "all_results.json"
+
+    all_runs = load_all_runs(all_results_path)
+
+    # TABLE 1
+    df_best = table_best_means(all_runs)
+    print("\n=== BEST MEAN RESULTS ===")
+    print_table(df_best)
+
+    # TABLE 2
+    best_runs = select_best_runs(all_runs)
+    df_detailed = table_detailed(best_runs, primary_metric="accuracy")
+
+    print("\n=== DETAILED RESULTS (BEST RUN PER MODEL) ===")
+    print_table(df_detailed)
+    
+    print("\n=== WIDE-FORMAT RESULTS TRAIN (BEST RUN PER MODEL) ===")
+    df_wide = table_folds_wide(best_runs, split="train")
+    print_table(df_wide)
+    print("\n=== WIDE-FORMAT RESULTS TEST (BEST RUN PER MODEL) ===")
+    df_wide = table_folds_wide(best_runs, split="test")
+    print_table(df_wide)
+
+    run_id = cfg.runtime.run_id
     # 2) Per-run plots
     if run_id:
         plot_debug_run(

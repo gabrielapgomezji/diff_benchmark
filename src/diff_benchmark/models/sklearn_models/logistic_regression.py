@@ -58,12 +58,8 @@ class PCALinearModel(SklearnModel):
             scoring = "neg_mean_squared_error"
 
             param_grid = {
-                "pca__n_components": [10],  # [10, 50, 100],
-                "linear__alpha": [
-                    0.01,
-                    0.1,
-                    1,
-                ],  # [0.01, 0.1, 1, 10],  # Ridge regularization
+                "pca__n_components": [10, 50, 100],
+                "linear__alpha": [0.01, 0.1, 1, 10],  # Ridge regularization
             }
 
         pipeline = Pipeline(

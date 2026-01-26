@@ -7,6 +7,8 @@ from torch import nn
 from diff_benchmark.models.sklearn_models.classic_ml import (
     PCARandomForestModel,
     PCASVMModel,
+    RandomForestModel,
+    SVMModel,
 )
 from diff_benchmark.models.sklearn_models.dummy import (
     DummyClassifierModel,
@@ -18,6 +20,9 @@ from diff_benchmark.models.sklearn_models.logistic_regression import (
 )
 from diff_benchmark.models.torch_models.cnn import ResNet3SliceMultihead
 from diff_benchmark.models.torch_models.medicalnet import MedicalNet
+from diff_benchmark.models.torch_models.dinov2 import DinoViTBackbone
+from diff_benchmark.models.torch_models.vit import GoogleViTBackbone
+from diff_benchmark.models.torch_models.curia import CuriaBackbone
 from diff_benchmark.models.utils_models.prediction_head import build_prediction_head
 from diff_benchmark.models.utils_models.trainer import (
     LightningTrainer,
@@ -128,6 +133,16 @@ def create_model(
         backbone = PCALinearModel(**model_kwargs)
         return backbone
 
+    if model_name == "forest":
+        model_kwargs["prediction_task"]=pred_head["prediction_task"]
+        backbone = RandomForestModel(**model_kwargs)
+        return backbone
+    
+    if model_name == "svm":
+        model_kwargs["prediction_task"]=pred_head["prediction_task"]
+        backbone = SVMModel(**model_kwargs)
+        return backbone
+    
     if model_name == "pca_forest":
         model_kwargs["prediction_task"]=pred_head["prediction_task"]
         backbone = PCARandomForestModel(**model_kwargs)
@@ -150,6 +165,29 @@ def create_model(
         backbone = MedicalNet(**model_kwargs)
         head = build_prediction_head(
             embedding_dim=backbone.out_dim,
+            **pred_head,
+        )
+        return TaskModel(backbone, head)
+    if model_name == "dinov2":
+        backbone = DinoViTBackbone(**model_kwargs)
+        head = build_prediction_head(
+            embedding_dim=backbone.embedding_dim,
+            **pred_head,
+        )
+        return TaskModel(backbone, head)
+    
+    if model_name == "vit":
+        backbone = GoogleViTBackbone(**model_kwargs)
+        head = build_prediction_head(
+            embedding_dim=backbone.embedding_dim,
+            **pred_head,
+        )
+        return TaskModel(backbone, head)
+    
+    if model_name == "curia":
+        backbone = CuriaBackbone(**model_kwargs)
+        head = build_prediction_head(
+            embedding_dim=backbone.embedding_dim,
             **pred_head,
         )
         return TaskModel(backbone, head)
@@ -242,6 +280,8 @@ def get_model(name: str, config: dict) -> object:
 
     name = name.lower()
     config["backend"]["run_id"] = config["runtime"]["run_id"]
+    config["backend"]["val_ratio"] = config["data"]["data_partition"]["val_size"]
+    config["backend"]["seed"] = config["random_state"]
     return create_trainer(
         model_name=name,
         model_kwargs={**config["model"]["backbone"]},
