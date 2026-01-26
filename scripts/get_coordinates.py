@@ -82,7 +82,7 @@ if __name__ == "__main__":
     subject_id = "100307"
     hcp_root = Path("/data/parietal/store4/data/HCP")
     subject_dir = hcp_root / subject_id
-    breakpoint()
+    # breakpoint()
     # coords_L = load_surface_coordinates(subject_dir, hemisphere="L", surface="pial")
     # coords_R = load_surface_coordinates(subject_dir, hemisphere="R", surface="pial")
     coords_L, dict_L = load_surface_coordinates(
