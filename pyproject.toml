@@ -5,6 +5,9 @@ description = ""
 authors = [
     {name = "ggomezji",email = "gabriela.gomez-jimenez@inria.fr"}
 ]
+packages = [
+    { include = "diff_benchmark", from = "src" }
+]
 readme = "README.md"
 requires-python = ">=3.12, <3.14"
 dependencies = ["numpy (>=2.0.0,<2.2.10)",
