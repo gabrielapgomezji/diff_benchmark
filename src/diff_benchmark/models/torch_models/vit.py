@@ -25,7 +25,7 @@ class GoogleViTBackbone(nn.Module):
 
         self.slice_axis = slice_axis
         self.pooling = pooling
-        model_dir = Path(__file__).resolve().parent.parent.parent.parent.parent / "pretrain" / model_name
+        model_dir = Path(__file__).parent.parent.parent.parent.parent / "pretrain" / model_name
         if model_dir.exists():
             source = str(model_dir)
             local_only = True

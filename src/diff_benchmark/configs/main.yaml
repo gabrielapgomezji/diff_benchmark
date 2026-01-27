@@ -22,5 +22,5 @@ choices:
   model: [medicalnet] #[2dcnn, medicalnet]
   cluster: [jean_zay]
   dataset.metric_to_compute: [rtop]
-  model.depth: [10, 18]
+  model.backbone.depth: [10, 18]
   

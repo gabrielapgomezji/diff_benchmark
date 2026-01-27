@@ -62,7 +62,7 @@ def run_single_model(cfg_og, model_name, results_path):
     
     dataset_cfg = OmegaConf.to_container(cfg.dataset, resolve=True)
     cluster_cfg = cfg.cluster.paths[dataset_cfg["name"]]
-
+    
     dataset_selected = DatasetConfig(
         **dataset_cfg,
         base_dir=Path(cluster_cfg.base_dir),
@@ -74,7 +74,7 @@ def run_single_model(cfg_og, model_name, results_path):
         cfg=cfg,
         source_dataset=dataset_selected,
     )
-    
+
     dataset, preprocessed = torch_dataset_preparator.pipeline()
     print("Data preparation completed.")
     targets_path = experiment_dir / "predictions" / "targets.parquet"

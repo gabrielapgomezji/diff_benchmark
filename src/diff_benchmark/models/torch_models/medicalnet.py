@@ -1,7 +1,7 @@
 from functools import partial
 from typing import Any, Callable
 
-from click import Path
+from pathlib import Path
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -429,7 +429,7 @@ class MedicalNet(ResNet):
             no_cuda=no_cuda,
         )
         pretrain_path = (
-                Path(__file__).resolve().parent.parent.parent.parent.parent
+                Path(__file__).parent.parent.parent.parent.parent
                 / "pretrain"
                 / pretrain_path / f"resnet_{depth}.pth"
             )
