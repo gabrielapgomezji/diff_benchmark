@@ -3,121 +3,86 @@ import pandas as pd
 from pathlib import Path
 
 
-def load_all_runs(path: Path) -> list[dict]:
-    with open(path) as f:
-        return json.load(f)
+def load_global_metrics(metrics_path: Path) -> pd.DataFrame:
+    """
+    Load the combined metrics.parquet (fold-level metrics for all experiments).
+    """
+    if not metrics_path.exists():
+        raise FileNotFoundError(f"{metrics_path} not found")
     
-def table_best_means(all_runs: list[dict]) -> pd.DataFrame:
-    rows = []
+    df = pd.read_parquet(metrics_path)
+    return df
+    
+def table_best_means(df_metrics: pd.DataFrame, primary_metric: str = "accuracy") -> pd.DataFrame:
+    """
+    Compute best mean results per model using the precomputed 'mean' column.
+    """
+    df_filtered = df_metrics[(df_metrics["metric"] == primary_metric) & (df_metrics["split"] == "test")]
 
-    for r in all_runs:
-        res = r["results"]
-        if res["test_average_score"] is None:
-            continue
-
-        rows.append({
-            "model_name": r["model_name"],
-            "train_mean": res["train_average_score"],
-            "test_mean": res["test_average_score"],
-        })
-
-    df = pd.DataFrame(rows)
-
-    return (
-        df.sort_values("test_mean", ascending=False)
-          .groupby("model_name", as_index=False)
-          .first()
-          .sort_values("test_mean", ascending=False)
-    )
+    # sort by mean descending
+    df_sorted = df_filtered.sort_values("mean", ascending=False)
+    
+    # pick one row per model
+    df_best = df_sorted.groupby("model_name", as_index=False).first()
+    return df_best
 
 
-def select_best_runs(all_runs: list[dict]) -> dict:
+def select_best_runs(df_metrics: pd.DataFrame, primary_metric: str = "accuracy") -> dict:
+    """
+    Select the run_id with highest test mean for each model.
+    """
     best = {}
+    df_test = df_metrics[(df_metrics["metric"] == primary_metric) & (df_metrics["split"] == "test")]
 
-    for r in all_runs:
-        model = r["model_name"]
-        test_mean = r["results"]["test_average_score"]
-
-        if test_mean is None:
-            continue
-
-        if model not in best or test_mean > best[model]["results"]["test_average_score"]:
-            best[model] = r
-
+    for model in df_test["model_name"].unique():
+        df_model = df_test[df_test["model_name"] == model]
+        best_row = df_model.loc[df_model["mean"].idxmax()]
+        best[model] = best_row["run_id"]
+    
     return best
 
 
-def print_table(df: pd.DataFrame):
-    print(
-        df.to_string(
-            index=False,
-            float_format=lambda x: f"{x:.3f}",
-        )
-    )
-
-def select_best_runs(all_runs: list[dict]) -> dict:
-    best = {}
-
-    for r in all_runs:
-        model = r["model_name"]
-        test_mean = r["results"]["test_average_score"]
-
-        if test_mean is None:
-            continue
-
-        if model not in best or test_mean > best[model]["results"]["test_average_score"]:
-            best[model] = r
-
-    return best
-
-def table_detailed(best_runs: dict, primary_metric: str) -> pd.DataFrame:
+def table_detailed(df_metrics: pd.DataFrame, best_runs: dict, primary_metric: str = "accuracy") -> pd.DataFrame:
     rows = []
 
-    for model, run in best_runs.items():
-        res = run["results"]
+    for model, run_id in best_runs.items():
+        df_run = df_metrics[(df_metrics["run_id"] == run_id) & (df_metrics["model_name"] == model) & (df_metrics["metric"] == primary_metric)]
 
-        for fold, fold_res in res["folds"].items():
-            fold_idx = int(fold.split("_")[-1])
+        for _, row in df_run.iterrows():
             rows.append({
                 "model_name": model,
-                "fold": fold_idx,
-                "train": fold_res["train"]["score"],
-                "test": fold_res["test"]["score"],
-                "train_mean": res["train_average_score"],
-                "train_std": res["train_std_score"],
-                "test_mean": res["test_average_score"],
-                "test_std": res["test_std_score"],
+                "fold": row["fold"],
+                "split": row["split"],
+                "value": row["value"]
             })
 
-    return pd.DataFrame(rows).sort_values(["model_name", "fold"])
+    return pd.DataFrame(rows).sort_values(["model_name", "fold", "split"])
 
-def table_folds_wide(
-    best_runs: dict,
-    split: str = "test",  # or "train"
-) -> pd.DataFrame:
+
+def table_folds_wide(df_metrics: pd.DataFrame, best_runs: dict, split: str = "test", primary_metric: str = "accuracy") -> pd.DataFrame:
     rows = []
 
-    for model, run in best_runs.items():
-        res = run["results"]
+    for model, run_id in best_runs.items():
+        df_run = df_metrics[(df_metrics["run_id"] == run_id) &
+                            (df_metrics["model_name"] == model) &
+                            (df_metrics["metric"] == primary_metric) &
+                            (df_metrics["split"] == split)]
+
         row = {"model": model}
+        for _, r in df_run.iterrows():
+            row[f"fold{r['fold']}"] = r["value"]
 
-        # collect folds
-        for fold_key, fold_res in res["folds"].items():
-            fold_idx = int(fold_key.split("_")[-1])
-            row[f"fold{fold_idx}"] = fold_res[split]["score"]
-
-        # add summary stats
-        row["mean"] = res[f"{split}_average_score"]
-        row["std"] = res[f"{split}_std_score"]
+        # summary stats
+        row["mean"] = df_run["value"].mean()
+        row["std"] = df_run["value"].std()
 
         rows.append(row)
 
     df = pd.DataFrame(rows)
-
-    # ensure fold columns are ordered
-    fold_cols = sorted(
-        [c for c in df.columns if c.startswith("fold")],
-        key=lambda x: int(x.replace("fold", ""))
-    )
-
+    # reorder columns
+    fold_cols = sorted([c for c in df.columns if c.startswith("fold")], key=lambda x: int(x.replace("fold", "")))
     return df[["model", *fold_cols, "mean", "std"]]
+
+
+def print_table(df: pd.DataFrame):
+    print(df.to_string(index=False, float_format=lambda x: f"{x:.3f}"))

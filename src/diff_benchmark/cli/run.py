@@ -5,12 +5,12 @@ import pandas as pd
 
 import logging
 from diff_benchmark.analysis.save_results import (
-    is_cached,
+    #is_cached,
     save_model_results,
 )
 from diff_benchmark.analysis.true_vs_pred import plot_true_vs_pred
 from diff_benchmark.data.prepare_data import DatasetPreparation
-from diff_benchmark.models.model_configurations import get_model, make_run_id
+from diff_benchmark.models.model_configurations import get_model#, make_run_id
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
 from diff_benchmark.utils.parquet_helper import ParquetSaver, metrics_to_rows
 from diff_benchmark.utils.job_manager import run_jobs
@@ -19,21 +19,39 @@ from diff_benchmark.utils.summary_saver import update_summary, compute_summary_s
 from diff_benchmark.utils.logger import setup_logger, configure_logging
 from omegaconf import OmegaConf
 from diff_benchmark.cli.utils import build_config_grid, cartesian_cfgs
+from diff_benchmark.utils.run_id import make_run_id, is_cached
+from datetime import datetime
+import socket
+
 
 def run_single_model(cfg_og, model_name, results_path):
-
     cfg = OmegaConf.merge(cfg_og)
     logger = setup_logger("Job.run_single_model")
     metrics_rows = []
 
-    run_id = make_run_id(cfg.model.name, cfg)
-    cfg.runtime.run_id = run_id
+    # run_id = make_run_id(cfg.model.name, cfg)
+    # cfg.runtime.run_id = run_id
+    run_id = cfg.runtime.run_id
     
     experiment_dir = (
         Path(results_path)
         / "experiments"
         / f"exp_{run_id}"
     )
+
+    metadata = {
+        "run_id": run_id,
+        "experiment_hash": cfg.runtime.experiment_hash,
+        "model": model_name,
+        "dataset": cfg.dataset.name,
+        "status": "running",
+        "n_folds_expected": cfg.data.data_partition.n_splits,
+        "n_folds_completed": 0,
+        "start_time": datetime.utcnow().isoformat(),
+        "hostname": socket.gethostname(),
+    }
+
+    OmegaConf.save(metadata, experiment_dir / "metadata.yaml")
     # Create directory tree
     (experiment_dir / "metrics").mkdir(parents=True, exist_ok=True)
     (experiment_dir / "predictions").mkdir(parents=True, exist_ok=True)
@@ -81,10 +99,6 @@ def run_single_model(cfg_og, model_name, results_path):
 
     indices = preprocessed.get_fold_indices()
 
-    if is_cached(run_id, Path(results_path) / "analysis_results"):
-        logger.info(f"Skipping {model_name} (run_id={run_id}) - already cached.")
-        print(f"Skipping {model_name} (run_id={run_id}) - already cached.")
-        return model_name, run_id
     logger.info(f"Running model: {model_name} with run_id: {run_id}")
     print(f"Running model: {model_name} with run_id: {run_id}")
 
@@ -92,24 +106,24 @@ def run_single_model(cfg_og, model_name, results_path):
     train_preds, test_preds = [], []
     train_targets, test_targets = [], []
 
-    summary = {
-        "model_name": model_name,
-        "config": OmegaConf.to_container(cfg, resolve=True),
-        "results": {
-            "train_average_score": None,  # will fill after loop
-            "train_std_score": None,  # will fill after loop
-            "test_average_score": None,  # will fill after loop
-            "test_std_score": None,  # will fill after loop
-            "number_folds": len(indices),
-            "folds": {},  # will fill inside loop
-        },
-    }
-    # cfg_path = Path(results_path) / "analysis_results" / f"{run_id}_config.yaml" # CHECK TO INCLUDE
-    # OmegaConf.save(cfg, cfg_path) # CHECK TO INCLUDE
+    # summary = {
+    #     "model_name": model_name,
+    #     "config": OmegaConf.to_container(cfg, resolve=True),
+    #     "results": {
+    #         "train_average_score": None,  # will fill after loop
+    #         "train_std_score": None,  # will fill after loop
+    #         "test_average_score": None,  # will fill after loop
+    #         "test_std_score": None,  # will fill after loop
+    #         "number_folds": len(indices),
+    #         "folds": {},  # will fill inside loop
+    #     },
+    # }
+    # # cfg_path = Path(results_path) / "analysis_results" / f"{run_id}_config.yaml" # CHECK TO INCLUDE
+    # # OmegaConf.save(cfg, cfg_path) # CHECK TO INCLUDE
 
-    save_model_results(
-        summary, Path(results_path) / "analysis_results" / f"{run_id}_partial.json"
-    )
+    # save_model_results(
+    #     summary, Path(results_path) / "analysis_results" / f"{run_id}_partial.json"
+    # )
     
     predictions_path = experiment_dir / "predictions" / "predictions.parquet"
     key_cols = ["run_id", "model", "dataset", "fold", "split", "sample_id", "target"]
@@ -147,9 +161,9 @@ def run_single_model(cfg_og, model_name, results_path):
             model.fit(train_loader)
             train_pred = model.predict(train_loader)
             
-            plot_true_vs_pred(
-                y_train, train_pred, fold_idx=fold_idx, run_id=run_id, type="train"
-            )
+            # plot_true_vs_pred(
+            #     y_train, train_pred, fold_idx=fold_idx, run_id=run_id, type="train"
+            # )
             train_score = compute_metrics(y_train, train_pred, prediction_task=cfg.pred_head.prediction_task)
 
             train_scores.append(train_score)
@@ -173,9 +187,9 @@ def run_single_model(cfg_og, model_name, results_path):
             pred_saver.add_rows(train_rows)
             
             test_pred = model.predict(test_loader)
-            plot_true_vs_pred(
-                y_test, test_pred, fold_idx=fold_idx, run_id=run_id, type="test"
-            )
+            # plot_true_vs_pred(
+            #     y_test, test_pred, fold_idx=fold_idx, run_id=run_id, type="test"
+            # )
             test_score = compute_metrics(y_test, test_pred, prediction_task=cfg.pred_head.prediction_task)
             logger.info(f"Fold {fold_idx} - Train score: {train_score}, Test score: {test_score}")
             print(f"Fold {fold_idx} - Train score: {train_score}, Test score: {test_score}")
@@ -202,7 +216,7 @@ def run_single_model(cfg_og, model_name, results_path):
             pred_saver.save()
 
             primary_metric = {"binary_classification": "accuracy", "regression": "mse"}[cfg.pred_head.prediction_task]
-            summary = update_summary(summary, fold_idx, train_score, test_score, y_train, train_pred, y_test, test_pred, primary_metric)
+            # summary = update_summary(summary, fold_idx, train_score, test_score, y_train, train_pred, y_test, test_pred, primary_metric)
 
             metrics_rows.extend(
                 metrics_to_rows(
@@ -228,29 +242,37 @@ def run_single_model(cfg_og, model_name, results_path):
                 )
             )
 
-            save_model_results(
-                summary,
-                Path(results_path) / "analysis_results" / f"{run_id}_partial.json",
-            )
+            # save_model_results(
+            #     summary,
+            #     Path(results_path) / "analysis_results" / f"{run_id}_partial.json",
+            # )
+            metadata["n_folds_completed"] += 1
+            OmegaConf.save(metadata, experiment_dir / "metadata.yaml")
         except Exception as e:
             logger.exception(f"Crash in fold {fold_idx} of {run_id}: {e}")
             print(f"Crash in fold {fold_idx} of {run_id}: {e}")
-            save_model_results(
-                summary,
-                Path(results_path) / "analysis_results" / f"{run_id}_crashed.json",
-            )
+            # save_model_results(
+            #     summary,
+            #     Path(results_path) / "analysis_results" / f"{run_id}_crashed.json",
+            # )
+            metadata["status"] = "crashed"
+            metadata["error"] = str(e)
+            OmegaConf.save(metadata, experiment_dir / "metadata.yaml")
             raise
     
+    metadata["status"] = "success"
+    metadata["end_time"] = datetime.utcnow().isoformat()
+    OmegaConf.save(metadata, experiment_dir / "metadata.yaml")
     metrics_path = experiment_dir / "metrics" / "fold_metrics.parquet"
     metrics_path.parent.mkdir(parents=True, exist_ok=True)
 
     df = pd.DataFrame(metrics_rows)
     df.to_parquet(metrics_path, index=False)
 
-    summary["results"]["train_average_score"], summary["results"]["train_std_score"] = compute_summary_stats(train_scores, primary_metric)
-    summary["results"]["test_average_score"], summary["results"]["test_std_score"] = compute_summary_stats(test_scores, primary_metric)
+    # summary["results"]["train_average_score"], summary["results"]["train_std_score"] = compute_summary_stats(train_scores, primary_metric)
+    # summary["results"]["test_average_score"], summary["results"]["test_std_score"] = compute_summary_stats(test_scores, primary_metric)
 
-    save_model_results(summary, Path(results_path) / "analysis_results")
+    # save_model_results(summary, Path(results_path) / "analysis_results")
     return model_name, run_id
 
 # KEEP RESULTS AND UPDATE GLOBAL METRICS FILE
@@ -308,7 +330,10 @@ def cartesian_overrides(sweep_cfg: DictConfig):
 CONFIG_DIR = str(Path(__file__).parent.parent / "configs")
 def main():
     configure_logging(logging.DEBUG)
-    results_path = ".exp_outputs"
+    results_path = Path("./exp_outputs")
+    experiments_root = results_path / "experiments"
+    experiments_root.mkdir(parents=True, exist_ok=True)
+    
     # 1) compose base once
     with hydra.initialize(version_base="1.3", config_path="pkg://diff_benchmark.configs"):
         base = hydra.compose(config_name="main")
@@ -320,6 +345,33 @@ def main():
     all_confs = []
     for job_cfg in job_cfgs:
         all_confs.extend(cartesian_cfgs(job_cfg))  # or just run_one(job_cfg)
+    
+    filtered_confs = []
+    skipped = 0
+
+    # 3) Compute IDs + cache filtering
+    for cfg in all_confs:
+        force = cfg.runtime.force
+
+        run_id, experiment_hash = make_run_id(cfg, force=force)
+
+        # Attach IDs to config *before* job submission
+        cfg.runtime.run_id = run_id
+        cfg.runtime.experiment_hash = experiment_hash
+        experiment_dir = experiments_root / f"exp_{run_id}"
+        if is_cached(run_id, experiments_root) and not force:
+            print(
+                f"Skipping cached experiment: {run_id} "
+                f"(hash={experiment_hash}). Use --force to rerun."
+            )
+            skipped += 1
+            continue
+        experiment_dir.mkdir(parents=True, exist_ok=True)
+        filtered_confs.append(cfg)
+ 
+    if not filtered_confs:
+        print("Nothing to run. Exiting.")
+        return
 
     fn_kwargs_list = [
         {
@@ -327,7 +379,7 @@ def main():
             "model_name": cfg_i.model.name,
             "results_path": results_path,
         }
-        for cfg_i in all_confs
+        for cfg_i in filtered_confs
     ]
 
     cluster_cfg = all_confs[0].cluster

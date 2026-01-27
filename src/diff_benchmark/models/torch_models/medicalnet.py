@@ -1,6 +1,7 @@
 from functools import partial
 from typing import Any, Callable
 
+from click import Path
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -427,7 +428,12 @@ class MedicalNet(ResNet):
             shortcut_type=shortcut_type,
             no_cuda=no_cuda,
         )
-
+        pretrain_path = (
+                Path(__file__).resolve().parent.parent.parent.parent.parent
+                / "pretrain"
+                / pretrain_path / f"resnet_{depth}.pth"
+            )
+        
         if pretrained:
             if pretrain_path is None:
                 raise ValueError("pretrained=True but no pretrain_path provided")

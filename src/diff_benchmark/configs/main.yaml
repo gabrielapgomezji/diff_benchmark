@@ -12,10 +12,15 @@ defaults:
 
 random_state: 42
 runtime:
+  force: false
   run_id: null
+  experiment_hash: null
   # fold_idx: null
 
 
 choices:
-  model: [2dcnn, medicalnet]
+  model: [medicalnet] #[2dcnn, medicalnet]
+  cluster: [jean_zay]
+  dataset.metric_to_compute: [rtop]
+  model.depth: [10, 18]
   

@@ -23,4 +23,4 @@ slurm_cfg:
   slurm_partition: parietal,normal
   tasks_per_node: 1
   slurm_cpus_per_task: 20
-  timeout_min: 500
+  timeout_min: 720
