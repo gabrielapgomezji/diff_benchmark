@@ -8,7 +8,7 @@ from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
 from diff_benchmark.analysis.plot_debug import plot_debug_run
 from diff_benchmark.analysis.plot_script import plot_run
 from diff_benchmark.analysis.plot_summary import plot_metrics_summary
-from diff_benchmark.analysis.print_summary_table import load_global_metrics, print_table, select_best_runs, table_best_means, table_detailed, table_folds_wide
+from diff_benchmark.analysis.print_summary_table import is_successful_experiment, print_table, select_best_runs, table_best_means, table_detailed, table_folds_wide
 from pathlib import Path
 import pandas as pd
 
@@ -112,6 +112,9 @@ def main(cfg: DictConfig) -> None:
     # 4) Generate plots per experiment
     # -----------------------------------------------------------------
     for exp_dir in experiments_root.glob("exp_*"):
+        if not is_successful_experiment(exp_dir):
+            print(f"Skipping {exp_dir.name}: not successful")
+            continue
         run_id = exp_dir.name.replace("exp_", "")
         print(f"Processing plots for run: {run_id}")
 
@@ -120,7 +123,7 @@ def main(cfg: DictConfig) -> None:
         predictions_path = exp_dir / "predictions" / "predictions.parquet"
         targets_path = exp_dir / "predictions" / "targets.parquet"
         debug_dir = exp_dir / "debug"
-        run_plots_dir = plots_root / run_id
+        run_plots_dir = plots_root
 
         # Skip if plots already exist
         if run_plots_dir.exists() and any(run_plots_dir.glob("*.png")):

@@ -3,7 +3,7 @@ from omegaconf import DictConfig, OmegaConf
 import logging
 
 from diff_benchmark.utils.job_manager import run_jobs
-from diff_benchmark.training.run_single_model import run_single_model
+from diff_benchmark.cli.run import run_single_model
 
 
 class Benchmark:
@@ -18,9 +18,10 @@ class Benchmark:
         self.cfg = config
         self.logger = logging.getLogger(self.__class__.__name__)
 
-        self.results_path = Path(
-            self.cfg.runtime.get("results_dir", "./data/results")
-        )
+        # self.results_path = Path(
+        #     self.cfg.runtime.get("results_dir", "./exp_outputs")
+        # )
+        self.results_path = Path("./exp_outputs")
         self.results_path.mkdir(parents=True, exist_ok=True)
 
     def run(self):

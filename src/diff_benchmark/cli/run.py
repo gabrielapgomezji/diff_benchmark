@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 
 import numpy as np
 import pandas as pd
@@ -49,6 +50,7 @@ def run_single_model(cfg_og, model_name, results_path):
         "n_folds_completed": 0,
         "start_time": datetime.utcnow().isoformat(),
         "hostname": socket.gethostname(),
+        "job_id": os.environ.get("SLURM_JOB_ID"),
     }
 
     OmegaConf.save(metadata, experiment_dir / "metadata.yaml")

@@ -1,17 +1,16 @@
 import json
 import pandas as pd
 from pathlib import Path
+from omegaconf import OmegaConf
 
 
-def load_global_metrics(metrics_path: Path) -> pd.DataFrame:
-    """
-    Load the combined metrics.parquet (fold-level metrics for all experiments).
-    """
-    if not metrics_path.exists():
-        raise FileNotFoundError(f"{metrics_path} not found")
-    
-    df = pd.read_parquet(metrics_path)
-    return df
+def is_successful_experiment(exp_dir: Path) -> bool:
+    metadata_path = exp_dir / "metadata.yaml"
+    if not metadata_path.exists():
+        return False
+
+    metadata = OmegaConf.load(metadata_path)
+    return metadata.get("status") == "success"
     
 def table_best_means(df_metrics: pd.DataFrame, primary_metric: str = "accuracy") -> pd.DataFrame:
     """

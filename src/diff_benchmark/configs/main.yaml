@@ -19,8 +19,15 @@ runtime:
 
 
 choices:
-  model: [medicalnet] #[2dcnn, medicalnet]
-  cluster: [jean_zay]
-  dataset.metric_to_compute: [rtop]
-  model.backbone.depth: [10, 18]
+  model: [dummy_classifier] #[2dcnn, medicalnet]
+  backend: [sklearn]
+  dataset: [camcan]
+  cluster: [margaret]
+  cluster.conf.parallel_type: [None]
+  dataset.metric_to_compute: [md]
+  # # model.backbone.depth: [10, 18]
+  # model: [dummy_classifier, linear, pca_linear, forest, pca_forest] #[2dcnn, medicalnet]
+  # backend: [sklearn]
+  # cluster: [margaret_cpu]
+  # dataset.metric_to_compute: [md]
   

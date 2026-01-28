@@ -3,5 +3,4 @@ num_workers: 13
 data_partition:
   train_size: 0.8
   val_size: 0.1
-  # test_size: 0.1
   n_splits: 5

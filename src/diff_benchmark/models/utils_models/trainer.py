@@ -304,7 +304,7 @@ class TorchTrainer(BaseTrainer):
         self.logger = TorchDebugLogger(
             enabled=kwargs.get("debug", False),
             run_id=self.run_id,
-            output_dir="./data/results/parquet/debug/",
+            output_dir=f"exp_outputs/experiments/exp_{self.run_id}/debug/",
             prediction_task=self.prediction_task,
         )
 
@@ -634,7 +634,7 @@ class LightningTrainer(BaseTrainer):
         trainer_kwargs.setdefault("callbacks", []).append(print_cb)
         
         debug = kwargs.get("debug", False)
-        debug_dir = "./data/results/parquet/debug/"
+        debug_dir = f"exp_outputs/experiments/exp_{self.run_id}/debug/"
         if debug:
             self.run_id = kwargs["run_id"] if "run_id" in kwargs else "default_run"
             debug_cb = LightningDebugLogger(
