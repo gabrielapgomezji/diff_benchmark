@@ -1,7 +1,7 @@
 name: medicalnet
 
 backbone:
-  depth: 10
+  depth: 10 # options: 10, 18, 34, 50, 101, 152, 200
   pretrained: true
-  pretrain_path: /data/parietal/store3/work/ggomezji/projects/diff_benchmark/MedicalNet_pytorch_files2/pretrain/resnet_10.pth
+  pretrain_path: medicalnet
   input_channels: 1

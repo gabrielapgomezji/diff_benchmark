@@ -8,30 +8,65 @@ from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
 from diff_benchmark.analysis.plot_debug import plot_debug_run
 from diff_benchmark.analysis.plot_script import plot_run
 from diff_benchmark.analysis.plot_summary import plot_metrics_summary
-from diff_benchmark.analysis.print_summary_table import load_all_runs, print_table, select_best_runs, table_best_means, table_detailed, table_folds_wide
+from diff_benchmark.analysis.print_summary_table import is_successful_experiment, print_table, select_best_runs, table_best_means, table_detailed, table_folds_wide
 from pathlib import Path
 import pandas as pd
 
 
-def build_global_metrics(
-    metrics_dir: Path,
-    output_path: Path,
-) -> pd.DataFrame:
-    """
-    Merge metrics_<run_id>.parquet files into a single metrics.parquet
-    """
-    if output_path.exists():
-        return pd.read_parquet(output_path)
+def build_global_metrics(experiments_root: Path, output_path: Path) -> pd.DataFrame:
+    all_dfs = []
 
-    dfs = []
-    for p in metrics_dir.glob("metrics_*.parquet"):
-        dfs.append(pd.read_parquet(p))
+    for exp_dir in experiments_root.glob("exp_*"):
+        metrics_file = exp_dir / "metrics" / "fold_metrics.parquet"
+        config_file = exp_dir / "config.yaml"
 
-    if not dfs:
-        raise RuntimeError(f"No metrics_*.parquet found in {metrics_dir}")
+        if not metrics_file.exists() or not config_file.exists():
+            continue
 
-    df = pd.concat(dfs, ignore_index=True)
-    df.to_parquet(output_path, index=False)
+        df = pd.read_parquet(metrics_file)
+        cfg = OmegaConf.load(config_file)
+        
+        # ---- canonical experiment identity ----
+        df["run_id"] = exp_dir.name.replace("exp_", "")
+        df["dataset"] = cfg.dataset.name
+        df["prediction_task"] = cfg.pred_head.prediction_task
+        df["model_name"] = cfg.model.name
+
+        # optional but often useful
+        df["primary_metric"] = cfg.dataset.metric_to_compute
+
+        all_dfs.append(df)
+
+    if not all_dfs:
+        raise RuntimeError("No valid experiments found")
+
+    df_all = pd.concat(all_dfs, ignore_index=True)
+    df_all.to_parquet(output_path, index=False)
+    return df_all
+
+
+
+def build_summary_metrics(df_folds: pd.DataFrame, out_path: Path) -> pd.DataFrame:
+    df = (
+        df_folds
+        .groupby([
+            "run_id",
+            "model_name",
+            "dataset",
+            "prediction_task",
+            "primary_metric",
+            "split",
+            "metric",
+        ])
+        .agg(
+            mean=("value", "mean"),
+            std=("value", "std"),
+        )
+        .reset_index()
+    )
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_parquet(out_path, index=False)
     return df
 
 @hydra.main(
@@ -46,61 +81,102 @@ def main(cfg: DictConfig) -> None:
 
     Computes microstructure features for configured datasets.
     """
-    results_dir = Path("./data/results")
-    metrics_dir = results_dir / "parquet/analysis_results"
-    metrics_path = metrics_dir / "metrics.parquet"
-    debug_dir=Path("./data/results/parquet/debug")
-    # breakpoint()
-    # 1) Build / refresh global metrics
-    df_metrics = build_global_metrics(
-        metrics_dir=metrics_dir,
-        output_path=metrics_path,
-    )
+    results_dir = Path("./exp_outputs")
+    experiments_root = results_dir / "experiments"
+    plots_root = results_dir / "plots"
+    summary_root = results_dir / "summary"
+
+    metrics_folds_path = summary_root / "metrics_folds.parquet"
+    df_folds = build_global_metrics(experiments_root, metrics_folds_path)
+    summary_metrics_path = summary_root / "metrics_summary.parquet"
+    df_summary = build_summary_metrics(df_folds, summary_metrics_path)
     
-    all_results_path = Path(results_dir) / "analysis_results" / "all_results.json"
+    # -----------------------------------------------------------------
+    # 3) Print tables
+    # -----------------------------------------------------------------
 
-    all_runs = load_all_runs(all_results_path)
-
-    # TABLE 1
-    df_best = table_best_means(all_runs)
+    # df_metrics = load_global_metrics(summary_metrics_path)
     print("\n=== BEST MEAN RESULTS ===")
+    print("--- Primary Metric: accuracy ---")
+    df_best = table_best_means(df_summary, primary_metric="accuracy")
+    print_table(df_best)
+    print("--- Primary Metric: rmse ---")
+    df_best = table_best_means(df_summary, primary_metric="rmse")
     print_table(df_best)
 
-    # TABLE 2
-    best_runs = select_best_runs(all_runs)
-    df_detailed = table_detailed(best_runs, primary_metric="accuracy")
-
+    best_runs = select_best_runs(df_summary, primary_metric="accuracy")
     print("\n=== DETAILED RESULTS (BEST RUN PER MODEL) ===")
+    df_detailed = table_detailed(df_folds, best_runs, primary_metric="accuracy")
     print_table(df_detailed)
+
+    # df_wide_train = table_folds_wide(df_folds, best_runs, split="train", primary_metric="accuracy")
+    # print("\n=== WIDE-FORMAT RESULTS TRAIN ===")
+    # print_table(df_wide_train)
+
+    print("\n=== WIDE-FORMAT RESULTS TEST ===")
+    df_wide_test = table_folds_wide(df_folds, best_runs, split="test", primary_metric="accuracy")
+    print_table(df_wide_test)
     
-    print("\n=== WIDE-FORMAT RESULTS TRAIN (BEST RUN PER MODEL) ===")
-    df_wide = table_folds_wide(best_runs, split="train")
-    print_table(df_wide)
-    print("\n=== WIDE-FORMAT RESULTS TEST (BEST RUN PER MODEL) ===")
-    df_wide = table_folds_wide(best_runs, split="test")
-    print_table(df_wide)
+    # for metric, df_m in df_summary.groupby("metric"):
+    #     print(f"\n### Metric: {metric}")
+    #     print_table(table_best_means(df_m, metric))
+    
+    for ds, df_ds in df_summary.groupby("dataset"):
+        print(f"\n### Dataset: {ds}")
+        print_table(table_best_means(df_ds))
 
-    run_id = cfg.runtime.run_id
-    # 2) Per-run plots
-    if run_id:
-        plot_debug_run(
-            run_id=run_id,
-            debug_dir=debug_dir / str(run_id),
-            output_root=results_dir / "plots",
-        )
-        # plot_run(
-        #     run_id=run_id,
-        #     metrics_dir=metrics_dir / "metrics.parquet",
-        #     predictions_path=results_dir / "parquet/data/predictions.parquet",
-        #     targets_path=results_dir / "parquet/data/targets.parquet",
-        #     output_root=results_dir / "plots",
-        # )
+    for primary_metric, df_pm in df_summary.groupby("primary_metric"):
+        print(f"\n### Primary Metric: {primary_metric} - Binnary Classification")
+        print_table(table_best_means(df_pm, primary_metric="accuracy"))
+        print(f"\n### Primary Metric: {primary_metric} - Regression")
+        print_table(table_best_means(df_pm, primary_metric="rmse"))
 
-    # # 3) Global summary
-    # plot_metrics_summary(
-    #     metrics_path=metrics_path,
-    #     output_dir=results_dir / "plots",
-    # )
+    # -----------------------------------------------------------------
+    # 4) Generate plots per experiment
+    # -----------------------------------------------------------------
+    for exp_dir in experiments_root.glob("exp_*"):
+        try:
+            if not is_successful_experiment(exp_dir):
+                print(f"Skipping {exp_dir.name}: not successful")
+                continue
+            run_id = exp_dir.name.replace("exp_", "")
+            print(f"Processing plots for run: {run_id}")
+
+            # Paths
+            metrics_path = exp_dir / "metrics" / "fold_metrics.parquet"
+            predictions_path = exp_dir / "predictions" / "predictions.parquet"
+            targets_path = exp_dir / "predictions" / "targets.parquet"
+            debug_dir = exp_dir / "debug"
+            run_plots_dir = plots_root
+
+            # Skip if plots already exist
+            if run_plots_dir.exists() and any(run_plots_dir.glob(f"*{run_id}*.png")):
+                print(f"Plots already exist for {run_id}, skipping...")
+                continue
+
+            # Debug plots if debug data exists
+            if debug_dir.exists() and any(debug_dir.iterdir()):
+                plot_debug_run(run_id=run_id, debug_dir=debug_dir, output_root=run_plots_dir)
+
+            # Main experiment plots
+            if metrics_path.exists() and predictions_path.exists() and targets_path.exists():
+                plot_run(
+                    run_id=run_id,
+                    metrics_dir=metrics_path,
+                    predictions_path=predictions_path,
+                    targets_path=targets_path,
+                    output_root=run_plots_dir,
+                )
+            else:
+                print(f"Missing required files for {run_id}, skipping plots...")
+        except Exception as e:
+            print(f"Error processing {exp_dir.name}: {e}")
+            continue
+
+    print("\nAll experiments processed. Summaries and plots are saved under:")
+    print(f"Summary metrics: {summary_metrics_path}")
+    print(f"Plots root: {plots_root}")
+
 
 if __name__ == "__main__":
     main()

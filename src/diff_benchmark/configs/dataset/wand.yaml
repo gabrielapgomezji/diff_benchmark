@@ -16,3 +16,6 @@ big_delta_per_bvalue:
   7750: 55
   11600: 42
   15500: 55
+
+# WAND data will be resampled to fsLR 32k for analysis
+surface_space: fslr_32k

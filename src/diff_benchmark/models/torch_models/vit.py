@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from pathlib import Path
 from transformers import AutoImageProcessor, AutoModel
 from diff_benchmark.utils.logger import setup_logger
 
@@ -24,9 +25,16 @@ class GoogleViTBackbone(nn.Module):
 
         self.slice_axis = slice_axis
         self.pooling = pooling
-
-        self.processor = AutoImageProcessor.from_pretrained(model_name)
-        self.backbone = AutoModel.from_pretrained(model_name)
+        model_dir = Path(__file__).parent.parent.parent.parent.parent / "pretrain" / model_name
+        if model_dir.exists():
+            source = str(model_dir)
+            local_only = True
+        else:
+            print(f"Pretrained model directory {model_dir} does not exist. Using model name {model_name} from HuggingFace Hub if possible.")
+            source = model_name
+            local_only = False
+        self.processor = AutoImageProcessor.from_pretrained(source, local_files_only=local_only)
+        self.backbone = AutoModel.from_pretrained(source, local_files_only=local_only)
 
         self.embedding_dim = self.backbone.config.hidden_size
 

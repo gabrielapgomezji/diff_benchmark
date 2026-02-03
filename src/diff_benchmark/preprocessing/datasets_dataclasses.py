@@ -28,3 +28,6 @@ class DatasetConfig:
     aparcaseg_extension: str | None = None
 
     region: str | None = None
+    
+    # Surface space configuration
+    surface_space: str = "fslr_32k"  # "fslr_32k" for HCP, "fsaverage" for CamCAN/FreeSurfer

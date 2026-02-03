@@ -1,123 +1,154 @@
 import json
 import pandas as pd
 from pathlib import Path
+from omegaconf import OmegaConf
 
 
-def load_all_runs(path: Path) -> list[dict]:
-    with open(path) as f:
-        return json.load(f)
+def is_successful_experiment(exp_dir: Path) -> bool:
+    metadata_path = exp_dir / "metadata.yaml"
+    if not metadata_path.exists():
+        return False
+
+    metadata = OmegaConf.load(metadata_path)
+    return metadata.get("status") == "success"
     
-def table_best_means(all_runs: list[dict]) -> pd.DataFrame:
-    rows = []
+def table_best_means(
+    df: pd.DataFrame,
+    primary_metric: str = "accuracy"
+) -> pd.DataFrame:
 
-    for r in all_runs:
-        res = r["results"]
-        if res["test_average_score"] is None:
-            continue
+    # Find all metrics containing the primary metric string
+    related_metrics = df[df["metric"].str.contains(primary_metric, case=False, na=False)]["metric"].unique()
+    
+    df_filt = df[
+        (df["metric"].isin(related_metrics)) &
+        (df["split"] == "test")
+    ]
 
-        rows.append({
-            "model_name": r["model_name"],
-            "train_mean": res["train_average_score"],
-            "test_mean": res["test_average_score"],
-        })
+    df_sorted = df_filt.sort_values("mean", ascending=False)
 
-    df = pd.DataFrame(rows)
-
-    return (
-        df.sort_values("test_mean", ascending=False)
-          .groupby("model_name", as_index=False)
-          .first()
-          .sort_values("test_mean", ascending=False)
-    )
-
-
-def select_best_runs(all_runs: list[dict]) -> dict:
-    best = {}
-
-    for r in all_runs:
-        model = r["model_name"]
-        test_mean = r["results"]["test_average_score"]
-
-        if test_mean is None:
-            continue
-
-        if model not in best or test_mean > best[model]["results"]["test_average_score"]:
-            best[model] = r
-
-    return best
-
-
-def print_table(df: pd.DataFrame):
-    print(
-        df.to_string(
-            index=False,
-            float_format=lambda x: f"{x:.3f}",
+    df_best = (
+        df_sorted
+        .groupby(
+            ["dataset", "prediction_task", "metric", "model_name"],
+            as_index=False
         )
+        .first()
     )
 
-def select_best_runs(all_runs: list[dict]) -> dict:
+    return df_best
+
+
+def select_best_runs(
+    df: pd.DataFrame,
+    primary_metric: str = "accuracy"
+) -> dict:
+
+    df_test = df[
+        (df["metric"] == primary_metric) &
+        (df["split"] == "test")
+    ]
+
     best = {}
 
-    for r in all_runs:
-        model = r["model_name"]
-        test_mean = r["results"]["test_average_score"]
+    group_cols = ["dataset", "prediction_task", "model_name"]
 
-        if test_mean is None:
-            continue
-
-        if model not in best or test_mean > best[model]["results"]["test_average_score"]:
-            best[model] = r
+    for keys, df_group in df_test.groupby(group_cols):
+        best_row = df_group.loc[df_group["mean"].idxmax()]
+        best[keys] = best_row["run_id"]
 
     return best
 
-def table_detailed(best_runs: dict, primary_metric: str) -> pd.DataFrame:
+
+def table_detailed(
+    df_metrics: pd.DataFrame,
+    best_runs: dict,
+    primary_metric: str = "accuracy"
+) -> pd.DataFrame:
+
     rows = []
+    
+    # Find all related metrics
+    related_metrics = df_metrics[
+        df_metrics["metric"].str.contains(primary_metric, case=False, na=False)
+    ]["metric"].unique()
 
-    for model, run in best_runs.items():
-        res = run["results"]
+    for (dataset, task, model), run_id in best_runs.items():
+        df_run = df_metrics[
+            (df_metrics["run_id"] == run_id) &
+            (df_metrics["metric"].isin(related_metrics))
+        ]
 
-        for fold, fold_res in res["folds"].items():
-            fold_idx = int(fold.split("_")[-1])
+        for _, row in df_run.iterrows():
             rows.append({
+                "dataset": dataset,
+                "task": task,
                 "model_name": model,
-                "fold": fold_idx,
-                "train": fold_res["train"]["score"],
-                "test": fold_res["test"]["score"],
-                "train_mean": res["train_average_score"],
-                "train_std": res["train_std_score"],
-                "test_mean": res["test_average_score"],
-                "test_std": res["test_std_score"],
+                "metric": row["metric"],
+                "fold": row["fold"],
+                "split": row["split"],
+                "value": row["value"],
             })
 
-    return pd.DataFrame(rows).sort_values(["model_name", "fold"])
+    return pd.DataFrame(rows).sort_values(
+        ["dataset", "task", "model_name", "metric", "fold", "split"]
+    )
+
+
 
 def table_folds_wide(
+    df_metrics: pd.DataFrame,
     best_runs: dict,
-    split: str = "test",  # or "train"
+    split: str = "test",
+    primary_metric: str = "accuracy"
 ) -> pd.DataFrame:
+
     rows = []
+    
+    # Find all related metrics
+    related_metrics = df_metrics[
+        df_metrics["metric"].str.contains(primary_metric, case=False, na=False)
+    ]["metric"].unique()
 
-    for model, run in best_runs.items():
-        res = run["results"]
-        row = {"model": model}
+    for (dataset, task, model), run_id in best_runs.items():
+        for metric in related_metrics:
+            df_run = df_metrics[
+                (df_metrics["run_id"] == run_id) &
+                (df_metrics["metric"] == metric) &
+                (df_metrics["split"] == split)
+            ]
+            
+            if df_run.empty:
+                continue
 
-        # collect folds
-        for fold_key, fold_res in res["folds"].items():
-            fold_idx = int(fold_key.split("_")[-1])
-            row[f"fold{fold_idx}"] = fold_res[split]["score"]
+            row = {
+                "dataset": dataset,
+                "task": task,
+                "model": model,
+                "metric": metric,
+            }
 
-        # add summary stats
-        row["mean"] = res[f"{split}_average_score"]
-        row["std"] = res[f"{split}_std_score"]
+            for _, r in df_run.iterrows():
+                row[f"fold{r['fold']}"] = r["value"]
 
-        rows.append(row)
+            row["mean"] = df_run["value"].mean()
+            row["std"] = df_run["value"].std()
+
+            rows.append(row)
 
     df = pd.DataFrame(rows)
 
-    # ensure fold columns are ordered
     fold_cols = sorted(
         [c for c in df.columns if c.startswith("fold")],
         key=lambda x: int(x.replace("fold", ""))
     )
 
-    return df[["model", *fold_cols, "mean", "std"]]
+    return df[["dataset", "task", "model", "metric", *fold_cols, "mean", "std"]]
+
+
+
+def print_table(df: pd.DataFrame):
+    if df.empty:
+        print("(empty table)")
+        return
+    print(df.to_string(index=False, float_format=lambda x: f"{x:.3f}"))

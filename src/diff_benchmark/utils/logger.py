@@ -147,7 +147,7 @@ class TorchDebugLogger:
         os.makedirs(run_dir, exist_ok=True) 
     
         path = os.path.join(
-            self.output_dir, f"{self.run_id}/torch_debug_{self.run_id}{suffix}.parquet"
+            self.output_dir, f"torch_debug_{self.run_id}{suffix}.parquet"
         )
         df.to_parquet(path)
 

@@ -1,3 +1,3 @@
 target_column: 
   - Gender
-prediction_task: classification
+prediction_task: binary_classification

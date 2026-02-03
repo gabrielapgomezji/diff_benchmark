@@ -60,6 +60,121 @@ class DefaultPipeline(BrainDataPreparationPipeline):
         )
 
         return left_file.exists() and right_file.exists()
+    
+    def verify_resampling(self, subject_id: str) -> bool:
+        """
+        Check if data has been properly resampled to template space.
+        
+        For BIDS datasets, checks if the vertex count matches the expected template space size.
+        For HCP datasets, always returns True (data is already in template space).
+        
+        Args:
+            subject_id (str): The subject identifier.
+        
+        Returns:
+            bool: True if data is properly resampled (or doesn't need resampling), False otherwise.
+        """
+        # HCP data is already in template space, no resampling needed
+        if "bids" not in self.data_reading:
+            return True
+        
+        derivatives_dir = (
+            self.results_root / "derivatives" / f"sub-{subject_id}" / "dwi"
+        )
+        left_file = (
+            derivatives_dir / f"sub-{subject_id}_hemi-L_param-{self.metric}.scalar.gii"
+        )
+        right_file = (
+            derivatives_dir / f"sub-{subject_id}_hemi-R_param-{self.metric}.scalar.gii"
+        )
+        
+        if not (left_file.exists() and right_file.exists()):
+            return False
+        
+        try:
+            # Expected vertex count for fsLR 32k template space
+            EXPECTED_VERTICES = 32492
+            
+            left_data = nib.load(left_file).darrays[0].data
+            right_data = nib.load(right_file).darrays[0].data
+            
+            left_vertices = left_data.shape[0]
+            right_vertices = right_data.shape[0]
+            
+            # Check if data has the expected number of vertices for template space
+            is_resampled = (left_vertices == EXPECTED_VERTICES and 
+                          right_vertices == EXPECTED_VERTICES)
+            
+            if not is_resampled:
+                logger.debug(f"[{subject_id}] Data in native space: L={left_vertices}, R={right_vertices} vertices")
+            
+            return is_resampled
+            
+        except Exception as e:
+            logger.warning(f"[{subject_id}] Error checking resampling status: {e}")
+            return False
+
+    def resample_data(self, subject_id: str):
+        """
+        Resample existing scalar.gii files from native space to template space.
+        This is useful for data that was preprocessed before the automatic resampling feature.
+        
+        Args:
+            subject_id (str): The subject identifier.
+        """
+        if "bids" not in self.data_reading:
+            logger.info(f"[{subject_id}] Not a BIDS dataset, no resampling needed")
+            return
+        
+        derivatives_dir = (
+            self.results_root / "derivatives" / f"sub-{subject_id}" / "dwi"
+        )
+        left_file = (
+            derivatives_dir / f"sub-{subject_id}_hemi-L_param-{self.metric}.scalar.gii"
+        )
+        right_file = (
+            derivatives_dir / f"sub-{subject_id}_hemi-R_param-{self.metric}.scalar.gii"
+        )
+        
+        if not (left_file.exists() and right_file.exists()):
+            logger.warning(f"[{subject_id}] Scalar files not found, skipping resampling")
+            return
+        
+        try:
+            logger.info(f"[{subject_id}] Resampling existing data to template space")
+            
+            # Load native space data
+            left_data = np.nan_to_num(nib.load(left_file).darrays[0].data).clip(0, 7)
+            right_data = np.nan_to_num(nib.load(right_file).darrays[0].data).clip(0, 7)
+            
+            # Resample to template space
+            from diff_benchmark.preprocessing.utils_brain_feature_extraction import resample_subject_to_template
+            
+            left_resampled, right_resampled = resample_subject_to_template(
+                subject_id=subject_id,
+                left_data=left_data,
+                right_data=right_data,
+                layouts=self.layouts,
+                target_space=self.surface_space,
+            )
+            
+            # Save resampled data with the same filenames (overwriting)
+            left_gii = nib.gifti.GiftiImage()
+            left_gii.add_gifti_data_array(
+                nib.gifti.GiftiDataArray(data=left_resampled.astype(np.float32))
+            )
+            nib.save(left_gii, left_file)
+            
+            right_gii = nib.gifti.GiftiImage()
+            right_gii.add_gifti_data_array(
+                nib.gifti.GiftiDataArray(data=right_resampled.astype(np.float32))
+            )
+            nib.save(right_gii, right_file)
+            
+            logger.info(f"[{subject_id}] Resampled data saved successfully")
+            
+        except Exception as e:
+            logger.error(f"[{subject_id}] Error during resampling: {e}")
 
     def run_analysis(self):
         """Run analysis extracting region data."""
@@ -75,12 +190,17 @@ class DefaultPipeline(BrainDataPreparationPipeline):
                     left_file.name.replace("hemi-L", "hemi-R")
                 )
 
+                # Load data (already in template space if BIDS dataset was properly preprocessed)
                 left_data = np.nan_to_num(nib.load(left_file).darrays[0].data).clip(
                     0, 7
                 )
                 right_data = np.nan_to_num(nib.load(right_file).darrays[0].data).clip(
                     0, 7
                 )
+
+                # No resampling needed here - data should already be in template space
+                # If you see warnings about mismatched sizes, it means preprocessing 
+                # was done before this optimization was implemented
 
                 target = self.dataset_config.region
                 avg_data = extract_region_data(

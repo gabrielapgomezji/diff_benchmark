@@ -330,10 +330,14 @@ def project_to_surface(
     output_dir: Path,
     subject_id: str,
     micr_metric: str,
+    layouts: list = None,
+    target_space: str = "fslr_32k",
+    data_reading: str = "hcp",
 ):
     """
     Project image onto surface meshes and save as GIFTI files.
-    Image should be in NIfTI format and contain RTOP/MD/microstructure values.
+    For BIDS datasets, automatically resamples from native space to template space.
+    
     Args:
         micr_img (nib.Nifti1Image): NIfTI image with microstructure values.
         ctx_mask (nib.Nifti1Image): Context mask NIfTI image.
@@ -341,9 +345,16 @@ def project_to_surface(
         output_dir (Path): Directory to save output GIFTI files.
         subject_id (str): Subject identifier for naming output files.
         micr_metric (str): Metric name for naming output files.
+        layouts (list): List of BIDS layouts (needed for BIDS datasets to find sphere files).
+        target_space (str): Target surface space for resampling (default: "fslr_32k").
+        data_reading (str): Dataset format ("hcp", "bids", "multicenter-bids").
     Returns:
         None
     """
+    # First, project to surfaces (native space for BIDS, template space for HCP)
+    left_data = None
+    right_data = None
+    
     for h in ("L", "R"):
         insula_surf = ni.surface.vol_to_surf(
             micr_img,
@@ -352,11 +363,32 @@ def project_to_surface(
             inner_mesh=surfaces[f"{h}.white"],
             depth=[0.1, 0.5, 0.9],
         )
-        nib.gifti.GiftiImage()
+        
+        if h == "L":
+            left_data = insula_surf
+        else:
+            right_data = insula_surf
+    
+    # For BIDS datasets, resample from native space to template space
+    if "bids" in data_reading and layouts is not None:
+        try:
+            logger.info(f"[{subject_id}] Resampling surface data from native to {target_space} space")
+            left_data, right_data = resample_subject_to_template(
+                subject_id=subject_id,
+                left_data=left_data,
+                right_data=right_data,
+                layouts=layouts,
+                target_space=target_space,
+            )
+        except Exception as e:
+            logger.warning(f"[{subject_id}] Resampling failed, saving native space data: {e}")
+    
+    # Save the data (resampled for BIDS, native/template for HCP)
+    for h, data in [("L", left_data), ("R", right_data)]:
         img = nib.gifti.gifti.GiftiImage()
         img.add_gifti_data_array(
             nib.gifti.gifti.GiftiDataArray(
-                insula_surf.astype(np.float32),
+                data.astype(np.float32),
                 intent="NIFTI_INTENT_DIMLESS",
             )
         )
@@ -366,10 +398,90 @@ def project_to_surface(
         )
 
 
-def resample_schaefer_onto_fs_lr(scale: int = 1000) -> dict:
-    """Resample Schaefer 2018 parcellation onto fsLR space.
+def resample_subject_to_template(
+    subject_id: str,
+    left_data: np.ndarray,
+    right_data: np.ndarray,
+    layouts: list,
+    target_space: str = "fslr_32k",
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Resample subject's native surface data to a template space using sphere mapping.
+    
+    Args:
+        subject_id (str): Subject identifier
+        left_data (np.ndarray): Data on left hemisphere in subject's native space
+        right_data (np.ndarray): Data on right hemisphere in subject's native space
+        layouts (list): List of BIDS layouts to search for subject data
+        target_space (str): Target template space ("fslr_32k" or "fsaverage")
+    
+    Returns:
+        tuple[np.ndarray, np.ndarray]: Resampled left and right hemisphere data
+    """
+    # Find the layout containing this subject
+    layout = None
+    for lay in layouts:
+        if subject_id in lay.get_subjects():
+            layout = lay
+            break
+    
+    if layout is None:
+        raise ValueError(f"Subject {subject_id} not found in any layout")
+    
+    resampled_data = {}
+    
+    for hemi, data in [("L", left_data), ("R", right_data)]:
+        # Get subject's native sphere
+        subject_sphere_files = layout.get(
+            subject=subject_id,
+            suffix='sphere',
+            hemi=hemi,
+            extension=".surf.gii",
+            space='fsLR',
+            return_type='files'
+        )
+        
+        if not subject_sphere_files:
+            raise FileNotFoundError(
+                f"No sphere surface found for subject {subject_id}, hemisphere {hemi}"
+            )
+        
+        subject_sphere = nib.load(subject_sphere_files[0])
+        
+        # Get template sphere based on target_space
+        if target_space == "fslr_32k":
+            template_sphere_fn = tflow.get(
+                "fsLR", hemi=hemi, density="32k", suffix="sphere", desc=None, space=None
+            )
+        elif target_space == "fsaverage":
+            template_sphere_fn = tflow.get(
+                "fsaverage", hemi=hemi, density="164k", suffix="sphere", desc=None
+            )
+        else:
+            raise ValueError(f"Unknown target_space: {target_space}")
+        
+        template_sphere = nib.load(template_sphere_fn)
+        
+        # Build KD-trees for nearest-neighbor mapping
+        kdtree_subject = cKDTree(subject_sphere.darrays[0].data)
+        kdtree_template = cKDTree(template_sphere.darrays[0].data)
+        
+        # Find nearest neighbors from subject to template
+        subject_to_template = kdtree_subject.query(template_sphere.darrays[0].data, k=1)
+        
+        # Resample data: for each template vertex, use nearest subject vertex
+        resampled_data[hemi] = data[subject_to_template[1]]
+    
+    return resampled_data["L"], resampled_data["R"]
+
+
+def resample_schaefer_onto_fs_lr(scale: int = 1000, target_space: str = "fslr_32k") -> dict:
+    """Resample Schaefer 2018 parcellation onto fsLR or fsaverage space.
     Args:
         scale (int): Scale of Schaefer parcellation (e.g., 1000 for 1000 parcels).
+        target_space (str): Target surface space. Options:
+            - "fslr_32k": fsLR 32k space (HCP default)
+            - "fsaverage": Native fsaverage space (FreeSurfer/CamCAN)
     Returns:
         dict: Dictionary with keys 'left.data', 'left.labels', 'left.sulc',
               'right.data', 'right.labels', 'right.sulc'.
@@ -410,6 +522,26 @@ def resample_schaefer_onto_fs_lr(scale: int = 1000) -> dict:
     labels_left = labels[labels["hemi"] == "L"]
     labels_right = labels[labels["hemi"] == "R"]
 
+    # If target is fsaverage, return the atlas directly without resampling
+    if target_space == "fsaverage":
+        fslr_left_sulc = nib.load(
+            tflow.get("fsaverage", hemi="L", density="164k", suffix="sulc", desc=None)
+        ).darrays[0].data
+        
+        fslr_right_sulc = nib.load(
+            tflow.get("fsaverage", hemi="R", density="164k", suffix="sulc", desc=None)
+        ).darrays[0].data
+        
+        return {
+            "left.data": fsaverage_left_schaefer.darrays[0].data,
+            "left.labels": labels_left,
+            "left.sulc": fslr_left_sulc,
+            "right.data": fsaverage_right_schaefer.darrays[0].data,
+            "right.labels": labels_right,
+            "right.sulc": fslr_right_sulc,
+        }
+
+    # Otherwise, resample to fsLR 32k (original HCP behavior)
     fslr_2_fsaverage_left_sphere_fn = tflow.get(
         "fsLR", hemi="L", density="32k", space="fsaverage"
     )
@@ -630,10 +762,17 @@ def compute_save_and_project_metric(
     surfaces: dict,
     derivatives_dir: Path,
     subject_id: str,
+    layouts: list = None,
+    target_space: str = "fslr_32k",
+    data_reading: str = "hcp",
 ) -> nib.nifti1.Nifti1Image:
     """
     Computes a specified diffusion metric, saves the resulting image to disk,
     and projects the metric onto cortical surfaces.
+    
+    For BIDS datasets, automatically resamples surface data from native space 
+    to template space during projection.
+    
     Parameters:
         metric (str): The name of the diffusion metric to compute. Must be a key in `METRIC_COMPUTERS`.
         dwi_nib (nib.nifti1.Nifti1Image): The diffusion-weighted imaging (DWI) data as a NIfTI image.
@@ -647,6 +786,9 @@ def compute_save_and_project_metric(
         surfaces (dict): A dictionary containing cortical surface data for projection.
         derivatives_dir (Path): Directory where the computed metric image will be saved.
         subject_id (str): Identifier for the subject being processed.
+        layouts (list): List of BIDS layouts (needed for BIDS datasets to find sphere files).
+        target_space (str): Target surface space for resampling (default: "fslr_32k").
+        data_reading (str): Dataset format ("hcp", "bids", "multicenter-bids").
     Returns:
         nib.nifti1.Nifti1Image: The computed diffusion metric as a NIfTI image.
     Raises:
@@ -654,7 +796,9 @@ def compute_save_and_project_metric(
     Notes:
         - The computed metric image is saved to the `derivatives_dir` with a filename
           formatted as `sub-{subject_id}_param-{metric}_dwimap.nii.gz`.
-        - The metric is also projected onto cortical surfaces and saved in the same directory.
+        - For BIDS datasets, the metric is projected to surfaces in native space, 
+          then automatically resampled to template space before saving.
+        - For HCP datasets, no resampling is needed (data already in template space).
     """
     if metric not in METRIC_COMPUTERS:
         raise ValueError(f"Unknown metric: {metric}")
@@ -682,6 +826,9 @@ def compute_save_and_project_metric(
         derivatives_dir,
         subject_id,
         metric,
+        layouts=layouts,
+        target_space=target_space,
+        data_reading=data_reading,
     )
 
     return metric_img
