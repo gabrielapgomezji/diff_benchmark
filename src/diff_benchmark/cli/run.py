@@ -396,8 +396,8 @@ def main():
         fn_kwargs_list=fn_kwargs_list,
         parallel_type=parallel_type,
         slurm_cfg=cluster_cfg.slurm_cfg,
-        n_jobs=50,
-        wait_for_results=False,
+        n_jobs=cluster_cfg.conf.n_jobs,
+        wait_for_results=cluster_cfg.conf.wait_for_results,
     )
 
 if __name__ == "__main__":

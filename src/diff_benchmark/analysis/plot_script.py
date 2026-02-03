@@ -162,17 +162,8 @@ def plot_binary_roc(df, model, output_dir):
         d = df[df["split"] == split]
         y_true = d["true"].astype(int)
         y_score = d["pred"].astype(float)
-        
-        # Remap labels to {0, 1} if they're {1, 2}
-        unique_labels = np.sort(y_true.unique())
-        if len(unique_labels) == 2 and unique_labels[0] != 0:
-            # Labels are not {0, 1}, remap them
-            label_map = {unique_labels[0]: 0, unique_labels[1]: 1}
-            y_true_binary = y_true.map(label_map)
-        else:
-            y_true_binary = y_true
 
-        fpr, tpr, _ = roc_curve(y_true_binary, y_score)
+        fpr, tpr, _ = roc_curve(y_true, y_score)
         roc_auc = auc(fpr, tpr)
 
         ax.plot(fpr, tpr, label=f"{split} (AUC={roc_auc:.3f})", alpha=alpha)

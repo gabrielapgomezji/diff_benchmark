@@ -322,30 +322,30 @@ def compute_mk(
     logger.warning("Be careful, this is not normalized MK!")
     return masker.inverse_transform(mk.T)
 
-from dipy.reconst.shm import CsaOdfModel
+
+from dipy.reconst.shm import sf_to_sh, sh_to_rh
+from dipy.core.sphere import Sphere
 def compute_sh(
     dwi_nib: nib.nifti1.Nifti1Image,
     mask_img: nib.nifti1.Nifti1Image,
-    normalization_mask_img: nib.nifti1.Nifti1Image,  # unused but kept for API consistency
+    normalization_mask_img: nib.nifti1.Nifti1Image,
     bvals: np.ndarray,
     bvecs: np.ndarray,
     big_delta: float,
     small_delta: float,
     delta_per_bvalue: dict | None = None,
     sh_order: int = 6,
-    sh_stat: str = "power",  # "power" | "l0" | "l2"
 ):
     """
-    Compute a scalar SH-derived metric from DWI data.
-    Returns a NIfTI image compatible with the rest of the pipeline.
+    Compute spherical harmonic representation of the raw diffusion signal.
+    Returns power (L2 norm) of SH coefficients as a scalar metric.
     """
-    breakpoint()
     b0 = nimage.index_img(dwi_nib, 0)
     masker = maskers.NiftiMasker(mask_img)
     masker.fit(b0)
     dwi_data = masker.transform(dwi_nib)
 
-    # --- b-value selection (same logic as MD / MK)
+    # b-value selection
     if delta_per_bvalue is not None:
         selected_bvals = [0] + [
             k for k, v in delta_per_bvalue.items() if v == big_delta * 1000
@@ -362,45 +362,54 @@ def compute_sh(
         big_delta=big_delta,
     )
 
-    # --- SH model
-    sh_model = CsaOdfModel(gtab, sh_order=sh_order)
-    sh_fit = sh_model.fit(dwi_data.T)
-
-    sh_coeffs = sh_fit.shm_coeff  # (n_voxels, n_coeffs)
-
-    # --- Reduce SH → scalar
-    if sh_stat == "power":
-        scalar = np.linalg.norm(sh_coeffs, axis=1)
-    elif sh_stat == "l0":
-        scalar = sh_coeffs[:, 0]
-    elif sh_stat == "l2":
-        scalar = np.linalg.norm(sh_coeffs[:, 1:6], axis=1)
-    else:
-        raise ValueError(f"Unknown SH stat: {sh_stat}")
-
+    # Get non-b0 gradient directions
+    dwi_dirs = gtab.bvecs[gtab.bvals > 0]
+    dwi_signal = dwi_data[gtab.bvals > 0, :]  # Exclude b0 from signal
+    b0_data = dwi_data[0, :]
+    
+    # Normalize signal by b0
+    dwi_normalized = dwi_signal / (b0_data + 1e-6)
+    # Create Sphere object from gradient directions
+    # Convert Cartesian (x,y,z) to spherical (theta, phi)
+    sphere = Sphere(xyz=dwi_dirs)
+    
+    # Fit SH to the SIGNAL (not ODF)
+    # This uses sf_to_sh which fits SH to signal values at gradient directions
+    sh_coeffs = sf_to_sh(
+        dwi_normalized.T,  # (n_voxels, n_gradients)
+        sphere,  # Use Sphere object, not raw bvecs
+        sh_order=sh_order,
+        basis_type='descoteaux07'
+    )
+    
+    # Compute power (L2 norm) - represents signal complexity/anisotropy
+    scalar = np.linalg.norm(sh_coeffs, axis=1)
     scalar = np.nan_to_num(scalar)
-    if normalization_mask_img is not None:
-        norm_masker = maskers.NiftiMasker(normalization_mask_img)
-        norm_masker.fit(b0)
-        dwi_ventricles = norm_masker.transform(dwi_nib)
-        if delta_per_bvalue is not None:
-            dwi_ventricles = dwi_ventricles[bvals_mask, :]
-        sh_ventricles = sh_model.fit(dwi_ventricles.T)
-        sh_vent_coeffs = sh_ventricles.shm_coeff
-        if sh_stat == "power":
-            scalar_vent = np.linalg.norm(sh_vent_coeffs, axis=1)
-        elif sh_stat == "l0":
-            scalar_vent = sh_vent_coeffs[:, 0]
-        elif sh_stat == "l2":
-            scalar_vent = np.linalg.norm(sh_vent_coeffs[:, 1:6], axis=1)
-        else:
-            raise ValueError(f"Unknown SH stat: {sh_stat}")
-        nsh = scalar / scalar_vent.mean()
-        scalar = nsh
-        return masker.inverse_transform(scalar)
-            
-    scalar = scalar.clip(0, np.percentile(scalar, 99))
-
+    
+    # Normalization with ventricles (questionable, but kept for consistency)
+    # if normalization_mask_img is not None:
+    #     norm_masker = maskers.NiftiMasker(normalization_mask_img)
+    #     norm_masker.fit(b0)
+    #     dwi_norm = norm_masker.transform(dwi_nib)
+        
+    #     if delta_per_bvalue is not None:
+    #         dwi_norm = dwi_norm[bvals_mask, :]
+        
+    #     dwi_norm_signal = dwi_norm[gtab.bvals > 0, :]
+    #     b0_norm = dwi_norm[0, :]
+    #     dwi_norm_normalized = dwi_norm_signal / (b0_norm + 1e-6)
+        
+    #     sh_norm = sf_to_sh(
+    #         dwi_norm_normalized.T,
+    #         sphere,
+    #         sh_order=sh_order,
+    #         basis_type='descoteaux07'
+    #     )
+    #     scalar_norm = np.linalg.norm(sh_norm, axis=1)
+        
+    #     scalar = scalar / (scalar_norm.mean() + 1e-6)
+    
+    scalar = scalar.clip(0, np.percentile(scalar[~np.isnan(scalar)], 99))
     return masker.inverse_transform(scalar)
 
 

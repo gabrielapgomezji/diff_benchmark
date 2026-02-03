@@ -520,7 +520,7 @@ class BrainDataPreparationPipeline(ABC):
                 logger.debug(f"[{subject_id}] Existing data already properly resampled")
                 print(f"[{subject_id}] Existing data already properly resampled")
 
-    def run_pipeline(self, recompute: bool = False) -> pd.DataFrame:
+    def run_pipeline(self, cluster_conf: Dict, slurm_cfg: Dict, recompute: bool = False) -> pd.DataFrame:
         """
         Main orchestration: ensures all required files exist before running analysis.
         Args:
@@ -554,7 +554,11 @@ class BrainDataPreparationPipeline(ABC):
             return sorted(subjects)
 
         subject_list = parse_subject_ids(self.dataset_config)
-
+        parallel_type = (
+            None
+            if cluster_conf.parallel_type not in ["slurm", "joblib"]
+            else cluster_conf.parallel_type
+        )
         run_jobs(
             run_fn=process_subject_wrapper,
             fn_kwargs_list=[
@@ -566,13 +570,15 @@ class BrainDataPreparationPipeline(ABC):
                 }
                 for subject_id in subject_list
             ],
-            parallel_type="slurm", #None, #
-            slurm_cfg={
-                "cpus_per_task": 1,
-                "timeout_min": 900,
-                "mem_gb": 50,
-            },
-            n_jobs=100,
+            parallel_type=parallel_type,
+            slurm_cfg=slurm_cfg,
+            # slurm_cfg={
+            #     "cpus_per_task": 1,
+            #     "timeout_min": 900,
+            #     "mem_gb": 50,
+            # },
+            n_jobs=cluster_conf.n_jobs,
+            wait_for_results=cluster_conf.wait_for_results,
         )
 
         # Once all files are ready, run the analysis

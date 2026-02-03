@@ -36,8 +36,9 @@ choices:
   # cluster: [margaret_cpu]
   # dataset.metric_to_compute: [md]
   ######
-  model: [vit]
-  cluster.conf.parallel_type: [None]
+  model: [dinov2]
+  # cluster.conf.parallel_type: [None]
+  cluster.slurm_cfg.timeout_min: [4920]
   dataset.metric_to_compute: [md]
   # model.backbone.depth: [10]
   data.batch_size: [4]

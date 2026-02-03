@@ -18,6 +18,8 @@ paths:
 conf:
   enabled: true
   parallel_type: slurm
+  n_jobs: 50
+  wait_for_results: false
 
 slurm_cfg:
   # log_folder: "./slurm_logs"
