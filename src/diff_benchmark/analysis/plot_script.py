@@ -72,6 +72,10 @@ def plot_true_vs_pred_regression(df, run_id, model, output_dir):
     ax.set_title(f"{model} – True vs Predicted")
     ax.legend()
     ax.grid(True)
+    
+    # Set axis limits
+    ax.set_xlim(0, 100)
+    ax.set_ylim(0, 100)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_dir / "regression_true_vs_pred.png", dpi=150, bbox_inches="tight")
@@ -158,8 +162,17 @@ def plot_binary_roc(df, model, output_dir):
         d = df[df["split"] == split]
         y_true = d["true"].astype(int)
         y_score = d["pred"].astype(float)
+        
+        # Remap labels to {0, 1} if they're {1, 2}
+        unique_labels = np.sort(y_true.unique())
+        if len(unique_labels) == 2 and unique_labels[0] != 0:
+            # Labels are not {0, 1}, remap them
+            label_map = {unique_labels[0]: 0, unique_labels[1]: 1}
+            y_true_binary = y_true.map(label_map)
+        else:
+            y_true_binary = y_true
 
-        fpr, tpr, _ = roc_curve(y_true, y_score)
+        fpr, tpr, _ = roc_curve(y_true_binary, y_score)
         roc_auc = auc(fpr, tpr)
 
         ax.plot(fpr, tpr, label=f"{split} (AUC={roc_auc:.3f})", alpha=alpha)

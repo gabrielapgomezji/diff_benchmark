@@ -144,7 +144,8 @@ class BrainDataPreparationPipeline(ABC):
         self.in_derivatives = self.base_dir / "derivatives"
         self.metric = dataset_config.metric_to_compute
         self.scale = dataset_config.scale
-        self.schaefer_resampled = resample_schaefer_onto_fs_lr(self.scale)
+        self.surface_space = dataset_config.surface_space
+        self.schaefer_resampled = resample_schaefer_onto_fs_lr(self.scale, target_space=self.surface_space)
         self.big_delta = dataset_config.big_delta
         self.small_delta = dataset_config.small_delta
         self.big_delta_per_bvalue = dataset_config.big_delta_per_bvalue
@@ -402,6 +403,9 @@ class BrainDataPreparationPipeline(ABC):
                 surfaces=surfaces,
                 derivatives_dir=derivatives_dir,
                 subject_id=subject_id,
+                layouts=getattr(self, 'layouts', None),
+                target_space=getattr(self, 'surface_space', 'fslr_32k'),
+                data_reading=self.data_reading,
             )
         except (
             FileNotFoundError,
@@ -422,6 +426,33 @@ class BrainDataPreparationPipeline(ABC):
         specific analysis logic. Currently, it is a placeholder and does not
         perform any operations.
         """
+    
+    def verify_resampling(self, subject_id: str) -> bool:
+        """
+        Check if data has been properly resampled to template space.
+        
+        Default implementation returns True (no resampling needed).
+        Override in subclasses that need resampling (e.g., DefaultPipeline for BIDS data).
+        
+        Args:
+            subject_id (str): The unique identifier for the subject.
+        
+        Returns:
+            bool: True if data is properly resampled or doesn't need resampling, False otherwise.
+        """
+        return True
+    
+    def resample_data(self, subject_id: str):
+        """
+        Resample data from native space to template space if needed.
+        
+        Default implementation does nothing (no resampling needed).
+        Override in subclasses that need resampling (e.g., DefaultPipeline for BIDS data).
+        
+        Args:
+            subject_id (str): The unique identifier for the subject.
+        """
+        pass
 
     def export_to_csv(self) -> pd.DataFrame:
         """
@@ -440,8 +471,9 @@ class BrainDataPreparationPipeline(ABC):
 
     def _process_subject(self, subject_id: str, recompute: bool):
         """
-        Processes a single subject by checking for required files
-        and computing microstructure if necessary.
+        Processes a single subject by checking for required files,
+        computing microstructure if necessary, and ensuring data is properly resampled.
+        
         Args:
             subject_id (str): The unique identifier for the subject to be processed.
             recompute (bool): Whether to recompute microstructure even if files exist.
@@ -450,14 +482,43 @@ class BrainDataPreparationPipeline(ABC):
             logger.warning(f"[{subject_id}] Missing raw files, skipping")
             return  # Skip this subject
 
+        # Track if we computed/recomputed microstructure
+        computed_microstructure = False
+        
         if self.verify_subject_files(subject_id, self.metric) and recompute:
             logger.info(f"[{subject_id}] Recomputing microstructure.")
+            print(f"[{subject_id}] Recomputing microstructure.")
             self.compute_microstructure(subject_id)
+            computed_microstructure = True
         elif not self.verify_subject_files(subject_id, self.metric):
             logger.info(f"[{subject_id}] Computing microstructure.")
+            print(f"[{subject_id}] Computing microstructure.")
             self.compute_microstructure(subject_id)
+            computed_microstructure = True
         else:
-            logger.info(f"[{subject_id}] All files already present.")
+            logger.info(f"[{subject_id}] Microstructure files already present.")
+            print(f"[{subject_id}] Microstructure files already present.")
+        
+        # Handle resampling - works for all pipelines (polymorphic behavior)
+        if computed_microstructure:
+            # Just computed/recomputed - data should already be resampled by project_to_surface
+            # But verify it worked correctly
+            if not self.verify_resampling(subject_id):
+                logger.warning(f"[{subject_id}] Data was just computed but resampling check failed, attempting resampling")
+                print(f"[{subject_id}] Data was just computed but resampling check failed, attempting resampling")
+                self.resample_data(subject_id)
+            else:
+                logger.debug(f"[{subject_id}] Data properly resampled during computation")
+                print(f"[{subject_id}] Data properly resampled during computation")
+        else:
+            # Files exist but weren't just computed - check if resampling was done
+            if not self.verify_resampling(subject_id):
+                logger.info(f"[{subject_id}] Existing data needs resampling, resampling now")
+                print(f"[{subject_id}] Existing data needs resampling, resampling now")
+                self.resample_data(subject_id)
+            else:
+                logger.debug(f"[{subject_id}] Existing data already properly resampled")
+                print(f"[{subject_id}] Existing data already properly resampled")
 
     def run_pipeline(self, recompute: bool = False) -> pd.DataFrame:
         """
@@ -511,7 +572,7 @@ class BrainDataPreparationPipeline(ABC):
                 "timeout_min": 900,
                 "mem_gb": 50,
             },
-            n_jobs=35,
+            n_jobs=100,
         )
 
         # Once all files are ready, run the analysis
@@ -548,6 +609,7 @@ COLUMN_ALIASES = {
         "age_in_years",
         "age_years",
         "ageyrs",
+        "age_at_scan "
     },
     "Gender": {
         "gender",
@@ -591,10 +653,58 @@ class DemographicsPreparationPipeline:
             Preprocessed demographics DataFrame.
         """
         df = self._load_all()
+        if any("hcp" in str(p).lower() for p in self.paths):
+            age_cols = [c for c in df.columns if c.lower() == "age"]
+            if age_cols:
+                logger.info("HCP detected in demographics paths; dropping columns: %s", age_cols)
+                df = df.drop(columns=age_cols)
         df = self._filter(df, target_columns)
         df = self._normalize_subject_ids(df)
         df = self._categorical_to_numeric(df)
         df = df.dropna()
+        return df
+
+    def get_full_demographics(self, available_subjects: list[str] | None = None) -> pd.DataFrame:
+        """
+        Load full demographics DataFrame without filtering columns.
+        Only filters by available subjects if provided.
+        
+        Args:
+            available_subjects: Optional list of subject IDs to filter by (e.g., subjects with brain data)
+        
+        Returns:
+            Full demographics DataFrame with all columns, optionally filtered by subjects
+        """
+        df = self._load_all()
+        
+        # Handle HCP age column issue
+        if any("hcp" in str(p).lower() for p in self.paths):
+            age_cols = [c for c in df.columns if c.lower() == "age"]
+            if age_cols:
+                logger.info("HCP detected in demographics paths; dropping columns: %s", age_cols)
+                df = df.drop(columns=age_cols)
+        
+        # Normalize subject IDs
+        df = self._normalize_subject_ids(df)
+        
+        # Normalize column names using aliases (but keep all columns)
+        df = df.rename(
+            columns={
+                c: canonical
+                for canonical, aliases in COLUMN_ALIASES.items()
+                for c in df.columns
+                if c.lower() in aliases
+            }
+        )
+        
+        # Convert categorical to numeric (especially Gender)
+        df = self._categorical_to_numeric(df)
+        
+        # Filter by available subjects if provided
+        if available_subjects is not None:
+            available_subjects_str = [str(s) for s in available_subjects]
+            df = df[df["Subject"].astype(str).isin(available_subjects_str)]
+        
         return df
 
     # ------------------------------------------------------------------

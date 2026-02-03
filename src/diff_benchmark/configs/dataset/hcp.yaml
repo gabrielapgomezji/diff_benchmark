@@ -14,3 +14,6 @@ bvec_extensions: bvecs
 bval_extensions: bvals
 nodif_mask_extension: nodif_brain_mask.nii.gz
 aparcaseg_extension: T1w/aparc+aseg.nii.gz
+
+# HCP uses fsLR 32k space
+surface_space: fslr_32k

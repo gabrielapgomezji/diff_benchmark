@@ -12,3 +12,6 @@ bvec_extensions:
   - bvecs_image
 bval_extensions:
   - bval
+
+# ABIDE data will be resampled to fsLR 32k for analysis
+surface_space: fslr_32k

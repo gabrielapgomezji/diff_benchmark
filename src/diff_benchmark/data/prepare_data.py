@@ -132,6 +132,34 @@ class DatasetPreparation:
         demographics_df = preprocessor.preprocess(self.cfg.target.target_column)
         return demographics_df
 
+    def _get_full_demographics_df(self, available_subjects: list[str] | None = None) -> pd.DataFrame:
+        """
+        Get full demographics DataFrame without column filtering.
+        
+        Args:
+            available_subjects: Optional list of subject IDs to filter by (e.g., subjects with brain data)
+        
+        Returns:
+            pd.DataFrame: Full demographics DataFrame with all columns
+        """
+        # Ensure brain preparator is initialized
+        if not hasattr(self, 'brain_preparator'):
+            brain_df = self._get_brain_df()
+        
+        # Get demographics file path
+        if self.source_dataset.name == "hcp":
+            cog_file = self.cfg.cluster.paths[self.source_dataset.name].csv_file
+        else:
+            cog_file = self._extract_participants_files_from_layouts(
+                self.brain_preparator.layouts
+            )
+        
+        # Load full demographics without filtering columns
+        preprocessor = DemographicsPreparationPipeline(cog_file)
+        demographics_df = preprocessor.get_full_demographics(available_subjects)
+        
+        return demographics_df
+
     def _filter_dfs(
         self, brain_df: pd.DataFrame, demographics_df: pd.DataFrame
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -179,8 +207,9 @@ class DatasetPreparation:
         Returns:
             Tuple[CustomDataset, PreprocessedData]: The prepared dataset and preprocessed data.
         """
-        print("Preparing brain data...")
+        # demographics_df = self._get_demographics_df()
         # breakpoint()
+        print("Preparing brain data...")
         brain_df = self._get_brain_df()
         print("Preparing demographics data...")
         demographics_df = self._get_demographics_df()

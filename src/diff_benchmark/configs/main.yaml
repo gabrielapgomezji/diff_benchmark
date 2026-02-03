@@ -5,8 +5,6 @@ defaults:
   - backend: torch
   - data: default
   - target: gender
-  # - training: default
-  # - experiment: 2dcnn_slices
   - cluster: margaret
   - _self_
 
@@ -19,15 +17,30 @@ runtime:
 
 
 choices:
-  model: [dummy_classifier] #[2dcnn, medicalnet]
-  backend: [sklearn]
-  dataset: [camcan]
-  cluster: [margaret]
-  cluster.conf.parallel_type: [None]
-  dataset.metric_to_compute: [md]
-  # # model.backbone.depth: [10, 18]
-  # model: [dummy_classifier, linear, pca_linear, forest, pca_forest] #[2dcnn, medicalnet]
+  # model: [pca_linear, linear, pca_forest, forest] #[medicalnet] #[pca_linear] #[2dcnn, medicalnet]
   # backend: [sklearn]
+  # dataset: [abide] #[camcan] #, hcp, wand] #
+  # target: [dx_group]
+  # data.batch_size: [1]
+  # cluster: [margaret_cpu]
+  # # cluster.conf.parallel_type: [None]
+  # dataset.metric_to_compute: [md]
+  # # pred_head: [regression]
+  # # target: [age]
+  # # cluster: [margaret]
+  # # model.backbone.depth: [10, 18]
+  ########
+  # model: [linear, pca_linear, forest, pca_forest] #[2dcnn, medicalnet]
+  # backend: [sklearn]
+  # dataset: [wand]
   # cluster: [margaret_cpu]
   # dataset.metric_to_compute: [md]
+  ######
+  model: [vit]
+  cluster.conf.parallel_type: [None]
+  dataset.metric_to_compute: [md]
+  # model.backbone.depth: [10]
+  data.batch_size: [4]
+  dataset: [hcp]
+  data.num_workers: [13]
   
