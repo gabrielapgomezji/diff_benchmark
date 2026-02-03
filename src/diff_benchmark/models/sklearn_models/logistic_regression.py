@@ -58,12 +58,8 @@ class PCALinearModel(SklearnModel):
             scoring = "neg_mean_squared_error"
 
             param_grid = {
-                "pca__n_components": [10],  # [10, 50, 100],
-                "linear__alpha": [
-                    0.01,
-                    0.1,
-                    1,
-                ],  # [0.01, 0.1, 1, 10],  # Ridge regularization
+                "pca__n_components": [10, 50, 100],
+                "linear__alpha": [0.01, 0.1, 1, 10],  # Ridge regularization
             }
 
         pipeline = Pipeline(
@@ -104,7 +100,7 @@ class LinearModel(SklearnModel):
     def _build_model(self, **kwargs) -> BaseEstimator:
         self.prediction_task = kwargs.get("prediction_task", None)
         self.output_dim = 1
-
+        
         if self.prediction_task == "binary_classification":
             head = LogisticRegression(max_iter=1000)
             scoring = "accuracy"

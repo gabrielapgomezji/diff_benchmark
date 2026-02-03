@@ -1,0 +1,7 @@
+name: vit
+
+backbone:
+  model_name: vit-base-patch16-224
+  freeze_backbone: True
+  slice_axis: 2
+  pooling: mean

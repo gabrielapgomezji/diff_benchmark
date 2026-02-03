@@ -1,0 +1,21 @@
+name: wand
+data_reading: bids
+
+metric_to_compute: rtop
+scale: 1000
+
+big_delta: 0.024
+small_delta: 0.007
+
+big_delta_per_bvalue:
+  2200: 24
+  4000: 30
+  4400: 24
+  8000: 30
+  5800: 42
+  7750: 55
+  11600: 42
+  15500: 55
+
+# WAND data will be resampled to fsLR 32k for analysis
+surface_space: fslr_32k

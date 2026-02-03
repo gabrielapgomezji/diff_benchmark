@@ -1,0 +1,7 @@
+name: dinov2
+
+backbone:
+  model_name: dinov2-base
+  pooling: mean
+  slice_axis: 2
+  freeze_backbone: false

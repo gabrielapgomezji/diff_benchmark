@@ -17,6 +17,10 @@ def main():
     elif command == "run":
         from diff_benchmark.cli.run import main
         main()
+        
+    elif command == "analysis":
+        from diff_benchmark.cli.analysis import main
+        main()
 
     else:
         raise ValueError(f"Unknown command: {command}")

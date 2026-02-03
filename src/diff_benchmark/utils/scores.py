@@ -4,13 +4,16 @@ from sklearn.metrics import (
     explained_variance_score,
     f1_score,
     mean_absolute_percentage_error,
-    mean_squared_error,
+    mean_absolute_error,
+    root_mean_squared_error,
     precision_score,
     r2_score,
     recall_score,
 )
+from sklearn.feature_selection import r_regression
+from sklearn.utils.class_weight import compute_sample_weight
 
-__all__ = ["accuracy_score"]
+__all__ = ["compute_metrics"]
 
 
 def compute_metrics(
@@ -28,9 +31,13 @@ def compute_metrics(
         average (str): Averaging method for multi-class classification.
         zero_division (str): Handling of zero division cases.
     """
+    sample_weight = compute_sample_weight('balanced', y_true)
     if prediction_task == "binary_classification":
         return {
             "accuracy": accuracy_score(y_true, y_pred),
+            "accuracy_weighted": accuracy_score(
+                y_true, y_pred, sample_weight=sample_weight
+            ),
             "precision": precision_score(
                 y_true, y_pred, average=average, zero_division=zero_division
             ),
@@ -45,12 +52,20 @@ def compute_metrics(
 
     if prediction_task == "regression":
         return {
-            "mse": mean_squared_error(y_true, y_pred),
+            "rmse": root_mean_squared_error(y_true, y_pred),
             "r2": r2_score(y_true, y_pred),
             "explained_variance": explained_variance_score(y_true, y_pred),
             "mape": mean_absolute_percentage_error(y_true, y_pred),
+            "mae": mean_absolute_error(y_true, y_pred),
+            "mae_weighted": mean_absolute_error(
+                y_true, y_pred, sample_weight=sample_weight
+            ),
+            "rmse_weighted": root_mean_squared_error(
+                y_true, y_pred, sample_weight=sample_weight
+            ),
+            # "correlation": 
         }
 
     raise ValueError(
-        "Invalid prediction_task. Choose either 'classification' or 'regression'."
+        "Invalid prediction_task. Choose either 'binary_classification' or 'regression'."
     )

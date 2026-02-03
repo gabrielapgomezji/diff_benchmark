@@ -13,6 +13,8 @@ from diff_benchmark.utils.scores import compute_metrics
 from diff_benchmark.utils.logger import TrainerLogRecord, TorchDebugLogger, LightningDebugLogger, tqdm_if_enabled, LightningPrintLogger
 from collections import deque
 from diff_benchmark.utils.logger import setup_logger
+from sklearn.model_selection import train_test_split
+from torch.utils.data import Subset
 
 
 train_transforms = transforms.Compose(
@@ -39,6 +41,7 @@ class BaseTrainer(ABC):
 
     def __init__(self, model: nn.Module):
         self.model = model
+        self.fold_idx: int | None = None  # add fold placeholder
 
     @property
     def data_type(self):
@@ -53,6 +56,10 @@ class BaseTrainer(ABC):
     def predict(self, dataloader):
         """Run inference and return predictions."""
         raise NotImplementedError
+    
+    def set_fold(self, fold_idx: int):
+        """Set the current fold for logging/tracking purposes."""
+        self.fold_idx = fold_idx
 
 
 class SklearnModel(ABC, BaseEstimator):
@@ -164,6 +171,9 @@ class SklearnTrainer(BaseTrainer):
         features, targets = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
         return features_reshaped, targets.flatten()
+    
+    def set_fold(self, fold_idx: int):
+        super().set_fold(fold_idx)
 
     def fit(self, dataloader: DataLoader):
         """
@@ -207,21 +217,19 @@ def split_loader(dataloader, collate_fn: Callable | None, val_ratio=0.2, seed=42
             - val_loader (DataLoader): DataLoader for the validation subset with
               shuffling disabled.
     """
+    print(f"Val ratio: {val_ratio}, seed: {seed}")
     dataset = dataloader.dataset
-    n_total = len(dataset)
-    n_val = int(n_total * val_ratio)
-    n_train = n_total - n_val
+    genders = np.asarray(dataset.dataset.gender[dataset.indices])
+    idx = np.arange(len(dataset))
+    train_idx, val_idx = train_test_split(
+        idx,
+        test_size=val_ratio,
+        stratify=genders,
+        random_state=42,
+    )
 
-    generator = torch.Generator().manual_seed(seed)
-    train_ds, val_ds = random_split(dataset, [n_train, n_val], generator)
-    # genders = np.asarray(dataset.dataset.gender[dataset.indices])
-    # idx = np.arange(len(dataset))
-    # train_ds, val_ds = train_test_split(
-    #     idx,
-    #     test_size=val_ratio,
-    #     stratify=genders,
-    #     random_state=42,
-    # )
+    train_ds = Subset(dataset, train_idx)
+    val_ds = Subset(dataset, val_idx)
 
     train_loader = DataLoader(
         train_ds,
@@ -257,6 +265,7 @@ class TorchTrainer(BaseTrainer):
         weight_decay: float = 1e-4,
         device: str = "cuda",
         val_ratio: float = 0.2,
+        seed: int = 42,
         **kwargs: Any,
     ):
         super().__init__(model)
@@ -265,6 +274,7 @@ class TorchTrainer(BaseTrainer):
 
         self.epochs = epochs
         self.val_ratio = val_ratio
+        self.seed = seed
 
         # self.optimizer = torch.optim.AdamW(
         #     self.model.parameters(),
@@ -277,11 +287,9 @@ class TorchTrainer(BaseTrainer):
             weight_decay=weight_decay,
         )
         
-        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        self.scheduler = torch.optim.lr_scheduler.ExponentialLR(
             self.optimizer,
-            mode="min",
-            factor=0.5,
-            patience=10,
+            gamma=0.95,  # multiply LR by 0.95 every epoch
         )
 
         self.criterion = (
@@ -296,12 +304,15 @@ class TorchTrainer(BaseTrainer):
         self.logger = TorchDebugLogger(
             enabled=kwargs.get("debug", False),
             run_id=self.run_id,
-            output_dir="./data/results/parquet/debug/",
+            output_dir=f"exp_outputs/experiments/exp_{self.run_id}/debug/",
             prediction_task=self.prediction_task,
         )
 
+    def set_fold(self, fold_idx: int):
+        super().set_fold(fold_idx)
+            
     def fit(self, dataloader):
-        train_loader, val_loader = split_loader(dataloader, collate_fn=self.model.collate_fn, val_ratio=self.val_ratio)
+        train_loader, val_loader = split_loader(dataloader, collate_fn=self.model.collate_fn, val_ratio=self.val_ratio, seed=self.seed)
         show_progress = not self.logger.enabled or self.logger.enabled
         
         self.log.info(f"Starting training for {self.epochs} epochs...") 
@@ -319,7 +330,7 @@ class TorchTrainer(BaseTrainer):
                 enabled=show_progress,
             )
             self.log.info(f"Epoch {epoch+1}/{self.epochs}")
-            print(f"Epoch {epoch+1}/{self.epochs}")
+            print(f"Epoch {epoch+1}/{self.epochs} of fold {self.fold_idx}")
 
             # for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"[Epoch {epoch+1}/{self.epochs}]")):
             for batch_idx, batch in pbar:
@@ -342,11 +353,7 @@ class TorchTrainer(BaseTrainer):
 
                 train_loss += loss.item()
                 loss_window.append(loss)
-                # if pbar is not train_loader:
-                #     pbar.set_postfix(
-                #         loss=f"{sum(loss_window)/len(loss_window):.4f}",
-                #         lr=f"{self.optimizer.param_groups[0]['lr']:.2e}",
-                #     )
+
                 pbar.set_postfix(
                     loss=f"{sum(loss_window)/len(loss_window):.4f}",
                     lr=f"{self.optimizer.param_groups[0]['lr']:.2e}",
@@ -356,14 +363,11 @@ class TorchTrainer(BaseTrainer):
                     epoch=epoch,
                     batch=batch_idx,
                     loss=loss.item(),
+                    fold= self.fold_idx if self.fold_idx is not None else -1,
                 )
                 if self.logger.enabled:
                     train_preds.append(preds.detach().cpu())
                     train_targets.append(y.detach().cpu())
-                
-
-                # breakpoint()
-                # self.model.train()
     
             metrics = None
             if self.logger.enabled:
@@ -380,9 +384,10 @@ class TorchTrainer(BaseTrainer):
                 epoch=epoch,
                 loss=train_loss / len(train_loader),
                 metrics=metrics,
+                fold= self.fold_idx if self.fold_idx is not None else -1,
             )
             val_loss = self._validate(val_loader, epoch)
-            self.scheduler.step(val_loss)
+            self.scheduler.step()
             self.log.info(
                 f"[{self.run_id}] "
                 f"Epoch {epoch+1}/{self.epochs} | "
@@ -390,7 +395,7 @@ class TorchTrainer(BaseTrainer):
                 f"val_loss={val_loss:.4f}"
             )
         
-        self.logger.flush()
+        self.logger.flush(trainer=self)
 
     def _validate(self, val_loader, epoch):
         self.model.eval()
@@ -434,6 +439,7 @@ class TorchTrainer(BaseTrainer):
             epoch=epoch,
             loss=val_loss,
             metrics=metrics,
+            fold= self.fold_idx if self.fold_idx is not None else -1,
         )
         return val_loss
 
@@ -606,6 +612,7 @@ class LightningTrainer(BaseTrainer):
         learning_rate: float = 1e-4,
         weight_decay: float = 1e-4,
         val_ratio: float = 0.2,
+        seed: int = 42,
         **kwargs: Any,
     ):
         self.lightning_model = _LightningModuleAdapter(
@@ -627,7 +634,7 @@ class LightningTrainer(BaseTrainer):
         trainer_kwargs.setdefault("callbacks", []).append(print_cb)
         
         debug = kwargs.get("debug", False)
-        debug_dir = "./data/results/parquet/debug/"
+        debug_dir = f"exp_outputs/experiments/exp_{self.run_id}/debug/"
         if debug:
             self.run_id = kwargs["run_id"] if "run_id" in kwargs else "default_run"
             debug_cb = LightningDebugLogger(
@@ -643,9 +650,15 @@ class LightningTrainer(BaseTrainer):
 
         self.trainer = pl.Trainer(**trainer_kwargs)
         self.val_ratio = val_ratio
+        self.seed = seed
 
+    def set_fold(self, fold_idx: int):
+        super().set_fold(fold_idx)
+
+        self.trainer.fold_idx = fold_idx
+                
     def fit(self, dataloader):
-        train_loader, val_loader = split_loader(dataloader, val_ratio=self.val_ratio)
+        train_loader, val_loader = split_loader(dataloader, val_ratio=self.val_ratio, seed=self.seed)
         # self.trainer.fit(self.model, train_loader, val_loader)
         self.trainer.fit(self.lightning_model, train_loader, val_loader)
 
