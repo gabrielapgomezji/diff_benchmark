@@ -322,6 +322,87 @@ def compute_mk(
     logger.warning("Be careful, this is not normalized MK!")
     return masker.inverse_transform(mk.T)
 
+from dipy.reconst.shm import CsaOdfModel
+def compute_sh(
+    dwi_nib: nib.nifti1.Nifti1Image,
+    mask_img: nib.nifti1.Nifti1Image,
+    normalization_mask_img: nib.nifti1.Nifti1Image,  # unused but kept for API consistency
+    bvals: np.ndarray,
+    bvecs: np.ndarray,
+    big_delta: float,
+    small_delta: float,
+    delta_per_bvalue: dict | None = None,
+    sh_order: int = 6,
+    sh_stat: str = "power",  # "power" | "l0" | "l2"
+):
+    """
+    Compute a scalar SH-derived metric from DWI data.
+    Returns a NIfTI image compatible with the rest of the pipeline.
+    """
+    breakpoint()
+    b0 = nimage.index_img(dwi_nib, 0)
+    masker = maskers.NiftiMasker(mask_img)
+    masker.fit(b0)
+    dwi_data = masker.transform(dwi_nib)
+
+    # --- b-value selection (same logic as MD / MK)
+    if delta_per_bvalue is not None:
+        selected_bvals = [0] + [
+            k for k, v in delta_per_bvalue.items() if v == big_delta * 1000
+        ]
+        bvals_mask = np.any([bvals == s for s in selected_bvals], axis=0)
+        dwi_data = dwi_data[bvals_mask, :]
+    else:
+        bvals_mask = np.ones_like(bvals, dtype=bool)
+
+    gtab = gradient_table(
+        bvals=bvals[bvals_mask],
+        bvecs=bvecs[bvals_mask],
+        small_delta=small_delta,
+        big_delta=big_delta,
+    )
+
+    # --- SH model
+    sh_model = CsaOdfModel(gtab, sh_order=sh_order)
+    sh_fit = sh_model.fit(dwi_data.T)
+
+    sh_coeffs = sh_fit.shm_coeff  # (n_voxels, n_coeffs)
+
+    # --- Reduce SH → scalar
+    if sh_stat == "power":
+        scalar = np.linalg.norm(sh_coeffs, axis=1)
+    elif sh_stat == "l0":
+        scalar = sh_coeffs[:, 0]
+    elif sh_stat == "l2":
+        scalar = np.linalg.norm(sh_coeffs[:, 1:6], axis=1)
+    else:
+        raise ValueError(f"Unknown SH stat: {sh_stat}")
+
+    scalar = np.nan_to_num(scalar)
+    if normalization_mask_img is not None:
+        norm_masker = maskers.NiftiMasker(normalization_mask_img)
+        norm_masker.fit(b0)
+        dwi_ventricles = norm_masker.transform(dwi_nib)
+        if delta_per_bvalue is not None:
+            dwi_ventricles = dwi_ventricles[bvals_mask, :]
+        sh_ventricles = sh_model.fit(dwi_ventricles.T)
+        sh_vent_coeffs = sh_ventricles.shm_coeff
+        if sh_stat == "power":
+            scalar_vent = np.linalg.norm(sh_vent_coeffs, axis=1)
+        elif sh_stat == "l0":
+            scalar_vent = sh_vent_coeffs[:, 0]
+        elif sh_stat == "l2":
+            scalar_vent = np.linalg.norm(sh_vent_coeffs[:, 1:6], axis=1)
+        else:
+            raise ValueError(f"Unknown SH stat: {sh_stat}")
+        nsh = scalar / scalar_vent.mean()
+        scalar = nsh
+        return masker.inverse_transform(scalar)
+            
+    scalar = scalar.clip(0, np.percentile(scalar, 99))
+
+    return masker.inverse_transform(scalar)
+
 
 def project_to_surface(
     micr_img: nib.nifti1.Nifti1Image,
@@ -745,6 +826,7 @@ METRIC_COMPUTERS = {
     "rtop": compute_rtop,
     "md": compute_md,
     "mk": compute_mk,
+    "sh": compute_sh,
 }
 
 
