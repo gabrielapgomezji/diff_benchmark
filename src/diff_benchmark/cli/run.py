@@ -45,6 +45,8 @@ def run_single_model(cfg_og, model_name, results_path):
         "experiment_hash": cfg.runtime.experiment_hash,
         "model": model_name,
         "dataset": cfg.dataset.name,
+        "tissue_type": cfg.dataset.tissue_type,
+        "primary_metric": cfg.dataset.metric_to_compute,
         "status": "running",
         "n_folds_expected": cfg.data.data_partition.n_splits,
         "n_folds_completed": 0,
@@ -227,6 +229,8 @@ def run_single_model(cfg_og, model_name, results_path):
                     model_name=model_name,
                     dataset=dataset_selected.name,
                     prediction_task=cfg.pred_head.prediction_task,
+                    tissue_type=cfg.dataset.tissue_type,
+                    primary_metric=cfg.dataset.metric_to_compute,
                     fold=fold_idx,
                     split="train",
                 )
@@ -239,6 +243,8 @@ def run_single_model(cfg_og, model_name, results_path):
                     model_name=model_name,
                     dataset=dataset_selected.name,
                     prediction_task=cfg.pred_head.prediction_task,
+                    tissue_type=cfg.dataset.tissue_type,
+                    primary_metric=cfg.dataset.metric_to_compute,
                     fold=fold_idx,
                     split="test",
                 )

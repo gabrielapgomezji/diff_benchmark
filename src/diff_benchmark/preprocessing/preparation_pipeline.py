@@ -122,7 +122,7 @@ class BrainDataPreparationPipeline(ABC):
         config (dict): Configuration settings for data preparation and analysis.
         results (dict): A dictionary to store results of the analysis.
     Methods:
-        verify_subject_files(subject_id: str, metric: str) -> bool:
+        verify_subject_files(subject_id: str, metric: str, tissue_type: str) -> bool:
             Abstract method to verify the existence of required files for a subject.
         compute_microstructure(subject_id: str):
             Abstract method to compute microstructure data for a subject.
@@ -138,6 +138,7 @@ class BrainDataPreparationPipeline(ABC):
     """
 
     def __init__(self, dataset_config: DatasetConfig):
+        self.tissue_type = dataset_config.tissue_type
         self.dataset_config = dataset_config
         self.data_reading = dataset_config.data_reading
         self.base_dir = Path(dataset_config.base_dir)
@@ -319,7 +320,7 @@ class BrainDataPreparationPipeline(ABC):
         return True
 
     @abstractmethod
-    def verify_subject_files(self, subject_id: str, metric: str) -> bool:
+    def verify_subject_files(self, subject_id: str, metric: str, tissue_type: str) -> bool:
         """
         Verifies the existence and validity of subject files for a given subject ID and metric.
         Args:
@@ -347,14 +348,14 @@ class BrainDataPreparationPipeline(ABC):
             aparc_aseg = files.aparc_aseg
             dwi_nib = nib.load(files.dwi_data)
             bvals = np.loadtxt(files.bvals)
-            labels = extract_selected_labels(aparc_aseg)
+            labels = extract_selected_labels(aparc_aseg, tissue_type=self.tissue_type)
 
             surfaces = files.surfaces
 
             if self.data_reading == "hcp":
                 nodif_mask = files.nodif_mask
                 bvecs = np.loadtxt(files.bvecs).T
-                nodif_mask = files["nodif mask"]
+                nodif_mask = files.nodif_mask
                 aparc_resampled = nimage.resample_to_img(
                     aparc_aseg,
                     nodif_mask,
@@ -375,20 +376,22 @@ class BrainDataPreparationPipeline(ABC):
                     force_resample=True,
                     copy_header=True,
                 )
+                if self.tissue_type == "gray":
+                    selected_labels = [
+                        k
+                        for k in labels
+                        if (
+                            ("ctx" in k)
+                            or ("thalamus" in k)
+                            or ("caudate" in k)
+                            or ("putamen" in k)
+                            or ("pallidum" in k)
+                        )
+                    ]
+                elif self.tissue_type == "white":
+                    selected_labels = None
 
-                selected_labels = [
-                    k
-                    for k in labels
-                    if (
-                        ("ctx" in k)
-                        or ("thalamus" in k)
-                        or ("caudate" in k)
-                        or ("putamen" in k)
-                        or ("pallidum" in k)
-                    )
-                ]
-
-            ctx_mask, vent_mask = create_masks(aparc_resampled, labels, selected_labels)
+            ctx_mask, vent_mask = create_masks(aparc_resampled, labels, selected_labels, tissue_type=self.tissue_type)
 
             compute_save_and_project_metric(
                 metric=self.metric,
@@ -406,6 +409,7 @@ class BrainDataPreparationPipeline(ABC):
                 layouts=getattr(self, 'layouts', None),
                 target_space=getattr(self, 'surface_space', 'fslr_32k'),
                 data_reading=self.data_reading,
+                tissue_type=self.tissue_type,
             )
         except (
             FileNotFoundError,
@@ -484,20 +488,19 @@ class BrainDataPreparationPipeline(ABC):
 
         # Track if we computed/recomputed microstructure
         computed_microstructure = False
-        
-        if self.verify_subject_files(subject_id, self.metric) and recompute:
-            logger.info(f"[{subject_id}] Recomputing microstructure.")
-            print(f"[{subject_id}] Recomputing microstructure.")
+        if self.verify_subject_files(subject_id, self.metric, self.tissue_type) and recompute:
+            logger.info(f"[{subject_id}] Recomputing microstructure for {self.tissue_type} matter.")
+            print(f"[{subject_id}] Recomputing microstructure for {self.tissue_type} matter.")
             self.compute_microstructure(subject_id)
             computed_microstructure = True
-        elif not self.verify_subject_files(subject_id, self.metric):
-            logger.info(f"[{subject_id}] Computing microstructure.")
-            print(f"[{subject_id}] Computing microstructure.")
+        elif not self.verify_subject_files(subject_id, self.metric, self.tissue_type):
+            logger.info(f"[{subject_id}] Computing microstructure for {self.tissue_type} matter.")
+            print(f"[{subject_id}] Computing microstructure for {self.tissue_type} matter.")
             self.compute_microstructure(subject_id)
             computed_microstructure = True
         else:
-            logger.info(f"[{subject_id}] Microstructure files already present.")
-            print(f"[{subject_id}] Microstructure files already present.")
+            logger.info(f"[{subject_id}] Microstructure files for {self.tissue_type} matter already present.")
+            print(f"[{subject_id}] Microstructure files for {self.tissue_type} matter already present.")
         
         # Handle resampling - works for all pipelines (polymorphic behavior)
         if computed_microstructure:
@@ -554,6 +557,7 @@ class BrainDataPreparationPipeline(ABC):
             return sorted(subjects)
 
         subject_list = parse_subject_ids(self.dataset_config)
+
         parallel_type = (
             None
             if cluster_conf.parallel_type not in ["slurm", "joblib"]

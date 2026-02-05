@@ -17,5 +17,7 @@ big_delta_per_bvalue:
   11600: 42
   15500: 55
 
+tissue_type: gray
+
 # WAND data will be resampled to fsLR 32k for analysis
 surface_space: fslr_32k

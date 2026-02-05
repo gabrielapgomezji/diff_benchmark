@@ -8,6 +8,8 @@ def metrics_to_rows(
     model_name: str,
     dataset: str,
     prediction_task: str,
+    tissue_type: str,
+    primary_metric: str,
     fold: int,
     split: str,
 ):
@@ -19,6 +21,8 @@ def metrics_to_rows(
                 "model_name": model_name,
                 "dataset": dataset,
                 "prediction_task": prediction_task,
+                "tissue_type": tissue_type,
+                "primary_metric": primary_metric,
                 "fold": fold,
                 "split": split,
                 "metric": metric_name,

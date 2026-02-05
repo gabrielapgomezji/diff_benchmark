@@ -32,7 +32,8 @@ def build_global_metrics(experiments_root: Path, output_path: Path) -> pd.DataFr
         df["prediction_task"] = cfg.pred_head.prediction_task
         df["model_name"] = cfg.model.name
 
-        # optional but often useful
+        # optional but often useful - default to "gray" if not specified
+        df["tissue_type"] = cfg.dataset.get("tissue_type", "gray")
         df["primary_metric"] = cfg.dataset.metric_to_compute
 
         all_dfs.append(df)
@@ -54,6 +55,7 @@ def build_summary_metrics(df_folds: pd.DataFrame, out_path: Path) -> pd.DataFram
             "model_name",
             "dataset",
             "prediction_task",
+            "tissue_type",
             "primary_metric",
             "split",
             "metric",
@@ -103,6 +105,15 @@ def main(cfg: DictConfig) -> None:
     print("--- Primary Metric: rmse ---")
     df_best = table_best_means(df_summary, primary_metric="rmse")
     print_table(df_best)
+    print("--- Primary Metric: mae ---")
+    df_best = table_best_means(df_summary, primary_metric="mae")
+    print_table(df_best)
+    # try:
+    #     print("--- Primary Metric: correlation ---")
+    #     df_best = table_best_means(df_summary, primary_metric="rmse")
+    #     print_table(df_best)
+    # except Exception as e:
+    #     print(f"Skipping RMSE table: {e}")
 
     best_runs = select_best_runs(df_summary, primary_metric="accuracy")
     print("\n=== DETAILED RESULTS (BEST RUN PER MODEL) ===")
@@ -121,12 +132,46 @@ def main(cfg: DictConfig) -> None:
     #     print(f"\n### Metric: {metric}")
     #     print_table(table_best_means(df_m, metric))
     
+    # -----------------------------------------------------------------
+    # Group by tissue type for tissue-specific analysis
+    # -----------------------------------------------------------------
+    print("\n" + "="*80)
+    print("TISSUE-SPECIFIC ANALYSIS")
+    print("="*80)
+    
+    for tissue_type, df_tissue in df_summary.groupby("tissue_type"):
+        print(f"\n{'='*80}")
+        print(f"TISSUE TYPE: {tissue_type.upper()}")
+        print(f"{'='*80}")
+        
+        # Best results by dataset for this tissue type
+        for ds, df_ds in df_tissue.groupby("dataset"):
+            print(f"\n### Dataset: {ds} ({tissue_type})")
+            print_table(table_best_means(df_ds))
+        
+        # Best results by primary metric for this tissue type
+        for primary_metric, df_pm in df_tissue.groupby("primary_metric"):
+            print(f"\n### Primary Metric: {primary_metric} ({tissue_type})")
+            if "binary" in df_pm["prediction_task"].values or "classification" in df_pm["prediction_task"].values:
+                print(f"--- Binary Classification ---")
+                print_table(table_best_means(df_pm, primary_metric="accuracy"))
+            if "regression" in df_pm["prediction_task"].values:
+                print(f"--- Regression ---")
+                print_table(table_best_means(df_pm, primary_metric="rmse"))
+    
+    # -----------------------------------------------------------------
+    # Cross-tissue comparison
+    # -----------------------------------------------------------------
+    print("\n" + "="*80)
+    print("CROSS-TISSUE COMPARISON")
+    print("="*80)
+    
     for ds, df_ds in df_summary.groupby("dataset"):
         print(f"\n### Dataset: {ds}")
         print_table(table_best_means(df_ds))
 
     for primary_metric, df_pm in df_summary.groupby("primary_metric"):
-        print(f"\n### Primary Metric: {primary_metric} - Binnary Classification")
+        print(f"\n### Primary Metric: {primary_metric} - Binary Classification")
         print_table(table_best_means(df_pm, primary_metric="accuracy"))
         print(f"\n### Primary Metric: {primary_metric} - Regression")
         print_table(table_best_means(df_pm, primary_metric="rmse"))
