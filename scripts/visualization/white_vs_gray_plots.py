@@ -22,6 +22,8 @@ from utils import (
     score_from_metric,
     select_best_runs,
     fold_columns,
+    calculate_paired_stats,
+    get_display_label,
     zscore,
 )
 
@@ -62,39 +64,16 @@ def _collect_differences(df: pd.DataFrame) -> pd.DataFrame:
                 best_gray = gray_rows.loc[gray_rows["_fold_mean"].idxmin()]
 
             # Extract fold values
-            w_vals = best_white[f_cols].values.astype(float)
-            g_vals = best_gray[f_cols].values.astype(float)
+            w_vals = best_white[f_cols].values
+            g_vals = best_gray[f_cols].values
 
-            # Ensure same shape and no nans
-            if len(w_vals) != len(g_vals) or np.isnan(w_vals).any() or np.isnan(g_vals).any():
-                continue
-
-            # Difference
-            diffs = w_vals - g_vals
+            # Calculate Stats (White vs Gray)
+            t_score, mean_diff, std_diff, norm_diffs = calculate_paired_stats(
+                w_vals, g_vals, higher_is_better
+            )
             
-            # If lower is better (MAE), then White < Gray means White is better.
-            # We want Positive to mean White is Better.
-            if not higher_is_better:
-                diffs = -diffs
-
-            mean_diff = np.mean(diffs)
-            std_diff = np.std(diffs, ddof=1)
-
-            if std_diff == 0:
-                # If variance is 0, we can't normalize. 
-                # If mean > 0, it's infinitely good. If 0, it's 0.
-                if mean_diff == 0:
-                    continue # No diff
-                # If there is a diff but no variance (deterministic gap), 
-                # we technically have infinite T. 
-                # For visualization, maybe skip or set to large value?
-                # This is rare in CV.
+            if std_diff == 0 and mean_diff == 0:
                 continue
-            
-            # Normalize fold differences
-            # normalized_diffs are the values we want to plot (Effect Size distribution)
-            norm_diffs = diffs / std_diff
-            t_score = mean_diff / std_diff
 
             for val in norm_diffs:
                 rows.append({
@@ -133,8 +112,9 @@ def plot_white_vs_gray_tscore(
     order_df = diffs.groupby(["dataset", "target", "task", "feature"])["t_score_mean"].mean().reset_index()
     order_df = order_df.sort_values("t_score_mean", ascending=False)
     
-    # Create label mapping
+    # Simplified labels
     order_df["label"] = [
+        get_display_label(row.dataset, row.target, row.task) + f" | {format_label(row.feature)}"
         format_label(f"{row.dataset}|{row.target}|{row.task}|{row.feature}")
         for row in order_df.itertuples(index=False)
     ]
@@ -151,28 +131,34 @@ def plot_white_vs_gray_tscore(
     fig_h = max(6, 0.4 * len(plot_order))
     fig, ax = plt.subplots(figsize=(10, fig_h))
 
-    # Box + Strip Plot
-    # Boxplot for the distribution info
-    sns.boxplot(
-        data=diffs,
-        x="normalized_diff",
-        y="label",
-        order=plot_order,
-        color="#E0E0E0",
-        fliersize=0, # Turn off outlier diamonds, stripplot will show them
-        ax=ax,
-        width=0.5
-    )
-    
-    # Stripplot for the individual folds
+    # Strip Plot + Mean
+    # Plot the raw fold values (normalized)
     sns.stripplot(
         data=diffs,
         x="normalized_diff",
         y="label",
         order=plot_order,
         color="#4C78A8",
-        size=4,
-        alpha=0.8,
+        size=5,
+        alpha=0.6,
+        ax=ax,
+        jitter=0.15
+    )
+
+    # Plot Mean points
+    # We can use pointplot with join=False to show mean (and ci=None implies just the point?)
+    # Or just calculate means and plot them.
+    # Since we have 'diffs' with 'normalized_diff', let's just use pointplot for the mean marker
+    sns.pointplot(
+        data=diffs,
+        x="normalized_diff",
+        y="label",
+        order=plot_order,
+        join=False,
+        palette=["#B22222"], # Dark Red for mean
+        markers="D", # Diamond marker
+        scale=0.6,
+        errorbar=None, # No error bars, just mean
         ax=ax
     )
 
