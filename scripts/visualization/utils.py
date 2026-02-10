@@ -52,6 +52,8 @@ def choose_fold_metric(group: pd.DataFrame, prediction_task: str) -> Tuple[str, 
         if any(col.startswith("accuracy_weighted_test_fold") for col in group.columns):
             return "accuracy_weighted_test_fold", "Balanced Accuracy", True
         return "accuracy_test_fold", "Accuracy", True
+    if any(col.startswith("r2_test_fold") for col in group.columns):
+        return "r2_test_fold", "R2", True
     return "mae_test_fold", "MAE", False
 
 
@@ -66,6 +68,22 @@ def model_label(row: pd.Series) -> str:
         return "Dummy Baseline"
     parts = [name, str(row.get("primary_metric", "")), str(row.get("tissue_type", ""))]
     return format_label("|".join(parts))
+
+
+def is_dummy_model(name: str) -> bool:
+    return str(name).startswith("dummy")
+
+
+def score_from_metric(value: float, higher_is_better: bool) -> float:
+    return float(value) if higher_is_better else -float(value)
+
+
+def zscore(values: np.ndarray) -> np.ndarray:
+    mean = float(np.mean(values))
+    std = float(np.std(values))
+    if std == 0.0 or np.isnan(std):
+        return np.zeros_like(values, dtype=float)
+    return (values - mean) / std
 
 
 def select_best_runs(
