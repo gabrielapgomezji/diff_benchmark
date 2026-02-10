@@ -17,6 +17,28 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import Subset
 
 
+def configure_cached_dataset_augmentation(dataset, mode: str = "random"):
+    """
+    Configure augmentation mode for cached feature datasets.
+    
+    Args:
+        dataset: Dataset or Subset wrapping a CachedFeatureDataset
+        mode: "random" for training (consistent per subject), "fixed" for val/test (no augmentation)
+    
+    This function handles both direct CachedFeatureDataset and Subset wrappers.
+    """
+    # Unwrap Subset to get the actual dataset
+    actual_dataset = dataset
+    if isinstance(dataset, Subset):
+        actual_dataset = dataset.dataset
+    
+    # Check if it's a CachedFeatureDataset
+    if hasattr(actual_dataset, 'set_augmentation_indices'):
+        actual_dataset.set_augmentation_indices(mode=mode)
+        return True
+    return False
+
+
 train_transforms = transforms.Compose(
     [
         transforms.RandomHorizontalFlip(),
@@ -200,6 +222,11 @@ class SklearnTrainer(BaseTrainer):
 def split_loader(dataloader, collate_fn: Callable | None, val_ratio=0.2, seed=42):
     """
     Split a PyTorch DataLoader into training and validation subsets.
+    
+    For cached feature datasets, automatically configures augmentation:
+    - Training: randomly selects one augmentation per subject (consistent across epochs)
+    - Validation: uses only non-transformed features (augmentation_idx=0)
+    
     This function takes an existing DataLoader and splits its underlying dataset
     into training and validation sets based on a specified ratio. It creates new
     DataLoaders with the same configuration as the input DataLoader while preserving
@@ -213,9 +240,9 @@ def split_loader(dataloader, collate_fn: Callable | None, val_ratio=0.2, seed=42
     Returns:
         tuple[DataLoader, DataLoader]: A tuple containing:
             - train_loader (DataLoader): DataLoader for the training subset with
-              shuffling enabled.
+              shuffling enabled and random augmentation per subject.
             - val_loader (DataLoader): DataLoader for the validation subset with
-              shuffling disabled.
+              shuffling disabled and no augmentation.
     """
     print(f"Val ratio: {val_ratio}, seed: {seed}")
     dataset = dataloader.dataset
@@ -230,6 +257,19 @@ def split_loader(dataloader, collate_fn: Callable | None, val_ratio=0.2, seed=42
 
     train_ds = Subset(dataset, train_idx)
     val_ds = Subset(dataset, val_idx)
+    
+    # Configure augmentation for cached datasets
+    # Training: random augmentation per subject (consistent across epochs)
+    is_cached_train = configure_cached_dataset_augmentation(train_ds, mode="random")
+    # Validation: no augmentation (use original features)
+    is_cached_val = configure_cached_dataset_augmentation(val_ds, mode="fixed")
+    
+    if is_cached_train or is_cached_val:
+        print("✓ Detected cached feature dataset")
+        if is_cached_train:
+            print("  - Training: using random augmentation per subject (consistent)")
+        if is_cached_val:
+            print("  - Validation: using non-transformed features only")
 
     train_loader = DataLoader(
         train_ds,
@@ -448,6 +488,9 @@ class TorchTrainer(BaseTrainer):
         outputs = []
 
         collate_fn = self.model.collate_fn
+        
+        # Configure cached dataset to use non-transformed features for prediction
+        configure_cached_dataset_augmentation(dataloader.dataset, mode="fixed")
 
         predict_dataloader = DataLoader(
             dataloader.dataset,
@@ -663,6 +706,9 @@ class LightningTrainer(BaseTrainer):
         self.trainer.fit(self.lightning_model, train_loader, val_loader)
 
     def predict(self, dataloader):
+        # Configure cached dataset to use non-transformed features for prediction
+        configure_cached_dataset_augmentation(dataloader.dataset, mode="fixed")
+        
         # preds = self.trainer.predict(self.model, dataloader)
         preds = self.trainer.predict(dataloaders=x_only_loader(dataloader), model=self.lightning_model)
         preds = torch.cat([p.cpu() for p in preds])

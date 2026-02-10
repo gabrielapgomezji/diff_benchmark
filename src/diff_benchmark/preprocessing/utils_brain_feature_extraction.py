@@ -221,10 +221,10 @@ def compute_rtop(
     )
     map_model = MapmriModel(
         gtab,
-        radial_order=6,
+        radial_order=4,
         laplacian_regularization=True,
-        laplacian_weighting=0.2,
-        positivity_constraint=False,
+        laplacian_weighting=0.05,
+        positivity_constraint=True,
     )
     rtop = map_model.fit(dwi_data.T).rtop()
     if normalization_mask_img is not None:
@@ -239,6 +239,125 @@ def compute_rtop(
         nrtop = nrtop.clip(0, np.percentile(nrtop[~np.isnan(nrtop)], 99))
         nrtop_img = masker.inverse_transform(nrtop.T)
         return nrtop_img
+
+    return masker.inverse_transform(rtop.T)
+
+
+def compute_rtop_NEW(
+    dwi_nib: nib.nifti1.Nifti1Image,
+    mask_img: nib.nifti1.Nifti1Image,
+    normalization_mask_img: nib.nifti1.Nifti1Image,
+    bvals: np.ndarray,
+    bvecs: np.ndarray,
+    big_delta: float,
+    small_delta: float,
+    delta_per_bvalue: dict | None = None,
+    min_directions: int = 20,
+):
+    """
+    Compute RTOP (MAP-MRI) robustly across datasets.
+
+    Strategy:
+    1. Prefer shells with Δ == big_delta
+    2. If too few directions survive, fall back to all shells
+    3. Avoid silent MAP-MRI collapse and invalid normalization
+    """
+
+    # --------------------------------------------------
+    # 1. Identify b0 robustly (do NOT assume index 0)
+    # --------------------------------------------------
+    b0_idx = np.where(bvals == 0)[0]
+    if len(b0_idx) == 0:
+        raise ValueError("No b0 volumes found")
+    b0 = nimage.index_img(dwi_nib, int(b0_idx[0]))
+
+    # --------------------------------------------------
+    # 2. Mask DWI data
+    # --------------------------------------------------
+    masker = maskers.NiftiMasker(mask_img)
+    masker.fit(b0)
+    dwi_data = masker.transform(dwi_nib)
+
+    # --------------------------------------------------
+    # 3. Preferred shell selection (Δ-aware)
+    # --------------------------------------------------
+    if delta_per_bvalue is not None:
+        preferred_bvals = [
+            b for b, d in delta_per_bvalue.items()
+            if np.isclose(d, big_delta * 1000, atol=1)
+        ]
+        bvals_mask = np.isin(bvals, [0] + preferred_bvals)
+        strategy = "preferred_delta"
+    else:
+        bvals_mask = bvals >= 0
+        strategy = "all_shells"
+
+    # Count usable diffusion directions
+    n_dirs = np.sum((bvals_mask) & (bvals > 0))
+
+    # --------------------------------------------------
+    # 4. Fallback if MAP-MRI would be unstable
+    # --------------------------------------------------
+    if n_dirs < min_directions:
+        logger.warning(
+            f"RTOP fallback to all shells "
+            f"(only {n_dirs} directions with preferred Δ)"
+        )
+        bvals_mask = bvals >= 0
+        strategy = "fallback_all_shells"
+
+    # Apply final mask
+    dwi_data = dwi_data[bvals_mask, :]
+    sel_bvals = bvals[bvals_mask]
+    sel_bvecs = bvecs[bvals_mask]
+
+    # --------------------------------------------------
+    # 5. Gradient table
+    # --------------------------------------------------
+    gtab = gradient_table(
+        bvals=sel_bvals,
+        bvecs=sel_bvecs,
+        small_delta=small_delta,
+        big_delta=big_delta,
+    )
+
+    # --------------------------------------------------
+    # 6. Stable MAP-MRI model
+    # --------------------------------------------------
+    map_model = MapmriModel(
+        gtab,
+        radial_order=4,                 # more stable than 6
+        laplacian_regularization=True,
+        laplacian_weighting=0.05,       # less aggressive
+        positivity_constraint=True,     # critical for RTOP
+    )
+
+    rtop = map_model.fit(dwi_data.T).rtop()
+
+    # --------------------------------------------------
+    # 7. Optional ventricular normalization (safe)
+    # --------------------------------------------------
+    if normalization_mask_img is not None:
+        norm_masker = maskers.NiftiMasker(normalization_mask_img)
+        norm_masker.fit(b0)
+        dwi_ventricles = norm_masker.transform(dwi_nib)[bvals_mask, :]
+
+        rtop_vent = map_model.fit(dwi_ventricles.T).rtop()
+        vent_mean = np.nanmean(rtop_vent)
+
+        if vent_mean > 1e-6:
+            rtop = rtop / vent_mean
+        else:
+            logger.warning("Skipping RTOP ventricular normalization")
+
+    # --------------------------------------------------
+    # 8. Clip pathological values
+    # --------------------------------------------------
+    valid = ~np.isnan(rtop)
+    rtop[~valid] = 0
+    rtop = np.clip(rtop, 0, np.percentile(rtop[valid], 99))
+
+    logger.info(f"RTOP computed using strategy: {strategy}")
 
     return masker.inverse_transform(rtop.T)
 

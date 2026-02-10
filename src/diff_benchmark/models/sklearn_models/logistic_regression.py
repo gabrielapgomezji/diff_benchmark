@@ -4,6 +4,7 @@ from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+import numpy as np
 
 from diff_benchmark.models.utils_models.trainer import SklearnModel
 
@@ -44,22 +45,22 @@ class PCALinearModel(SklearnModel):
         self.output_dim = 1
         if self.prediction_task == "binary_classification":
             head = LogisticRegression(max_iter=1000)
-            scoring = "accuracy"
+            scoring = "balanced_accuracy"
 
             param_grid = {
-                "pca__n_components": [10, 50, 100],
-                "linear__C": [0.01, 0.1, 1, 10, 100],
+                "pca__n_components": [0.6, 0.7, 0.8], #[10, 50, 100],
+                "linear__C": np.logspace(-4, -1, 4), #[0.01, 0.1, 1, 10, 100],
                 "linear__solver": ["lbfgs"],
                 "linear__penalty": ["l2"],
             }
 
         else:  # if self.prediction_task == "regression":  # regression
             head = Ridge()  # or LinearRegression()
-            scoring = "neg_mean_squared_error"
+            scoring = "neg_mean_absolute_error"
 
             param_grid = {
-                "pca__n_components": [10, 50, 100],
-                "linear__alpha": [0.01, 0.1, 1, 10],  # Ridge regularization
+                "pca__n_components": [0.6, 0.7, 0.8], #[10, 50, 100],
+                "linear__alpha": np.logspace(-1, 3, 5), #[0.01, 0.1, 1, 10],  # Ridge regularization
             }
 
         pipeline = Pipeline(
@@ -103,17 +104,17 @@ class LinearModel(SklearnModel):
         
         if self.prediction_task == "binary_classification":
             head = LogisticRegression(max_iter=1000)
-            scoring = "accuracy"
+            scoring = "balanced_accuracy"
             param_grid = {
-                "linear__C": [0.01, 0.1, 1],
+                "linear__C": np.logspace(-5, 5, 15), #[0.01, 0.1, 1], #
                 "linear__solver": ["lbfgs"],
-                "linear__penalty": ["l2"],
+                # "linear__penalty": ["l2"],
             }
         else:
             head = Ridge()
-            scoring = "neg_mean_squared_error"
+            scoring = "neg_mean_absolute_error"
             param_grid = {
-                "linear__alpha": [0.01, 0.1, 1],
+                "linear__alpha": np.logspace(-1, 3, 5), #[0.01, 0.1, 1],
             }
 
         pipeline = Pipeline(

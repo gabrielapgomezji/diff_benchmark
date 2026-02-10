@@ -10,6 +10,9 @@ logger = setup_logger(__name__)
 class GoogleViTBackbone(nn.Module):
     """
     Google ViT backbone adapted for 3D volumes via slice-wise processing.
+    
+    Note: Expects input data normalized with mean=0.5, std=0.5 (from cache).
+    This will be unnormalized back to [0, 1] before passing to HuggingFace processor.
     """
 
     data_type = "images"
@@ -18,7 +21,7 @@ class GoogleViTBackbone(nn.Module):
         self,
         model_name: str = "google/vit-base-patch16-224",
         freeze_backbone: bool = False,
-        slice_axis: int = 2,
+        slice_axis: int = 0,
         pooling: str = "mean",  # mean | max | cls
     ):
         super().__init__()
@@ -50,15 +53,24 @@ class GoogleViTBackbone(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:
-            x: Tensor of shape (B, 1, D, H, W)
+            x: Tensor of shape (B, D, H, W) or (B, 1, D, H, W) - normalized data from cache (mean=0.5, std=0.5)
         Returns:
             Tensor of shape (B, embedding_dim)
         """
-        B, D, H, W = x.shape
-        # assert C == 1, "Expected single-channel volumes"
+        # Unnormalize: convert from normalized [-1, 1] back to [0, 1]
+        # x_original = x_normalized * std + mean = x * 0.5 + 0.5
+        x = x * 0.5 + 0.5
+        # Check if input is already features (from cache) or raw images
+        if x.ndim == 2:
+            # Already processed features from cache: (B, embedding_dim)
+            # No processing needed, return as-is
+            return x
 
-        # # Remove channel dim
-        # x = x.squeeze(1)  # (B, D, H, W)
+        # Handle both (B, D, H, W) and (B, 1, D, H, W) formats
+        if x.ndim == 5 and x.shape[1] == 1:
+            x = x.squeeze(1)  # (B, D, H, W)
+
+        B, D, H, W = x.shape
 
         # Slice selection
         if self.slice_axis == 0:

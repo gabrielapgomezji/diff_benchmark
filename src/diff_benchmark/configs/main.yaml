@@ -6,6 +6,7 @@ defaults:
   - data: default
   - target: gender
   - cluster: margaret
+  - analysis: default
   - _self_
 
 random_state: 42
@@ -17,26 +18,67 @@ runtime:
 
 
 choices:
-  model: [pca_forest, forest] #[medicalnet] #[pca_linear] #[2dcnn, medicalnet]
-  backend: [sklearn]
-  dataset: [hcp] #[camcan] #, hcp, wand] #
-  # target: [age]
-  # pred_head: [regression]
-  # data.batch_size: [1]
-  cluster: [margaret_cpu]
-  # cluster.conf.parallel_type: [None]
-  dataset.metric_to_compute: [md]
-  dataset.tissue_type: [white]
-  # pred_head: [regression]
-  # target: [age]
-  # cluster: [margaret]
-  # model.backbone.depth: [10, 18]
-  ########
-  # model: [linear, pca_linear, forest, pca_forest] #[2dcnn, medicalnet]
+  model: [dinov2]
   # backend: [sklearn]
-  # dataset: [wand]
+  pred_head: [regression]
+  target: [age]
+  dataset: [abide] #, camcan]
+  dataset.tissue_type: [gray]
   # cluster: [margaret_cpu]
+  dataset.metric_to_compute: [sh]
+  cluster.conf.parallel_type: [None]
+  data.num_augmentations: [10]
+  data.batch_size: [1]
+  # data.resize_shape: [null]
+  #########
+  # model: [vit]
   # dataset.metric_to_compute: [md]
+  # dataset: [hcp]
+  # data.num_augmentations: [10]
+  # pred_head: [regression]
+  # target: [age]
+  # cluster.conf.parallel_type: [None]
+  # data.resize_shape: [null]
+  # # pred_head.dropout: [0.3, 0.2, 0.1]
+  # # pred_head.hidden_dims: ["[128]", "[512]", "[128, 64]", "[128, 8]"] 
+  # # backend.lr: [1e-4, 1e-5]
+  # # backend.weight_decay: [1e-3, 1e-5, 1e-1, 1e-2]
+  ##########
+  # model: [vit]
+  # dataset.metric_to_compute: [md]
+  # dataset: [camcan]
+  # data.num_augmentations: [10]
+  # pred_head: [regression]
+  # target: [age]
+  # cluster.conf.parallel_type: [None]
+  # pred_head.dropout: [0.3, 0.2, 0.1]
+  # pred_head.hidden_dims: ["[128]", "[512]", "[512, 512, 128, 64]", "[512, 128, 32, 8]"] 
+  # backend.lr: [1e-4, 1e-5]
+  # backend.weight_decay: [1e-3, 1e-5, 1e-1, 1e-2]
+  ###########
+  # model: [pca_linear] #[medicalnet] #[pca_linear] #[2dcnn, medicalnet]
+  # backend: [sklearn]
+  # dataset: [hcp] #[camcan] #, hcp, wand] #
+  # # target: [age]
+  # # pred_head: [regression]
+  # # data.batch_size: [1]
+  # cluster: [margaret_cpu]
+  # # cluster.conf.parallel_type: [None]
+  # dataset.metric_to_compute: [md]
+  # dataset.tissue_type: [white]
+  # # pred_head: [regression]
+  # # target: [age]
+  # # cluster: [margaret]
+  # # model.backbone.depth: [10, 18]
+  ########  USING NOW
+  # model: [dummy_regressor, linear, pca_linear, forest, pca_forest, svm, pca_svm]
+  # backend: [sklearn]
+  # dataset: [abide]
+  # target: [fiq, viq, piq, srs_total_t, ados_g_total, ados_g_stereo_behav, ados_g_social, ados_g_comm]
+  # pred_head: [regression]
+  # dataset.tissue_type: [gray, white]
+  # cluster: [margaret_cpu]
+  # dataset.metric_to_compute: [md, sh]
   ######
   # model: [dinov2]
   # # cluster.conf.parallel_type: [None]

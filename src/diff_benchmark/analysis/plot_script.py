@@ -74,8 +74,10 @@ def plot_true_vs_pred_regression(df, run_id, model, output_dir):
     ax.grid(True)
     
     # Set axis limits
-    ax.set_xlim(0, 100)
-    ax.set_ylim(0, 100)
+    # ax.set_xlim(0, 100)
+    # ax.set_ylim(0, 100)
+    ax.set_xlim(df["true"].min(), df["true"].max())
+    ax.set_ylim(df["true"].min(), df["true"].max())
 
     output_dir.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_dir / "regression_true_vs_pred.png", dpi=150, bbox_inches="tight")
@@ -158,15 +160,40 @@ def plot_classification_confusions(df, model, output_dir):
 def plot_binary_roc(df, model, output_dir):
     fig, ax = plt.subplots(figsize=(6, 5))
 
+    # Determine explicit pos_label if labels are not standard {0,1} or {-1,1}
+    # We look at all data to identify the positive label.
+    unique_labels = np.unique(df["true"].dropna().astype(int))
+    pos_label = None
+    if len(unique_labels) == 2:
+        # Check if they are standard
+        s_labels = set(unique_labels)
+        if s_labels != {0, 1} and s_labels != {-1, 1}:
+            # Usually the greater label is the positive class in sklearn
+            pos_label = unique_labels[-1]
+
     for split, alpha in [("train", 0.4), ("test", 0.8)]:
         d = df[df["split"] == split]
+        if d.empty:
+            continue
+            
         y_true = d["true"].astype(int)
         y_score = d["pred"].astype(float)
+        
+        # Skip if only one class in this split (ROC undefined)
+        if len(np.unique(y_true)) < 2:
+            continue
 
-        fpr, tpr, _ = roc_curve(y_true, y_score)
-        roc_auc = auc(fpr, tpr)
+        kwargs = {}
+        if pos_label is not None:
+            kwargs["pos_label"] = pos_label
 
-        ax.plot(fpr, tpr, label=f"{split} (AUC={roc_auc:.3f})", alpha=alpha)
+        try:
+            fpr, tpr, _ = roc_curve(y_true, y_score, **kwargs)
+            roc_auc = auc(fpr, tpr)
+            ax.plot(fpr, tpr, label=f"{split} (AUC={roc_auc:.3f})", alpha=alpha)
+        except ValueError:
+            # e.g. if y_true still doesn't match pos_label expectations logic
+            continue
 
     ax.plot([0, 1], [0, 1], linestyle="--")
     ax.set_xlabel("False Positive Rate")
@@ -293,10 +320,7 @@ if __name__ == "__main__":
     metrics_dir = Path(args.metrics_dir)
 
     plot_run(
-        run_id=args.run_id, #2dcnn_be425892'2dcnn_08ef30ab', '2dcnn_341c8a9b', 
-        # '2dcnn_76059b89',
-    #    '2dcnn_be425892', 'linear_2ddaa507', 'linear_3addbf07',
-    #    'linear_cf6ab721'
+        run_id=args.run_id,
         metrics_dir=metrics_dir / "metrics.parquet",
         predictions_path=results_dir / "parquet/data/predictions.parquet",
         targets_path=results_dir / "parquet/data/targets.parquet",

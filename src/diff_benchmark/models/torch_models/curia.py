@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from pathlib import Path
 from transformers import AutoImageProcessor, AutoModel
 from diff_benchmark.utils.logger import setup_logger
 
@@ -10,15 +11,18 @@ class CuriaBackbone(nn.Module):
     """
     CURIA medical foundation model adapted for 3D volumes
     via slice-wise processing.
+    
+    Note: Expects input data normalized with mean=0.5, std=0.5 (from cache).
+    This will be unnormalized back to [0, 1] before passing to HuggingFace processor.
     """
 
     data_type = "image"
 
     def __init__(
         self,
-        model_name: str = "curia/curia-vit-base",  # adjust if needed
+        model_name: str = "raidium/curia",
         freeze_backbone: bool = False,
-        slice_axis: int = 2,  # axial by default
+        slice_axis: int = 0,  # axial by default
         pooling: str = "mean",  # mean | max | cls
     ):
         super().__init__()
@@ -26,8 +30,19 @@ class CuriaBackbone(nn.Module):
         self.slice_axis = slice_axis
         self.pooling = pooling
 
-        self.processor = AutoImageProcessor.from_pretrained(model_name)
-        self.backbone = AutoModel.from_pretrained(model_name)
+        # Check for local pretrained model first, same as vit.py and dinov2.py
+        model_dir = Path(__file__).parent.parent.parent.parent.parent / "pretrain" / model_name
+        if model_dir.exists():
+            source = str(model_dir)
+            local_only = True
+            logger.info(f"Loading CURIA from local directory: {source}")
+        else:
+            logger.info(f"Pretrained model directory {model_dir} does not exist. Using model name {model_name} from HuggingFace Hub if possible.")
+            source = model_name
+            local_only = False
+
+        self.processor = AutoImageProcessor.from_pretrained(source, local_files_only=local_only)
+        self.backbone = AutoModel.from_pretrained(source, local_files_only=local_only)
 
         self.embedding_dim = self.backbone.config.hidden_size
 
@@ -43,16 +58,24 @@ class CuriaBackbone(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:
-            x: Tensor of shape (B, 1, D, H, W)
+            x: Tensor of shape (B, D, H, W) or (B, 1, D, H, W) - normalized data from cache (mean=0.5, std=0.5)
         Returns:
             Tensor of shape (B, embedding_dim)
         """
-
+        # Unnormalize: convert from normalized [-1, 1] back to [0, 1]
+        # x_original = x_normalized * std + mean = x * 0.5 + 0.5
+        x = x * 0.5 + 0.5
+        # Check if input is already features (from cache) or raw images
+        if x.ndim == 2:
+            # Already processed features from cache: (B, embedding_dim)
+            # No processing needed, return as-is
+            return x
+        
+        # Handle both (B, D, H, W) and (B, 1, D, H, W) formats
+        if x.ndim == 5 and x.shape[1] == 1:
+            x = x.squeeze(1)  # (B, D, H, W)
+        
         B, D, H, W = x.shape
-        # assert C == 1, "Expected single-channel medical volumes"
-
-        # # Remove channel dimension
-        # x = x.squeeze(1)  # (B, D, H, W)
 
         # Slice selection
         if self.slice_axis == 0:

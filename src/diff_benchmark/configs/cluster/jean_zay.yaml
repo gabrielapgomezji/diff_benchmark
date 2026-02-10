@@ -1,6 +1,7 @@
 name: jean_zay
 
 paths:
+  cache_dir: /lustre/fswork/projects/rech/qlr/commun/HCP900
   hcp:
     base_dir: /lustre/fswork/projects/rech/qlr/commun/HCP900
     results_dir: /lustre/fswork/projects/rech/qlr/commun/HCP900

@@ -81,6 +81,7 @@ def run_single_model(cfg_og, model_name, results_path):
 
     dataset, preprocessed = torch_dataset_preparator.pipeline()
     print("Data preparation completed.")
+
     targets_path = experiment_dir / "predictions" / "targets.parquet"
     targets_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -96,7 +97,6 @@ def run_single_model(cfg_og, model_name, results_path):
     )
     saver.add_rows(rows)
     saver.save()
-
     specs = preprocessed.get_specs()
     logger.debug(f"Dataset specs: {specs}")
     print(f"Dataset specs: {specs}")
@@ -109,25 +109,6 @@ def run_single_model(cfg_og, model_name, results_path):
     train_scores, test_scores = [], []
     train_preds, test_preds = [], []
     train_targets, test_targets = [], []
-
-    # summary = {
-    #     "model_name": model_name,
-    #     "config": OmegaConf.to_container(cfg, resolve=True),
-    #     "results": {
-    #         "train_average_score": None,  # will fill after loop
-    #         "train_std_score": None,  # will fill after loop
-    #         "test_average_score": None,  # will fill after loop
-    #         "test_std_score": None,  # will fill after loop
-    #         "number_folds": len(indices),
-    #         "folds": {},  # will fill inside loop
-    #     },
-    # }
-    # # cfg_path = Path(results_path) / "analysis_results" / f"{run_id}_config.yaml" # CHECK TO INCLUDE
-    # # OmegaConf.save(cfg, cfg_path) # CHECK TO INCLUDE
-
-    # save_model_results(
-    #     summary, Path(results_path) / "analysis_results" / f"{run_id}_partial.json"
-    # )
     
     predictions_path = experiment_dir / "predictions" / "predictions.parquet"
     key_cols = ["run_id", "model", "dataset", "fold", "split", "sample_id", "target"]
@@ -149,6 +130,7 @@ def run_single_model(cfg_og, model_name, results_path):
                 num_workers=cfg.data.num_workers,
                 batch_size=cfg.data.batch_size,
             )
+
             train_idx, test_idx = indices[fold_idx]
             targets = dataset.targets.numpy()
             y_train = np.array(targets[train_idx]).squeeze()
@@ -265,17 +247,37 @@ def run_single_model(cfg_og, model_name, results_path):
             # )
             metadata["status"] = "crashed"
             metadata["error"] = str(e)
+            metadata["end_time"] = datetime.utcnow().isoformat()
             OmegaConf.save(metadata, experiment_dir / "metadata.yaml")
-            raise
+            
+            # Save partial metrics for completed folds before crashing
+            if metrics_rows:
+                logger.info(f"Saving partial metrics for {len(metrics_rows)} completed fold(s)")
+                metrics_path = experiment_dir / "metrics" / "fold_metrics.parquet"
+                metrics_path.parent.mkdir(parents=True, exist_ok=True)
+                df = pd.DataFrame(metrics_rows)
+                df.to_parquet(metrics_path, index=False)
+            
+            # Don't re-raise - continue to save what we have
+            break
     
-    metadata["status"] = "success"
-    metadata["end_time"] = datetime.utcnow().isoformat()
+    # Only mark as success if all folds completed
+    if metadata["n_folds_completed"] == cfg.data.data_partition.n_splits:
+        metadata["status"] = "success"
+    elif metadata.get("status") != "crashed":
+        metadata["status"] = "partial"
+    
+    if "end_time" not in metadata:
+        metadata["end_time"] = datetime.utcnow().isoformat()
+    
     OmegaConf.save(metadata, experiment_dir / "metadata.yaml")
-    metrics_path = experiment_dir / "metrics" / "fold_metrics.parquet"
-    metrics_path.parent.mkdir(parents=True, exist_ok=True)
-
-    df = pd.DataFrame(metrics_rows)
-    df.to_parquet(metrics_path, index=False)
+    
+    # Save metrics for all completed folds (success or partial)
+    if metrics_rows:
+        metrics_path = experiment_dir / "metrics" / "fold_metrics.parquet"
+        metrics_path.parent.mkdir(parents=True, exist_ok=True)
+        df = pd.DataFrame(metrics_rows)
+        df.to_parquet(metrics_path, index=False)
 
     # summary["results"]["train_average_score"], summary["results"]["train_std_score"] = compute_summary_stats(train_scores, primary_metric)
     # summary["results"]["test_average_score"], summary["results"]["test_std_score"] = compute_summary_stats(test_scores, primary_metric)

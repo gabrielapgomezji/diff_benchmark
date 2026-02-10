@@ -18,6 +18,12 @@ MICROSTRUCTURE_ABBR = {
     "rtop": "ro",
     "rtap": "ra",
     "rtpp": "rp",
+    "sh": "sh",
+}
+
+TISSUE_TYPE_ABBR = {
+    "white_matter": "w",
+    "gray_matter": "g",
 }
 
 DATASET_ABBR = {
@@ -67,11 +73,11 @@ def build_readable_prefix(cfg):
     model = cfg.model.name.lower()
 
     dataset = abbr(cfg.dataset.name, DATASET_ABBR)
+    tissue = abbr(cfg.dataset.tissue_type, TISSUE_TYPE_ABBR)
     micro = abbr(cfg.dataset.metric_to_compute, MICROSTRUCTURE_ABBR)
     target = abbr(cfg.target.target_column[0], TARGET_ABBR)
 
-    return f"{model}_{dataset}{micro}{target}"
-
+    return f"{model}_{dataset}{tissue}{micro}{target}"
 def make_run_id(cfg, force=False):
     """
     Returns:

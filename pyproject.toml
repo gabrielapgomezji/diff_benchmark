@@ -37,6 +37,7 @@ dependencies = ["numpy (>=2.0.0,<2.2.10)",
     "transformers (>=4.57.6,<5.0.0)",
     "hydra-zen (>=0.16.0,<0.17.0)",
     "skrub (>=0.7.1,<0.8.0)",
+    "cvxpy (>=1.8.1,<2.0.0)",
 ]
 
 [project.scripts]
@@ -45,6 +46,7 @@ diffbenchmark-run = "diff_benchmark.cli.run:main"
 diffbenchmark-analysis = "diff_benchmark.cli.analysis:main"
 diffbenchmark-resample = "diff_benchmark.cli.resample:main"
 diffbenchmark-distribution = "diff_benchmark.cli.data_distribution:main"
+diffbenchmark-cache = "diff_benchmark.cli.cache_features:main"
 
 
 [tool.poetry]

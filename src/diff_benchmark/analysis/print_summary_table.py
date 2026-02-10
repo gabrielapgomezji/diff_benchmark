@@ -5,12 +5,112 @@ from omegaconf import OmegaConf
 
 
 def is_successful_experiment(exp_dir: Path) -> bool:
+    """Check if experiment completed successfully or has usable partial results."""
     metadata_path = exp_dir / "metadata.yaml"
     if not metadata_path.exists():
         return False
 
     metadata = OmegaConf.load(metadata_path)
-    return metadata.get("status") == "success"
+    status = metadata.get("status")
+    
+    # Accept success, partial, or experiments with completed folds
+    if status in ["success", "partial"]:
+        return True
+    
+    # Also accept experiments that have metrics file (even if status is "crashed" or "running")
+    metrics_file = exp_dir / "metrics" / "fold_metrics.parquet"
+    return metrics_file.exists()
+
+
+def table_all_runs(
+    df: pd.DataFrame,
+    primary_metric: str = "accuracy"
+) -> pd.DataFrame:
+    """
+    Show ALL runs for each model (not just the best one).
+    
+    Args:
+        df: Summary dataframe with mean/std per run
+        primary_metric: Metric to filter on (accuracy, mae, rmse, etc.)
+    
+    Returns:
+        DataFrame with all runs, sorted by model and metric value
+    """
+    # Find all metrics containing the primary metric string
+    related_metrics = df[df["metric"].str.contains(primary_metric, case=False, na=False)]["metric"].unique()
+    
+    df_filt = df[
+        (df["metric"].isin(related_metrics)) &
+        (df["split"] == "test")
+    ].copy()
+    
+    if df_filt.empty:
+        return df_filt
+    
+    # Sort by model name and then by metric value
+    # For accuracy/correlation: descending (higher is better)
+    # For error metrics (mae, rmse, mse): ascending (lower is better)
+    is_error_metric = any(err in primary_metric.lower() for err in ["mae", "rmse", "mse", "error"])
+    df_filt = df_filt.sort_values(
+        ["model_name", "mean"],
+        ascending=[True, is_error_metric]
+    )
+    
+    # Select columns to display
+    display_cols = ["model_name", "dataset", "run_id", "metric", "mean", "std"]
+    if "tissue_type" in df_filt.columns:
+        display_cols.insert(2, "tissue_type")
+    if "prediction_task" in df_filt.columns:
+        display_cols.insert(3, "prediction_task")
+    
+    # Keep only existing columns
+    display_cols = [c for c in display_cols if c in df_filt.columns]
+    
+    return df_filt[display_cols].reset_index(drop=True)
+
+
+def table_model_aggregate(
+    df: pd.DataFrame,
+    primary_metric: str = "accuracy"
+) -> pd.DataFrame:
+    """
+    Show aggregate statistics for each model across all its runs.
+    
+    Args:
+        df: Summary dataframe with mean/std per run
+        primary_metric: Metric to filter on (accuracy, mae, rmse, etc.)
+    
+    Returns:
+        DataFrame with mean/std/min/max across all runs per model
+    """
+    # Find all metrics containing the primary metric string
+    related_metrics = df[df["metric"].str.contains(primary_metric, case=False, na=False)]["metric"].unique()
+    
+    df_filt = df[
+        (df["metric"].isin(related_metrics)) &
+        (df["split"] == "test")
+    ].copy()
+    
+    if df_filt.empty:
+        return df_filt
+    
+    # Aggregate by model name
+    agg_dict = {
+        "mean": ["mean", "std", "min", "max", "count"]
+    }
+    
+    df_agg = df_filt.groupby(["model_name", "metric"]).agg(agg_dict).reset_index()
+    
+    # Flatten column names
+    df_agg.columns = ["model_name", "metric", "mean", "std", "min", "max", "n_runs"]
+    
+    # Sort by model name
+    # For accuracy/correlation: descending (higher is better)
+    # For error metrics (mae, rmse, mse): ascending (lower is better)
+    is_error_metric = any(err in primary_metric.lower() for err in ["mae", "rmse", "mse", "error"])
+    df_agg = df_agg.sort_values(["mean"], ascending=[is_error_metric])
+    
+    return df_agg.reset_index(drop=True)
     
 def table_best_means(
     df: pd.DataFrame,
@@ -184,3 +284,81 @@ def print_table(df: pd.DataFrame):
         print("(empty table)")
         return
     print(df.to_string(index=False, float_format=lambda x: f"{x:.3f}"))
+
+
+def table_weighted_aggregate(
+    df_folds: pd.DataFrame,
+    df_summary: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Compute weighted aggregate metrics for each model across all datasets and tissue types.
+    
+    For classification: weighted accuracy
+    For regression: weighted MAE
+    
+    Weights are based on the number of test samples in each dataset.
+    """
+    rows = []
+    
+    # Get test split data only
+    df_test_folds = df_folds[df_folds["split"] == "test"]
+    
+    # Group by model and prediction task
+    for (model_name, prediction_task), df_model in df_test_folds.groupby(["model_name", "prediction_task"]):
+        
+        # Determine which metric to use
+        if prediction_task == "binary_classification":
+            target_metric = "accuracy"
+        elif prediction_task == "regression":
+            target_metric = "mae"
+        else:
+            continue  # Skip unknown task types
+        
+        # Filter for the target metric
+        df_metric = df_model[df_model["metric"] == target_metric]
+        
+        if df_metric.empty:
+            continue
+        
+        # Count samples per dataset/tissue_type combination for weighting
+        sample_counts = df_metric.groupby(["dataset", "tissue_type"]).size().to_dict()
+        total_samples = sum(sample_counts.values())
+        
+        # Calculate weighted mean across all datasets and tissue types
+        weighted_sum = 0
+        for (dataset, tissue_type), count in sample_counts.items():
+            # Get mean value for this dataset/tissue combination
+            df_subset = df_metric[
+                (df_metric["dataset"] == dataset) & 
+                (df_metric["tissue_type"] == tissue_type)
+            ]
+            subset_mean = df_subset["value"].mean()
+            weight = count / total_samples
+            weighted_sum += subset_mean * weight
+        
+        row = {
+            "model_name": model_name,
+            "prediction_task": prediction_task,
+            "metric": target_metric,
+            "weighted_mean": weighted_sum,
+            "n_datasets": len(sample_counts),
+            "total_folds": len(df_metric),
+        }
+        
+        rows.append(row)
+    
+    df = pd.DataFrame(rows)
+    
+    if df.empty:
+        return df
+    
+    # Sort by task and weighted mean (descending for accuracy, ascending for mae)
+    df_classification = df[df["prediction_task"] == "binary_classification"].sort_values(
+        "weighted_mean", ascending=False
+    )
+    df_regression = df[df["prediction_task"] == "regression"].sort_values(
+        "weighted_mean", ascending=True  # Lower MAE is better
+    )
+    
+    return pd.concat([df_classification, df_regression], ignore_index=True)
+
