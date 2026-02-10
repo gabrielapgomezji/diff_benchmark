@@ -12,7 +12,7 @@ from diff_benchmark.preprocessing.brain_feature_extraction import (
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
 
 for dataset2prepare in general_config["datasets"]["datasets_list"]:
-    if dataset2prepare["name"] == "abide":
+    if dataset2prepare["name"] == "wand":
         dataset = DatasetConfig(
             **dataset2prepare,
             metric_to_compute=general_config["datasets"]["metric_to_compute"],
@@ -52,7 +52,7 @@ for dataset2prepare in general_config["datasets"]["datasets_list"]:
         # subject_list = parse_subject_ids(dataset)
 
         # brain_preparator._get_required_raw_files(subject_list[0])
-        brain_preparator.run_pipeline()
+        # brain_preparator.run_pipeline()
 
         # subject_id = "76884" # wand
         # brain_preparator.verify_raw_files(subject_id)
