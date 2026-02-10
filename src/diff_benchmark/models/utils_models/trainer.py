@@ -64,6 +64,8 @@ class BaseTrainer(ABC):
     def __init__(self, model: nn.Module):
         self.model = model
         self.fold_idx: int | None = None  # add fold placeholder
+        self.target_mean = 0.0
+        self.target_std = 1.0
 
     @property
     def data_type(self):
@@ -353,6 +355,17 @@ class TorchTrainer(BaseTrainer):
             
     def fit(self, dataloader):
         train_loader, val_loader = split_loader(dataloader, collate_fn=self.model.collate_fn, val_ratio=self.val_ratio, seed=self.seed)
+        
+        if self.prediction_task != "binary_classification":
+            targets = []
+            for batch in train_loader:
+                _, y, *_ = batch
+                targets.append(y)
+            all_targets = torch.cat(targets).float()
+            self.target_mean = all_targets.mean().item()
+            self.target_std = all_targets.std().item() + 1e-8
+            self.log.info(f"Whitening targets: mean={self.target_mean:.4f}, std={self.target_std:.4f}")
+
         show_progress = not self.logger.enabled or self.logger.enabled
         
         self.log.info(f"Starting training for {self.epochs} epochs...") 
@@ -380,6 +393,7 @@ class TorchTrainer(BaseTrainer):
                     y = y.long().to(self.device, non_blocking=True)
                 else:
                     y = y.float().to(self.device, non_blocking=True)
+                    y = (y - self.target_mean) / self.target_std
 
                 self.optimizer.zero_grad()
                 preds = self.model(x)
@@ -406,8 +420,13 @@ class TorchTrainer(BaseTrainer):
                     fold= self.fold_idx if self.fold_idx is not None else -1,
                 )
                 if self.logger.enabled:
-                    train_preds.append(preds.detach().cpu())
-                    train_targets.append(y.detach().cpu())
+                    train_preds_unnorm = preds.detach().cpu()
+                    train_targets_unnorm = y.detach().cpu()
+                    if self.prediction_task != "binary_classification":
+                        train_preds_unnorm = train_preds_unnorm * self.target_std + self.target_mean
+                        train_targets_unnorm = train_targets_unnorm * self.target_std + self.target_mean
+                    train_preds.append(train_preds_unnorm)
+                    train_targets.append(train_targets_unnorm)
     
             metrics = None
             if self.logger.enabled:
@@ -451,6 +470,7 @@ class TorchTrainer(BaseTrainer):
                     y = y.long().to(self.device, non_blocking=True)
                 else:
                     y = y.float().to(self.device, non_blocking=True)
+                    y = (y - self.target_mean) / self.target_std
 
                 preds = self.model(x)
                 if self.prediction_task == "binary_classification":
@@ -461,8 +481,13 @@ class TorchTrainer(BaseTrainer):
                 val_loss += loss.item()
                 
                 if self.logger.enabled:
-                    all_preds.append(preds.cpu())
-                    all_targets.append(y.cpu())
+                    train_preds_unnorm = preds.cpu()
+                    train_targets_unnorm = y.cpu()
+                    if self.prediction_task != "binary_classification":
+                        train_preds_unnorm = train_preds_unnorm * self.target_std + self.target_mean
+                        train_targets_unnorm = train_targets_unnorm * self.target_std + self.target_mean
+                    all_preds.append(train_preds_unnorm)
+                    all_targets.append(train_targets_unnorm)
 
         val_loss /= len(val_loader)
         metrics = None
@@ -511,6 +536,7 @@ class TorchTrainer(BaseTrainer):
                     preds = preds.argmax(dim=1)
                 else:
                     preds = preds.squeeze(1)
+                    preds = preds * self.target_std + self.target_mean
                 outputs.append(preds.cpu().detach())
 
         return torch.cat(outputs).numpy()
@@ -547,6 +573,9 @@ class _LightningModuleAdapter(pl.LightningModule):
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
 
+        self.register_buffer("target_mean", torch.tensor(0.0))
+        self.register_buffer("target_std", torch.tensor(1.0))
+
         self.criterion = (
             nn.CrossEntropyLoss()
             if prediction_task == "binary_classification"
@@ -564,12 +593,11 @@ class _LightningModuleAdapter(pl.LightningModule):
             y = y.long()
         else:
             y = y.float()
+            y = (y - self.target_mean) / self.target_std
+            preds = preds.squeeze(1)
+
         loss = self.criterion(preds, y)
-        # if self.prediction_task == "classification":
-        #     preds = preds.argmax(dim=1)
-        # else:
-        #     preds = preds.squeeze(1)
-        # metrics
+        
         self.log(
             "train_loss",
             loss,
@@ -587,12 +615,11 @@ class _LightningModuleAdapter(pl.LightningModule):
             y = y.long()
         else:
             y = y.float()
+            y = (y - self.target_mean) / self.target_std
+            preds = preds.squeeze(1)
+
         loss = self.criterion(preds, y)
-        # if self.prediction_task == "classification":
-        #     preds = preds.argmax(dim=1)
-        # else:
-        #     preds = preds.squeeze(1)
-        # metrics
+        
         self.log(
             "val_loss",
             loss,
@@ -702,6 +729,18 @@ class LightningTrainer(BaseTrainer):
                 
     def fit(self, dataloader):
         train_loader, val_loader = split_loader(dataloader, val_ratio=self.val_ratio, seed=self.seed)
+        
+        if self.lightning_model.prediction_task != "binary_classification":
+            targets = []
+            for batch in train_loader:
+                _, y, *_ = batch
+                targets.append(y)
+            all_targets = torch.cat(targets).float()
+            
+            self.lightning_model.target_mean.fill_(all_targets.mean())
+            self.lightning_model.target_std.fill_(all_targets.std() + 1e-8)
+            print(f"Whitening targets: mean={self.lightning_model.target_mean.item():.4f}, std={self.lightning_model.target_std.item():.4f}")
+
         # self.trainer.fit(self.model, train_loader, val_loader)
         self.trainer.fit(self.lightning_model, train_loader, val_loader)
 
@@ -712,4 +751,8 @@ class LightningTrainer(BaseTrainer):
         # preds = self.trainer.predict(self.model, dataloader)
         preds = self.trainer.predict(dataloaders=x_only_loader(dataloader), model=self.lightning_model)
         preds = torch.cat([p.cpu() for p in preds])
+        
+        if self.lightning_model.prediction_task != "binary_classification":
+             preds = preds * self.lightning_model.target_std.cpu() + self.lightning_model.target_mean.cpu()
+
         return preds.numpy()

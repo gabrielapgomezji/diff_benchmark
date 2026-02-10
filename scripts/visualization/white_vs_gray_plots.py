@@ -115,7 +115,7 @@ def plot_white_vs_gray_tscore(
     # Simplified labels
     order_df["label"] = [
         get_display_label(row.dataset, row.target, row.task) + f" | {format_label(row.feature)}"
-        format_label(f"{row.dataset}|{row.target}|{row.task}|{row.feature}")
+        # format_label(f"{row.dataset}|{row.target}|{row.task}|{row.feature}")
         for row in order_df.itertuples(index=False)
     ]
     

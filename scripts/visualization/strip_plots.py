@@ -57,6 +57,8 @@ def generate_strip_plots(
         pretty_labels = [format_label(l) for l in labels]
         plt.xticks(np.arange(len(labels)), pretty_labels, rotation=45, ha="right", fontsize=8)
         plt.ylabel(metric_label)
+        if metric_label == "R2":
+            plt.ylim(0, 1)
         title = f"{dataset} | {target} | {task}"
         plt.title(format_label(title))
         plt.grid(axis="y", linestyle="--", alpha=0.4)
@@ -64,6 +66,28 @@ def generate_strip_plots(
 
         filename = f"strip_{dataset}_{target}_{task}.png"
         plt.savefig(out_path / filename, dpi=300)
+        plt.close()
+
+        # Box plot
+        plt.figure(figsize=(fig_w, 5))
+
+        data_vals = [
+            strip_df[strip_df["label"] == label]["value"].values for label in labels
+        ]
+        plt.boxplot(data_vals, positions=np.arange(len(labels)))
+
+        plt.xticks(
+            np.arange(len(labels)), pretty_labels, rotation=45, ha="right", fontsize=8
+        )
+        plt.ylabel(metric_label)
+        if metric_label == "R2":
+            plt.ylim(0, 1)
+        plt.title(format_label(title))
+        plt.grid(axis="y", linestyle="--", alpha=0.4)
+        plt.tight_layout()
+
+        filename_box = f"box_{dataset}_{target}_{task}.png"
+        plt.savefig(out_path / filename_box, dpi=300)
         plt.close()
 
     return out_path

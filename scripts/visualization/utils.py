@@ -11,6 +11,15 @@ DEFAULT_COMBOS = [
     ("hcp", "Gender", "binary_classification"),
     ("camcan", "Age", "regression"),
     ("camcan", "Gender", "binary_classification"),
+    ("abide", "DX_GROUP", "binary_classification"),
+    ("abide", "fiq", "regression"),
+    ("abide", "viq", "regression"),
+    ("abide", "piq", "regression"),
+    ("abide", "srs_total_t", "regression"),
+    ("abide", "ados_g_total", "regression"),
+    ("abide", "ados_g_stereo_behav", "regression"),
+    ("abide", "ados_g_social", "regression"),
+    ("abide", "ados_g_comm", "regression"),
 ]
 
 

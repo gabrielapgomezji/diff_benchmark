@@ -448,6 +448,7 @@ def compute_mk(
     Returns:
         nib.Nifti1Image: MK NIfTI image.
     """
+    breakpoint()
     b0 = nimage.index_img(dwi_nib, 0)
 
     masker = maskers.NiftiMasker(mask_img)

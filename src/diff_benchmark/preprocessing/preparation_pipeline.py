@@ -654,11 +654,12 @@ class DemographicsPreparationPipeline:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-    def preprocess(self, target_columns: list[str]) -> pd.DataFrame:
+    def preprocess(self, target_columns: list[str], binarize: bool = True) -> pd.DataFrame:
         """
         Entry point used by the benchmark.
         Args:
             target_columns: List of target demographic columns to retain.
+            binarize: If True, binarize columns with exactly 2 unique values (0 and 1).
         Returns:
             Preprocessed demographics DataFrame.
         """
@@ -671,6 +672,8 @@ class DemographicsPreparationPipeline:
         df = self._filter(df, target_columns)
         df = self._normalize_subject_ids(df)
         df = self._categorical_to_numeric(df)
+        if binarize:
+            df = self._binarize_columns(df)
         df = df.dropna()
         return df
 
@@ -897,4 +900,31 @@ class DemographicsPreparationPipeline:
                 .str.upper()
                 .map({"M": 1, "F": 0, "MALE": 1, "FEMALE": 0})
             )
+        return df
+
+    def _binarize_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Detects binary columns (2 unique non-NaN values) and maps them to 0 and 1.
+        Sorts the unique values to determine mapping (lower -> 0, higher -> 1).
+        Does not affect Subject or Site columns.
+        """
+        for col in df.columns:
+            if col == "Subject" or col == self.site_column:
+                continue
+
+            unique_vals = df[col].dropna().unique()
+            if len(unique_vals) == 2:
+                try:
+                    v0, v1 = sorted(unique_vals)
+                except TypeError:
+                    v0, v1 = sorted(unique_vals, key=str)
+
+                # Skip if already 0/1 to avoid redundant re-mapping
+                if {v0, v1} == {0, 1}:
+                    continue
+
+                mapping = {v0: 0, v1: 1}
+                logger.info(f"Binarizing column '{col}': {mapping}")
+                df[col] = df[col].map(mapping)
+        
         return df
