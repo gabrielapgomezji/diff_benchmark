@@ -107,7 +107,11 @@ def plot_classification_debug(df, run_id, output_dir):
     )
 
     plot_metric(axes[0, 0], df, "loss", "Loss")
-    plot_metric(axes[0, 1], df, "accuracy", "Accuracy")
+    
+    if "weighted_accuracy" in df.columns and df["weighted_accuracy"].notna().any():
+        plot_metric(axes[0, 1], df, "weighted_accuracy", "Weighted Accuracy")
+    else:
+        plot_metric(axes[0, 1], df, "accuracy", "Accuracy")
 
     plot_two_metrics(
         axes[1, 0],
@@ -158,7 +162,7 @@ def infer_prediction_task(df: pd.DataFrame) -> str:
     # epoch_df = df[df["batch"].isna()]
     epoch_df = df
 
-    classification_metrics = {"accuracy", "precision", "recall", "f1"}
+    classification_metrics = {"accuracy", "weighted_accuracy", "precision", "recall", "f1"}
     regression_metrics = {"mse", "mape", "r2", "explained_variance"}
 
     present_metrics = {

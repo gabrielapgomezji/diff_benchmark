@@ -113,9 +113,15 @@ def compute_features_for_dataset(
         num_workers=0,  # No multiprocessing for feature computation
     )
     
+    # Determined cache model name (handle variants like medicalnet depth)
+    cache_model_name = model_name
+    if model_name == "medicalnet" and "depth" in model_config["model"]["backbone"]:
+        depth = model_config["model"]["backbone"]["depth"]
+        cache_model_name = f"{model_name}_depth{depth}"
+    
     # Get cache path
     cache_path = get_cache_path(
-        model_name=model_name,
+        model_name=cache_model_name,
         dataset_name=dataset_config["name"],
         cache_dir=cache_dir,
         image_size=image_size,
@@ -233,7 +239,7 @@ def main(cfg: DictConfig) -> None:
     norm_std = cfg.data.normalization.std
     
     # Only cache for models that benefit from caching (frozen backbones)
-    if model_name not in ["vit", "dinov2", "curia"]:
+    if model_name not in ["vit", "dinov2", "curia", "medicalnet"]:
         logger.info(f"Skipping {model_name} (not a frozen backbone model)")
         return
     
@@ -249,6 +255,12 @@ def main(cfg: DictConfig) -> None:
     
     # Convert config to dict for compatibility
     config = OmegaConf.to_container(cfg, resolve=True)
+
+    # Workaround for learning_rate being a dict (e.g. from search space config)
+    # which causes TypeError in TorchTrainer/Adam initialization
+    if "backend" in config and isinstance(config["backend"].get("learning_rate"), (dict, list)):
+        logger.warning(f"Found complex type for learning_rate: {config['backend']['learning_rate']}. Using default 1e-4 for feature caching.")
+        config["backend"]["learning_rate"] = 1e-4
 
     # Extract dataset config
     dataset_config = config.get("dataset", {})

@@ -224,7 +224,7 @@ def compute_rtop(
         radial_order=4,
         laplacian_regularization=True,
         laplacian_weighting=0.05,
-        positivity_constraint=True,
+        positivity_constraint=False,
     )
     rtop = map_model.fit(dwi_data.T).rtop()
     if normalization_mask_img is not None:
@@ -448,7 +448,6 @@ def compute_mk(
     Returns:
         nib.Nifti1Image: MK NIfTI image.
     """
-    breakpoint()
     b0 = nimage.index_img(dwi_nib, 0)
 
     masker = maskers.NiftiMasker(mask_img)
@@ -459,8 +458,16 @@ def compute_mk(
         selected_bvals = [0] + [
             k for k, v in delta_per_bvalue.items() if v == big_delta * 1000
         ]
-        bvals_mask = np.any([bvals == s for s in selected_bvals], axis=0)
-        dwi_data = dwi_data[bvals_mask, :]
+        # Count how many unique non-zero b-values are selected
+        unique_nonzero = np.unique([b for b in selected_bvals if b > 0])
+        if len(unique_nonzero) >= 2:
+            # Apply filtering only if at least 2 shells are available
+            bvals_mask = np.isin(bvals, selected_bvals)
+            dwi_data = dwi_data[bvals_mask, :]
+        else:
+            # Do not filter
+            bvals_mask = np.ones_like(bvals, dtype=bool)
+            
     else:
         bvals_mask = np.ones_like(bvals, dtype=bool)
 
@@ -474,7 +481,7 @@ def compute_mk(
     dki_model = dki.DiffusionKurtosisModel(gtab)
     dki_fit = dki_model.fit(dwi_data.T)
 
-    mk = dki_fit.mk
+    mk = dki_fit.mk()
 
     if normalization_mask_img is not None:
         norm_masker = maskers.NiftiMasker(normalization_mask_img)
@@ -484,7 +491,7 @@ def compute_mk(
         if delta_per_bvalue is not None:
             dwi_ventricles = dwi_ventricles[bvals_mask, :]
 
-        mk_ventricles = dki_model.fit(dwi_ventricles.T).mk
+        mk_ventricles = dki_model.fit(dwi_ventricles.T).mk()
 
         nmk = mk / mk_ventricles[~np.isnan(mk_ventricles)].mean()
         nmk = nmk.clip(0, np.percentile(nmk[~np.isnan(nmk)], 99))

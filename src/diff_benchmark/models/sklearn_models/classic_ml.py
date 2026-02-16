@@ -38,7 +38,7 @@ class PCARandomForestModel(SklearnModel):
 
         # Define hyperparameter grid
         param_grid = {
-            "pca__n_components": [0.7, 0.8, 0.9], #[50, 100, 400],
+            "pca__n_components": [10, 20, 30, 50, 60, 75, 100, 400], #[50, 100, 400],
             "rf__n_estimators": [200], #[100, 200, 500],
             "rf__max_depth": [5, 10, 15], #[None, 10, 30],
             # "rf__min_samples_split": [2, 5, 10],
@@ -130,7 +130,7 @@ class PCASVMModel(SklearnModel):
 
         # Define hyperparameter grid
         param_grid = {
-            "pca__n_components": [0.8], #[50, 100, 400],
+            "pca__n_components": [50], #10, 20, 30, 50, 60, 75, 100, 400
             "svm__C": [0.1, 1], #[0.1, 1, 10, 100],
             # "svm__kernel": ["rbf"], #["linear", "rbf"],
             # "svm__gamma": svm_gamma,

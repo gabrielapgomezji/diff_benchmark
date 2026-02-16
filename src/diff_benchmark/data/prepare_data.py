@@ -104,13 +104,20 @@ class DatasetPreparation:
             bool: True if model is cacheable and freeze_backbone=True
         """
         # Only cache for heavy pretrained models
-        cacheable_models = ["vit", "dinov2", "curia"]
+        cacheable_models = ["vit", "dinov2", "curia", "medicalnet"]
         
         if self.model_name not in cacheable_models:
             return False
         
         # Check if freeze_backbone is True
         freeze_backbone = self.cfg.model.backbone.get("freeze_backbone", False)
+        
+        # Special handling for medicalnet: treat as cacheable even if freeze_backbone missing
+        # (user can override by explicitly setting freeze_backbone=False) 
+        
+        if self.model_name == "medicalnet" and "freeze_backbone" not in self.cfg.model.backbone and self.cfg.model.backbone.pretrained == True:
+            freeze_backbone = True
+            
         if not freeze_backbone:
             logger.debug(f"Model {self.model_name} has freeze_backbone=False, not using cache")
             return False
@@ -136,8 +143,16 @@ class DatasetPreparation:
         # Get microstructure metric from dataset config
         metric_to_compute = self.source_dataset.metric_to_compute if hasattr(self.source_dataset, 'metric_to_compute') else None
         
+        # Determine model name for cache key (handle variants)
+        model_name_for_cache = self.model_name
+        if self.model_name == "medicalnet":
+            # Append depth to model name for unique caching
+            depth = self.cfg.model.backbone.get("depth")
+            if depth:
+                model_name_for_cache = f"{self.model_name}_depth{depth}"
+        
         cache_path = get_cache_path(
-            self.model_name,
+            model_name_for_cache,
             self.source_dataset.name,
             cache_dir,
             image_size=image_size,

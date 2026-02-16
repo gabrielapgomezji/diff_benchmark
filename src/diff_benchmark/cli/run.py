@@ -73,7 +73,6 @@ def run_single_model(cfg_og, model_name, results_path):
         results_dir=Path(cluster_cfg.results_dir),
     )
 
-
     torch_dataset_preparator = DatasetPreparation(
         cfg=cfg,
         source_dataset=dataset_selected,
@@ -81,7 +80,6 @@ def run_single_model(cfg_og, model_name, results_path):
 
     dataset, preprocessed = torch_dataset_preparator.pipeline()
     print("Data preparation completed.")
-
     targets_path = experiment_dir / "predictions" / "targets.parquet"
     targets_path.parent.mkdir(parents=True, exist_ok=True)
 

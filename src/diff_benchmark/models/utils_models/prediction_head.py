@@ -32,6 +32,8 @@ class MLPHead(nn.Module):
         hidden_dims = hidden_dims or []
 
         layers = []
+        # Add a layer norm layer at the beginning of the head to normalize the input features
+        layers.append(nn.LayerNorm(input_dim))
         prev_dim = input_dim
 
         for h in hidden_dims:

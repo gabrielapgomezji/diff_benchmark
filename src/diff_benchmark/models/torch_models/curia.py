@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from pathlib import Path
-from transformers import AutoImageProcessor, AutoModel
+from transformers import AutoImageProcessor, AutoModel, BitImageProcessor
 from diff_benchmark.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -16,7 +16,7 @@ class CuriaBackbone(nn.Module):
     This will be unnormalized back to [0, 1] before passing to HuggingFace processor.
     """
 
-    data_type = "image"
+    data_type = "images"
 
     def __init__(
         self,
@@ -40,11 +40,63 @@ class CuriaBackbone(nn.Module):
             logger.info(f"Pretrained model directory {model_dir} does not exist. Using model name {model_name} from HuggingFace Hub if possible.")
             source = model_name
             local_only = False
+        
+        # Handle snapshot structure if config.json not in root
+        source_path = Path(source)
+        if source_path.exists() and not (source_path / "config.json").exists():
+             # Look for config.json in subdirectories (either snapshots/hash or just hash)
+             logger.info(f"No config.json in {source}, searching subdirectories...")
+             candidates = list(source_path.glob("**/config.json"))
+             # Filter out hidden directories like .git
+             candidates = [p for p in candidates if ".git" not in str(p)]
+             
+             if candidates:
+                # Pick the most recently modified config
+                target_config = max(candidates, key=lambda p: p.stat().st_mtime)
+                snapshot_dir = target_config.parent
+                logger.info(f"Redirecting source to found model directory: {snapshot_dir}")
+                source = str(snapshot_dir)
 
-        self.processor = AutoImageProcessor.from_pretrained(source, local_files_only=local_only)
+        # Move backbone loading before processor to access config
         self.backbone = AutoModel.from_pretrained(source, local_files_only=local_only)
-
         self.embedding_dim = self.backbone.config.hidden_size
+        
+        num_channels = getattr(self.backbone.config, "num_channels", 3)
+        self.num_channels = num_channels
+        logger.info(f"Model expects {num_channels} channel(s)")
+
+        try:
+            # Use trust_remote_code=True to load local custom processor (CuriaImageProcessor)
+            self.processor = AutoImageProcessor.from_pretrained(source, local_files_only=local_only, trust_remote_code=True)
+        except (OSError, ValueError) as e:
+            # If preprocessor_config.json is missing or invalid, fallback
+            logger.info(f"Could not load image processor from {source}: {e}")
+            
+            # Get parameters from model config
+            image_size = getattr(self.backbone.config, "image_size", 512)
+            logger.info(f"Configuring fallback BitImageProcessor using model config: image_size={image_size}")
+            
+            # Configure normalization based on channels
+            if num_channels == 1:
+                image_mean = [0.5]
+                image_std = [0.5]
+            else:
+                image_mean = [0.485, 0.456, 0.406]
+                image_std = [0.229, 0.224, 0.225]
+
+            # Fallback for curia/dinov2 if preprocessor_config.json is missing
+            self.processor = BitImageProcessor(
+                do_resize=True,
+                size={"shortest_edge": image_size},
+                do_center_crop=True,
+                crop_size={"height": image_size, "width": image_size},
+                resample=3,  # BICUBIC
+                do_rescale=True,
+                rescale_factor=0.00392156862745098,
+                do_normalize=True,
+                image_mean=image_mean,
+                image_std=image_std,
+            )
 
         if freeze_backbone:
             for p in self.backbone.parameters():
@@ -90,17 +142,29 @@ class CuriaBackbone(nn.Module):
         # Flatten slices into batch
         slices = slices.reshape(B * num_slices, H, W)
 
-        # CURIA usually supports grayscale, but be safe:
-        slices = slices.unsqueeze(1).repeat(1, 3, 1, 1)
+        # NOTE: We do NOT add a channel dimension here because the custom CuriaImageProcessor
+        # interprets 3D inputs (C, H, W) as 3D volumes (H, W, D) and tries to process them slice-by-slice.
+        # By passing 2D tensors (H, W), the processor treats them as single slices as intended.
 
+        # Processor expects a list of images (tensors or arrays)
         inputs = self.processor(
-            images=slices,
+            images=list(slices), 
             return_tensors="pt",
             do_rescale=False,
         )
+
+        # Fix: Ensure output is 4D (B, C, H, W)
+        if "pixel_values" in inputs:
+            p_vals = inputs["pixel_values"]
+            if p_vals.ndim == 5 and p_vals.shape[1] == 1:
+                inputs["pixel_values"] = p_vals.squeeze(1)
+
         inputs = {k: v.to(x.device) for k, v in inputs.items()}
 
-        outputs = self.backbone(**inputs)
+        # outputs = self.backbone(**inputs)
+        # tokens = outputs.last_hidden_state  # (B*S, N, C)
+        with torch.no_grad():
+            outputs = self.backbone(**inputs)
         tokens = outputs.last_hidden_state  # (B*S, N, C)
 
         # Slice-level pooling

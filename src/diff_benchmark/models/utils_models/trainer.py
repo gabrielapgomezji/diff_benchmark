@@ -64,7 +64,7 @@ class BaseTrainer(ABC):
     def __init__(self, model: nn.Module):
         self.model = model
         self.fold_idx: int | None = None  # add fold placeholder
-        self.target_mean = 0.0
+        self.target_mean = 0.0 # default values; will be set properly during training if needed
         self.target_std = 1.0
 
     @property
@@ -323,6 +323,8 @@ class TorchTrainer(BaseTrainer):
         #     lr=learning_rate,
         #     weight_decay=weight_decay,
         # )
+        self.lr = learning_rate
+        self.weight_decay = weight_decay
         self.optimizer = torch.optim.Adam(
             self.model.parameters(),
             lr=learning_rate,   # default to 1e-5
@@ -356,6 +358,8 @@ class TorchTrainer(BaseTrainer):
     def fit(self, dataloader):
         train_loader, val_loader = split_loader(dataloader, collate_fn=self.model.collate_fn, val_ratio=self.val_ratio, seed=self.seed)
         
+        print(f"Learning rate: {self.lr}, weight decay: {self.weight_decay}")
+
         if self.prediction_task != "binary_classification":
             targets = []
             for batch in train_loader:
@@ -394,6 +398,7 @@ class TorchTrainer(BaseTrainer):
                 else:
                     y = y.float().to(self.device, non_blocking=True)
                     y = (y - self.target_mean) / self.target_std
+                    # Here you rescale
 
                 self.optimizer.zero_grad()
                 preds = self.model(x)
@@ -402,6 +407,8 @@ class TorchTrainer(BaseTrainer):
                 else:
                     preds = preds.squeeze(1)
                 loss = self.criterion(preds, y)
+                # Here you compute the loss on the normalized targets, so gradient will be smaller.
+                # Learning rate should be adjusted accordingly, probably increased.
                 loss.backward()
                 self.optimizer.step()
 
@@ -451,7 +458,7 @@ class TorchTrainer(BaseTrainer):
                 f"[{self.run_id}] "
                 f"Epoch {epoch+1}/{self.epochs} | "
                 f"train_loss={train_loss / len(train_loader):.4f} | "
-                f"val_loss={val_loss:.4f}"
+                f"val_loss={val_loss:.4f} | "
             )
         
         self.logger.flush(trainer=self)
@@ -499,6 +506,7 @@ class TorchTrainer(BaseTrainer):
                         y_pred=preds.numpy(),
                         prediction_task=self.prediction_task,
                     )
+        print(f"Validation accuracy: {metrics['accuracy']:.4f}" if metrics and "accuracy" in metrics else f"Validation mae: {metrics['mae']:.4f}" if metrics and "mae" in metrics else "")   
         self.logger.log_epoch(
             split="val",
             epoch=epoch,

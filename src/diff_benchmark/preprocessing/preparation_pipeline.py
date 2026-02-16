@@ -143,6 +143,7 @@ class BrainDataPreparationPipeline(ABC):
         self.data_reading = dataset_config.data_reading
         self.base_dir = Path(dataset_config.base_dir)
         self.in_derivatives = self.base_dir / "derivatives"
+        self.results_dir = Path(dataset_config.results_dir)
         self.metric = dataset_config.metric_to_compute
         self.scale = dataset_config.scale
         self.surface_space = dataset_config.surface_space
@@ -159,23 +160,62 @@ class BrainDataPreparationPipeline(ABC):
         self.aparcaseg_extension = dataset_config.aparcaseg_extension
 
         if "bids" in self.data_reading:
-            # File extension
-            # --- Detect uni vs multicenter automatically ---
-            if (self.base_dir / "sub-").exists() or any(
-                p.name.startswith("sub-") for p in self.base_dir.iterdir()
-            ):
-                center_dirs = [self.base_dir]
+            # Check for generic cache file in the results directory
+            if not self.results_dir.exists():
+                 self.results_dir.mkdir(parents=True, exist_ok=True)
+            
+            cache_file = self.results_dir / f"bids_layout_cache_{self.dataset_config.name}.csv"
+            
+            if cache_file.exists():
+                logger.info(f"Loading BIDS layout from cache: {cache_file}")
+                # Load with low_memory=False to avoid mixed type warnings on columns
+                df_cache = pd.read_csv(cache_file, low_memory=False)
+                self.layouts = [CachedBIDSLayout(df_cache)]
             else:
-                center_dirs = [p for p in self.base_dir.iterdir() if p.is_dir()]
+                # File extension
+                # --- Detect uni vs multicenter automatically ---
+                if (self.base_dir / "sub-").exists() or any(
+                    p.name.startswith("sub-") for p in self.base_dir.iterdir()
+                ):
+                    center_dirs = [self.base_dir]
+                else:
+                    center_dirs = [p for p in self.base_dir.iterdir() if p.is_dir()]
 
-            self.layouts = [
-                bids.BIDSLayout(
-                    str(center),
-                    derivatives=center / "derivatives",
-                    validate=False,
-                )
-                for center in center_dirs
-            ]
+                self.layouts = [
+                    bids.BIDSLayout(
+                        str(center),
+                        derivatives=center / "derivatives",
+                        validate=False,
+                    )
+                    for center in center_dirs
+                ]
+                
+                # Create cache
+                try:
+                    logger.info(f"Creating BIDS layout cache at: {cache_file}")
+                    dfs = []
+                    # dfs = [pd.DataFrame([{**dict(f.get_entities()), 'path': str(f.path)} for f in l.files.values()]) if hasattr(l, 'files') and l.files else l.to_df() for l in self.layouts]
+                    # full_df = pd.concat(dfs, ignore_index=True) if dfs else None
+                    # full_df.to_csv(cache_file, index=False)
+                    for l in self.layouts:
+                        # Workaround for SQLAlchemy 2.0 incompatibility in pybids .to_df()
+                        # attempting to read directly from .files attribute if available
+                        if hasattr(l, 'files') and l.files:
+                            rows = []
+                            for f in l.files.values():
+                                ent = dict(f.get_entities())
+                                ent['path'] = str(f.path)
+                                rows.append(ent)
+                            dfs.append(pd.DataFrame(rows))
+                        else:
+                            dfs.append(l.to_df())
+                            
+                    if dfs:
+                        full_df = pd.concat(dfs, ignore_index=True)
+                        full_df.to_csv(cache_file, index=False)
+                        logger.info(f"Successfully saved cache to {cache_file}")
+                except Exception as e:
+                    logger.warning(f"Failed to create BIDS layout cache: {e}")
 
     def get_subjects(self) -> list[str]:
         """
@@ -669,6 +709,7 @@ class DemographicsPreparationPipeline:
             if age_cols:
                 logger.info("HCP detected in demographics paths; dropping columns: %s", age_cols)
                 df = df.drop(columns=age_cols)
+
         df = self._filter(df, target_columns)
         df = self._normalize_subject_ids(df)
         df = self._categorical_to_numeric(df)
@@ -928,3 +969,95 @@ class DemographicsPreparationPipeline:
                 df[col] = df[col].map(mapping)
         
         return df
+
+class CachedBIDSFile:
+    """Wrapper for a file in CachedBIDSLayout."""
+    def __init__(self, row):
+        self._row = row
+        self.path = str(row['path'])
+        self.filename = Path(self.path).name
+        
+    def get_entities(self):
+        # Return dict of entities, excluding 'path' and internal pandas cols
+        return {k: v for k, v in self._row.items() 
+                if k != 'path' and pd.notna(v) and not str(k).startswith('Unnamed')}
+    
+    def __repr__(self):
+        return f"<CachedBIDSFile filename='{self.filename}'>"
+
+class CachedBIDSLayout:
+    """A BIDSLayout-like interface backed by a DataFrame for faster loading."""
+    def __init__(self, df):
+        self.df = df
+        # Ensure subject is string if it exists
+        if 'subject' in self.df.columns:
+            self.df['subject'] = self.df['subject'].astype(str)
+            
+    def get_subjects(self):
+        if 'subject' not in self.df.columns:
+            return []
+        return sorted(self.df['subject'].dropna().unique().tolist())
+        
+    def get(self, return_type='object', **kwargs):
+        # Start with all rows
+        mask = np.ones(len(self.df), dtype=bool)
+        
+        for k, v in kwargs.items():
+            if k in ['return_type', 'scope', 'regex_search']:
+                continue
+            
+            # Helper for extension normalization
+            if k == 'extension':
+                if 'extension' in self.df.columns:
+                    col_vals = self.df['extension'].astype(str)
+                    
+                    if isinstance(v, list):
+                        v_no_dot = [x.lstrip('.') for x in v]
+                        v_with_dot = ['.' + x.lstrip('.') for x in v]
+                        mask &= (col_vals.isin(v_no_dot) | col_vals.isin(v_with_dot))
+                    else:
+                        v_str = str(v)
+                        v_no_dot = v_str.lstrip('.')
+                        v_with_dot = '.' + v_no_dot
+                        mask &= ((col_vals == v_no_dot) | (col_vals == v_with_dot))
+                continue
+
+            # Standard filtering
+            if k in self.df.columns:
+                if v is None:
+                    mask &= self.df[k].isna()
+                else:
+                    col_vals = self.df[k]
+                    if isinstance(v, list):
+                        mask &= col_vals.isin(v)
+                    else:
+                        mask &= (col_vals == v)
+        
+        filtered = self.df[mask]
+        
+        # Sort by path to be deterministic
+        if 'path' in filtered.columns:
+            filtered = filtered.sort_values('path')
+            
+        if return_type in ['file', 'files', 'filename', 'filenames']:
+            return filtered['path'].tolist()
+        
+        return [CachedBIDSFile(row) for _, row in filtered.iterrows()]
+    
+    def to_df(self):
+        return self.df
+    
+    def get_file(self, filename):
+        """Mock get_file to return something with a .path attribute if found."""
+        # This is strictly used for 'participants.tsv' in prepare_data.py
+        # Check if filename is in df (might not be if it's top level tsv and not in layout?)
+        # Standard BIDSLayout includes participants.tsv in the index if it's there.
+        
+        # We try to match by filename (ignoring path structure)
+        # BIDS files are indexed by path, so we can check if any path ends with filename
+        if 'path' in self.df.columns:
+            matches = self.df[self.df['path'].astype(str).str.endswith(filename)]
+            if not matches.empty:
+                # Return the first match wrapped
+                return CachedBIDSFile(matches.iloc[0])
+        return None

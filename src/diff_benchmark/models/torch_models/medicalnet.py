@@ -472,6 +472,10 @@ class ResNet(nn.Module):
         Returns:
             torch.Tensor: Output tensor after passing through the network.
         """
+        # Check if input is already features (from cache) or raw images
+        if x.ndim == 2:
+            return x
+
         if x.ndim == 4:  # (B, D, H, W)
             x = x.unsqueeze(1)  # → (B, 1, D, H, W)
 

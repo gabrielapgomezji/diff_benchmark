@@ -9,6 +9,7 @@ paths:
   camcan:
     base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/camcan
     results_dir: /data/parietal/store3/work/ggomezji/benchmark/CamCAN
+    demographics_path: /data/parietal/store3/work/ggomezji/datasets/camcan/cc700-scored
   wand:
     base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/WAND-concat
     results_dir: /data/parietal/store3/work/ggomezji/benchmark/WAND

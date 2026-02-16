@@ -12,6 +12,7 @@ from diff_benchmark.analysis.plot_summary import plot_metrics_summary
 from diff_benchmark.analysis.print_summary_table import is_successful_experiment, print_table, select_best_runs, table_best_means, table_detailed, table_folds_wide, table_weighted_aggregate, table_all_runs, table_model_aggregate
 from pathlib import Path
 import pandas as pd
+from diff_benchmark.utils.job_manager import run_jobs
 
 
 def build_global_metrics(experiments_root: Path, output_path: Path) -> pd.DataFrame:
@@ -227,6 +228,291 @@ def build_comprehensive_table(experiments_root: Path, output_path: Path) -> pd.D
     return df_comprehensive
 
 
+def generate_dataset_reports(df_comprehensive: pd.DataFrame, output_dir: Path) -> None:
+    """
+    Generates text reports per dataset comparing experiments.
+    For each (model, tissue, task, target) group:
+      - Identifies the best run (based on primary metric on test set)
+      - Lists all runs
+      - Highlights hyperparameters that differ from the best run
+    """
+    print(f"\nGenerating dataset reports in {output_dir}...")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Filter out dummy models from report
+    df_filtered = df_comprehensive[~df_comprehensive['model_name'].astype(str).str.contains('dummy', case=False, na=False)]
+
+    # Identify config columns
+    config_cols = [c for c in df_filtered.columns if c.startswith('config.')]
+    
+    # Group by dataset
+    for dataset_name, df_dataset in df_filtered.groupby('dataset'):
+        report_lines = []
+        report_lines.append(f"DATASET REPORT: {dataset_name}")
+        report_lines.append("=" * 140)
+        
+        # Group by model/tissue/task/target
+        # Using fillna for grouping columns to handle potential NaNs safely
+        # Removed primary_metric from grouping as requested
+        group_keys = ['model_name', 'tissue_type', 'prediction_task', 'target'] 
+        # Filter keys present in current df
+        active_keys = [k for k in group_keys if k in df_dataset.columns]
+        
+        # We replace NaNs with string 'NaN' for grouping purposes to avoid dropping data
+        df_dataset_safe = df_dataset.copy()
+        for k in active_keys:
+            df_dataset_safe[k] = df_dataset_safe[k].fillna('NaN')
+            
+        for group_values, df_group in df_dataset_safe.groupby(active_keys):
+            # Restore original dataframe rows for this group to get correct types
+            df_group_orig = df_dataset.loc[df_group.index]
+            
+            # Create a string describing the group
+            group_desc = ", ".join(f"{k}={v}" for k, v in zip(active_keys, group_values))
+            report_lines.append(f"\nGROUP: {group_desc}")
+            report_lines.append("-" * 140)
+            
+            if len(df_group_orig) == 0:
+                continue
+
+            # Find best run
+            prediction_task = str(df_group['prediction_task'].iloc[0]).lower()
+            
+            # Determine target metrics based on task
+            metrics_priority = []
+            if "classification" in prediction_task or "binary" in prediction_task:
+                metrics_priority = ["accuracy_weighted", "accuracy", "roc_auc", "f1_weighted"]
+            elif "regression" in prediction_task:
+                metrics_priority = ["rmse_weighted", "rmse", "mae_weighted", "mae"]
+            else:
+                metrics_priority = ["accuracy_weighted", "rmse_weighted", "accuracy", "rmse"]
+
+            metric_col = None
+            metric_name = None
+            
+            # Find the best metric column (prioritizing test set but also coverage)
+            # We want a metric that is available for most runs
+            candidates = []
+            for m in metrics_priority:
+                for split in ['test', 'val']:
+                    col = f"{m}_{split}_mean"
+                    if col in df_group_orig.columns:
+                        valid_count = df_group_orig[col].count()
+                        if valid_count > 0:
+                            candidates.append({
+                                'col': col,
+                                'metric': m,
+                                'split': split,
+                                'count': valid_count,
+                                'priority_idx': metrics_priority.index(m)
+                            })
+            
+            if candidates:
+                # Sort candidates: 
+                # 1. Coverage (descending)
+                # 2. Priority of metric (ascending index)
+                # 3. Split (Test preferred over Val? alphabetical test comes before val? No, test/val order in loop matters)
+                # Let's prioritize coverage mostly, but break ties with metric priority and split
+                
+                # To prioritize test split over val split if counts are equal:
+                # assign score to split: test=1, val=0
+                for c in candidates:
+                    c['split_score'] = 1 if c['split'] == 'test' else 0
+
+                # Sort: most counts -> best metric priority -> test split
+                candidates.sort(key=lambda x: (-x['count'], x['priority_idx'], -x['split_score']))
+                
+                best_candidate = candidates[0]
+                metric_col = best_candidate['col']
+                metric_name = best_candidate['metric']
+                
+            
+            # Determine direction (default higher is better, switch for loss/error)
+            lower_is_better = False
+            if metric_name:
+                 lower_is_better = any(x in metric_name.lower() for x in ['mae', 'rmse', 'mse', 'loss', 'error'])
+
+            if metric_col is None:
+                report_lines.append(f"  Warning: Could not find performance metric column. Task: {prediction_task}")
+                # Fallback to just listing runs without sorting by metric
+                metric_col = "run_id" # Dummy
+                metric_name = "N/A"
+                best_run = df_group_orig.iloc[0] 
+                lower_is_better = False
+            else:
+                if lower_is_better:
+                    best_idx = df_group_orig[metric_col].idxmin()
+                else:
+                    best_idx = df_group_orig[metric_col].idxmax()
+                
+                # Safety check for nan index
+                if pd.isna(best_idx):
+                     report_lines.append(f"  Warning: Metric column {metric_col} contained only NaNs.")
+                     metric_col = "run_id"
+                     metric_name = "N/A"
+                     best_run = df_group_orig.iloc[0]
+                     lower_is_better = False
+                else:
+                    best_run = df_group_orig.loc[best_idx]
+            
+            best_run_id = best_run['run_id']
+            val_disp = f"{best_run[metric_col]:.4f}" if metric_col != "run_id" else "N/A"
+            report_lines.append(f"  Best Run ID: {best_run_id} (Metric: {metric_col}, Score: {val_disp})")
+            report_lines.append(f"  Highlighting: Parameters different from Best Run are enclosed in |...|")
+            
+            # Identify variable config params for this group
+            # We filter for columns that have > 1 unique value across the group
+            variable_config_cols = []
+            for c in config_cols:
+                if c not in df_group_orig.columns:
+                    continue
+                # Convert to string to compare uniqueness safely including NaNs
+                unique_vals = df_group_orig[c].astype(str).unique()
+                if len(unique_vals) > 1:
+                    variable_config_cols.append(c)
+            
+            # Sort variable config cols by name
+            variable_config_cols.sort()
+            
+            # Prepare table
+            # Columns: RunID | Score | PrimaryMetric | VarConfig1 | VarConfig2 ...
+            display_cols = ['run_id']
+            if metric_col != "run_id":
+                display_cols.append(metric_col)
+            
+            # Headers
+            short_col_map = {c: c.replace('config.', '').replace('model.', '').replace('optimizer.', 'opt.').replace('backend.', 'bk.') for c in variable_config_cols}
+            headers = ['RunID', 'Score', 'PrimaryMetric'] + [short_col_map[c] for c in variable_config_cols]
+            
+            # Data rows
+            table_data = []
+            
+            # Sort: Best first, then by metric
+            df_sorted = df_group_orig.copy()
+            df_sorted['is_best'] = (df_sorted['run_id'] == best_run_id)
+            
+            if metric_col != "run_id":
+                 if lower_is_better:
+                    df_sorted = df_sorted.sort_values(['is_best', metric_col], ascending=[False, True])
+                 else:
+                    df_sorted = df_sorted.sort_values(['is_best', metric_col], ascending=[False, False])
+            
+            best_config_vals = {c: best_run[c] for c in variable_config_cols}
+            best_primary_metric = best_run['primary_metric']
+
+            for _, row in df_sorted.iterrows():
+                row_data = []
+                # RunID
+                rid = str(row['run_id'])
+                if row['run_id'] == best_run_id:
+                    rid += " *" # Mark best
+                row_data.append(rid)
+                
+                # Score
+                if metric_col != "run_id":
+                    val = row[metric_col]
+                    current_metric_name = metric_name
+                    
+                    # Fallback if primary metric is missing
+                    if pd.isna(val):
+                        found_fallback = False
+                        for m in metrics_priority:
+                             for split in ['test', 'val']:
+                                 col_candidate = f"{m}_{split}_mean"
+                                 if col_candidate in row and pd.notna(row[col_candidate]):
+                                     val = row[col_candidate]
+                                     current_metric_name = m
+                                     found_fallback = True
+                                     break
+                             if found_fallback:
+                                 break
+
+                    if pd.notna(val):
+                        score = f"{val:.4f}"
+                        if current_metric_name != metric_name:
+                            score += f" ({current_metric_name})"
+                    else:
+                        score = "nan"
+                    row_data.append(score)
+                else:
+                    row_data.append("-")
+                    
+                # Primary Metric
+                p_metric = str(row['primary_metric'])
+                if p_metric != str(best_primary_metric):
+                     p_metric = f"|{p_metric}|"
+                row_data.append(p_metric)
+                
+                # Configs
+                for c in variable_config_cols:
+                    val = row[c]
+                    # Convert to string
+                    val_str = str(val) if pd.notna(val) else "-"
+                    
+                    # Compare
+                    best_val = best_config_vals[c]
+                    
+                    is_diff = False
+                    # Comparison logic
+                    v_str = str(val) if pd.notna(val) else "nan"
+                    b_str = str(best_val) if pd.notna(best_val) else "nan"
+                    
+                    if v_str != b_str:
+                        is_diff = True
+                        
+                    if is_diff:
+                        # Highlight diff
+                        val_str = f"|{val_str}|" # Using pipes to highlight
+                    
+                    # Truncate very long strings for readability
+                    if len(val_str) > 30:
+                        val_str = val_str[:27] + "..."
+                        
+                    row_data.append(val_str)
+                
+                table_data.append(row_data)
+            
+            # Render table
+            col_widths = [len(h) for h in headers]
+            for row in table_data:
+                for i, val in enumerate(row):
+                    if i < len(col_widths):
+                        col_widths[i] = max(col_widths[i], len(val))
+            
+            # Add padding
+            col_widths = [w + 2 for w in col_widths]
+            
+            # Cap column width to avoid explosion
+            col_widths = [min(w, 50) for w in col_widths]
+            
+            fmt = "".join([f"{{:<{w}}}" for w in col_widths])
+            
+            # Print header
+            try:
+                report_lines.append(fmt.format(*headers))
+                report_lines.append("-" * sum(col_widths))
+            except Exception as e:
+                report_lines.append(f"Error formatting table: {e}")
+            
+            # Print rows
+            for row in table_data:
+                try:
+                    report_lines.append(fmt.format(*row))
+                except Exception:
+                    pass # Skip row if format fails
+                    
+            report_lines.append("\n" + "=" * 40 + "\n")
+
+        # Write file
+        out_file = output_dir / f"{dataset_name}_report.txt"
+        try:
+            with open(out_file, "w") as f:
+                f.write("\n".join(report_lines))
+            print(f"✓ Report saved to: {out_file}")
+        except Exception as e:
+            print(f"Failed to write report for {dataset_name}: {e}")
+
+
 def build_coverage_table(df_comprehensive: pd.DataFrame, output_dir: Path) -> None:
     """
     Build a coverage table showing which dataset/microstructure combinations
@@ -411,6 +697,77 @@ def build_coverage_table(df_comprehensive: pd.DataFrame, output_dir: Path) -> No
         print(f"\n... ({len(table_lines) - 50} more lines in file)")
 
 
+def process_experiment_plots(exp_dir: Path, plots_root: Path, force_plots: bool, debug_mode: bool) -> None:
+    try:
+        is_successful = is_successful_experiment(exp_dir)
+        has_debug_info = (exp_dir / "debug").exists() and any((exp_dir / "debug").iterdir())
+
+        # If we are in debug mode, we want to plot debug info for running experiments too
+        # Otherwise, we only look at successful experiments
+        if not is_successful and not (debug_mode and has_debug_info):
+            # Skip if failed/running AND we don't want to debug running experiments
+            # OR if valid but no debug info and not successful
+            # Actually logic:
+            # If successful -> process normally
+            # If not successful -> skip unless debug=true and has_debug_info
+            return
+        
+        run_id = exp_dir.name.replace("exp_", "")
+        print(f"Processing plots for run: {run_id}")
+
+        # Paths
+        metrics_path = exp_dir / "metrics" / "fold_metrics.parquet"
+        predictions_path = exp_dir / "predictions" / "predictions.parquet"
+        targets_path = exp_dir / "predictions" / "targets.parquet"
+        debug_dir = exp_dir / "debug"
+        run_plots_dir = plots_root / run_id
+
+        # Check if main plots already exist
+        main_plots_exist = False
+        if not force_plots and run_plots_dir.exists():
+            main_plot_patterns = ["confusion_*.png", "roc_curve.png", "regression_*.png", "metrics_summary.png"]
+            main_plots_exist = any(run_plots_dir.glob(pattern) for pattern in main_plot_patterns)
+        
+        # Check if debug plots already exist
+        debug_plots_exist = False
+        debug_plots_dir = run_plots_dir / "debug"
+        if not force_plots and debug_plots_dir.exists():
+            debug_plots_exist = any(debug_plots_dir.glob("debug_training_*.png"))
+
+        # Debug plots if debug data exists and plots don't exist yet
+        # MODIFIED: Allow plotting even if experiment isn't fully successful if debug info is there
+        if debug_dir.exists() and any(debug_dir.iterdir()): 
+            if not debug_plots_exist or force_plots:
+                print(f"  Creating debug plots for {run_id}...")
+                plot_debug_run(run_id=run_id, debug_dir=debug_dir, output_root=plots_root)
+            else:
+                print(f"  Debug plots already exist for {run_id}, skipping...")
+
+        # Main experiment plots if not already computed (Requires success usually implies metrics exist)
+        # Only try to plot main results if metrics exist (which usually implies success or at least partial success)
+        if not main_plots_exist:
+            if metrics_path.exists() and predictions_path.exists() and targets_path.exists():
+                print(f"  Creating main plots for {run_id}...")
+                plot_run(
+                    run_id=run_id,
+                    metrics_dir=metrics_path,
+                    predictions_path=predictions_path,
+                    targets_path=targets_path,
+                    output_root=plots_root,
+                )
+            else:
+                if is_successful:
+                    print(f"  Missing required files for main plots ({run_id}), despite success flag. Skipping...")
+                else:
+                    print(f"  Skipping main plots for {run_id} (incomplete run).")
+        else:
+            print(f"  Main plots already exist for {run_id}, skipping...")
+    except Exception as e:
+        print(f"Error processing {exp_dir.name}: {e}")
+        import traceback
+        traceback.print_exc()
+
+
 @hydra.main(
     version_base="1.3",
     config_path="pkg://diff_benchmark.configs",
@@ -419,7 +776,7 @@ def build_coverage_table(df_comprehensive: pd.DataFrame, output_dir: Path) -> No
 def main(cfg: DictConfig) -> None:
     """
     CLI entrypoint:
-        diffbenchmark-analysis [tables=true/false] [plots=true/false]
+        diffbenchmark-analysis [tables=true/false] [plots=true/false] [debug=true/false]
 
     Analyzes experiment results, generates summary tables and plots.
     
@@ -427,6 +784,7 @@ def main(cfg: DictConfig) -> None:
         tables=false: Skip printing summary tables
         plots=false: Skip generating plots
         force_plots=true: Force recomputing plots even if they exist (default: false)
+        analysis.debug=true: Generate debug plots even for running/incomplete experiments (default: false)
         (no options): Do both tables and plots (default)
     
     Examples:
@@ -434,38 +792,43 @@ def main(cfg: DictConfig) -> None:
         poetry run diffbenchmark-analysis plots=false        # Only tables
         poetry run diffbenchmark-analysis force_plots=true   # Force plots
         poetry run diffbenchmark-analysis tables=false       # Only plots
-        poetry run diffbenchmark-analysis tables=true plots=true  # Both (explicit)
+        poetry run diffbenchmark-analysis analysis.debug=true # plots also for partial runs
     """
     # Get flags from config (with defaults)
     show_tables = cfg.analysis.tables
     show_plots = cfg.analysis.plots
     force_plots = cfg.analysis.get("force_plots", False)
+    debug_mode = cfg.analysis.get("debug", False)
     
     results_dir = Path("./exp_outputs")
     experiments_root = results_dir / "experiments"
     plots_root = results_dir / "plots"
     summary_root = results_dir / "summary"
 
-    # Build comprehensive table with all experiment information
     comprehensive_table_path = summary_root / "comprehensive_results.parquet"
-    print(f"\nBuilding comprehensive results table...")
-    df_comprehensive = build_comprehensive_table(experiments_root, comprehensive_table_path)
-    print(f"✓ Comprehensive table saved to: {comprehensive_table_path}")
-    print(f"  Shape: {df_comprehensive.shape[0]} experiments × {df_comprehensive.shape[1]} columns")
-
-    # Build coverage table showing which experiments have been run
-    tables_dir = summary_root / "tables"
-    build_coverage_table(df_comprehensive, tables_dir)
-
     metrics_folds_path = summary_root / "metrics_folds.parquet"
-    df_folds = build_global_metrics(experiments_root, metrics_folds_path)
     summary_metrics_path = summary_root / "metrics_summary.parquet"
-    df_summary = build_summary_metrics(df_folds, summary_metrics_path)
-    
+
     # -----------------------------------------------------------------
-    # 3) Print tables
+    # 3) Print tables and reports
     # -----------------------------------------------------------------
     if show_tables:
+        # Build comprehensive table with all experiment information
+        print(f"\nBuilding comprehensive results table...")
+        df_comprehensive = build_comprehensive_table(experiments_root, comprehensive_table_path)
+        print(f"✓ Comprehensive table saved to: {comprehensive_table_path}")
+        print(f"  Shape: {df_comprehensive.shape[0]} experiments × {df_comprehensive.shape[1]} columns")
+
+        # Build coverage table showing which experiments have been run
+        tables_dir = summary_root / "tables"
+        build_coverage_table(df_comprehensive, tables_dir)
+
+        # Generate detailed reports per dataset
+        reports_dir = summary_root / "reports"
+        generate_dataset_reports(df_comprehensive, reports_dir)
+
+        df_folds = build_global_metrics(experiments_root, metrics_folds_path)
+        df_summary = build_summary_metrics(df_folds, summary_metrics_path)
         # df_metrics = load_global_metrics(summary_metrics_path)
         
         # -----------------------------------------------------------------
@@ -605,59 +968,7 @@ def main(cfg: DictConfig) -> None:
     # -----------------------------------------------------------------
     if show_plots:
         for exp_dir in experiments_root.glob("exp_*"):
-            try:
-                if not is_successful_experiment(exp_dir):
-                    print(f"Skipping {exp_dir.name}: not successful")
-                    continue
-                run_id = exp_dir.name.replace("exp_", "")
-                print(f"Processing plots for run: {run_id}")
-
-                # Paths
-                metrics_path = exp_dir / "metrics" / "fold_metrics.parquet"
-                predictions_path = exp_dir / "predictions" / "predictions.parquet"
-                targets_path = exp_dir / "predictions" / "targets.parquet"
-                debug_dir = exp_dir / "debug"
-                run_plots_dir = plots_root / run_id
-
-                # Check if main plots already exist
-                main_plots_exist = False
-                if not force_plots and run_plots_dir.exists():
-                    main_plot_patterns = ["confusion_*.png", "roc_curve.png", "regression_*.png", "metrics_summary.png"]
-                    main_plots_exist = any(run_plots_dir.glob(pattern) for pattern in main_plot_patterns)
-                
-                # Check if debug plots already exist
-                debug_plots_exist = False
-                debug_plots_dir = run_plots_dir / "debug"
-                if not force_plots and debug_plots_dir.exists():
-                    debug_plots_exist = any(debug_plots_dir.glob("debug_training_*.png"))
-
-                # Debug plots if debug data exists and plots don't exist yet
-                if debug_dir.exists() and any(debug_dir.iterdir()) and not debug_plots_exist:
-                    print(f"  Creating debug plots for {run_id}...")
-                    plot_debug_run(run_id=run_id, debug_dir=debug_dir, output_root=plots_root)
-                elif debug_plots_exist:
-                    print(f"  Debug plots already exist for {run_id}, skipping...")
-
-                # Main experiment plots if not already computed
-                if not main_plots_exist:
-                    if metrics_path.exists() and predictions_path.exists() and targets_path.exists():
-                        print(f"  Creating main plots for {run_id}...")
-                        plot_run(
-                            run_id=run_id,
-                            metrics_dir=metrics_path,
-                            predictions_path=predictions_path,
-                            targets_path=targets_path,
-                            output_root=plots_root,
-                        )
-                    else:
-                        print(f"  Missing required files for main plots ({run_id}), skipping...")
-                else:
-                    print(f"  Main plots already exist for {run_id}, skipping...")
-            except Exception as e:
-                print(f"Error processing {exp_dir.name}: {e}")
-                import traceback
-                traceback.print_exc()
-                continue
+            process_experiment_plots(exp_dir, plots_root, force_plots, debug_mode)
 
         print("\nPlots generation complete!")
         print(f"Plots saved to: {plots_root}")

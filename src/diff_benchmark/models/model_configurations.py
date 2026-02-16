@@ -17,6 +17,7 @@ from diff_benchmark.models.sklearn_models.dummy import (
 from diff_benchmark.models.sklearn_models.logistic_regression import (
     LinearModel,
     PCALinearModel,
+    LassoModel,
 )
 from diff_benchmark.models.torch_models.cnn import ResNet3SliceMultihead
 from diff_benchmark.models.torch_models.medicalnet import MedicalNet
@@ -151,6 +152,11 @@ def create_model(
     if model_name == "pca_svm":
         model_kwargs["prediction_task"]=pred_head["prediction_task"]
         backbone = PCASVMModel(**model_kwargs)
+        return backbone
+    
+    if model_name == "lasso":
+        model_kwargs["prediction_task"]=pred_head["prediction_task"]
+        backbone = LassoModel(**model_kwargs)
         return backbone
 
     if model_name == "2dcnn":
