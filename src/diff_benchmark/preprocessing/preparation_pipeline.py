@@ -164,58 +164,38 @@ class BrainDataPreparationPipeline(ABC):
             if not self.results_dir.exists():
                  self.results_dir.mkdir(parents=True, exist_ok=True)
             
-            cache_file = self.results_dir / f"bids_layout_cache_{self.dataset_config.name}.csv"
-            
-            if cache_file.exists():
-                logger.info(f"Loading BIDS layout from cache: {cache_file}")
-                # Load with low_memory=False to avoid mixed type warnings on columns
-                df_cache = pd.read_csv(cache_file, low_memory=False)
-                self.layouts = [CachedBIDSLayout(df_cache)]
+            # --- Detect uni vs multicenter automatically ---
+            if (self.base_dir / "sub-").exists() or any(
+                p.name.startswith("sub-") for p in self.base_dir.iterdir()
+            ):
+                center_dirs = [self.base_dir]
             else:
-                # File extension
-                # --- Detect uni vs multicenter automatically ---
-                if (self.base_dir / "sub-").exists() or any(
-                    p.name.startswith("sub-") for p in self.base_dir.iterdir()
-                ):
-                    center_dirs = [self.base_dir]
-                else:
-                    center_dirs = [p for p in self.base_dir.iterdir() if p.is_dir()]
+                center_dirs = [p for p in self.base_dir.iterdir() if p.is_dir()]
 
-                self.layouts = [
+            self.layouts = []
+            for i, center in enumerate(center_dirs):
+                # If multiple centers, append index to db name to avoid conflicts if needed, 
+                # or use center name. Here assuming dataset_config.name is unique enough 
+                # or we just use one db if it handles multiple roots (BIDSLayout usually takes one root).
+                # But here we are creating multiple BIDSLayouts.
+                
+                if len(center_dirs) > 1:
+                    db_name = f"bids_layout_{self.dataset_config.name}_{center.name}.db"
+                else:
+                    db_name = f"bids_layout_{self.dataset_config.name}.db"
+                
+                database_path = self.results_dir / db_name
+                
+                logger.info(f"Using BIDS layout database: {database_path}")
+                
+                self.layouts.append(
                     bids.BIDSLayout(
                         str(center),
                         derivatives=center / "derivatives",
                         validate=False,
+                        database_path=database_path
                     )
-                    for center in center_dirs
-                ]
-                
-                # Create cache
-                try:
-                    logger.info(f"Creating BIDS layout cache at: {cache_file}")
-                    dfs = []
-                    # dfs = [pd.DataFrame([{**dict(f.get_entities()), 'path': str(f.path)} for f in l.files.values()]) if hasattr(l, 'files') and l.files else l.to_df() for l in self.layouts]
-                    # full_df = pd.concat(dfs, ignore_index=True) if dfs else None
-                    # full_df.to_csv(cache_file, index=False)
-                    for l in self.layouts:
-                        # Workaround for SQLAlchemy 2.0 incompatibility in pybids .to_df()
-                        # attempting to read directly from .files attribute if available
-                        if hasattr(l, 'files') and l.files:
-                            rows = []
-                            for f in l.files.values():
-                                ent = dict(f.get_entities())
-                                ent['path'] = str(f.path)
-                                rows.append(ent)
-                            dfs.append(pd.DataFrame(rows))
-                        else:
-                            dfs.append(l.to_df())
-                            
-                    if dfs:
-                        full_df = pd.concat(dfs, ignore_index=True)
-                        full_df.to_csv(cache_file, index=False)
-                        logger.info(f"Successfully saved cache to {cache_file}")
-                except Exception as e:
-                    logger.warning(f"Failed to create BIDS layout cache: {e}")
+                )
 
     def get_subjects(self) -> list[str]:
         """

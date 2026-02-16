@@ -322,21 +322,38 @@ class CachedFeatureDataset(Dataset):
                         # Apply each augmentation and compute features
                         sample_features = []
                         for aug_idx, transform in enumerate(aug_transforms):
-                            # Apply transformation slice-wise for 3D volumes
-                            if sample_x.ndim == 4:  # (1, D, H, W)
-                                D, H, W = sample_x.shape[1:]
-                                augmented_slices = []
-                                for d in range(D):
-                                    slice_2d = sample_x[0, d, :, :].unsqueeze(0)  # (1, H, W)
-                                    aug_slice = transform(slice_2d)  # Should output (1, H', W')
-                                    # Ensure it's 3D (1, H, W) not 4D
-                                    if aug_slice.ndim == 4:
-                                        aug_slice = aug_slice.squeeze(1)  # Remove extra channel: (1, 1, H, W) -> (1, H, W)
-                                    augmented_slices.append(aug_slice)
-                                augmented_x = torch.stack(augmented_slices, dim=1)  # (1, D, H', W')
+                            if hasattr(backbone, "collate_with_augmentation"):
+                                # If backbone has custom collation (e.g., MedicalNet), use it
+                                # It expects a list of (x, y, g) tuples and handles transforms + stacking
+                                
+                                # We need to pass unwrapped tensor (D, H, W) not (1, D, H, W)
+                                x_input = sample_x[0] if sample_x.ndim == 4 else sample_x
+
+                                # Create dummy batch with single sample
+                                dummy_batch = [(x_input, torch.tensor(0), torch.tensor(0))]
+                                breakpoint()
+                                # Use backbone's collate function
+                                augmented_x, _, _ = backbone.collate_with_augmentation(
+                                    dummy_batch, transform=transform
+                                )
+                                augmented_x = augmented_x.to(device)
+                                
                             else:
-                                # Fallback for other dimensions
-                                augmented_x = transform(sample_x)
+                                # Apply transformation slice-wise for 3D volumes
+                                if sample_x.ndim == 4:  # (1, D, H, W)
+                                    D, H, W = sample_x.shape[1:]
+                                    augmented_slices = []
+                                    for d in range(D):
+                                        slice_2d = sample_x[0, d, :, :].unsqueeze(0)  # (1, H, W)
+                                        aug_slice = transform(slice_2d)  # Should output (1, H', W')
+                                        # Ensure it's 3D (1, H, W) not 4D
+                                        if aug_slice.ndim == 4:
+                                            aug_slice = aug_slice.squeeze(1)  # Remove extra channel: (1, 1, H, W) -> (1, H, W)
+                                        augmented_slices.append(aug_slice)
+                                    augmented_x = torch.stack(augmented_slices, dim=1)  # (1, D, H', W')
+                                else:
+                                    # Fallback for other dimensions
+                                    augmented_x = transform(sample_x)
                             
                             # Compute features with backbone (backbone handles normalization)
                             features = backbone(augmented_x)  # (1, embedding_dim)
@@ -729,8 +746,16 @@ def append_augmentations_to_cache(
                     for transform_idx, transform in enumerate(new_transforms):
                         aug_idx = start_aug_idx + transform_idx
                         
-                        # Apply transformation slice-wise for 3D volumes
-                        if sample_x.ndim == 4:  # (1, D, H, W)
+                        if hasattr(backbone, "collate_with_augmentation"):
+                            # If backbone has custom collation (e.g., MedicalNet), use it
+                            x_input = sample_x[0] if sample_x.ndim == 4 else sample_x
+                            dummy_batch = [(x_input, torch.tensor(0), torch.tensor(0))]
+                            augmented_x, _, _ = backbone.collate_with_augmentation(
+                                dummy_batch, transform=transform
+                            )
+                            augmented_x = augmented_x.to(device)
+                        elif sample_x.ndim == 4:  # (1, D, H, W)
+                            # Apply transformation slice-wise for 3D volumes
                             D, H, W = sample_x.shape[1:]
                             augmented_slices = []
                             for d in range(D):
