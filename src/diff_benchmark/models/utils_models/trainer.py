@@ -15,6 +15,7 @@ from collections import deque
 from diff_benchmark.utils.logger import setup_logger
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Subset
+import copy
 
 
 def configure_cached_dataset_augmentation(dataset, mode: str = "random"):
@@ -30,7 +31,10 @@ def configure_cached_dataset_augmentation(dataset, mode: str = "random"):
     # Unwrap Subset to get the actual dataset
     actual_dataset = dataset
     if isinstance(dataset, Subset):
-        actual_dataset = dataset.dataset
+        if hasattr(dataset.dataset, "dataset"):
+            actual_dataset = dataset.dataset.dataset
+        else:
+            actual_dataset = dataset.dataset
     
     # Check if it's a CachedFeatureDataset
     if hasattr(actual_dataset, 'set_augmentation_indices'):
@@ -257,14 +261,26 @@ def split_loader(dataloader, collate_fn: Callable | None, val_ratio=0.2, seed=42
         random_state=42,
     )
 
+    # Create distinct improved copies for validation to allow independent augmentation state
+    # We shallow copy the top-level dataset (Subset) and its underlying dataset (CachedFeatureDataset)
+    # This allows setting different augmentation modes for train vs val while sharing heavy data
+    dataset_val = copy.copy(dataset)
+    if hasattr(dataset, "dataset"):
+        dataset_val.dataset = copy.copy(dataset.dataset)
+
     train_ds = Subset(dataset, train_idx)
-    val_ds = Subset(dataset, val_idx)
+    val_ds = Subset(dataset_val, val_idx)
     
     # Configure augmentation for cached datasets
     # Training: random augmentation per subject (consistent across epochs)
     is_cached_train = configure_cached_dataset_augmentation(train_ds, mode="random")
+
+    # aug_indices inside the CahedFeaturesDataset is set to random
     # Validation: no augmentation (use original features)
     is_cached_val = configure_cached_dataset_augmentation(val_ds, mode="fixed")
+
+    # the same aug_indices from the same CahedFeaturesDataset is set to fixed
+    # so train_ds will use the fixed mode as well
     
     if is_cached_train or is_cached_val:
         print("✓ Detected cached feature dataset")

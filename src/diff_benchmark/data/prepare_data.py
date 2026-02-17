@@ -104,7 +104,7 @@ class DatasetPreparation:
             bool: True if model is cacheable and freeze_backbone=True
         """
         # Only cache for heavy pretrained models
-        cacheable_models = ["vit", "dinov2", "curia", "medicalnet"]
+        cacheable_models = ["vit", "dinov2", "curia"] #, "medicalnet"]
         
         if self.model_name not in cacheable_models:
             return False
@@ -448,6 +448,16 @@ class DatasetPreparation:
             norm_mean = self.cfg.data.normalization.mean
             norm_std = self.cfg.data.normalization.std
             image_size = _parse_image_size(self.cfg.data.get("resize_shape"))
+
+            # Create a reference regular dataset to verify subject alignment
+            # This is cheap as we don't load images, just the file paths/dataframe
+            regular_dataset = CustomDataset(X, y, gender)
+            reference_loader = DataLoader(
+                regular_dataset,
+                batch_size=self.cfg.data.batch_size,
+                shuffle=False,
+                num_workers=0
+            )
             
             cached_dataset = CachedFeatureDataset(
                 cache_path=cache_path,
@@ -455,6 +465,7 @@ class DatasetPreparation:
                 image_size=image_size,
                 norm_mean=norm_mean,
                 norm_std=norm_std,
+                source_dataloader=reference_loader,
             )
             
             # Store targets and genders using the public properties

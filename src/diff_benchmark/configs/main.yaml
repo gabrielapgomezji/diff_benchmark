@@ -57,15 +57,15 @@ choices:
   # backend.weight_decay: [1e-3, 1e-5, 1e-1, 1e-2]
   ########### LAUNCH TO RUN
   model: [medicalnet] #[pca_linear] #[2dcnn, medicalnet]
-  dataset: [camcan] #[camcan] #, hcp, wand] #
+  dataset: [hcp] #[camcan] #, hcp, wand] #
   # target: [age]
   # pred_head: [regression]
-  data.batch_size: [16]
+  data.batch_size: [8]
   data.num_augmentations: [10]
-  cluster.conf.parallel_type: [None]
+  # cluster.conf.parallel_type: [None]
   dataset.metric_to_compute: [md]
-  dataset.tissue_type: [gray]
-  model.backbone.depth: [10]
+  dataset.tissue_type: [gray, white]
+  model.backbone.depth: [200]
   pred_head.dropout: [0.5]
   # pred_head.hidden_dims: ["[512]"] 
   backend.learning_rate: [1e-4]

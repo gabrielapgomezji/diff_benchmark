@@ -262,6 +262,54 @@ class CachedFeatureDataset(Dataset):
         logger.info(f"Loaded {len(self.subject_ids)} samples in {elapsed:.4f} seconds.")
         logger.info(f"File size: {file_size_mb:.2f} MB")
         logger.info(f"Each sample has {self.num_augmentations} augmented versions")
+        # Verify alignment with source dataset
+        self._check_alignment_with_source()
+
+    def _check_alignment_with_source(self):
+        """Check alignment between cached subject IDs and source dataset."""
+        if self.source_dataloader is None:
+            return
+
+        dataset = self.source_dataloader.dataset
+        
+        # Check if source dataset has subject_ids attribute
+        source_subjects = None
+        if hasattr(dataset, 'subject_ids'):
+            source_subjects = dataset.subject_ids
+        elif hasattr(dataset, '_subject_ids'):
+            source_subjects = dataset._subject_ids
+        
+        if source_subjects is None:
+            logger.warning("Could not verify alignment: source dataset has no subject_ids attribute")
+            return
+            
+        # Standardize to string for comparison
+        cached_subjects = [str(s) for s in self.subject_ids]
+        source_subjects = [str(s) for s in source_subjects]
+        
+        if len(cached_subjects) != len(source_subjects):
+            logger.error(f"Length mismatch: Cache ({len(cached_subjects)}) vs Source ({len(source_subjects)})")
+            raise ValueError(
+                f"Cache length mismatch: {len(cached_subjects)} vs {len(source_subjects)}. "
+                f"Delete cache at {self.cache_path} to recompute."
+            )
+ 
+        mismatches = []
+        for i, (cached, source) in enumerate(zip(cached_subjects, source_subjects)):
+            if cached != source:
+                mismatches.append((i, cached, source))
+
+        if mismatches:
+            logger.error(f"Found {len(mismatches)} subject ID mismatches!")
+            for i, c, s in mismatches[:5]:
+                logger.error(f"Index {i}: Cache={c}, Source={s}")
+            raise ValueError(
+                "Subject ID mismatch between cache and source dataset! "
+                "The cache file has different subjects or order than the current dataset. "
+                "Delete the cache file to recompute."
+            )
+        
+        logger.info("✓ Verified: Cache subject order matches source dataset order.")
     
     def _compute_and_cache(
         self,
@@ -331,7 +379,7 @@ class CachedFeatureDataset(Dataset):
 
                                 # Create dummy batch with single sample
                                 dummy_batch = [(x_input, torch.tensor(0), torch.tensor(0))]
-                                breakpoint()
+                                
                                 # Use backbone's collate function
                                 augmented_x, _, _ = backbone.collate_with_augmentation(
                                     dummy_batch, transform=transform
