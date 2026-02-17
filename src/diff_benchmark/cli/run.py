@@ -30,8 +30,6 @@ def run_single_model(cfg_og, model_name, results_path):
     logger = setup_logger("Job.run_single_model")
     metrics_rows = []
 
-    # run_id = make_run_id(cfg.model.name, cfg)
-    # cfg.runtime.run_id = run_id
     run_id = cfg.runtime.run_id
     
     experiment_dir = (
@@ -134,20 +132,13 @@ def run_single_model(cfg_og, model_name, results_path):
             y_train = np.array(targets[train_idx]).squeeze()
             y_test = np.array(targets[test_idx]).squeeze()
 
-            # local_config["backbone"]["prediction_task"] = config.get(
-            #     "prediction_task", "regression"
-            # )
-            # local_config["backend"]["run_id"] = run_id
             model = get_model(cfg.model.name, 
                           OmegaConf.to_container(cfg, resolve=True),)
 
             model.set_fold(fold_idx)
             model.fit(train_loader)
             train_pred = model.predict(train_loader)
-            
-            # plot_true_vs_pred(
-            #     y_train, train_pred, fold_idx=fold_idx, run_id=run_id, type="train"
-            # )
+
             train_score = compute_metrics(y_train, train_pred, prediction_task=cfg.pred_head.prediction_task)
 
             train_scores.append(train_score)
@@ -171,9 +162,7 @@ def run_single_model(cfg_og, model_name, results_path):
             pred_saver.add_rows(train_rows)
             
             test_pred = model.predict(test_loader)
-            # plot_true_vs_pred(
-            #     y_test, test_pred, fold_idx=fold_idx, run_id=run_id, type="test"
-            # )
+
             test_score = compute_metrics(y_test, test_pred, prediction_task=cfg.pred_head.prediction_task)
             logger.info(f"Fold {fold_idx} - Train score: {train_score}, Test score: {test_score}")
             print(f"Fold {fold_idx} - Train score: {train_score}, Test score: {test_score}")
@@ -200,7 +189,6 @@ def run_single_model(cfg_og, model_name, results_path):
             pred_saver.save()
 
             primary_metric = {"binary_classification": "accuracy", "regression": "mse"}[cfg.pred_head.prediction_task]
-            # summary = update_summary(summary, fold_idx, train_score, test_score, y_train, train_pred, y_test, test_pred, primary_metric)
 
             metrics_rows.extend(
                 metrics_to_rows(
@@ -230,19 +218,12 @@ def run_single_model(cfg_og, model_name, results_path):
                 )
             )
 
-            # save_model_results(
-            #     summary,
-            #     Path(results_path) / "analysis_results" / f"{run_id}_partial.json",
-            # )
             metadata["n_folds_completed"] += 1
             OmegaConf.save(metadata, experiment_dir / "metadata.yaml")
         except Exception as e:
             logger.exception(f"Crash in fold {fold_idx} of {run_id}: {e}")
             print(f"Crash in fold {fold_idx} of {run_id}: {e}")
-            # save_model_results(
-            #     summary,
-            #     Path(results_path) / "analysis_results" / f"{run_id}_crashed.json",
-            # )
+
             metadata["status"] = "crashed"
             metadata["error"] = str(e)
             metadata["end_time"] = datetime.utcnow().isoformat()
@@ -277,45 +258,7 @@ def run_single_model(cfg_og, model_name, results_path):
         df = pd.DataFrame(metrics_rows)
         df.to_parquet(metrics_path, index=False)
 
-    # summary["results"]["train_average_score"], summary["results"]["train_std_score"] = compute_summary_stats(train_scores, primary_metric)
-    # summary["results"]["test_average_score"], summary["results"]["test_std_score"] = compute_summary_stats(test_scores, primary_metric)
-
-    # save_model_results(summary, Path(results_path) / "analysis_results")
     return model_name, run_id
-
-# KEEP RESULTS AND UPDATE GLOBAL METRICS FILE
-# import warnings
-# for result in results:
-#     if not result.ok:
-#         warnings.warn(f"Job failed:\n{result.traceback}")
-
-# metrics_dir = Path("./data/results/parquet/analysis_results")
-# global_path = metrics_dir / "metrics.parquet"
-
-# if global_path.exists():
-#     df_global = pd.read_parquet(global_path)
-#     existing_run_ids = set(df_global["run_id"].unique())
-# else:
-#     df_global = None
-#     existing_run_ids = set()
-
-# new_dfs = []
-
-# for p in metrics_dir.glob("metrics_*.parquet"):
-#     run_id = p.stem.replace("metrics_", "")
-#     if run_id not in existing_run_ids:
-#         new_dfs.append(pd.read_parquet(p))
-
-# if new_dfs:
-#     df_new = pd.concat(new_dfs, ignore_index=True)
-#     if df_global is not None:
-#         df_out = pd.concat([df_global, df_new], ignore_index=True)
-#     else:
-#         df_out = df_new
-
-#     df_out.to_parquet(global_path, index=False)
-
-#################
 
 import hydra
 from omegaconf import DictConfig
