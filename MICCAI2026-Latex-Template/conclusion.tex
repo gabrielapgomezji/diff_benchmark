@@ -1,0 +1,13 @@
+\begin{itemize}
+    \item Introduced standardized dMRI benchmark for age prediction in healthy individuals using three large datasets (HCP, CamCAN, ABIDE) 
+    \item Compared feature representations (MD, SH, MK, RTOP) and models (dummy classifier, linear, pca\_linear, forest, pca\_forest, svm, pca\_svm)
+    \item Provided reproducible end{-}to{-}end framework and enables fair model comparison. Reduces methodological heterogeneity
+    \item A step toward methodological unification/code availability
+\end{itemize}
+
+\subsection{Limitations/Further steps}
+\begin{itemize}
+    \item No multi-site harmonization (explicitly as scope limitation). Would training in one dataset and predicting in another dataset have the same effect as predicting in different folds of the same dataset? Are the predictions very far?
+    \item Limited tasks / ranges in prediction (e.g. HCP age prediction)
+    \item Limited preprocessing / including other preprocessing parameters or corrections
+\end{itemize}

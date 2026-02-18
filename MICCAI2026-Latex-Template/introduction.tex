@@ -1,0 +1,46 @@
+\subsection{Scientific and Clinical Motivation}
+
+\includegraphics[width=\textwidth]{../OUT_exp_outputs/visualization_demo/plots/folds/box_abide_ados_g_comm_regression.png}
+
+\begin{itemize}
+    \item Diffusion MRI provides quantitative microstructural biomarkers
+    \item Increasing use of ML for prediction (age, diagnosis, cognition, etc.)
+    \item Lack of standardization in preprocessing and feature representation
+    \item High variability in reported performance across studies
+\end{itemize}
+
+Table idea
+\begin{table}
+    \centering
+    \begin{tabular}{|l|l|l|l|l|}
+    \hline
+    Study & Preprocessing & Standardized? & Feature Type & Public Code? \\
+    \hline
+    Study A & Pipeline A & No & Voxel-wise & No \\
+    \hline
+    Study B & Pipeline B & No & ROI-based & Yes \\
+    \hline
+    \end{tabular}
+\end{table}
+% \caption{Test table.}\label{tab2}
+
+\subsection{Gap in the Field}
+\begin{itemize}
+    \item No standardized benchmark for diffusion MRI prediction
+    \item Heterogeneous preprocessing pipelines
+    \item Inconsistent feature representations (voxel-wise vs ROI-based), not analysis cross microstructure features
+    \item Evaluation protocols not directly comparable
+    \item Limited reproducibility and transparency, missing code
+    \item Lack of results of the same experiments on other datasets
+\end{itemize}
+
+\subsection{Contributions}
+\begin{itemize}
+    \item Standardized preprocessing pipeline for diffusion MRI
+    \item Unified feature extraction strategy
+    \item Controlled evaluation protocol (train/test splits)
+    \item Comparison of multiple feature representations
+    \item Public release of code and benchmark configuration
+    \item End-to-end analysis
+    \item Integration of both classical and DL models
+\end{itemize}

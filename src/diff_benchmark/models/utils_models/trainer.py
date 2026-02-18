@@ -139,7 +139,6 @@ class SklearnModel(ABC, BaseEstimator):
         self
             Returns the fitted trainer instance for method chaining.
         """
-
         self.model.fit(X, y)
         return self
 

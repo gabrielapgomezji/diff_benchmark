@@ -20,7 +20,7 @@ from diff_benchmark.utils.summary_saver import update_summary, compute_summary_s
 from diff_benchmark.utils.logger import setup_logger, configure_logging
 from omegaconf import OmegaConf
 from diff_benchmark.cli.utils import build_config_grid, cartesian_cfgs
-from diff_benchmark.utils.run_id import make_run_id, is_cached
+from diff_benchmark.utils.run_id import make_run_id, is_cached, get_learning_curve_id
 from datetime import datetime
 import socket
 
@@ -28,10 +28,12 @@ import socket
 def run_single_model(cfg_og, model_name, results_path):
     cfg = OmegaConf.merge(cfg_og)
     logger = setup_logger("Job.run_single_model")
-    metrics_rows = []
-
-    run_id = cfg.runtime.run_id
+    metrics_rows = []    
     
+    run_id = cfg.runtime.run_id
+    learning_curve_id = get_learning_curve_id(cfg)
+    cfg.runtime.learning_curve_id = learning_curve_id
+    print(f"Computing a learning curve experiment: {cfg.runtime.learning_curve_exp}")
     experiment_dir = (
         Path(results_path)
         / "experiments"
@@ -40,6 +42,7 @@ def run_single_model(cfg_og, model_name, results_path):
 
     metadata = {
         "run_id": run_id,
+        "learning_curve_id": learning_curve_id,
         "experiment_hash": cfg.runtime.experiment_hash,
         "model": model_name,
         "dataset": cfg.dataset.name,

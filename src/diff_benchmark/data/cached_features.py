@@ -227,9 +227,38 @@ class CachedFeatureDataset(Dataset):
         
         df = pd.read_parquet(self.cache_path)
         
-        # Extract unique subjects
-        unique_subjects = df['subject_id'].unique()
-        self.subject_ids = unique_subjects.tolist()
+        # Ensure subject_id is string
+        df['subject_id'] = df['subject_id'].astype(str)
+        
+        # Determine expected subjects from source_dataloader if available
+        expected_subjects_list = None
+        if self.source_dataloader is not None:
+            dataset = self.source_dataloader.dataset
+            if hasattr(dataset, 'subject_ids'):
+                expected_subjects_list = [str(s) for s in dataset.subject_ids]
+            elif hasattr(dataset, '_subject_ids'):
+                expected_subjects_list = [str(s) for s in dataset._subject_ids]
+        
+        # If we have expected subjects, filter and order by them
+        if expected_subjects_list is not None:
+            # Check for missing subjects
+            cached_subjects_set = set(df['subject_id'].unique())
+            missing_subjects = [s for s in expected_subjects_list if s not in cached_subjects_set]
+            
+            if missing_subjects:
+                 logger.error(f"Cache is missing {len(missing_subjects)} subjects required by the source dataset.")
+                 logger.error(f"Missing: {missing_subjects[:5]}...")
+                 raise ValueError(f"Cache is missing {len(missing_subjects)} subjects required by the source dataset.")
+            
+            # Use expected subjects list (preserves order)
+            unique_subjects = expected_subjects_list
+            # Pre-filter dataframe for faster access
+            df = df[df['subject_id'].isin(set(unique_subjects))]
+        else:
+            # No source dataloader or no subject_ids, use whatever is in cache
+            unique_subjects = df['subject_id'].unique().tolist()
+            
+        self.subject_ids = unique_subjects
         
         # Get feature columns
         feature_cols = [col for col in df.columns if col.startswith('feature_')]
@@ -243,8 +272,16 @@ class CachedFeatureDataset(Dataset):
         # features[sample_idx][aug_idx] = Tensor of shape (embedding_dim,)
         self.features = []
         
+        # Create a dictionary for faster lookup if loading many subjects
+        # Group by subject_id first
+        df_grouped = df.groupby('subject_id')
+        
         for subject_id in unique_subjects:
-            subject_df = df[df['subject_id'] == subject_id].sort_values('augmentation_idx')
+            if subject_id not in df_grouped.groups:
+                 # Should have been caught by missing_subjects check above
+                 raise ValueError(f"Subject {subject_id} not found in cache group keys!")
+                 
+            subject_df = df_grouped.get_group(subject_id).sort_values('augmentation_idx')
             
             # Extract features for all augmentations
             aug_features = []

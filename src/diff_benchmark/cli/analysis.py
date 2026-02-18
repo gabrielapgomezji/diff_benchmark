@@ -3,6 +3,7 @@ from omegaconf import DictConfig
 from pathlib import Path
 from omegaconf import OmegaConf
 import numpy as np
+import matplotlib.pyplot as plt
 
 from diff_benchmark.preprocessing.brain_feature_extraction import DefaultPipeline
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
@@ -13,6 +14,262 @@ from diff_benchmark.analysis.print_summary_table import is_successful_experiment
 from pathlib import Path
 import pandas as pd
 from diff_benchmark.utils.job_manager import run_jobs
+
+
+def _as_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    if pd.isna(value):
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "t"}
+
+
+def _infer_learning_curve_x_column(df: pd.DataFrame) -> str | None:
+    candidates = [
+        "config.data.data_partition.train_size",
+        "config.data.train_size",
+        "config.data.partition.train_size",
+        "config.runtime.learning_curve_train_size",
+        "config.runtime.learning_curve_fraction",
+        "config.runtime.learning_curve_sample_size",
+        "config.runtime.learning_curve_step",
+        "config.runtime.learning_curve_point",
+    ]
+    for col in candidates:
+        if col in df.columns:
+            return col
+    return None
+
+
+def plot_learning_curves_from_comprehensive_table(
+    comprehensive_table_path: Path,
+    output_root: Path,
+) -> None:
+    """
+    Plot learning curves from the comprehensive results parquet.
+
+    Uses only rows where config.runtime.learning_curve=True and groups curves by
+    config.runtime.learning_curve_id. For each curve point (x-axis inferred from runtime
+    learning-curve configuration), it plots the mean performance:
+      - classification: accuracy_weighted_test_mean
+      - regression: mae_weighted_test_mean
+    """
+    if not comprehensive_table_path.exists():
+        print(f"Learning-curve plotting skipped: file not found: {comprehensive_table_path}")
+        return
+
+    df = pd.read_parquet(comprehensive_table_path)
+    required_cols = [
+        "config.runtime.learning_curve_id",
+        "prediction_task",
+        "model_name",
+        "dataset",
+        "tissue_type",
+        "primary_metric",
+        "target",
+    ]
+
+    missing_cols = [c for c in required_cols if c not in df.columns]
+    if missing_cols:
+        print(f"Learning-curve plotting skipped: missing columns: {missing_cols}")
+        return
+
+    lc_flag_col = None
+    if "config.runtime.learning_curve" in df.columns:
+        lc_flag_col = "config.runtime.learning_curve"
+    elif "config.runtime.learning_curve_exp" in df.columns:
+        lc_flag_col = "config.runtime.learning_curve_exp"
+
+    if lc_flag_col is None:
+        print("Learning-curve plotting skipped: missing learning-curve flag column.")
+        return
+    
+    lc_mask = df[lc_flag_col].apply(_as_bool)
+    df_lc = df[lc_mask].copy()
+
+    if df_lc.empty:
+        print(f"No learning-curve experiments found ({lc_flag_col}=True).")
+        return
+
+    x_col = _infer_learning_curve_x_column(df_lc)
+    if x_col is None:
+        print(
+            "Learning-curve plotting skipped: no x-axis column found. "
+            "Expected e.g. config.data.data_partition.train_size."
+        )
+        return
+
+    df_lc[x_col] = pd.to_numeric(df_lc[x_col], errors="coerce")
+    df_lc = df_lc[df_lc[x_col].notna()]
+    if df_lc.empty:
+        print("Learning-curve plotting skipped: x-axis values are not numeric.")
+        return
+
+    output_dir = output_root / "_learning_curves"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    group_cols = ["config.runtime.learning_curve_id"]
+    n_plots = 0
+
+    for lc_id, df_curve in df_lc.groupby(group_cols, dropna=False):
+        if isinstance(lc_id, tuple):
+            lc_id = lc_id[0]
+        
+        prediction_task = str(df_curve["prediction_task"].iloc[0]).lower()
+        if "regression" in prediction_task:
+            # Prefer R2 or Pearson over MAE for learning curves as requested
+            if "r2_test_mean" in df_curve.columns:
+                 test_mean_col = "r2_test_mean"
+                 test_std_col = "r2_test_std"
+                 train_mean_col = "r2_train_mean"
+                 train_std_col = "r2_train_std"
+                 y_label = "Mean R2"
+            elif "pearson_correlation_test_mean" in df_curve.columns:
+                 test_mean_col = "pearson_correlation_test_mean"
+                 test_std_col = "pearson_correlation_test_std"
+                 train_mean_col = "pearson_correlation_train_mean"
+                 train_std_col = "pearson_correlation_train_std"
+                 y_label = "Mean Pearson Correlation"
+            else:
+                 test_mean_col = "mae_weighted_test_mean"
+                 test_std_col = "mae_weighted_test_std"
+                 train_mean_col = "mae_weighted_train_mean"
+                 train_std_col = "mae_weighted_train_std"
+                 y_label = "Mean MAE (weighted)"
+        else:
+            test_mean_col = "accuracy_weighted_test_mean"
+            test_std_col = "accuracy_weighted_test_std"
+            train_mean_col = "accuracy_weighted_train_mean"
+            train_std_col = "accuracy_weighted_train_std"
+            y_label = "Mean Accuracy (weighted)"
+
+        # Check for required test mean column at minimum
+        if test_mean_col not in df_curve.columns:
+            print(f"Skipping learning_curve_id={lc_id}: missing column `{test_mean_col}`")
+            continue
+
+        # Prepare data for plotting
+        cols_to_keep = [x_col, test_mean_col]
+        # Add other columns if they exist
+        for c in [test_std_col, train_mean_col, train_std_col]:
+            if c in df_curve.columns:
+                cols_to_keep.append(c)
+        
+        df_plot = df_curve[cols_to_keep].copy()
+        
+        # Ensure numeric
+        for c in cols_to_keep:
+            if c != x_col: # x_col already handled
+                df_plot[c] = pd.to_numeric(df_plot[c], errors="coerce")
+        
+        df_plot = df_plot[df_plot[test_mean_col].notna()]
+        if df_plot.empty:
+            print(f"Skipping learning_curve_id={lc_id}: no valid `{test_mean_col}` values")
+            continue
+
+        # Aggregate by x_col
+        agg_dict = {test_mean_col: "mean"}
+        if test_std_col in df_plot.columns: agg_dict[test_std_col] = "mean"
+        if train_mean_col in df_plot.columns: agg_dict[train_mean_col] = "mean"
+        if train_std_col in df_plot.columns: agg_dict[train_std_col] = "mean"
+        
+        df_mean = (
+            df_plot.groupby(x_col, as_index=False)
+            .agg(agg_dict)
+            .sort_values(x_col)
+        )
+
+        if df_mean.empty:
+            continue
+
+        model_name = str(df_curve["model_name"].iloc[0])
+        dataset = str(df_curve["dataset"].iloc[0])
+        tissue_type = str(df_curve["tissue_type"].iloc[0])
+        metric_to_compute = str(df_curve["primary_metric"].iloc[0])
+        target = str(df_curve["target"].iloc[0])
+
+        title = f"{model_name} {dataset} - {tissue_type} - {metric_to_compute} - {target}"
+
+        plt.figure(figsize=(10, 6))
+        
+        # Plot Test
+        plt.plot(
+            df_mean[x_col],
+            df_mean[test_mean_col],
+            marker="o",
+            linewidth=2,
+            label="Test",
+            color="red"
+        )
+        if test_std_col in df_mean.columns:
+            plt.fill_between(
+                df_mean[x_col],
+                df_mean[test_mean_col] - df_mean[test_std_col],
+                df_mean[test_mean_col] + df_mean[test_std_col],
+                color="red",
+                alpha=0.2
+            )
+
+        # Plot Train
+        if train_mean_col in df_mean.columns:
+            plt.plot(
+                df_mean[x_col],
+                df_mean[train_mean_col],
+                marker="s",
+                linestyle="--",
+                linewidth=2,
+                label="Train",
+                color="blue"
+            )
+            if train_std_col in df_mean.columns:
+                plt.fill_between(
+                    df_mean[x_col],
+                    df_mean[train_mean_col] - df_mean[train_std_col],
+                    df_mean[train_mean_col] + df_mean[train_std_col],
+                    color="blue",
+                    alpha=0.2
+                )
+
+        xlabel = x_col
+        xlabel = xlabel.replace("config.data.", "data.")
+        xlabel = xlabel.replace("config.runtime.", "runtime.")
+        plt.xlabel(xlabel)
+        plt.ylabel(y_label)
+        plt.title(title)
+        plt.legend()
+        plt.ylim(0, 1)
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+
+        # Construct filename based on run_id structure: {model}_{run_hash}_{conf_hash}
+        # We want to keep {model}_{run_hash} and replace {conf_hash} with learning_curve_id
+        if "run_id" in df_curve.columns and not df_curve["run_id"].isna().all():
+            run_id = str(df_curve["run_id"].iloc[0])
+            parts = run_id.split("_")
+        
+            if len(parts) >= 3:
+                base_run_id = "_".join(parts[:-1]) # Keep everything except the last part (conf_hash)
+                safe_lc_id = str(lc_id).replace("/", "_").replace(" ", "_")
+                # If lc_id has underscores, user asked for the "beginning", assuming potentially like grouping ID
+                # To be safe and follow request precisely "substitue it with the begining of the learning_curve_id"
+                # If lc_id is simple, beginning is whole. If it has parts, let's take first part?
+                # But grouping is by whole lc_id. So we should use whole lc_id to distinguish curves.
+                # However, maybe user implies lc_id matches conf_hash structure? Unlikely.
+                # Let's just use the full safe_lc_id as replacement for conf_hash.
+                out_filename = f"learning_curve_{base_run_id}_{safe_lc_id}.png"
+            else:
+                safe_id = str(lc_id).replace("/", "_").replace(" ", "_")
+                out_filename = f"learning_curve_{safe_id}.png"
+        else:
+            safe_id = str(lc_id).replace("/", "_").replace(" ", "_")
+            out_filename = f"learning_curve_{safe_id}.png"
+
+        out_file = output_dir / out_filename
+        plt.savefig(out_file, dpi=160)
+        plt.close()
+        n_plots += 1
+
+    print(f"✓ Learning curves saved to: {output_dir} ({n_plots} plots)")
 
 
 def build_global_metrics(experiments_root: Path, output_path: Path) -> pd.DataFrame:
@@ -175,9 +432,9 @@ def build_comprehensive_table(experiments_root: Path, output_path: Path) -> pd.D
                     exp_info[f"{metric}_{split}_std"] = np.std(values)
         
         # Flatten and add all config parameters
-        # Focus on model, backend, pred_head, data, and target sections
-        sections_to_include = ['model', 'backend', 'pred_head', 'data', 'target']
-        
+        # Focus on model, backend, pred_head, data, target and runtime sections
+        sections_to_include = ['model', 'backend', 'pred_head', 'data', 'target', 'runtime']
+
         for section in sections_to_include:
             if section in cfg:
                 section_cfg = cfg[section]
@@ -186,6 +443,11 @@ def build_comprehensive_table(experiments_root: Path, output_path: Path) -> pd.D
                 # Add all parameters, will be NaN for models that don't have them
                 for param_key, param_value in flat_params.items():
                     exp_info[param_key] = param_value
+
+        # Ensure learning-curve runtime fields always exist for downstream analysis
+        # (older experiments/configs may not define runtime or learning-curve params)
+        exp_info.setdefault("config.runtime.learning_curve_exp", None)
+        exp_info.setdefault("config.runtime.learning_curve_id", None)
         
         all_experiments.append(exp_info)
     
@@ -283,7 +545,7 @@ def generate_dataset_reports(df_comprehensive: pd.DataFrame, output_dir: Path) -
             if "classification" in prediction_task or "binary" in prediction_task:
                 metrics_priority = ["accuracy_weighted", "accuracy", "roc_auc", "f1_weighted"]
             elif "regression" in prediction_task:
-                metrics_priority = ["rmse_weighted", "rmse", "mae_weighted", "mae"]
+                metrics_priority = [ "r2"] #, "rmse_weighted", "rmse", "mae_weighted", "mae"]
             else:
                 metrics_priority = ["accuracy_weighted", "rmse_weighted", "accuracy", "rmse"]
 
@@ -330,7 +592,7 @@ def generate_dataset_reports(df_comprehensive: pd.DataFrame, output_dir: Path) -
             # Determine direction (default higher is better, switch for loss/error)
             lower_is_better = False
             if metric_name:
-                 lower_is_better = any(x in metric_name.lower() for x in ['mae', 'rmse', 'mse', 'loss', 'error'])
+                 lower_is_better = any(x in metric_name.lower() for x in ['r2']) # , 'mae', 'rmse', 'mse', 'loss', 'error'])
 
             if metric_col is None:
                 report_lines.append(f"  Warning: Could not find performance metric column. Task: {prediction_task}")
@@ -967,6 +1229,8 @@ def main(cfg: DictConfig) -> None:
     # 4) Generate plots per experiment
     # -----------------------------------------------------------------
     if show_plots:
+        # Build learning curve plots from the comprehensive results table
+        plot_learning_curves_from_comprehensive_table(comprehensive_table_path, plots_root)
         for exp_dir in experiments_root.glob("exp_*"):
             process_experiment_plots(exp_dir, plots_root, force_plots, debug_mode)
 

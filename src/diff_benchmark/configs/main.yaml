@@ -12,21 +12,23 @@ defaults:
 random_state: 42
 runtime:
   force: false
+  learning_curve_exp: false
   run_id: null
+  learning_curve_id: null
   experiment_hash: null
   # fold_idx: null
 
 
 choices:
-  # model: [pca_linear]
+  # model: [dummy_classifier, linear, pca_linear, forest, pca_forest, svm, pca_svm, lasso]
+  # dataset: [hcp]
   # backend: [sklearn]
   # # pred_head: [regression]
   # target: [dx_group]
-  # dataset: [abide]
-  # dataset.tissue_type: [gray]
+  # dataset.tissue_type: [gray, white]
   # cluster: [margaret_cpu]
-  # dataset.metric_to_compute: [md]
-  # cluster.conf.parallel_type: [None]
+  # dataset.metric_to_compute: [md, sh, mk, rtop]
+  # # cluster.conf.parallel_type: [None]
   # # data.num_augmentations: [10]
   # # data.batch_size: [1]
   # # data.resize_shape: [null]
@@ -55,21 +57,27 @@ choices:
   # pred_head.hidden_dims: ["[128]", "[512]", "[512, 512, 128, 64]", "[512, 128, 32, 8]"] 
   # backend.lr: [1e-4, 1e-5]
   # backend.weight_decay: [1e-3, 1e-5, 1e-1, 1e-2]
-  ########### LAUNCH TO RUN
-  model: [medicalnet] #[pca_linear] #[2dcnn, medicalnet]
-  dataset: [camcan] #[camcan] #, hcp, wand] #
-  # target: [age]
+  ###########
+  model: [dinov2] #[pca_linear] #[2dcnn, medicalnet]
+  dataset: [abide] #[camcan] #, hcp, wand] #
+  # backend: [sklearn] #[torch]
+  # cluster: [margaret_cpu]
+  target: [dx_group]
   # pred_head: [regression]
-  data.batch_size: [2]
+  data.batch_size: [8]
+  backend.epochs: [100]
+  # data.data_partition.train_size: [1] #[0.1, 0.2, 0.35, 0.45, 0.5, 0.65, 0.75, 0.8, 0.9, 0.95, 1.0]
   data.num_augmentations: [10]
-  cluster.conf.parallel_type: [None]
-  dataset.metric_to_compute: [md]
+  # data.resize_shape: [null]
+  # cluster.conf.parallel_type: [None]
+  # runtime.learning_curve_exp: [true]
+  dataset.metric_to_compute: [md, sh, mk] #, rtop]
   dataset.tissue_type: [gray, white]
-  model.backbone.depth: [200]
-  pred_head.dropout: [0.5]
+  # model.backbone.depth: [10]
+  pred_head.dropout: [0.1]
   # pred_head.hidden_dims: ["[512]"] 
   backend.learning_rate: [1e-4]
-  backend.weight_decay: [1e-4]
+  backend.weight_decay: [1e-2]
   ########### TESTING!!
   # model: [curia] #[pca_linear] #[2dcnn, medicalnet]
   # dataset: [hcp] #[camcan] #, hcp, wand] #

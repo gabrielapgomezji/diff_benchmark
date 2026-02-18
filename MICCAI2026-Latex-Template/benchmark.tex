@@ -1,0 +1,82 @@
+* PLOT: Scheme of the benchmark
+
+Our benchmark agregates datasets with each dataset preprocessed with the same pipeline, with the exception of HCP which has its own preprocessing pipeline. We perform the feature extraction/data preparation and apply rigorously the analysis and cross validation that we are going to explain.
+\subsection{Datasets}
+\begin{itemize}
+    \item Number of subjects
+    \item Age range / demographics
+    \item Scanner details
+    \item Acquisition protocol or summary table with acquisition parameters
+    \item Prediction targets (classification/regression)
+\end{itemize}
+* PLOTS: Demographic distribution (age histograms) | Table with demographics summary (gender classes, age range...)
+
+\subsection{Preprocessing and Feature Extraction}
+\subsubsection{Preprocessing (Himanshu)}
+\begin{itemize}
+    \item Denoising
+    \item Motion and eddy correction
+    \item Spatial normalization
+    \item Masking strategy
+\end{itemize}
+
+\subsubsection{Feature extraction}
+\begin{itemize}
+    \item White and Gray matter computation (Maybe merge in Matter representation and include a table with differences between both representations(?))
+    \item Input: Microstructure information
+\end{itemize}
+    \paragraph{Gray Matter Representation}
+    \begin{itemize}
+        \item Voxel-wise features
+        \item High-dimensional representation (~64k features)
+        \item Mask-based extraction
+    \end{itemize}
+    Explain that voxel-wise features preserve spatial resolution but increase dimensionality and risk of overfitting.
+
+    \paragraph{White Matter Representation}
+    \begin{itemize}
+        \item Tract-based aggregation
+        \item Mean values per tract (~48 features)
+        \item Reduced dimensionality
+        \item Anatomical interpretability
+    \end{itemize}
+    Justify tract-averaged representation: Noise reduction, improved stability, lower dimensional feature space, anatomically meaningful structure
+
+\subsection{Prediction}
+\begin{itemize}
+    \item Feature normalization
+        \begin{itemize}
+            \item Binary targets (encoded 0/1), Continuous targets (standardized during training)
+            \item Standardization fitted on training set only
+            \item Applied to validation/test sets 
+            \item Inverse transform for regression outputs (for visualization)
+        \end{itemize}
+    \item Task definitions and labels and reasons for task selection
+        \begin{itemize}
+            \item Classification: Binary diagnosis prediction (e.g., ASD vs. TD)
+            \item Regression: Age prediction (brain age estimation)
+            \item Task selection rationale: Clinical relevance, data availability, and established benchmarks in the literature
+        \end{itemize}
+    \item Evaluation Metrics
+        \begin{itemize}
+            \item Classification: Accuracy, AUC, F1-score
+            \item Regression: R², MAE
+            \item Mean ± std across folds
+            \item Statistical comparison tests (e.g., paired t-tests, Wilcoxon signed-rank tests) to assess significance of performance differences between models
+        \end{itemize}
+    \item Models Used
+        \begin{itemize}
+            \item Dummy baseline (e.g., majority class for classification, mean predictor for regression)
+            \item Classical ML pipeline: Linear models (e.g., logistic regression, linear regression), Random Forests, Support Vector Machines (SVM) + their PCA versions
+            \item Deep Learning models (e.g., dinov2, medicalnet)
+            \item Unified hyperparameter search strategy (e.g., grid search or random search with cross-validation on the training set)
+        \end{itemize}
+\end{itemize}
+
+\subsection{Validation, Evaluation and Visualizations}
+\begin{itemize}
+    \item Data Splitting Strategy (Fixed train/test splits)
+    \item Cross-validation within training set. Stratification
+    \item No information leakage
+    \item Explanation of plots and statistics
+\end{itemize}
