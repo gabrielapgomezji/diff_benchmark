@@ -32,7 +32,7 @@ def main(cfg: DictConfig) -> None:
     )
 
     pipeline = DefaultPipeline(dataset_selected)
-    # subject_id = "29006" #abide #"CC721707" #CamCAN #"101915" #HCP #"76884"  # wand # 
+    # subject_id = "101915" #HCP #"29006" #abide #"CC721707" #CamCAN #"76884"  # wand # 
     # pipeline.compute_microstructure(subject_id)
     # breakpoint()
     pipeline.run_pipeline(recompute=True, cluster_conf=cfg.cluster.conf, slurm_cfg=cfg.cluster.slurm_cfg)

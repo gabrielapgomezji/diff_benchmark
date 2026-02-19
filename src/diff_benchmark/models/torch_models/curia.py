@@ -64,7 +64,7 @@ class CuriaBackbone(nn.Module):
         num_channels = getattr(self.backbone.config, "num_channels", 3)
         self.num_channels = num_channels
         logger.info(f"Model expects {num_channels} channel(s)")
-
+        
         try:
             # Use trust_remote_code=True to load local custom processor (CuriaImageProcessor)
             self.processor = AutoImageProcessor.from_pretrained(source, local_files_only=local_only, trust_remote_code=True)
@@ -114,14 +114,14 @@ class CuriaBackbone(nn.Module):
         Returns:
             Tensor of shape (B, embedding_dim)
         """
-        # Unnormalize: convert from normalized [-1, 1] back to [0, 1]
+        # Check if input is already pre-computed features (from cache): (B, embedding_dim)
+        # Must be checked BEFORE unnormalization — cached embeddings must not be rescaled.
+        if x.ndim == 2:
+            return x
+
+        # Unnormalize: convert from cache normalization [-1, 1] back to [0, 1]
         # x_original = x_normalized * std + mean = x * 0.5 + 0.5
         x = x * 0.5 + 0.5
-        # Check if input is already features (from cache) or raw images
-        if x.ndim == 2:
-            # Already processed features from cache: (B, embedding_dim)
-            # No processing needed, return as-is
-            return x
         
         # Handle both (B, D, H, W) and (B, 1, D, H, W) formats
         if x.ndim == 5 and x.shape[1] == 1:

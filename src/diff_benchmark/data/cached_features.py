@@ -375,6 +375,7 @@ class CachedFeatureDataset(Dataset):
         resize_info = f" with resize to {self.image_size}" if self.image_size else ""
         logger.info(f"Computing features with {self.num_augmentations} augmentations per sample{resize_info}...")
         
+        # processed_sample_count = 0  # tracks true offset across dropped/partial batches
         with torch.no_grad():
             with torch.autocast(device_type=device.type, enabled=(device.type == 'cuda')):
                 for batch_idx, batch in enumerate(dataloader):
@@ -382,19 +383,29 @@ class CachedFeatureDataset(Dataset):
                         elapsed = time.time() - start_time
                         logger.info(f"Processing batch {batch_idx}/{total_batches}... (elapsed: {elapsed:.1f}s)")
                     
+                    # # Skip None batches produced by safe_collate when all samples failed
+                    # if batch is None:
+                    #     logger.warning(f"Skipping empty batch at index {batch_idx} (all samples were None)")
+                    #     continue
+
                     # Unpack batch (might have 2 or 3 elements)
                     if len(batch) >= 2:
                         x = batch[0]
                     else:
                         x = batch
                     
-                    # Get subject IDs if available
+                    # Get subject IDs — use a running counter, not batch_idx * batch_size,
+                    # because earlier batches may have been smaller (dropped None samples).
                     if hasattr(dataloader.dataset, '_subject_ids'):
                         batch_start = batch_idx * dataloader.batch_size
+                        # batch_start = processed_sample_count
                         batch_end = min(batch_start + len(x), len(dataloader.dataset._subject_ids))
                         subject_ids = dataloader.dataset._subject_ids[batch_start:batch_end]
                     else:
                         subject_ids = [f"sample_{batch_idx * dataloader.batch_size + i}" for i in range(len(x))]
+                    #     subject_ids = [f"sample_{processed_sample_count + i}" for i in range(len(x))]
+                    
+                    # processed_sample_count += len(x)
                     
                     # Process each sample in batch
                     for sample_idx in range(len(x)):
@@ -792,6 +803,7 @@ def append_augmentations_to_cache(
     new_rows = []
     start_time = time.time()
     total_batches = len(source_dataloader)
+    # processed_sample_count = 0  # running offset, not batch_idx * batch_size
     
     with torch.no_grad():
         with torch.autocast(device_type=device.type, enabled=(device.type == 'cuda')):
@@ -800,19 +812,28 @@ def append_augmentations_to_cache(
                     elapsed = time.time() - start_time
                     logger.info(f"Processing batch {batch_idx}/{total_batches}... (elapsed: {elapsed:.1f}s)")
                 
+                # # Skip None batches produced by safe_collate
+                # if batch is None:
+                #     logger.warning(f"Skipping empty batch at index {batch_idx}")
+                #     continue
+
                 # Unpack batch
                 if len(batch) >= 2:
                     x = batch[0]
                 else:
                     x = batch
                 
-                # Get subject IDs
+                # Get subject IDs using running counter
                 if hasattr(source_dataloader.dataset, '_subject_ids'):
                     batch_start = batch_idx * source_dataloader.batch_size
+                    # batch_start = processed_sample_count
                     batch_end = min(batch_start + len(x), len(source_dataloader.dataset._subject_ids))
                     subject_ids = source_dataloader.dataset._subject_ids[batch_start:batch_end]
                 else:
                     subject_ids = [f"sample_{batch_idx * source_dataloader.batch_size + i}" for i in range(len(x))]
+                #     subject_ids = [f"sample_{processed_sample_count + i}" for i in range(len(x))]
+                
+                # processed_sample_count += len(x)
                 
                 # Process each sample
                 for sample_idx in range(len(x)):

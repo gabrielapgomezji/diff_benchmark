@@ -1446,11 +1446,126 @@ def extract_region_data(
     return region_values
 
 
+def compute_b0(
+    dwi_nib: nib.nifti1.Nifti1Image,
+    mask_img: nib.nifti1.Nifti1Image,
+    normalization_mask_img: nib.nifti1.Nifti1Image,
+    bvals: np.ndarray,
+    bvecs: np.ndarray,
+    big_delta: float,
+    small_delta: float,
+    delta_per_bvalue: dict | None = None,
+    b0_threshold: float = 50.0,
+) -> nib.nifti1.Nifti1Image:
+    """Compute a T2-weighted baseline image by averaging all b0 (low-b) volumes.
+
+    This provides a baseline "b0 metric" that captures T2-weighted tissue
+    contrast without any diffusion weighting. It can be used as a lower bound
+    in the benchmark to assess how much information is contained in the raw
+    diffusion signal beyond what is already encoded in T2.
+
+    The function signature deliberately mirrors all other ``compute_*``
+    functions so it plugs into ``compute_save_and_project_metric`` and
+    ``METRIC_COMPUTERS`` without any pipeline changes.
+
+    Args:
+        dwi_nib (nib.Nifti1Image): Full DWI 4-D NIfTI image.
+        mask_img (nib.Nifti1Image): Brain / tissue mask NIfTI image.
+        normalization_mask_img (nib.Nifti1Image): Ventricular mask used for
+            intensity normalization (same convention as MD/RTOP). Pass ``None``
+            to skip normalization.
+        bvals (np.ndarray): 1-D array of b-values (one per volume).
+        bvecs (np.ndarray): 2-D array of b-vectors ``(N, 3)``; not used here
+            but kept for API consistency.
+        big_delta (float): Not used; kept for API consistency.
+        small_delta (float): Not used; kept for API consistency.
+        delta_per_bvalue (dict | None): Not used; kept for API consistency.
+        b0_threshold (float): Volumes with ``bval <= b0_threshold`` are treated
+            as b0. Defaults to 50 s/mm², which safely captures nominally-zero
+            b-values that are stored as 5 or similar small numbers.
+
+    Returns:
+        nib.Nifti1Image: 3-D NIfTI image of the averaged (and optionally
+            ventricular-normalised) b0 signal, masked to ``mask_img``.
+
+    Raises:
+        ValueError: If no b0 volumes are found within ``b0_threshold``.
+    """
+    # ------------------------------------------------------------------ #
+    # 1. Identify b0 indices                                              #
+    # ------------------------------------------------------------------ #
+    b0_indices = np.where(bvals <= b0_threshold)[0]
+    if len(b0_indices) == 0:
+        raise ValueError(
+            f"No b0 volumes found with bval <= {b0_threshold}. "
+            f"Unique bvals: {np.unique(np.round(bvals)).tolist()}"
+        )
+
+    logger.info(
+        f"compute_b0: found {len(b0_indices)} b0 volume(s) "
+        f"(bval <= {b0_threshold}): indices {b0_indices.tolist()}"
+    )
+
+    # Use the first b0 as the reference for masking (consistent with other funcs)
+    ref_b0 = nimage.index_img(dwi_nib, int(b0_indices[0]))
+
+    # ------------------------------------------------------------------ #
+    # 2. Apply brain mask                                                 #
+    # ------------------------------------------------------------------ #
+    masker = maskers.NiftiMasker(mask_img)
+    masker.fit(ref_b0)
+
+    # Extract only b0 volumes → shape (n_b0, n_voxels)
+    b0_imgs = [nimage.index_img(dwi_nib, int(i)) for i in b0_indices]
+    b0_data = np.stack(
+        [masker.transform(img).squeeze() for img in b0_imgs], axis=0
+    )  # (n_b0, n_voxels)
+
+    # ------------------------------------------------------------------ #
+    # 3. Average across b0 volumes                                        #
+    # ------------------------------------------------------------------ #
+    mean_b0 = np.mean(b0_data, axis=0)  # (n_voxels,)
+    mean_b0 = np.nan_to_num(mean_b0, nan=0.0)
+
+    # ------------------------------------------------------------------ #
+    # 4. Optional ventricular normalisation (same convention as MD/RTOP) #
+    # ------------------------------------------------------------------ #
+    if normalization_mask_img is not None:
+        norm_masker = maskers.NiftiMasker(normalization_mask_img)
+        norm_masker.fit(ref_b0)
+
+        vent_b0_data = np.stack(
+            [norm_masker.transform(img).squeeze() for img in b0_imgs], axis=0
+        )
+        mean_vent_b0 = np.mean(vent_b0_data, axis=0)
+        vent_mean = np.nanmean(mean_vent_b0)
+
+        if vent_mean > 1e-6:
+            mean_b0 = mean_b0 / vent_mean
+            logger.info(f"compute_b0: ventricular normalisation applied (vent_mean={vent_mean:.4f})")
+        else:
+            logger.warning("compute_b0: skipping ventricular normalisation (vent_mean ~ 0)")
+    else:
+        logger.warning(
+            "compute_b0: no ventricular mask provided, returning un-normalised b0 signal."
+        )
+
+    # ------------------------------------------------------------------ #
+    # 5. Clip to 99th percentile to remove outlier voxels                #
+    # ------------------------------------------------------------------ #
+    valid = ~np.isnan(mean_b0)
+    if valid.any():
+        mean_b0 = mean_b0.clip(0, np.percentile(mean_b0[valid], 99))
+
+    return masker.inverse_transform(mean_b0)
+
+
 METRIC_COMPUTERS = {
     "rtop": compute_rtop,
     "md": compute_md,
     "mk": compute_mk,
     "sh": compute_sh,
+    "b0": compute_b0,
 }
 
 

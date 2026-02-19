@@ -14,7 +14,7 @@ from diff_benchmark.data.prepare_data import DatasetPreparation
 from diff_benchmark.models.model_configurations import get_model#, make_run_id
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
 from diff_benchmark.utils.parquet_helper import ParquetSaver, metrics_to_rows
-from diff_benchmark.utils.job_manager import run_jobs
+from diff_benchmark.utils.job_manager import run_jobs #, JobResult
 from diff_benchmark.utils.scores import compute_metrics
 from diff_benchmark.utils.summary_saver import update_summary, compute_summary_stats
 from diff_benchmark.utils.logger import setup_logger, configure_logging
@@ -351,6 +351,21 @@ def main():
         n_jobs=cluster_cfg.conf.n_jobs,
         wait_for_results=cluster_cfg.conf.wait_for_results,
     )
+
+    # failed = [
+    #     (i, r) for i, r in enumerate(results)
+    #     if isinstance(r, JobResult) and not r.ok
+    # ]
+    # if failed:
+    #     for i, r in failed:
+    #         cfg_i = filtered_confs[i]
+    #         print(
+    #             f"\n❌ Job {i} FAILED "
+    #             f"(model={cfg_i.model.name}, dataset={cfg_i.dataset.name})\n"
+    #             f"   Error: {r.error}\n"
+    #             f"   Traceback:\n{r.traceback}"
+    #         )
+    #     raise SystemExit(1)
 
 if __name__ == "__main__":
     main()
