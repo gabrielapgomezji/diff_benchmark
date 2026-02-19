@@ -1,0 +1,905 @@
+DATASET REPORT: abide
+============================================================================================================================================
+
+GROUP: model_name=curia, tissue_type=gray, prediction_task=binary_classification, target=['Gender']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Warning: Could not find performance metric column. Task: binary_classification
+  Best Run ID: curia_abigramdg_cc517dcc (Metric: run_id, Score: N/A)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                       Score  PrimaryMetric  
+--------------------------------------------------
+curia_abigramdg_cc517dcc *  -      md             
+
+========================================
+
+
+GROUP: model_name=curia, tissue_type=gray, prediction_task=binary_classification, target=['dx_group']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Warning: Could not find performance metric column. Task: binary_classification
+  Best Run ID: curia_abigramddx__9a06abb3 (Metric: run_id, Score: N/A)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                         Score  PrimaryMetric  bk.learning_rate  data.batch_size  data.resize_shape  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+curia_abigramddx__9a06abb3 *  -      md             1e-               8                None               9a06abb3                 206c544409fafbde56f3bde80c7...  curia_abigramddx__9a06abb3    
+curia_abigramddx__a810efd3    -      md             1e-               |1|              None               |a810efd3|               |b34d06e0ca303fc6019d43fae9...  |curia_abigramddx__a810efd3|  
+curia_abigramddx__9ee3197c    -      md             1e-               |1|              |[256, 256]|       |9ee3197c|               |1dd3d9a7750e3efe6f5b6bcdc0...  |curia_abigramddx__9ee3197c|  
+curia_abigramddx__19e6de1a    -      md             |0.0001|          |1|              |[256, 256]|       |19e6de1a|               |df3e1ef143e4c957c550bb2621...  |curia_abigramddx__19e6de1a|  
+
+========================================
+
+
+GROUP: model_name=dinov2, tissue_type=gray, prediction_task=binary_classification, target=['dx_group']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: dinov2_abigramddx__78be6171 (Metric: accuracy_weighted_test_mean, Score: 0.5575)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                          Score   PrimaryMetric  bk.epochs  bk.learning_rate  bk.weight_decay  data.batch_size  pred_head.dropout  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                 
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+dinov2_abigramddx__78be6171 *  0.5575  md             100        0.0001            0.01             8                0.1                78be6171                 f2e7dbf114fdbdcc512d6bf19a7...  dinov2_abigramddx__78be6171    
+dinov2_abigramddx__89031f78    0.5410  md             |50|       0.0001            0.01             8                0.1                |89031f78|               |f4f9a86ea8e0e6050e87d6790c...  |dinov2_abigramddx__89031f78|  
+dinov2_abigramddx__ea2ea7c4    0.5031  md             100        |1e-05|           |0.001|          8                |0.5|              |ea2ea7c4|               |e7d1bc20487bd7c6966fb9fe22...  |dinov2_abigramddx__ea2ea7c4|  
+dinov2_abigramddx__93b4da07    0.5000  md             100        |0.01|            0.01             8                |0.3|              |93b4da07|               |d39c17fc9cdf96fee29d8bec6b...  |dinov2_abigramddx__93b4da07|  
+dinov2_abigrashdx__b0000f62    nan     |sh|           100        0.0001            0.01             8                0.1                |b0000f62|               |4558cea888c164d710fec1cdc6...  |dinov2_abigrashdx__b0000f62|  
+dinov2_abigramkdx__82eca2e3    nan     |mk|           100        0.0001            0.01             8                0.1                |82eca2e3|               |20c774b98b902faadf805bdbe1...  |dinov2_abigramkdx__82eca2e3|  
+dinov2_abigramddx__74814866    nan     md             |50|       |0.001|           0.01             8                0.1                |74814866|               |b2a3a661ffd665d6cc16e2e4b7...  |dinov2_abigramddx__74814866|  
+dinov2_abigramddx__97c7ad1a    nan     md             |50|       |0.001|           0.01             |1|              0.1                |97c7ad1a|               |3fb1ac9dedeb6d255775c2e928...  |dinov2_abigramddx__97c7ad1a|  
+
+========================================
+
+
+GROUP: model_name=dinov2, tissue_type=white, prediction_task=binary_classification, target=['dx_group']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Warning: Could not find performance metric column. Task: binary_classification
+  Best Run ID: dinov2_abiwhimddx__26f99acc (Metric: run_id, Score: N/A)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                          Score  PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                 
+---------------------------------------------------------------------------------------------------------------------------------------------
+dinov2_abiwhimddx__26f99acc *  -      md             26f99acc                 c31e4421ecbe53d85032cb6a716...  dinov2_abiwhimddx__26f99acc    
+dinov2_abiwhishdx__3b07cb06    -      |sh|           |3b07cb06|               |ef88be972a0163cd875859887e...  |dinov2_abiwhishdx__3b07cb06|  
+dinov2_abiwhimkdx__4caf6478    -      |mk|           |4caf6478|               |e6720ce8513fd2091d34e795c3...  |dinov2_abiwhimkdx__4caf6478|  
+
+========================================
+
+
+GROUP: model_name=forest, tissue_type=gray, prediction_task=binary_classification, target=['Gender']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: forest_abigramdg_34b9499f (Metric: accuracy_weighted_test_mean, Score: 0.5000)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                        Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id               
+------------------------------------------------------------------------------------------------------------------------------------------
+forest_abigramdg_34b9499f *  0.5000  md             34b9499f                 c8d03dd5f95cee844d1e5063ea4...  forest_abigramdg_34b9499f    
+forest_abigrashg_178eaca4    0.5000  |sh|           |178eaca4|               |7254dd9b2d1e6e9aa86ff843bc...  |forest_abigrashg_178eaca4|  
+forest_abigramkg_edf677b0    nan     |mk|           |edf677b0|               |629fe2947e73de5b731a220a6e...  |forest_abigramkg_edf677b0|  
+
+========================================
+
+
+GROUP: model_name=forest, tissue_type=gray, prediction_task=binary_classification, target=['dx_group']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: forest_abigrashdx__20468b63 (Metric: accuracy_weighted_test_mean, Score: 0.6115)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                          Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id                 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+forest_abigrashdx__20468b63 *  0.6115  sh             0.9                             20468b63                 True                        14dfb0462e8f90f309a4729090e...  forest_abigrashdx__20468b63    
+forest_abigrashdx__35d1014a    0.6014  sh             |0.8|                           |35d1014a|               True                        14dfb0462e8f90f309a4729090e...  |forest_abigrashdx__35d1014a|  
+forest_abigrashdx__1557104b    0.6004  sh             |0.95|                          |1557104b|               True                        14dfb0462e8f90f309a4729090e...  |forest_abigrashdx__1557104b|  
+forest_abigrashdx__f530e136    0.5977  sh             |0.75|                          |f530e136|               True                        14dfb0462e8f90f309a4729090e...  |forest_abigrashdx__f530e136|  
+forest_abigrashdx__36dfd3f8    0.5925  sh             |0.65|                          |36dfd3f8|               True                        14dfb0462e8f90f309a4729090e...  |forest_abigrashdx__36dfd3f8|  
+forest_abigrashdx__93ac50d9    0.5893  sh             |0.35|                          |93ac50d9|               True                        14dfb0462e8f90f309a4729090e...  |forest_abigrashdx__93ac50d9|  
+forest_abigrashdx__4573a472    0.5866  sh             |1|                             |4573a472|               |False|                     14dfb0462e8f90f309a4729090e...  |forest_abigrashdx__4573a472|  
+forest_abigrashdx__5b6a5c8a    0.5866  sh             |1.0|                           |5b6a5c8a|               True                        14dfb0462e8f90f309a4729090e...  |forest_abigrashdx__5b6a5c8a|  
+forest_abigramddx__86432a7d    0.5780  |md|           0.9                             |86432a7d|               True                        |7288bfeb55f3a1a30ad8b120c6...  |forest_abigramddx__86432a7d|  
+forest_abigrashdx__23354fe7    0.5764  sh             |0.5|                           |23354fe7|               True                        14dfb0462e8f90f309a4729090e...  |forest_abigrashdx__23354fe7|  
+forest_abigramddx__cca26110    0.5764  |md|           |0.8|                           |cca26110|               True                        |7288bfeb55f3a1a30ad8b120c6...  |forest_abigramddx__cca26110|  
+forest_abigramddx__3aa752b3    0.5662  |md|           |0.95|                          |3aa752b3|               True                        |7288bfeb55f3a1a30ad8b120c6...  |forest_abigramddx__3aa752b3|  
+forest_abigrashdx__cfe2c3f1    0.5623  sh             |0.45|                          |cfe2c3f1|               True                        14dfb0462e8f90f309a4729090e...  |forest_abigrashdx__cfe2c3f1|  
+forest_abigramddx__35fc9ec7    0.5557  |md|           |1|                             |35fc9ec7|               |False|                     |7288bfeb55f3a1a30ad8b120c6...  |forest_abigramddx__35fc9ec7|  
+forest_abigramddx__49c00286    0.5557  |md|           |1.0|                           |49c00286|               True                        |7288bfeb55f3a1a30ad8b120c6...  |forest_abigramddx__49c00286|  
+forest_abigramddx__a42cdd07    0.5539  |md|           |0.35|                          |a42cdd07|               True                        |7288bfeb55f3a1a30ad8b120c6...  |forest_abigramddx__a42cdd07|  
+forest_abigramddx__a80f7d40    0.5501  |md|           |0.5|                           |a80f7d40|               True                        |7288bfeb55f3a1a30ad8b120c6...  |forest_abigramddx__a80f7d40|  
+forest_abigrashdx__3527cf8c    0.5483  sh             |0.2|                           |3527cf8c|               True                        14dfb0462e8f90f309a4729090e...  |forest_abigrashdx__3527cf8c|  
+forest_abigramddx__d03f0a50    0.5455  |md|           |0.45|                          |d03f0a50|               True                        |7288bfeb55f3a1a30ad8b120c6...  |forest_abigramddx__d03f0a50|  
+forest_abigramddx__e40c0af7    0.5423  |md|           |0.65|                          |e40c0af7|               True                        |7288bfeb55f3a1a30ad8b120c6...  |forest_abigramddx__e40c0af7|  
+forest_abigrashdx__09815805    0.5300  sh             |0.1|                           |09815805|               True                        14dfb0462e8f90f309a4729090e...  |forest_abigrashdx__09815805|  
+forest_abigramddx__9573cfc7    0.5260  |md|           |0.75|                          |9573cfc7|               True                        |7288bfeb55f3a1a30ad8b120c6...  |forest_abigramddx__9573cfc7|  
+forest_abigramddx__d94a8c14    0.5215  |md|           |0.1|                           |d94a8c14|               True                        |7288bfeb55f3a1a30ad8b120c6...  |forest_abigramddx__d94a8c14|  
+forest_abigramddx__9ef72978    0.5048  |md|           |0.2|                           |9ef72978|               True                        |7288bfeb55f3a1a30ad8b120c6...  |forest_abigramddx__9ef72978|  
+forest_abigramkdx__0759f7ba    nan     |mk|           |1|                             |0759f7ba|               |False|                     |dcf90c7d4b33e0b28502f89ac8...  |forest_abigramkdx__0759f7ba|  
+
+========================================
+
+
+GROUP: model_name=forest, tissue_type=gray, prediction_task=regression, target=['Age']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: forest_abigramda_13377259 (Metric: r2_test_mean, Score: 0.2716)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                        Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id               
+------------------------------------------------------------------------------------------------------------------------------------------
+forest_abigramda_13377259 *  0.2716  md             13377259                 673e9c37f4593026f68aeefc792...  forest_abigramda_13377259    
+forest_abigrasha_5ba00137    0.4345  |sh|           |5ba00137|               |7af6cb6784e33657289c5df1e3...  |forest_abigrasha_5ba00137|  
+forest_abigramka_02a0dba7    nan     |mk|           |02a0dba7|               |ee0e5668ec4ce5fd0d8913a2f2...  |forest_abigramka_02a0dba7|  
+
+========================================
+
+
+GROUP: model_name=forest, tissue_type=white, prediction_task=binary_classification, target=['Gender']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: forest_abiwhimdg_43e79c00 (Metric: accuracy_weighted_test_mean, Score: 0.5000)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                        Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id               
+------------------------------------------------------------------------------------------------------------------------------------------
+forest_abiwhimdg_43e79c00 *  0.5000  md             43e79c00                 5225dd5d67456cb6bc03d245df0...  forest_abiwhimdg_43e79c00    
+forest_abiwhishg_5ffd0d59    0.5000  |sh|           |5ffd0d59|               |cc05a0d537fe67dbd85fce00aa...  |forest_abiwhishg_5ffd0d59|  
+forest_abiwhimkg_83d51fd5    nan     |mk|           |83d51fd5|               |a5e3fa82f9b4f9e29ebfd382f8...  |forest_abiwhimkg_83d51fd5|  
+forest_abiwhirog_f2755fd1    nan     |rtop|         |f2755fd1|               |99554bd001edd90434367a2d96...  |forest_abiwhirog_f2755fd1|  
+
+========================================
+
+
+GROUP: model_name=forest, tissue_type=white, prediction_task=binary_classification, target=['dx_group']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: forest_abiwhimddx__46cc449b (Metric: accuracy_weighted_test_mean, Score: 0.5545)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                          Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id                 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+forest_abiwhimddx__46cc449b *  0.5545  md             0.45                            46cc449b                 True                        86cda19aebb52c9eed897b621ae...  forest_abiwhimddx__46cc449b    
+forest_abiwhishdx__f1ec3811    0.5486  |sh|           |0.5|                           |f1ec3811|               True                        |442f2818bf96b0ff20b7b54320...  |forest_abiwhishdx__f1ec3811|  
+forest_abiwhimddx__92695f8c    0.5437  md             |0.35|                          |92695f8c|               True                        86cda19aebb52c9eed897b621ae...  |forest_abiwhimddx__92695f8c|  
+forest_abiwhishdx__2a6a6a95    0.5312  |sh|           |0.8|                           |2a6a6a95|               True                        |442f2818bf96b0ff20b7b54320...  |forest_abiwhishdx__2a6a6a95|  
+forest_abiwhishdx__f188ee5d    0.5312  |sh|           0.45                            |f188ee5d|               True                        |442f2818bf96b0ff20b7b54320...  |forest_abiwhishdx__f188ee5d|  
+forest_abiwhishdx__57c5dfd7    0.5308  |sh|           |0.9|                           |57c5dfd7|               True                        |442f2818bf96b0ff20b7b54320...  |forest_abiwhishdx__57c5dfd7|  
+forest_abiwhimddx__ce86992a    0.5246  md             |0.2|                           |ce86992a|               True                        86cda19aebb52c9eed897b621ae...  |forest_abiwhimddx__ce86992a|  
+forest_abiwhishdx__a1f4c9df    0.5236  |sh|           |0.35|                          |a1f4c9df|               True                        |442f2818bf96b0ff20b7b54320...  |forest_abiwhishdx__a1f4c9df|  
+forest_abiwhishdx__90020581    0.5209  |sh|           |0.75|                          |90020581|               True                        |442f2818bf96b0ff20b7b54320...  |forest_abiwhishdx__90020581|  
+forest_abiwhimddx__3d24d1ea    0.5171  md             |0.5|                           |3d24d1ea|               True                        86cda19aebb52c9eed897b621ae...  |forest_abiwhimddx__3d24d1ea|  
+forest_abiwhishdx__fda900bb    0.5116  |sh|           |0.65|                          |fda900bb|               True                        |442f2818bf96b0ff20b7b54320...  |forest_abiwhishdx__fda900bb|  
+forest_abiwhimddx__3b03474d    0.5113  md             |0.65|                          |3b03474d|               True                        86cda19aebb52c9eed897b621ae...  |forest_abiwhimddx__3b03474d|  
+forest_abiwhimddx__98c176ae    0.5007  md             |0.9|                           |98c176ae|               True                        86cda19aebb52c9eed897b621ae...  |forest_abiwhimddx__98c176ae|  
+forest_abiwhishdx__847b9956    0.4996  |sh|           |0.2|                           |847b9956|               True                        |442f2818bf96b0ff20b7b54320...  |forest_abiwhishdx__847b9956|  
+forest_abiwhimddx__6d037144    0.4960  md             |0.8|                           |6d037144|               True                        86cda19aebb52c9eed897b621ae...  |forest_abiwhimddx__6d037144|  
+forest_abiwhishdx__febf61a4    0.4943  |sh|           |0.95|                          |febf61a4|               True                        |442f2818bf96b0ff20b7b54320...  |forest_abiwhishdx__febf61a4|  
+forest_abiwhimddx__020e2dd1    0.4928  md             |0.75|                          |020e2dd1|               True                        86cda19aebb52c9eed897b621ae...  |forest_abiwhimddx__020e2dd1|  
+forest_abiwhimddx__784ed467    0.4914  md             |1|                             |784ed467|               |False|                     86cda19aebb52c9eed897b621ae...  |forest_abiwhimddx__784ed467|  
+forest_abiwhimddx__d06b2630    0.4914  md             |1.0|                           |d06b2630|               True                        86cda19aebb52c9eed897b621ae...  |forest_abiwhimddx__d06b2630|  
+forest_abiwhimddx__0e874fbe    0.4883  md             |0.95|                          |0e874fbe|               True                        86cda19aebb52c9eed897b621ae...  |forest_abiwhimddx__0e874fbe|  
+forest_abiwhishdx__e65cb2ec    0.4863  |sh|           |1|                             |e65cb2ec|               |False|                     |442f2818bf96b0ff20b7b54320...  |forest_abiwhishdx__e65cb2ec|  
+forest_abiwhishdx__8ec9a755    0.4863  |sh|           |1.0|                           |8ec9a755|               True                        |442f2818bf96b0ff20b7b54320...  |forest_abiwhishdx__8ec9a755|  
+forest_abiwhimddx__d077b17b    0.4796  md             |0.1|                           |d077b17b|               True                        86cda19aebb52c9eed897b621ae...  |forest_abiwhimddx__d077b17b|  
+forest_abiwhishdx__0c52ffd1    0.4790  |sh|           |0.1|                           |0c52ffd1|               True                        |442f2818bf96b0ff20b7b54320...  |forest_abiwhishdx__0c52ffd1|  
+forest_abiwhimkdx__c60d42fb    nan     |mk|           |1|                             |c60d42fb|               |False|                     |02eecfb43ce48bc93365ca75e4...  |forest_abiwhimkdx__c60d42fb|  
+forest_abiwhirodx__c0708af8    nan     |rtop|         |1|                             |c0708af8|               |False|                     |3fa6e61dd6814298cb8bcf8d50...  |forest_abiwhirodx__c0708af8|  
+
+========================================
+
+
+GROUP: model_name=forest, tissue_type=white, prediction_task=regression, target=['Age']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: forest_abiwhimda_e409430d (Metric: r2_test_mean, Score: 0.1846)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                        Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id               
+------------------------------------------------------------------------------------------------------------------------------------------
+forest_abiwhimda_e409430d *  0.1846  md             e409430d                 48e83a517d5e7cc01ad95d98ec8...  forest_abiwhimda_e409430d    
+forest_abiwhisha_5eab7b66    0.2967  |sh|           |5eab7b66|               |136d5b15ad93cb8015ffe42262...  |forest_abiwhisha_5eab7b66|  
+forest_abiwhimka_4cf3eb89    nan     |mk|           |4cf3eb89|               |28e4d3019659e5b78bbb130456...  |forest_abiwhimka_4cf3eb89|  
+
+========================================
+
+
+GROUP: model_name=lasso, tissue_type=gray, prediction_task=binary_classification, target=['Gender']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: lasso_abigramdg_8caf3c2c (Metric: accuracy_weighted_test_mean, Score: 0.5665)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                       Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id              
+----------------------------------------------------------------------------------------------------------------------------------------
+lasso_abigramdg_8caf3c2c *  0.5665  md             8caf3c2c                 385bee967961b937a6104284354...  lasso_abigramdg_8caf3c2c    
+lasso_abigrashg_06e1489d    0.4887  |sh|           |06e1489d|               |7d29e0d8d0ad3f916f166fe53d...  |lasso_abigrashg_06e1489d|  
+lasso_abigramkg_61bd63c3    nan     |mk|           |61bd63c3|               |4133b8e9123d4c4a00e7d4ca28...  |lasso_abigramkg_61bd63c3|  
+
+========================================
+
+
+GROUP: model_name=lasso, tissue_type=gray, prediction_task=binary_classification, target=['dx_group']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: lasso_abigrashdx__916d6201 (Metric: accuracy_weighted_test_mean, Score: 0.6353)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                         Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id                
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+lasso_abigrashdx__916d6201 *  0.6353  sh             1                               916d6201                 False                       0bbcc5fb6844632a9d65efc15a9...  lasso_abigrashdx__916d6201    
+lasso_abigramddx__943f754b    0.6022  |md|           1                               |943f754b|               False                       |ba358031dc5eaa22f90a3960f9...  |lasso_abigramddx__943f754b|  
+lasso_abigramddx__66ac0bec    0.5973  |md|           |0.35|                          |66ac0bec|               |True|                      |ba358031dc5eaa22f90a3960f9...  |lasso_abigramddx__66ac0bec|  
+lasso_abigramddx__d8ba9629    0.5495  |md|           |0.65|                          |d8ba9629|               |True|                      |ba358031dc5eaa22f90a3960f9...  |lasso_abigramddx__d8ba9629|  
+lasso_abigramddx__a8ee1044    0.5469  |md|           |0.2|                           |a8ee1044|               |True|                      |ba358031dc5eaa22f90a3960f9...  |lasso_abigramddx__a8ee1044|  
+lasso_abigrashdx__4dd267c3    0.5271  sh             |0.1|                           |4dd267c3|               |True|                      0bbcc5fb6844632a9d65efc15a9...  |lasso_abigrashdx__4dd267c3|  
+lasso_abigramddx__e0f48564    0.5173  |md|           |0.45|                          |e0f48564|               |True|                      |ba358031dc5eaa22f90a3960f9...  |lasso_abigramddx__e0f48564|  
+lasso_abigramddx__1e887593    0.5115  |md|           |0.5|                           |1e887593|               |True|                      |ba358031dc5eaa22f90a3960f9...  |lasso_abigramddx__1e887593|  
+lasso_abigramddx__c8593f42    0.4741  |md|           |0.1|                           |c8593f42|               |True|                      |ba358031dc5eaa22f90a3960f9...  |lasso_abigramddx__c8593f42|  
+lasso_abigramkdx__d5a706ff    nan     |mk|           1                               |d5a706ff|               False                       |e8a9a70c6025b6e08c341a8f7f...  |lasso_abigramkdx__d5a706ff|  
+lasso_abigramddx__abb2459d    nan     |md|           |0.75|                          |abb2459d|               |True|                      |ba358031dc5eaa22f90a3960f9...  |lasso_abigramddx__abb2459d|  
+lasso_abigramddx__27e17117    nan     |md|           |0.8|                           |27e17117|               |True|                      |ba358031dc5eaa22f90a3960f9...  |lasso_abigramddx__27e17117|  
+lasso_abigramddx__93c40c14    nan     |md|           |0.9|                           |93c40c14|               |True|                      |ba358031dc5eaa22f90a3960f9...  |lasso_abigramddx__93c40c14|  
+lasso_abigramddx__235eed58    nan     |md|           |0.95|                          |235eed58|               |True|                      |ba358031dc5eaa22f90a3960f9...  |lasso_abigramddx__235eed58|  
+lasso_abigramddx__423f820e    nan     |md|           |1.0|                           |423f820e|               |True|                      |ba358031dc5eaa22f90a3960f9...  |lasso_abigramddx__423f820e|  
+lasso_abigrashdx__0e64b66f    nan     sh             |0.2|                           |0e64b66f|               |True|                      0bbcc5fb6844632a9d65efc15a9...  |lasso_abigrashdx__0e64b66f|  
+lasso_abigrashdx__d07cec54    nan     sh             |0.35|                          |d07cec54|               |True|                      0bbcc5fb6844632a9d65efc15a9...  |lasso_abigrashdx__d07cec54|  
+
+========================================
+
+
+GROUP: model_name=lasso, tissue_type=gray, prediction_task=regression, target=['Age']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: lasso_abigrasha_edc538f2 (Metric: r2_test_mean, Score: -0.0189)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                       Score    PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id              
+-----------------------------------------------------------------------------------------------------------------------------------------
+lasso_abigrasha_edc538f2 *  -0.0189  sh             edc538f2                 1ade1f9a492e7e3a4c1d5ecb843...  lasso_abigrasha_edc538f2    
+lasso_abigramda_8c307acd    0.0183   |md|           |8c307acd|               |8f55e6f1e2e3db35515f74fdda...  |lasso_abigramda_8c307acd|  
+lasso_abigramka_4f8643e2    nan      |mk|           |4f8643e2|               |2d10b1aaebffcb3879e0b98ce3...  |lasso_abigramka_4f8643e2|  
+
+========================================
+
+
+GROUP: model_name=lasso, tissue_type=white, prediction_task=binary_classification, target=['Gender']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: lasso_abiwhishg_6b9a29d6 (Metric: accuracy_weighted_test_mean, Score: 0.6294)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                       Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id              
+----------------------------------------------------------------------------------------------------------------------------------------
+lasso_abiwhishg_6b9a29d6 *  0.6294  sh             6b9a29d6                 294a6e076f99f940147ede0a93c...  lasso_abiwhishg_6b9a29d6    
+lasso_abiwhimdg_7c25f286    0.5438  |md|           |7c25f286|               |6d730678f401a02585bbbfe096...  |lasso_abiwhimdg_7c25f286|  
+lasso_abiwhimkg_c114ae74    nan     |mk|           |c114ae74|               |3fc1857962c0ebc1994cc7ee5b...  |lasso_abiwhimkg_c114ae74|  
+lasso_abiwhirog_cc7e2656    nan     |rtop|         |cc7e2656|               |a0212f81399dface63a85a7ac0...  |lasso_abiwhirog_cc7e2656|  
+
+========================================
+
+
+GROUP: model_name=lasso, tissue_type=white, prediction_task=binary_classification, target=['dx_group']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: lasso_abiwhishdx__186908fb (Metric: accuracy_weighted_test_mean, Score: 0.5759)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                         Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                
+--------------------------------------------------------------------------------------------------------------------------------------------
+lasso_abiwhishdx__186908fb *  0.5759  sh             186908fb                 faf1b28e83bf75e9c17f0add126...  lasso_abiwhishdx__186908fb    
+lasso_abiwhimddx__32a4ec75    0.5323  |md|           |32a4ec75|               |02c1e4a1651ef2282b191cecd1...  |lasso_abiwhimddx__32a4ec75|  
+lasso_abiwhimkdx__3d0e0fd4    nan     |mk|           |3d0e0fd4|               |e726d67b3f6af5bff50c997820...  |lasso_abiwhimkdx__3d0e0fd4|  
+lasso_abiwhirodx__c3746baf    nan     |rtop|         |c3746baf|               |d2385fc57a168dfe82951b71ee...  |lasso_abiwhirodx__c3746baf|  
+
+========================================
+
+
+GROUP: model_name=lasso, tissue_type=white, prediction_task=regression, target=['Age']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: lasso_abiwhimda_1dd71612 (Metric: r2_test_mean, Score: 0.0845)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                       Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id              
+----------------------------------------------------------------------------------------------------------------------------------------
+lasso_abiwhimda_1dd71612 *  0.0845  md             1dd71612                 82439f4781678dde790fb46b2e0...  lasso_abiwhimda_1dd71612    
+lasso_abiwhisha_a0d6439a    0.0941  |sh|           |a0d6439a|               |45b3856dcf0b0c800679b43862...  |lasso_abiwhisha_a0d6439a|  
+lasso_abiwhimka_bef2351c    nan     |mk|           |bef2351c|               |55a76be81c94d577a6c3e27286...  |lasso_abiwhimka_bef2351c|  
+
+========================================
+
+
+GROUP: model_name=linear, tissue_type=gray, prediction_task=binary_classification, target=['Gender']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: linear_abigramdg_d4d1acce (Metric: accuracy_weighted_test_mean, Score: 0.6099)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                        Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id               
+------------------------------------------------------------------------------------------------------------------------------------------
+linear_abigramdg_d4d1acce *  0.6099  md             d4d1acce                 fc3d5e6b4452fe49301e86eb26b...  linear_abigramdg_d4d1acce    
+linear_abigrashg_3772bc36    0.4814  |sh|           |3772bc36|               |be74c6778eac8349796c5f3372...  |linear_abigrashg_3772bc36|  
+linear_abigramkg_261bf181    nan     |mk|           |261bf181|               |ae2287aa71fa819df90811c09d...  |linear_abigramkg_261bf181|  
+
+========================================
+
+
+GROUP: model_name=linear, tissue_type=gray, prediction_task=binary_classification, target=['dx_group']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: linear_abigrashdx__25a1bb62 (Metric: accuracy_weighted_test_mean, Score: 0.6145)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                          Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id                 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+linear_abigrashdx__25a1bb62 *  0.6145  sh             0.8                             25a1bb62                 True                        2165f469bf444087c984acf375c...  linear_abigrashdx__25a1bb62    
+linear_abigramddx__a7643d3e    0.6033  |md|           0.8                             |a7643d3e|               True                        |70d175e18f1932df12c05cbb12...  |linear_abigramddx__a7643d3e|  
+linear_abigramddx__68c5654e    0.6009  |md|           |0.9|                           |68c5654e|               True                        |70d175e18f1932df12c05cbb12...  |linear_abigramddx__68c5654e|  
+linear_abigramddx__a342fefa    0.5954  |md|           |0.95|                          |a342fefa|               True                        |70d175e18f1932df12c05cbb12...  |linear_abigramddx__a342fefa|  
+linear_abigrashdx__af7bf9c9    0.5839  sh             |0.95|                          |af7bf9c9|               True                        2165f469bf444087c984acf375c...  |linear_abigrashdx__af7bf9c9|  
+linear_abigrashdx__173e4ff4    0.5770  sh             |0.9|                           |173e4ff4|               True                        2165f469bf444087c984acf375c...  |linear_abigrashdx__173e4ff4|  
+linear_abigrashdx__54aab57b    0.5724  sh             |1|                             |54aab57b|               |False|                     2165f469bf444087c984acf375c...  |linear_abigrashdx__54aab57b|  
+linear_abigrashdx__67347d12    0.5724  sh             |1.0|                           |67347d12|               True                        2165f469bf444087c984acf375c...  |linear_abigrashdx__67347d12|  
+linear_abigrashdx__3368d3e0    0.5715  sh             |0.65|                          |3368d3e0|               True                        2165f469bf444087c984acf375c...  |linear_abigrashdx__3368d3e0|  
+linear_abigrashdx__1cab380a    0.5710  sh             |0.5|                           |1cab380a|               True                        2165f469bf444087c984acf375c...  |linear_abigrashdx__1cab380a|  
+linear_abigrashdx__977280e1    0.5710  sh             |0.75|                          |977280e1|               True                        2165f469bf444087c984acf375c...  |linear_abigrashdx__977280e1|  
+linear_abigrashdx__56b39d4c    0.5549  sh             |0.45|                          |56b39d4c|               True                        2165f469bf444087c984acf375c...  |linear_abigrashdx__56b39d4c|  
+linear_abigramddx__23ff4f1f    0.5545  |md|           |1|                             |23ff4f1f|               |False|                     |70d175e18f1932df12c05cbb12...  |linear_abigramddx__23ff4f1f|  
+linear_abigramddx__eeefe95b    0.5545  |md|           |1.0|                           |eeefe95b|               True                        |70d175e18f1932df12c05cbb12...  |linear_abigramddx__eeefe95b|  
+linear_abigrashdx__aa9480a2    0.5542  sh             |0.35|                          |aa9480a2|               True                        2165f469bf444087c984acf375c...  |linear_abigrashdx__aa9480a2|  
+linear_abigramddx__62964cdc    0.5321  |md|           |0.35|                          |62964cdc|               True                        |70d175e18f1932df12c05cbb12...  |linear_abigramddx__62964cdc|  
+linear_abigramddx__34d71fde    0.5181  |md|           |0.5|                           |34d71fde|               True                        |70d175e18f1932df12c05cbb12...  |linear_abigramddx__34d71fde|  
+linear_abigrashdx__e7aae84c    0.5162  sh             |0.1|                           |e7aae84c|               True                        2165f469bf444087c984acf375c...  |linear_abigrashdx__e7aae84c|  
+linear_abigrashdx__f9d34b30    0.5128  sh             |0.2|                           |f9d34b30|               True                        2165f469bf444087c984acf375c...  |linear_abigrashdx__f9d34b30|  
+linear_abigramddx__67b408b0    0.5107  |md|           |0.75|                          |67b408b0|               True                        |70d175e18f1932df12c05cbb12...  |linear_abigramddx__67b408b0|  
+linear_abigramddx__33cd49a7    0.5092  |md|           |0.45|                          |33cd49a7|               True                        |70d175e18f1932df12c05cbb12...  |linear_abigramddx__33cd49a7|  
+linear_abigramddx__0ffc78bb    0.5087  |md|           |0.2|                           |0ffc78bb|               True                        |70d175e18f1932df12c05cbb12...  |linear_abigramddx__0ffc78bb|  
+linear_abigramddx__689b8c88    0.4879  |md|           |0.65|                          |689b8c88|               True                        |70d175e18f1932df12c05cbb12...  |linear_abigramddx__689b8c88|  
+linear_abigramddx__e0b5f78a    0.4855  |md|           |0.1|                           |e0b5f78a|               True                        |70d175e18f1932df12c05cbb12...  |linear_abigramddx__e0b5f78a|  
+linear_abigramkdx__2351aa39    nan     |mk|           |1|                             |2351aa39|               |False|                     |cee1084dbe6d0ba565405800d5...  |linear_abigramkdx__2351aa39|  
+
+========================================
+
+
+GROUP: model_name=linear, tissue_type=gray, prediction_task=regression, target=['Age']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: linear_abigramda_135f428a (Metric: r2_test_mean, Score: -0.0170)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                        Score    PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id               
+-------------------------------------------------------------------------------------------------------------------------------------------
+linear_abigramda_135f428a *  -0.0170  md             135f428a                 ff380c576844e677c2e36e11200...  linear_abigramda_135f428a    
+linear_abigrasha_7e43e249    0.1130   |sh|           |7e43e249|               |244deb5cb666872d0ce3bebef4...  |linear_abigrasha_7e43e249|  
+linear_abigramka_b47f94cd    nan      |mk|           |b47f94cd|               |142ed9b96a5a7a83a7f5e97bb3...  |linear_abigramka_b47f94cd|  
+
+========================================
+
+
+GROUP: model_name=linear, tissue_type=white, prediction_task=binary_classification, target=['Gender']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: linear_abiwhishg_795cb15b (Metric: accuracy_weighted_test_mean, Score: 0.6066)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                        Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id               
+------------------------------------------------------------------------------------------------------------------------------------------
+linear_abiwhishg_795cb15b *  0.6066  sh             795cb15b                 5a17900340a6c0b954ac5661282...  linear_abiwhishg_795cb15b    
+linear_abiwhimdg_dee062fe    0.5465  |md|           |dee062fe|               |397f3b90fc9e75466cd0f1591c...  |linear_abiwhimdg_dee062fe|  
+linear_abiwhimkg_12a9941b    nan     |mk|           |12a9941b|               |8a4cf123027e3740428fa0d80f...  |linear_abiwhimkg_12a9941b|  
+linear_abiwhirog_29e5347e    nan     |rtop|         |29e5347e|               |e5c51abe59181af8ebbc1d3c2c...  |linear_abiwhirog_29e5347e|  
+
+========================================
+
+
+GROUP: model_name=linear, tissue_type=white, prediction_task=binary_classification, target=['dx_group']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: linear_abiwhishdx__3bbc9f41 (Metric: accuracy_weighted_test_mean, Score: 0.6066)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                          Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id                 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+linear_abiwhishdx__3bbc9f41 *  0.6066  sh             0.75                            3bbc9f41                 True                        8c71de4fdb77c35d5fb9330c3b8...  linear_abiwhishdx__3bbc9f41    
+linear_abiwhishdx__4ecf584c    0.6014  sh             |0.8|                           |4ecf584c|               True                        8c71de4fdb77c35d5fb9330c3b8...  |linear_abiwhishdx__4ecf584c|  
+linear_abiwhishdx__37a4cf24    0.5985  sh             |0.9|                           |37a4cf24|               True                        8c71de4fdb77c35d5fb9330c3b8...  |linear_abiwhishdx__37a4cf24|  
+linear_abiwhishdx__f7e4e5c6    0.5820  sh             |1|                             |f7e4e5c6|               |False|                     8c71de4fdb77c35d5fb9330c3b8...  |linear_abiwhishdx__f7e4e5c6|  
+linear_abiwhishdx__a38a2049    0.5820  sh             |1.0|                           |a38a2049|               True                        8c71de4fdb77c35d5fb9330c3b8...  |linear_abiwhishdx__a38a2049|  
+linear_abiwhimddx__49f75353    0.5806  |md|           |0.35|                          |49f75353|               True                        |69e753218118604df71c2aa597...  |linear_abiwhimddx__49f75353|  
+linear_abiwhishdx__b54e3cc4    0.5711  sh             |0.95|                          |b54e3cc4|               True                        8c71de4fdb77c35d5fb9330c3b8...  |linear_abiwhishdx__b54e3cc4|  
+linear_abiwhimddx__4d2cc4ec    0.5421  |md|           |0.2|                           |4d2cc4ec|               True                        |69e753218118604df71c2aa597...  |linear_abiwhimddx__4d2cc4ec|  
+linear_abiwhishdx__3b7ba328    0.5352  sh             |0.35|                          |3b7ba328|               True                        8c71de4fdb77c35d5fb9330c3b8...  |linear_abiwhishdx__3b7ba328|  
+linear_abiwhimddx__fc41dc02    0.5321  |md|           |0.65|                          |fc41dc02|               True                        |69e753218118604df71c2aa597...  |linear_abiwhimddx__fc41dc02|  
+linear_abiwhimddx__fa61d70a    0.5308  |md|           |0.45|                          |fa61d70a|               True                        |69e753218118604df71c2aa597...  |linear_abiwhimddx__fa61d70a|  
+linear_abiwhishdx__8c3dc868    0.5237  sh             |0.5|                           |8c3dc868|               True                        8c71de4fdb77c35d5fb9330c3b8...  |linear_abiwhishdx__8c3dc868|  
+linear_abiwhishdx__4f0577d5    0.5202  sh             |0.65|                          |4f0577d5|               True                        8c71de4fdb77c35d5fb9330c3b8...  |linear_abiwhishdx__4f0577d5|  
+linear_abiwhimddx__18c5e5df    0.5161  |md|           0.75                            |18c5e5df|               True                        |69e753218118604df71c2aa597...  |linear_abiwhimddx__18c5e5df|  
+linear_abiwhimddx__5d47b4c0    0.5109  |md|           |0.8|                           |5d47b4c0|               True                        |69e753218118604df71c2aa597...  |linear_abiwhimddx__5d47b4c0|  
+linear_abiwhishdx__992e5a02    0.5097  sh             |0.45|                          |992e5a02|               True                        8c71de4fdb77c35d5fb9330c3b8...  |linear_abiwhishdx__992e5a02|  
+linear_abiwhimddx__91d3b917    0.5087  |md|           |0.5|                           |91d3b917|               True                        |69e753218118604df71c2aa597...  |linear_abiwhimddx__91d3b917|  
+linear_abiwhimddx__0d23202b    0.5081  |md|           |1|                             |0d23202b|               |False|                     |69e753218118604df71c2aa597...  |linear_abiwhimddx__0d23202b|  
+linear_abiwhimddx__c0d8c8b9    0.5081  |md|           |1.0|                           |c0d8c8b9|               True                        |69e753218118604df71c2aa597...  |linear_abiwhimddx__c0d8c8b9|  
+linear_abiwhishdx__6f3ea47a    0.5073  sh             |0.2|                           |6f3ea47a|               True                        8c71de4fdb77c35d5fb9330c3b8...  |linear_abiwhishdx__6f3ea47a|  
+linear_abiwhimddx__bf537c86    0.4931  |md|           |0.9|                           |bf537c86|               True                        |69e753218118604df71c2aa597...  |linear_abiwhimddx__bf537c86|  
+linear_abiwhimddx__fe4ea3e7    0.4902  |md|           |0.1|                           |fe4ea3e7|               True                        |69e753218118604df71c2aa597...  |linear_abiwhimddx__fe4ea3e7|  
+linear_abiwhimddx__bf063e83    0.4674  |md|           |0.95|                          |bf063e83|               True                        |69e753218118604df71c2aa597...  |linear_abiwhimddx__bf063e83|  
+linear_abiwhishdx__247e58fb    0.4575  sh             |0.1|                           |247e58fb|               True                        8c71de4fdb77c35d5fb9330c3b8...  |linear_abiwhishdx__247e58fb|  
+linear_abiwhimkdx__1253651b    nan     |mk|           |1|                             |1253651b|               |False|                     |e0ecb3739c1ccbc199ab4f7550...  |linear_abiwhimkdx__1253651b|  
+linear_abiwhirodx__2b436399    nan     |rtop|         |1|                             |2b436399|               |False|                     |ceb80aaabc4d981029b1866ff0...  |linear_abiwhirodx__2b436399|  
+
+========================================
+
+
+GROUP: model_name=linear, tissue_type=white, prediction_task=regression, target=['Age']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: linear_abiwhisha_72d64c35 (Metric: r2_test_mean, Score: 0.1265)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                        Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id               
+------------------------------------------------------------------------------------------------------------------------------------------
+linear_abiwhisha_72d64c35 *  0.1265  sh             72d64c35                 2b09feb5ad15149d93b32df5e41...  linear_abiwhisha_72d64c35    
+linear_abiwhimda_6ab9aebb    0.1754  |md|           |6ab9aebb|               |188dd1f005563642da26b92125...  |linear_abiwhimda_6ab9aebb|  
+linear_abiwhimka_72293bee    nan     |mk|           |72293bee|               |6e19ea59b9d38ffb06cd67f8d2...  |linear_abiwhimka_72293bee|  
+
+========================================
+
+
+GROUP: model_name=pca_forest, tissue_type=gray, prediction_task=binary_classification, target=['Gender']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: pca_forest_abigramdg_d637f730 (Metric: accuracy_weighted_test_mean, Score: 0.5000)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                            Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                  
+-------------------------------------------------------------------------------------------------------------------------------------------------
+pca_forest_abigramdg_d637f730 *  0.5000  md             d637f730                 78469ae0a918f3bd054c673f56c...  pca_forest_abigramdg_d637f730   
+pca_forest_abigrashg_d17cbf78    0.5000  |sh|           |d17cbf78|               |c89d8e08803e24a145adebb3fa...  |pca_forest_abigrashg_d17cb...  
+pca_forest_abigramkg_8a72f20c    nan     |mk|           |8a72f20c|               |f65cfe880e860f8383a46916e0...  |pca_forest_abigramkg_8a72f...  
+
+========================================
+
+
+GROUP: model_name=pca_forest, tissue_type=gray, prediction_task=binary_classification, target=['dx_group']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: pca_forest_abigrashdx__e908b5f0 (Metric: accuracy_weighted_test_mean, Score: 0.6483)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                              Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id                  
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+pca_forest_abigrashdx__e908b5f0 *  0.6483  sh             0.9                             e908b5f0                 True                        2cd3a6f3fc3957fe52ea835b499...  pca_forest_abigrashdx__e908...  
+pca_forest_abigrashdx__1f57430a    0.6446  sh             |0.8|                           |1f57430a|               True                        2cd3a6f3fc3957fe52ea835b499...  |pca_forest_abigrashdx__1f5...  
+pca_forest_abigrashdx__d4fbcd62    0.6355  sh             |0.45|                          |d4fbcd62|               True                        2cd3a6f3fc3957fe52ea835b499...  |pca_forest_abigrashdx__d4f...  
+pca_forest_abigrashdx__4c8b3fcf    0.6241  sh             |0.5|                           |4c8b3fcf|               True                        2cd3a6f3fc3957fe52ea835b499...  |pca_forest_abigrashdx__4c8...  
+pca_forest_abigrashdx__406618df    0.6234  sh             |0.75|                          |406618df|               True                        2cd3a6f3fc3957fe52ea835b499...  |pca_forest_abigrashdx__406...  
+pca_forest_abigrashdx__8d310175    0.6183  sh             |0.65|                          |8d310175|               True                        2cd3a6f3fc3957fe52ea835b499...  |pca_forest_abigrashdx__8d3...  
+pca_forest_abigrashdx__3a04175c    0.6172  sh             |1|                             |3a04175c|               |False|                     2cd3a6f3fc3957fe52ea835b499...  |pca_forest_abigrashdx__3a0...  
+pca_forest_abigrashdx__ed44ce9c    0.6020  sh             |0.95|                          |ed44ce9c|               True                        2cd3a6f3fc3957fe52ea835b499...  |pca_forest_abigrashdx__ed4...  
+pca_forest_abigramddx__0cadd787    0.5975  |md|           |0.35|                          |0cadd787|               True                        |52bb2c16c14f913dc31a4c5403...  |pca_forest_abigramddx__0ca...  
+pca_forest_abigramddx__1882494a    0.5970  |md|           |1.0|                           |1882494a|               True                        |52bb2c16c14f913dc31a4c5403...  |pca_forest_abigramddx__188...  
+pca_forest_abigrashdx__c2424c97    0.5902  sh             |1.0|                           |c2424c97|               True                        2cd3a6f3fc3957fe52ea835b499...  |pca_forest_abigrashdx__c24...  
+pca_forest_abigramddx__387bebd4    0.5801  |md|           |0.95|                          |387bebd4|               True                        |52bb2c16c14f913dc31a4c5403...  |pca_forest_abigramddx__387...  
+pca_forest_abigrashdx__8f7a5160    0.5733  sh             |0.35|                          |8f7a5160|               True                        2cd3a6f3fc3957fe52ea835b499...  |pca_forest_abigrashdx__8f7...  
+pca_forest_abigramddx__cc144a5b    0.5686  |md|           |0.75|                          |cc144a5b|               True                        |52bb2c16c14f913dc31a4c5403...  |pca_forest_abigramddx__cc1...  
+pca_forest_abigramddx__b4fb5db3    0.5599  |md|           0.9                             |b4fb5db3|               True                        |52bb2c16c14f913dc31a4c5403...  |pca_forest_abigramddx__b4f...  
+pca_forest_abigramddx__767e252a    0.5591  |md|           |0.8|                           |767e252a|               True                        |52bb2c16c14f913dc31a4c5403...  |pca_forest_abigramddx__767...  
+pca_forest_abigramddx__c4122860    0.5462  |md|           |0.45|                          |c4122860|               True                        |52bb2c16c14f913dc31a4c5403...  |pca_forest_abigramddx__c41...  
+pca_forest_abigrashdx__8435026d    0.5415  sh             |0.2|                           |8435026d|               True                        2cd3a6f3fc3957fe52ea835b499...  |pca_forest_abigrashdx__843...  
+pca_forest_abigramddx__cca3c1d2    0.5396  |md|           |1|                             |cca3c1d2|               |False|                     |52bb2c16c14f913dc31a4c5403...  |pca_forest_abigramddx__cca...  
+pca_forest_abigramddx__86600a69    0.5221  |md|           |0.5|                           |86600a69|               True                        |52bb2c16c14f913dc31a4c5403...  |pca_forest_abigramddx__866...  
+pca_forest_abigramddx__31903bbe    0.5220  |md|           |0.65|                          |31903bbe|               True                        |52bb2c16c14f913dc31a4c5403...  |pca_forest_abigramddx__319...  
+pca_forest_abigramddx__c932ad20    0.5021  |md|           |0.1|                           |c932ad20|               True                        |52bb2c16c14f913dc31a4c5403...  |pca_forest_abigramddx__c93...  
+pca_forest_abigrashdx__45b9b73f    0.4825  sh             |0.1|                           |45b9b73f|               True                        2cd3a6f3fc3957fe52ea835b499...  |pca_forest_abigrashdx__45b...  
+pca_forest_abigramddx__92d4848a    0.4816  |md|           |0.2|                           |92d4848a|               True                        |52bb2c16c14f913dc31a4c5403...  |pca_forest_abigramddx__92d...  
+pca_forest_abigramkdx__67029efb    nan     |mk|           |1|                             |67029efb|               |False|                     |0cc1440eebaac4831d82696aa0...  |pca_forest_abigramkdx__670...  
+
+========================================
+
+
+GROUP: model_name=pca_forest, tissue_type=gray, prediction_task=regression, target=['Age']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: pca_forest_abigramda_17c0cf6e (Metric: r2_test_mean, Score: 0.2278)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                            Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                  
+-------------------------------------------------------------------------------------------------------------------------------------------------
+pca_forest_abigramda_17c0cf6e *  0.2278  md             17c0cf6e                 ca5c578e9b4603b5932480eeaf0...  pca_forest_abigramda_17c0cf6e   
+pca_forest_abigrasha_ad7511ce    0.3421  |sh|           |ad7511ce|               |dc1999925c36b18d9ac69ec73e...  |pca_forest_abigrasha_ad751...  
+pca_forest_abigramka_89d880d3    nan     |mk|           |89d880d3|               |91344a3beab48ef20a51697e3b...  |pca_forest_abigramka_89d88...  
+
+========================================
+
+
+GROUP: model_name=pca_forest, tissue_type=white, prediction_task=binary_classification, target=['Gender']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: pca_forest_abiwhimdg_b97fc1e8 (Metric: accuracy_weighted_test_mean, Score: 0.5000)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                            Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                  
+-------------------------------------------------------------------------------------------------------------------------------------------------
+pca_forest_abiwhimdg_b97fc1e8 *  0.5000  md             b97fc1e8                 1f656441f978756e956cc5b0bac...  pca_forest_abiwhimdg_b97fc1e8   
+pca_forest_abiwhishg_4df97807    0.5000  |sh|           |4df97807|               |c05e8ce80189dbd94e906db91d...  |pca_forest_abiwhishg_4df97...  
+pca_forest_abiwhimkg_452aa350    nan     |mk|           |452aa350|               |48a1f0fbf038e068bbdeddb16f...  |pca_forest_abiwhimkg_452aa...  
+pca_forest_abiwhirog_4265dc89    nan     |rtop|         |4265dc89|               |d5037c0edbbf35513bbbc47eaa...  |pca_forest_abiwhirog_4265d...  
+
+========================================
+
+
+GROUP: model_name=pca_forest, tissue_type=white, prediction_task=binary_classification, target=['dx_group']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: pca_forest_abiwhishdx__06b5c558 (Metric: accuracy_weighted_test_mean, Score: 0.5640)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                              Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id                  
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+pca_forest_abiwhishdx__06b5c558 *  0.5640  sh             0.9                             06b5c558                 True                        0c781f068ac27d8d53a1e0b497c...  pca_forest_abiwhishdx__06b5...  
+pca_forest_abiwhishdx__41e95903    0.5595  sh             |0.75|                          |41e95903|               True                        0c781f068ac27d8d53a1e0b497c...  |pca_forest_abiwhishdx__41e...  
+pca_forest_abiwhimddx__0baff406    0.5548  |md|           |0.95|                          |0baff406|               True                        |5023d17259201d3633bb8c1372...  |pca_forest_abiwhimddx__0ba...  
+pca_forest_abiwhishdx__51ba7831    0.5526  sh             |0.95|                          |51ba7831|               True                        0c781f068ac27d8d53a1e0b497c...  |pca_forest_abiwhishdx__51b...  
+pca_forest_abiwhimddx__3347b942    0.5515  |md|           |1|                             |3347b942|               |False|                     |5023d17259201d3633bb8c1372...  |pca_forest_abiwhimddx__334...  
+pca_forest_abiwhimddx__2c2f87ff    0.5515  |md|           |1.0|                           |2c2f87ff|               True                        |5023d17259201d3633bb8c1372...  |pca_forest_abiwhimddx__2c2...  
+pca_forest_abiwhimddx__7563499a    0.5490  |md|           |0.65|                          |7563499a|               True                        |5023d17259201d3633bb8c1372...  |pca_forest_abiwhimddx__756...  
+pca_forest_abiwhimddx__dd01dcd0    0.5485  |md|           0.9                             |dd01dcd0|               True                        |5023d17259201d3633bb8c1372...  |pca_forest_abiwhimddx__dd0...  
+pca_forest_abiwhishdx__663183e7    0.5456  sh             |0.5|                           |663183e7|               True                        0c781f068ac27d8d53a1e0b497c...  |pca_forest_abiwhishdx__663...  
+pca_forest_abiwhishdx__54a84041    0.5447  sh             |0.35|                          |54a84041|               True                        0c781f068ac27d8d53a1e0b497c...  |pca_forest_abiwhishdx__54a...  
+pca_forest_abiwhimddx__126d4645    0.5410  |md|           |0.35|                          |126d4645|               True                        |5023d17259201d3633bb8c1372...  |pca_forest_abiwhimddx__126...  
+pca_forest_abiwhimddx__2c6d5527    0.5387  |md|           |0.8|                           |2c6d5527|               True                        |5023d17259201d3633bb8c1372...  |pca_forest_abiwhimddx__2c6...  
+pca_forest_abiwhimddx__8be235d1    0.5294  |md|           |0.75|                          |8be235d1|               True                        |5023d17259201d3633bb8c1372...  |pca_forest_abiwhimddx__8be...  
+pca_forest_abiwhishdx__38b9b9ed    0.5287  sh             |0.45|                          |38b9b9ed|               True                        0c781f068ac27d8d53a1e0b497c...  |pca_forest_abiwhishdx__38b...  
+pca_forest_abiwhimddx__a8074d9c    0.5249  |md|           |0.5|                           |a8074d9c|               True                        |5023d17259201d3633bb8c1372...  |pca_forest_abiwhimddx__a80...  
+pca_forest_abiwhishdx__5fcab16a    0.5199  sh             |0.2|                           |5fcab16a|               True                        0c781f068ac27d8d53a1e0b497c...  |pca_forest_abiwhishdx__5fc...  
+pca_forest_abiwhishdx__f587d391    0.5139  sh             |0.8|                           |f587d391|               True                        0c781f068ac27d8d53a1e0b497c...  |pca_forest_abiwhishdx__f58...  
+pca_forest_abiwhishdx__705df1ba    0.5126  sh             |1|                             |705df1ba|               |False|                     0c781f068ac27d8d53a1e0b497c...  |pca_forest_abiwhishdx__705...  
+pca_forest_abiwhishdx__46c9e141    0.5126  sh             |1.0|                           |46c9e141|               True                        0c781f068ac27d8d53a1e0b497c...  |pca_forest_abiwhishdx__46c...  
+pca_forest_abiwhimddx__0685e984    0.5106  |md|           |0.1|                           |0685e984|               True                        |5023d17259201d3633bb8c1372...  |pca_forest_abiwhimddx__068...  
+pca_forest_abiwhishdx__7a39b7b8    0.5084  sh             |0.65|                          |7a39b7b8|               True                        0c781f068ac27d8d53a1e0b497c...  |pca_forest_abiwhishdx__7a3...  
+pca_forest_abiwhishdx__813568f7    0.5027  sh             |0.1|                           |813568f7|               True                        0c781f068ac27d8d53a1e0b497c...  |pca_forest_abiwhishdx__813...  
+pca_forest_abiwhimddx__e5a3fa72    0.4973  |md|           |0.45|                          |e5a3fa72|               True                        |5023d17259201d3633bb8c1372...  |pca_forest_abiwhimddx__e5a...  
+pca_forest_abiwhimddx__f20bcc92    0.4906  |md|           |0.2|                           |f20bcc92|               True                        |5023d17259201d3633bb8c1372...  |pca_forest_abiwhimddx__f20...  
+pca_forest_abiwhimkdx__08fddf7a    nan     |mk|           |1|                             |08fddf7a|               |False|                     |cea4dc0627a842181ea09435e8...  |pca_forest_abiwhimkdx__08f...  
+pca_forest_abiwhirodx__5d34e708    nan     |rtop|         |1|                             |5d34e708|               |False|                     |adf80091cc9b54a4ba94ee27a1...  |pca_forest_abiwhirodx__5d3...  
+
+========================================
+
+
+GROUP: model_name=pca_forest, tissue_type=white, prediction_task=regression, target=['Age']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: pca_forest_abiwhimda_6b5080ba (Metric: r2_test_mean, Score: 0.1855)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                            Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                  
+-------------------------------------------------------------------------------------------------------------------------------------------------
+pca_forest_abiwhimda_6b5080ba *  0.1855  md             6b5080ba                 3b94bed92219a19b5498dc1b492...  pca_forest_abiwhimda_6b5080ba   
+pca_forest_abiwhisha_b7b2dab2    0.1978  |sh|           |b7b2dab2|               |87026e5f71946cda361b3eea26...  |pca_forest_abiwhisha_b7b2d...  
+pca_forest_abiwhimka_fe8b3db3    nan     |mk|           |fe8b3db3|               |7ef89d40de43f09ff097658231...  |pca_forest_abiwhimka_fe8b3...  
+
+========================================
+
+
+GROUP: model_name=pca_linear, tissue_type=gray, prediction_task=binary_classification, target=['Gender']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: pca_linear_abigramdg_8341be3d (Metric: accuracy_weighted_test_mean, Score: 0.5061)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                            Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                  
+-------------------------------------------------------------------------------------------------------------------------------------------------
+pca_linear_abigramdg_8341be3d *  0.5061  md             8341be3d                 60e2038058934645199bcba3108...  pca_linear_abigramdg_8341be3d   
+pca_linear_abigrashg_dfe8042c    0.4973  |sh|           |dfe8042c|               |d13829eca80ca2870ad4199af4...  |pca_linear_abigrashg_dfe80...  
+pca_linear_abigramkg_3207f03e    nan     |mk|           |3207f03e|               |39812bbe5b4d6dc05238c80d9f...  |pca_linear_abigramkg_3207f...  
+
+========================================
+
+
+GROUP: model_name=pca_linear, tissue_type=gray, prediction_task=binary_classification, target=['dx_group']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: pca_linear_abigrashdx__c6f364e0 (Metric: accuracy_weighted_test_mean, Score: 0.6583)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                              Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id                  
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+pca_linear_abigrashdx__c6f364e0 *  0.6583  sh             0.8                             c6f364e0                 True                        ec409485e703ceda9ea1ca65443...  pca_linear_abigrashdx__c6f3...  
+pca_linear_abigrashdx__4f61edbc    0.6534  sh             |0.95|                          |4f61edbc|               True                        ec409485e703ceda9ea1ca65443...  |pca_linear_abigrashdx__4f6...  
+pca_linear_abigrashdx__3699edc0    0.6367  sh             |0.75|                          |3699edc0|               True                        ec409485e703ceda9ea1ca65443...  |pca_linear_abigrashdx__369...  
+pca_linear_abigrashdx__832f28d9    0.6298  sh             |1|                             |832f28d9|               |False|                     ec409485e703ceda9ea1ca65443...  |pca_linear_abigrashdx__832...  
+pca_linear_abigrashdx__9ddc58b3    0.6270  sh             |0.65|                          |9ddc58b3|               True                        ec409485e703ceda9ea1ca65443...  |pca_linear_abigrashdx__9dd...  
+pca_linear_abigrashdx__42f89212    0.6257  sh             |0.5|                           |42f89212|               True                        ec409485e703ceda9ea1ca65443...  |pca_linear_abigrashdx__42f...  
+pca_linear_abigrashdx__33dc7ac6    0.6216  sh             |0.45|                          |33dc7ac6|               True                        ec409485e703ceda9ea1ca65443...  |pca_linear_abigrashdx__33d...  
+pca_linear_abigrashdx__19d2f451    0.6209  sh             |1.0|                           |19d2f451|               True                        ec409485e703ceda9ea1ca65443...  |pca_linear_abigrashdx__19d...  
+pca_linear_abigramddx__4ee0fd04    0.6112  |md|           |0.9|                           |4ee0fd04|               True                        |1e03085bf41c0ef99b208d6e60...  |pca_linear_abigramddx__4ee...  
+pca_linear_abigrashdx__9ba1d177    0.6035  sh             |0.9|                           |9ba1d177|               True                        ec409485e703ceda9ea1ca65443...  |pca_linear_abigrashdx__9ba...  
+pca_linear_abigrashdx__2d67aade    0.6030  sh             |0.35|                          |2d67aade|               True                        ec409485e703ceda9ea1ca65443...  |pca_linear_abigrashdx__2d6...  
+pca_linear_abigramddx__81e5ffec    0.6020  |md|           |1.0|                           |81e5ffec|               True                        |1e03085bf41c0ef99b208d6e60...  |pca_linear_abigramddx__81e...  
+pca_linear_abigramddx__fbc745a3    0.6000  |md|           |1|                             |fbc745a3|               |False|                     |1e03085bf41c0ef99b208d6e60...  |pca_linear_abigramddx__fbc...  
+pca_linear_abigramddx__6e2b4010    0.5947  |md|           0.8                             |6e2b4010|               True                        |1e03085bf41c0ef99b208d6e60...  |pca_linear_abigramddx__6e2...  
+pca_linear_abigramddx__e57fd174    0.5752  |md|           |0.95|                          |e57fd174|               True                        |1e03085bf41c0ef99b208d6e60...  |pca_linear_abigramddx__e57...  
+pca_linear_abigramddx__b43ea69f    0.5662  |md|           |0.45|                          |b43ea69f|               True                        |1e03085bf41c0ef99b208d6e60...  |pca_linear_abigramddx__b43...  
+pca_linear_abigramddx__8d8a997e    0.5465  |md|           |0.2|                           |8d8a997e|               True                        |1e03085bf41c0ef99b208d6e60...  |pca_linear_abigramddx__8d8...  
+pca_linear_abigramddx__ce4c0514    0.5462  |md|           |0.5|                           |ce4c0514|               True                        |1e03085bf41c0ef99b208d6e60...  |pca_linear_abigramddx__ce4...  
+pca_linear_abigramddx__e724fcde    0.5406  |md|           |0.75|                          |e724fcde|               True                        |1e03085bf41c0ef99b208d6e60...  |pca_linear_abigramddx__e72...  
+pca_linear_abigrashdx__7e0af531    0.5386  sh             |0.2|                           |7e0af531|               True                        ec409485e703ceda9ea1ca65443...  |pca_linear_abigrashdx__7e0...  
+pca_linear_abigramddx__28da9249    0.5375  |md|           |0.65|                          |28da9249|               True                        |1e03085bf41c0ef99b208d6e60...  |pca_linear_abigramddx__28d...  
+pca_linear_abigrashdx__98551da9    0.5290  sh             |0.1|                           |98551da9|               True                        ec409485e703ceda9ea1ca65443...  |pca_linear_abigrashdx__985...  
+pca_linear_abigramddx__7fc49de0    0.5131  |md|           |0.35|                          |7fc49de0|               True                        |1e03085bf41c0ef99b208d6e60...  |pca_linear_abigramddx__7fc...  
+pca_linear_abigramddx__c86d1577    0.4863  |md|           |0.1|                           |c86d1577|               True                        |1e03085bf41c0ef99b208d6e60...  |pca_linear_abigramddx__c86...  
+pca_linear_abigramkdx__4acd356c    nan     |mk|           |1|                             |4acd356c|               |False|                     |df05c6120a06ca3692a4b316ae...  |pca_linear_abigramkdx__4ac...  
+
+========================================
+
+
+GROUP: model_name=pca_linear, tissue_type=gray, prediction_task=regression, target=['Age']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: pca_linear_abigramda_bff2eae9 (Metric: r2_test_mean, Score: -0.0160)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                            Score    PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                  
+--------------------------------------------------------------------------------------------------------------------------------------------------
+pca_linear_abigramda_bff2eae9 *  -0.0160  md             bff2eae9                 a6e257e66d231f66b866dd8038f...  pca_linear_abigramda_bff2eae9   
+pca_linear_abigrasha_f16b2a88    0.1129   |sh|           |f16b2a88|               |4205000ea6d58a56da38d7aa50...  |pca_linear_abigrasha_f16b2...  
+pca_linear_abigramka_9e5a1666    nan      |mk|           |9e5a1666|               |c28cae080d733a193a6d83ae85...  |pca_linear_abigramka_9e5a1...  
+
+========================================
+
+
+GROUP: model_name=pca_linear, tissue_type=white, prediction_task=binary_classification, target=['Gender']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: pca_linear_abiwhishg_6c78d6e0 (Metric: accuracy_weighted_test_mean, Score: 0.5215)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                            Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                  
+-------------------------------------------------------------------------------------------------------------------------------------------------
+pca_linear_abiwhishg_6c78d6e0 *  0.5215  sh             6c78d6e0                 9c70ab01694c7f295c05e932325...  pca_linear_abiwhishg_6c78d6e0   
+pca_linear_abiwhimdg_d706c3fd    0.5164  |md|           |d706c3fd|               |eb7f5406fe4cfa45660ae6f528...  |pca_linear_abiwhimdg_d706c...  
+pca_linear_abiwhimkg_2f601a3f    nan     |mk|           |2f601a3f|               |cf75229948848bffb340c3449d...  |pca_linear_abiwhimkg_2f601...  
+pca_linear_abiwhirog_bea8f688    nan     |rtop|         |bea8f688|               |06ab8050aef08df6687f79bd1e...  |pca_linear_abiwhirog_bea8f...  
+
+========================================
+
+
+GROUP: model_name=pca_linear, tissue_type=white, prediction_task=binary_classification, target=['dx_group']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: pca_linear_abiwhishdx__7756ec58 (Metric: accuracy_weighted_test_mean, Score: 0.6309)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                              Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id                  
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+pca_linear_abiwhishdx__7756ec58 *  0.6309  sh             0.45                            7756ec58                 True                        fdd091eb007f9f74c5edff2ab23...  pca_linear_abiwhishdx__7756...  
+pca_linear_abiwhishdx__ed526d55    0.6178  sh             |0.95|                          |ed526d55|               True                        fdd091eb007f9f74c5edff2ab23...  |pca_linear_abiwhishdx__ed5...  
+pca_linear_abiwhishdx__e9adc0f3    0.6095  sh             |1|                             |e9adc0f3|               |False|                     fdd091eb007f9f74c5edff2ab23...  |pca_linear_abiwhishdx__e9a...  
+pca_linear_abiwhishdx__70b5164a    0.6095  sh             |1.0|                           |70b5164a|               True                        fdd091eb007f9f74c5edff2ab23...  |pca_linear_abiwhishdx__70b...  
+pca_linear_abiwhishdx__3a4f0e4e    0.6000  sh             |0.9|                           |3a4f0e4e|               True                        fdd091eb007f9f74c5edff2ab23...  |pca_linear_abiwhishdx__3a4...  
+pca_linear_abiwhishdx__ce5a07f1    0.5899  sh             |0.8|                           |ce5a07f1|               True                        fdd091eb007f9f74c5edff2ab23...  |pca_linear_abiwhishdx__ce5...  
+pca_linear_abiwhishdx__8d7bd67b    0.5841  sh             |0.35|                          |8d7bd67b|               True                        fdd091eb007f9f74c5edff2ab23...  |pca_linear_abiwhishdx__8d7...  
+pca_linear_abiwhishdx__68a077a2    0.5792  sh             |0.75|                          |68a077a2|               True                        fdd091eb007f9f74c5edff2ab23...  |pca_linear_abiwhishdx__68a...  
+pca_linear_abiwhishdx__3f162596    0.5655  sh             |0.65|                          |3f162596|               True                        fdd091eb007f9f74c5edff2ab23...  |pca_linear_abiwhishdx__3f1...  
+pca_linear_abiwhishdx__722f26a4    0.5603  sh             |0.5|                           |722f26a4|               True                        fdd091eb007f9f74c5edff2ab23...  |pca_linear_abiwhishdx__722...  
+pca_linear_abiwhimddx__be4b864b    0.5524  |md|           |0.75|                          |be4b864b|               True                        |76ed94ae0614cdea8acf7063ca...  |pca_linear_abiwhimddx__be4...  
+pca_linear_abiwhimddx__02d5e2f4    0.5488  |md|           |0.65|                          |02d5e2f4|               True                        |76ed94ae0614cdea8acf7063ca...  |pca_linear_abiwhimddx__02d...  
+pca_linear_abiwhishdx__85b7aa87    0.5180  sh             |0.2|                           |85b7aa87|               True                        fdd091eb007f9f74c5edff2ab23...  |pca_linear_abiwhishdx__85b...  
+pca_linear_abiwhimddx__46fb97f8    0.5169  |md|           |1|                             |46fb97f8|               |False|                     |76ed94ae0614cdea8acf7063ca...  |pca_linear_abiwhimddx__46f...  
+pca_linear_abiwhimddx__cb9e8a40    0.5169  |md|           |1.0|                           |cb9e8a40|               True                        |76ed94ae0614cdea8acf7063ca...  |pca_linear_abiwhimddx__cb9...  
+pca_linear_abiwhimddx__770d8acd    0.5159  |md|           |0.8|                           |770d8acd|               True                        |76ed94ae0614cdea8acf7063ca...  |pca_linear_abiwhimddx__770...  
+pca_linear_abiwhimddx__9be1ffbe    0.5133  |md|           |0.35|                          |9be1ffbe|               True                        |76ed94ae0614cdea8acf7063ca...  |pca_linear_abiwhimddx__9be...  
+pca_linear_abiwhimddx__53cb60c4    0.5123  |md|           |0.9|                           |53cb60c4|               True                        |76ed94ae0614cdea8acf7063ca...  |pca_linear_abiwhimddx__53c...  
+pca_linear_abiwhimddx__b21698f6    0.5041  |md|           |0.95|                          |b21698f6|               True                        |76ed94ae0614cdea8acf7063ca...  |pca_linear_abiwhimddx__b21...  
+pca_linear_abiwhishdx__e07b1c5d    0.5029  sh             |0.1|                           |e07b1c5d|               True                        fdd091eb007f9f74c5edff2ab23...  |pca_linear_abiwhishdx__e07...  
+pca_linear_abiwhimddx__54509700    0.4909  |md|           0.45                            |54509700|               True                        |76ed94ae0614cdea8acf7063ca...  |pca_linear_abiwhimddx__545...  
+pca_linear_abiwhimddx__82c3ba64    0.4867  |md|           |0.2|                           |82c3ba64|               True                        |76ed94ae0614cdea8acf7063ca...  |pca_linear_abiwhimddx__82c...  
+pca_linear_abiwhimddx__645fea3e    0.4859  |md|           |0.5|                           |645fea3e|               True                        |76ed94ae0614cdea8acf7063ca...  |pca_linear_abiwhimddx__645...  
+pca_linear_abiwhimddx__b02a53f3    0.4751  |md|           |0.1|                           |b02a53f3|               True                        |76ed94ae0614cdea8acf7063ca...  |pca_linear_abiwhimddx__b02...  
+pca_linear_abiwhimkdx__fbe0008f    nan     |mk|           |1|                             |fbe0008f|               |False|                     |9ffabf4bd213400c9c8635c52e...  |pca_linear_abiwhimkdx__fbe...  
+pca_linear_abiwhirodx__16308c42    nan     |rtop|         |1|                             |16308c42|               |False|                     |6efce63988a3cc9c59cb91295c...  |pca_linear_abiwhirodx__163...  
+
+========================================
+
+
+GROUP: model_name=pca_linear, tissue_type=white, prediction_task=regression, target=['Age']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: pca_linear_abiwhisha_fd6e7f31 (Metric: r2_test_mean, Score: 0.1083)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                            Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                  
+-------------------------------------------------------------------------------------------------------------------------------------------------
+pca_linear_abiwhisha_fd6e7f31 *  0.1083  sh             fd6e7f31                 8d25ff0afa99002fd8b2cd8beee...  pca_linear_abiwhisha_fd6e7f31   
+pca_linear_abiwhimda_9a8e6c5d    0.1843  |md|           |9a8e6c5d|               |b6bdc2d06e3f523a92130e65b0...  |pca_linear_abiwhimda_9a8e6...  
+pca_linear_abiwhimka_fddd3377    nan     |mk|           |fddd3377|               |5f3d66fd1ac09f14e640ca90c0...  |pca_linear_abiwhimka_fddd3...  
+
+========================================
+
+
+GROUP: model_name=pca_svm, tissue_type=gray, prediction_task=binary_classification, target=['Gender']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: pca_svm_abigramdg_8e2ba3bb (Metric: accuracy_weighted_test_mean, Score: 0.4699)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                         Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                
+--------------------------------------------------------------------------------------------------------------------------------------------
+pca_svm_abigramdg_8e2ba3bb *  0.4699  md             8e2ba3bb                 dda6553b3a09a465e065a3e4676...  pca_svm_abigramdg_8e2ba3bb    
+pca_svm_abigrashg_76513d90    0.4383  |sh|           |76513d90|               |995321f86587eacd82aabd9428...  |pca_svm_abigrashg_76513d90|  
+pca_svm_abigramkg_53c321a2    nan     |mk|           |53c321a2|               |a3eb4cd799e552a0eb7eeee226...  |pca_svm_abigramkg_53c321a2|  
+
+========================================
+
+
+GROUP: model_name=pca_svm, tissue_type=gray, prediction_task=binary_classification, target=['dx_group']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: pca_svm_abigramddx__0abe2c8b (Metric: accuracy_weighted_test_mean, Score: 0.6317)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                           Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id                  
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+pca_svm_abigramddx__0abe2c8b *  0.6317  md             0.95                            0abe2c8b                 True                        b6e0ea35ab492fca50f078c42e4...  pca_svm_abigramddx__0abe2c8b    
+pca_svm_abigramddx__528cd3be    0.6308  md             |1|                             |528cd3be|               |False|                     b6e0ea35ab492fca50f078c42e4...  |pca_svm_abigramddx__528cd3be|  
+pca_svm_abigramddx__f8b8f204    0.6297  md             |1.0|                           |f8b8f204|               True                        b6e0ea35ab492fca50f078c42e4...  |pca_svm_abigramddx__f8b8f204|  
+pca_svm_abigramddx__36696db0    0.6162  md             |0.9|                           |36696db0|               True                        b6e0ea35ab492fca50f078c42e4...  |pca_svm_abigramddx__36696db0|  
+pca_svm_abigrashdx__2987b4a0    0.6072  |sh|           |0.65|                          |2987b4a0|               True                        |119db1fcfd204b48ab4ccc461f...  |pca_svm_abigrashdx__2987b4a0|  
+pca_svm_abigrashdx__6226c0f1    0.6072  |sh|           |1|                             |6226c0f1|               |False|                     |119db1fcfd204b48ab4ccc461f...  |pca_svm_abigrashdx__6226c0f1|  
+pca_svm_abigrashdx__35ef26ed    0.6030  |sh|           |1.0|                           |35ef26ed|               True                        |119db1fcfd204b48ab4ccc461f...  |pca_svm_abigrashdx__35ef26ed|  
+pca_svm_abigrashdx__5132e86d    0.5993  |sh|           |0.75|                          |5132e86d|               True                        |119db1fcfd204b48ab4ccc461f...  |pca_svm_abigrashdx__5132e86d|  
+pca_svm_abigrashdx__3cb4ee07    0.5984  |sh|           |0.8|                           |3cb4ee07|               True                        |119db1fcfd204b48ab4ccc461f...  |pca_svm_abigrashdx__3cb4ee07|  
+pca_svm_abigrashdx__042b91a5    0.5914  |sh|           |0.9|                           |042b91a5|               True                        |119db1fcfd204b48ab4ccc461f...  |pca_svm_abigrashdx__042b91a5|  
+pca_svm_abigramddx__fc98dc71    0.5846  md             |0.8|                           |fc98dc71|               True                        b6e0ea35ab492fca50f078c42e4...  |pca_svm_abigramddx__fc98dc71|  
+pca_svm_abigrashdx__900285ed    0.5802  |sh|           0.95                            |900285ed|               True                        |119db1fcfd204b48ab4ccc461f...  |pca_svm_abigrashdx__900285ed|  
+pca_svm_abigrashdx__09c9ed34    0.5800  |sh|           |0.5|                           |09c9ed34|               True                        |119db1fcfd204b48ab4ccc461f...  |pca_svm_abigrashdx__09c9ed34|  
+pca_svm_abigrashdx__efb11bd7    0.5719  |sh|           |0.45|                          |efb11bd7|               True                        |119db1fcfd204b48ab4ccc461f...  |pca_svm_abigrashdx__efb11bd7|  
+pca_svm_abigramddx__b33cba05    0.5591  md             |0.5|                           |b33cba05|               True                        b6e0ea35ab492fca50f078c42e4...  |pca_svm_abigramddx__b33cba05|  
+pca_svm_abigramddx__e73ba269    0.5273  md             |0.75|                          |e73ba269|               True                        b6e0ea35ab492fca50f078c42e4...  |pca_svm_abigramddx__e73ba269|  
+pca_svm_abigramddx__87526c0a    0.5102  md             |0.65|                          |87526c0a|               True                        b6e0ea35ab492fca50f078c42e4...  |pca_svm_abigramddx__87526c0a|  
+pca_svm_abigramddx__d8485ebb    0.5044  md             |0.45|                          |d8485ebb|               True                        b6e0ea35ab492fca50f078c42e4...  |pca_svm_abigramddx__d8485ebb|  
+pca_svm_abigramkdx__45ca900e    nan     |mk|           |1|                             |45ca900e|               |False|                     |c844c70454f007fd71d4dc2deb...  |pca_svm_abigramkdx__45ca900e|  
+pca_svm_abigramddx__293192ba    nan     md             |0.1|                           |293192ba|               True                        b6e0ea35ab492fca50f078c42e4...  |pca_svm_abigramddx__293192ba|  
+pca_svm_abigramddx__7deb6bd5    nan     md             |0.2|                           |7deb6bd5|               True                        b6e0ea35ab492fca50f078c42e4...  |pca_svm_abigramddx__7deb6bd5|  
+pca_svm_abigramddx__bbcb0e08    nan     md             |0.35|                          |bbcb0e08|               True                        b6e0ea35ab492fca50f078c42e4...  |pca_svm_abigramddx__bbcb0e08|  
+pca_svm_abigrashdx__0510217c    nan     |sh|           |0.1|                           |0510217c|               True                        |119db1fcfd204b48ab4ccc461f...  |pca_svm_abigrashdx__0510217c|  
+pca_svm_abigrashdx__0b9a68b4    nan     |sh|           |0.2|                           |0b9a68b4|               True                        |119db1fcfd204b48ab4ccc461f...  |pca_svm_abigrashdx__0b9a68b4|  
+pca_svm_abigrashdx__da4df289    nan     |sh|           |0.35|                          |da4df289|               True                        |119db1fcfd204b48ab4ccc461f...  |pca_svm_abigrashdx__da4df289|  
+
+========================================
+
+
+GROUP: model_name=pca_svm, tissue_type=gray, prediction_task=regression, target=['Age']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: pca_svm_abigramda_31024668 (Metric: r2_test_mean, Score: -3442558.0400)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                         Score          PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                
+---------------------------------------------------------------------------------------------------------------------------------------------------
+pca_svm_abigramda_31024668 *  -3442558.0400  md             31024668                 518532fee2597223321912ca144...  pca_svm_abigramda_31024668    
+pca_svm_abigrasha_41d714eb    -3.6492        |sh|           |41d714eb|               |80313094b4df7e7b859966279c...  |pca_svm_abigrasha_41d714eb|  
+pca_svm_abigramka_c1ce5aed    nan            |mk|           |c1ce5aed|               |516e57a009998495fb09ab96b9...  |pca_svm_abigramka_c1ce5aed|  
+
+========================================
+
+
+GROUP: model_name=pca_svm, tissue_type=white, prediction_task=binary_classification, target=['Gender']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Warning: Could not find performance metric column. Task: binary_classification
+  Best Run ID: pca_svm_abiwhimdg_6cc43cb8 (Metric: run_id, Score: N/A)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                         Score  PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                
+-------------------------------------------------------------------------------------------------------------------------------------------
+pca_svm_abiwhimdg_6cc43cb8 *  -      md             6cc43cb8                 a4dbfbb632fb4f755b1609c0d98...  pca_svm_abiwhimdg_6cc43cb8    
+pca_svm_abiwhishg_55d0b70f    -      |sh|           |55d0b70f|               |6da2ff270c9c9d9135bbaff2c2...  |pca_svm_abiwhishg_55d0b70f|  
+pca_svm_abiwhimkg_ff72a81a    -      |mk|           |ff72a81a|               |6ce13616e4b4635512818e025d...  |pca_svm_abiwhimkg_ff72a81a|  
+pca_svm_abiwhirog_1d7af454    -      |rtop|         |1d7af454|               |68769f999eec6767b65db127f0...  |pca_svm_abiwhirog_1d7af454|  
+
+========================================
+
+
+GROUP: model_name=pca_svm, tissue_type=white, prediction_task=binary_classification, target=['dx_group']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Warning: Could not find performance metric column. Task: binary_classification
+  Best Run ID: pca_svm_abiwhimddx__1e73c1de (Metric: run_id, Score: N/A)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                           Score  PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id                  
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+pca_svm_abiwhimddx__1e73c1de *  -      md             1                               1e73c1de                 False                       f3c70d73396b130a95ab70e00fe...  pca_svm_abiwhimddx__1e73c1de    
+pca_svm_abiwhishdx__ab75529c    -      |sh|           1                               |ab75529c|               False                       |42f58e38a8301051bd1539248e...  |pca_svm_abiwhishdx__ab75529c|  
+pca_svm_abiwhimkdx__ffa623d8    -      |mk|           1                               |ffa623d8|               False                       |8089a82b76ad5652a079c0d77d...  |pca_svm_abiwhimkdx__ffa623d8|  
+pca_svm_abiwhirodx__a4a44adf    -      |rtop|         1                               |a4a44adf|               False                       |f63364cef66283259acf783f9d...  |pca_svm_abiwhirodx__a4a44adf|  
+pca_svm_abiwhimddx__ef64c624    -      md             |0.1|                           |ef64c624|               |True|                      f3c70d73396b130a95ab70e00fe...  |pca_svm_abiwhimddx__ef64c624|  
+pca_svm_abiwhimddx__202215b1    -      md             |0.2|                           |202215b1|               |True|                      f3c70d73396b130a95ab70e00fe...  |pca_svm_abiwhimddx__202215b1|  
+pca_svm_abiwhimddx__42facde8    -      md             |0.35|                          |42facde8|               |True|                      f3c70d73396b130a95ab70e00fe...  |pca_svm_abiwhimddx__42facde8|  
+pca_svm_abiwhimddx__f91b129c    -      md             |0.45|                          |f91b129c|               |True|                      f3c70d73396b130a95ab70e00fe...  |pca_svm_abiwhimddx__f91b129c|  
+pca_svm_abiwhimddx__00cef780    -      md             |0.5|                           |00cef780|               |True|                      f3c70d73396b130a95ab70e00fe...  |pca_svm_abiwhimddx__00cef780|  
+pca_svm_abiwhimddx__a50b8cc0    -      md             |0.65|                          |a50b8cc0|               |True|                      f3c70d73396b130a95ab70e00fe...  |pca_svm_abiwhimddx__a50b8cc0|  
+pca_svm_abiwhimddx__c66d86e0    -      md             |0.75|                          |c66d86e0|               |True|                      f3c70d73396b130a95ab70e00fe...  |pca_svm_abiwhimddx__c66d86e0|  
+pca_svm_abiwhimddx__d3a0a4be    -      md             |0.8|                           |d3a0a4be|               |True|                      f3c70d73396b130a95ab70e00fe...  |pca_svm_abiwhimddx__d3a0a4be|  
+pca_svm_abiwhimddx__f5178745    -      md             |0.9|                           |f5178745|               |True|                      f3c70d73396b130a95ab70e00fe...  |pca_svm_abiwhimddx__f5178745|  
+pca_svm_abiwhimddx__840b10d4    -      md             |0.95|                          |840b10d4|               |True|                      f3c70d73396b130a95ab70e00fe...  |pca_svm_abiwhimddx__840b10d4|  
+pca_svm_abiwhimddx__d92e8a7a    -      md             |1.0|                           |d92e8a7a|               |True|                      f3c70d73396b130a95ab70e00fe...  |pca_svm_abiwhimddx__d92e8a7a|  
+pca_svm_abiwhishdx__065eb790    -      |sh|           |0.1|                           |065eb790|               |True|                      |42f58e38a8301051bd1539248e...  |pca_svm_abiwhishdx__065eb790|  
+pca_svm_abiwhishdx__a8216a35    -      |sh|           |0.2|                           |a8216a35|               |True|                      |42f58e38a8301051bd1539248e...  |pca_svm_abiwhishdx__a8216a35|  
+pca_svm_abiwhishdx__4c7a77d9    -      |sh|           |0.35|                          |4c7a77d9|               |True|                      |42f58e38a8301051bd1539248e...  |pca_svm_abiwhishdx__4c7a77d9|  
+pca_svm_abiwhishdx__9bc4f171    -      |sh|           |0.45|                          |9bc4f171|               |True|                      |42f58e38a8301051bd1539248e...  |pca_svm_abiwhishdx__9bc4f171|  
+pca_svm_abiwhishdx__81ced5e1    -      |sh|           |0.5|                           |81ced5e1|               |True|                      |42f58e38a8301051bd1539248e...  |pca_svm_abiwhishdx__81ced5e1|  
+pca_svm_abiwhishdx__a604d876    -      |sh|           |0.65|                          |a604d876|               |True|                      |42f58e38a8301051bd1539248e...  |pca_svm_abiwhishdx__a604d876|  
+pca_svm_abiwhishdx__75d3dc9e    -      |sh|           |0.75|                          |75d3dc9e|               |True|                      |42f58e38a8301051bd1539248e...  |pca_svm_abiwhishdx__75d3dc9e|  
+pca_svm_abiwhishdx__ae33650e    -      |sh|           |0.8|                           |ae33650e|               |True|                      |42f58e38a8301051bd1539248e...  |pca_svm_abiwhishdx__ae33650e|  
+pca_svm_abiwhishdx__3e7a3c87    -      |sh|           |0.9|                           |3e7a3c87|               |True|                      |42f58e38a8301051bd1539248e...  |pca_svm_abiwhishdx__3e7a3c87|  
+pca_svm_abiwhishdx__6eb0e0af    -      |sh|           |0.95|                          |6eb0e0af|               |True|                      |42f58e38a8301051bd1539248e...  |pca_svm_abiwhishdx__6eb0e0af|  
+pca_svm_abiwhishdx__74a9a89b    -      |sh|           |1.0|                           |74a9a89b|               |True|                      |42f58e38a8301051bd1539248e...  |pca_svm_abiwhishdx__74a9a89b|  
+
+========================================
+
+
+GROUP: model_name=pca_svm, tissue_type=white, prediction_task=regression, target=['Age']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Warning: Could not find performance metric column. Task: regression
+  Best Run ID: pca_svm_abiwhimda_00a2f322 (Metric: run_id, Score: N/A)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                         Score  PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                
+-------------------------------------------------------------------------------------------------------------------------------------------
+pca_svm_abiwhimda_00a2f322 *  -      md             00a2f322                 ccd21e89977493b63981bdb7767...  pca_svm_abiwhimda_00a2f322    
+pca_svm_abiwhisha_755ab157    -      |sh|           |755ab157|               |a8bba3968cf69ca48a6ddaa208...  |pca_svm_abiwhisha_755ab157|  
+pca_svm_abiwhimka_e55e20a9    -      |mk|           |e55e20a9|               |ff2883fecc8a654c8d4171ea61...  |pca_svm_abiwhimka_e55e20a9|  
+
+========================================
+
+
+GROUP: model_name=svm, tissue_type=gray, prediction_task=binary_classification, target=['Gender']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: svm_abigramdg_3ce61b79 (Metric: accuracy_weighted_test_mean, Score: 0.5303)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                     Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id            
+------------------------------------------------------------------------------------------------------------------------------------
+svm_abigramdg_3ce61b79 *  0.5303  md             3ce61b79                 aea43ee00d6c6f9f1375bdceac0...  svm_abigramdg_3ce61b79    
+svm_abigrashg_aa95a755    0.4122  |sh|           |aa95a755|               |43ea6ff6b996bca7e08a84ff2a...  |svm_abigrashg_aa95a755|  
+svm_abigramkg_7898beba    nan     |mk|           |7898beba|               |0e49bdfe59742c227fd2758e92...  |svm_abigramkg_7898beba|  
+svm_abigrarog_0a9d86bc    nan     |rtop|         |0a9d86bc|               |87f0130d74c164244e0e8c7a28...  |svm_abigrarog_0a9d86bc|  
+
+========================================
+
+
+GROUP: model_name=svm, tissue_type=gray, prediction_task=binary_classification, target=['dx_group']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: svm_abigrarodx__139f6852 (Metric: accuracy_weighted_test_mean, Score: 0.7000)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                       Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id              
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+svm_abigrarodx__139f6852 *  0.7000  rtop           1                               139f6852                 False                       929e6066e6cc870d613b4f54b6f...  svm_abigrarodx__139f6852    
+svm_abigramddx__3c73cef4    0.5937  |md|           |0.9|                           |3c73cef4|               |True|                      |4448de76c227a85b2f1886489e...  |svm_abigramddx__3c73cef4|  
+svm_abigrashdx__9167caf0    0.5864  |sh|           1                               |9167caf0|               False                       |caa04aface863011042f093ed0...  |svm_abigrashdx__9167caf0|  
+svm_abigrashdx__23aff8c7    0.5864  |sh|           |1.0|                           |23aff8c7|               |True|                      |caa04aface863011042f093ed0...  |svm_abigrashdx__23aff8c7|  
+svm_abigrashdx__e0f78c98    0.5859  |sh|           |0.65|                          |e0f78c98|               |True|                      |caa04aface863011042f093ed0...  |svm_abigrashdx__e0f78c98|  
+svm_abigramddx__9425c669    0.5749  |md|           |0.95|                          |9425c669|               |True|                      |4448de76c227a85b2f1886489e...  |svm_abigramddx__9425c669|  
+svm_abigrashdx__d8f60976    0.5719  |sh|           |0.95|                          |d8f60976|               |True|                      |caa04aface863011042f093ed0...  |svm_abigrashdx__d8f60976|  
+svm_abigrashdx__5fbcb42b    0.5699  |sh|           |0.5|                           |5fbcb42b|               |True|                      |caa04aface863011042f093ed0...  |svm_abigrashdx__5fbcb42b|  
+svm_abigrashdx__d961c480    0.5660  |sh|           |0.45|                          |d961c480|               |True|                      |caa04aface863011042f093ed0...  |svm_abigrashdx__d961c480|  
+svm_abigrashdx__b9b9e813    0.5620  |sh|           |0.35|                          |b9b9e813|               |True|                      |caa04aface863011042f093ed0...  |svm_abigrashdx__b9b9e813|  
+svm_abigrashdx__aab7f841    0.5598  |sh|           |0.8|                           |aab7f841|               |True|                      |caa04aface863011042f093ed0...  |svm_abigrashdx__aab7f841|  
+svm_abigramddx__ca4e3628    0.5558  |md|           1                               |ca4e3628|               False                       |4448de76c227a85b2f1886489e...  |svm_abigramddx__ca4e3628|  
+svm_abigramddx__0ee1475f    0.5558  |md|           |1.0|                           |0ee1475f|               |True|                      |4448de76c227a85b2f1886489e...  |svm_abigramddx__0ee1475f|  
+svm_abigramddx__5ca2b1af    0.5549  |md|           |0.35|                          |5ca2b1af|               |True|                      |4448de76c227a85b2f1886489e...  |svm_abigramddx__5ca2b1af|  
+svm_abigrashdx__eaef2d17    0.5541  |sh|           |0.9|                           |eaef2d17|               |True|                      |caa04aface863011042f093ed0...  |svm_abigrashdx__eaef2d17|  
+svm_abigramddx__9c3968dc    0.5474  |md|           |0.8|                           |9c3968dc|               |True|                      |4448de76c227a85b2f1886489e...  |svm_abigramddx__9c3968dc|  
+svm_abigrashdx__29dc4177    0.5434  |sh|           |0.2|                           |29dc4177|               |True|                      |caa04aface863011042f093ed0...  |svm_abigrashdx__29dc4177|  
+svm_abigrashdx__7a8e965f    0.5432  |sh|           |0.75|                          |7a8e965f|               |True|                      |caa04aface863011042f093ed0...  |svm_abigrashdx__7a8e965f|  
+svm_abigramddx__d9262e7c    0.5359  |md|           |0.65|                          |d9262e7c|               |True|                      |4448de76c227a85b2f1886489e...  |svm_abigramddx__d9262e7c|  
+svm_abigramddx__848d468a    0.5200  |md|           |0.75|                          |848d468a|               |True|                      |4448de76c227a85b2f1886489e...  |svm_abigramddx__848d468a|  
+svm_abigramddx__69f7344c    0.5166  |md|           |0.45|                          |69f7344c|               |True|                      |4448de76c227a85b2f1886489e...  |svm_abigramddx__69f7344c|  
+svm_abigramddx__079e766e    0.5132  |md|           |0.5|                           |079e766e|               |True|                      |4448de76c227a85b2f1886489e...  |svm_abigramddx__079e766e|  
+svm_abigrashdx__649cfb63    0.4988  |sh|           |0.1|                           |649cfb63|               |True|                      |caa04aface863011042f093ed0...  |svm_abigrashdx__649cfb63|  
+svm_abigramddx__cb06ff5c    0.4797  |md|           |0.2|                           |cb06ff5c|               |True|                      |4448de76c227a85b2f1886489e...  |svm_abigramddx__cb06ff5c|  
+svm_abigramddx__3e98dee7    0.4425  |md|           |0.1|                           |3e98dee7|               |True|                      |4448de76c227a85b2f1886489e...  |svm_abigramddx__3e98dee7|  
+svm_abigramkdx__cd2cc803    nan     |mk|           1                               |cd2cc803|               False                       |291214fdbb1d69a17cffa281be...  |svm_abigramkdx__cd2cc803|  
+
+========================================
+
+
+GROUP: model_name=svm, tissue_type=gray, prediction_task=regression, target=['Age']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: svm_abigramda_1b4037dd (Metric: r2_test_mean, Score: -3592838.9179)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                     Score          PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id            
+-------------------------------------------------------------------------------------------------------------------------------------------
+svm_abigramda_1b4037dd *  -3592838.9179  md             1b4037dd                 948d34c061dc3603f10c4f703fc...  svm_abigramda_1b4037dd    
+svm_abigrasha_c788a648    -376.6211      |sh|           |c788a648|               |d3eccd81f126f349b78fc581ee...  |svm_abigrasha_c788a648|  
+svm_abigraroa_117b0cc1    -183.4016      |rtop|         |117b0cc1|               |784b2d27e395f55eb7ed399cce...  |svm_abigraroa_117b0cc1|  
+svm_abigramka_a01ff932    nan            |mk|           |a01ff932|               |a64e4388122edc5dcb93ff65ed...  |svm_abigramka_a01ff932|  
+
+========================================
+
+
+GROUP: model_name=svm, tissue_type=white, prediction_task=binary_classification, target=['Gender']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: svm_abiwhimdg_3ee06e18 (Metric: accuracy_weighted_test_mean, Score: 0.5860)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                     Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id            
+------------------------------------------------------------------------------------------------------------------------------------
+svm_abiwhimdg_3ee06e18 *  0.5860  md             3ee06e18                 8ec2c8494a4515758ca02c096a9...  svm_abiwhimdg_3ee06e18    
+svm_abiwhishg_f16916fe    0.5726  |sh|           |f16916fe|               |bb252f307290fcacd43313d32d...  |svm_abiwhishg_f16916fe|  
+svm_abiwhimkg_88d737ef    nan     |mk|           |88d737ef|               |4bdc281a694e919951d0616793...  |svm_abiwhimkg_88d737ef|  
+svm_abiwhirog_346dbe95    nan     |rtop|         |346dbe95|               |70aefc8533e657c81f5cceba1d...  |svm_abiwhirog_346dbe95|  
+
+========================================
+
+
+GROUP: model_name=svm, tissue_type=white, prediction_task=binary_classification, target=['dx_group']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: svm_abiwhishdx__bd4bda4e (Metric: accuracy_weighted_test_mean, Score: 0.6266)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                       Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id              
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+svm_abiwhishdx__bd4bda4e *  0.6266  sh             0.9                             bd4bda4e                 True                        1bba319025b1156a0575bfdd0e9...  svm_abiwhishdx__bd4bda4e    
+svm_abiwhishdx__1aff04d5    0.6039  sh             |0.75|                          |1aff04d5|               True                        1bba319025b1156a0575bfdd0e9...  |svm_abiwhishdx__1aff04d5|  
+svm_abiwhishdx__cfa56845    0.5957  sh             |0.95|                          |cfa56845|               True                        1bba319025b1156a0575bfdd0e9...  |svm_abiwhishdx__cfa56845|  
+svm_abiwhishdx__c3d2823c    0.5909  sh             |1|                             |c3d2823c|               |False|                     1bba319025b1156a0575bfdd0e9...  |svm_abiwhishdx__c3d2823c|  
+svm_abiwhishdx__29328517    0.5909  sh             |1.0|                           |29328517|               True                        1bba319025b1156a0575bfdd0e9...  |svm_abiwhishdx__29328517|  
+svm_abiwhishdx__8e002dac    0.5877  sh             |0.8|                           |8e002dac|               True                        1bba319025b1156a0575bfdd0e9...  |svm_abiwhishdx__8e002dac|  
+svm_abiwhishdx__20f78d81    0.5845  sh             |0.65|                          |20f78d81|               True                        1bba319025b1156a0575bfdd0e9...  |svm_abiwhishdx__20f78d81|  
+svm_abiwhishdx__da3a2588    0.5744  sh             |0.5|                           |da3a2588|               True                        1bba319025b1156a0575bfdd0e9...  |svm_abiwhishdx__da3a2588|  
+svm_abiwhishdx__d2205aac    0.5589  sh             |0.45|                          |d2205aac|               True                        1bba319025b1156a0575bfdd0e9...  |svm_abiwhishdx__d2205aac|  
+svm_abiwhishdx__dfde5f67    0.5496  sh             |0.35|                          |dfde5f67|               True                        1bba319025b1156a0575bfdd0e9...  |svm_abiwhishdx__dfde5f67|  
+svm_abiwhimddx__277e7824    0.5473  |md|           |0.35|                          |277e7824|               True                        |eb1c17b8cc3565fd762634228d...  |svm_abiwhimddx__277e7824|  
+svm_abiwhimddx__2961e47f    0.5432  |md|           |0.65|                          |2961e47f|               True                        |eb1c17b8cc3565fd762634228d...  |svm_abiwhimddx__2961e47f|  
+svm_abiwhimddx__8ce06028    0.5367  |md|           |0.2|                           |8ce06028|               True                        |eb1c17b8cc3565fd762634228d...  |svm_abiwhimddx__8ce06028|  
+svm_abiwhimddx__54c47af7    0.5316  |md|           |0.75|                          |54c47af7|               True                        |eb1c17b8cc3565fd762634228d...  |svm_abiwhimddx__54c47af7|  
+svm_abiwhimddx__f27029a3    0.5290  |md|           0.9                             |f27029a3|               True                        |eb1c17b8cc3565fd762634228d...  |svm_abiwhimddx__f27029a3|  
+svm_abiwhimddx__37044340    0.5288  |md|           |0.5|                           |37044340|               True                        |eb1c17b8cc3565fd762634228d...  |svm_abiwhimddx__37044340|  
+svm_abiwhimddx__c0130cec    0.5280  |md|           |0.8|                           |c0130cec|               True                        |eb1c17b8cc3565fd762634228d...  |svm_abiwhimddx__c0130cec|  
+svm_abiwhimddx__d0d1eaee    0.5188  |md|           |0.95|                          |d0d1eaee|               True                        |eb1c17b8cc3565fd762634228d...  |svm_abiwhimddx__d0d1eaee|  
+svm_abiwhimddx__e7aa0f41    0.5093  |md|           |1|                             |e7aa0f41|               |False|                     |eb1c17b8cc3565fd762634228d...  |svm_abiwhimddx__e7aa0f41|  
+svm_abiwhimddx__a22f6354    0.5093  |md|           |1.0|                           |a22f6354|               True                        |eb1c17b8cc3565fd762634228d...  |svm_abiwhimddx__a22f6354|  
+svm_abiwhimddx__0ec257ad    0.5080  |md|           |0.45|                          |0ec257ad|               True                        |eb1c17b8cc3565fd762634228d...  |svm_abiwhimddx__0ec257ad|  
+svm_abiwhishdx__f2533d6c    0.4970  sh             |0.2|                           |f2533d6c|               True                        1bba319025b1156a0575bfdd0e9...  |svm_abiwhishdx__f2533d6c|  
+svm_abiwhimddx__d3cd8e06    0.4791  |md|           |0.1|                           |d3cd8e06|               True                        |eb1c17b8cc3565fd762634228d...  |svm_abiwhimddx__d3cd8e06|  
+svm_abiwhishdx__45cecadd    0.4754  sh             |0.1|                           |45cecadd|               True                        1bba319025b1156a0575bfdd0e9...  |svm_abiwhishdx__45cecadd|  
+svm_abiwhimkdx__a6b1ff1d    nan     |mk|           |1|                             |a6b1ff1d|               |False|                     |ae215efb718bec069dc24d1097...  |svm_abiwhimkdx__a6b1ff1d|  
+svm_abiwhirodx__d0904460    nan     |rtop|         |1|                             |d0904460|               |False|                     |11fd75337cd39739a8385fa22b...  |svm_abiwhirodx__d0904460|  
+
+========================================
+
+
+GROUP: model_name=svm, tissue_type=white, prediction_task=regression, target=['Age']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: svm_abiwhimda_20ff39a4 (Metric: r2_test_mean, Score: -0.2899)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                     Score    PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id            
+-------------------------------------------------------------------------------------------------------------------------------------
+svm_abiwhimda_20ff39a4 *  -0.2899  md             20ff39a4                 5a743187a6424b053c3deefec82...  svm_abiwhimda_20ff39a4    
+svm_abiwhisha_d6067d32    -0.0427  |sh|           |d6067d32|               |103aa564fbff100709341c2433...  |svm_abiwhisha_d6067d32|  
+svm_abiwhimka_70324dd0    nan      |mk|           |70324dd0|               |fc4469e7087b075f542f499fd6...  |svm_abiwhimka_70324dd0|  
+svm_abiwhiroa_709cff9b    nan      |rtop|         |709cff9b|               |cd9aeab1aa5aef0639675b435a...  |svm_abiwhiroa_709cff9b|  
+
+========================================
