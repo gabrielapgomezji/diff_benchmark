@@ -121,41 +121,82 @@ strategy rather than subject-specific tractography to enforce anatomical corresp
     % \end{itemize}
     % Justify tract-averaged representation: Noise reduction, improved stability, lower dimensional feature space, anatomically meaningful structure
 
-\subsection{Prediction}
-\begin{itemize}
-    \item Feature normalization
-        \begin{itemize}
-            \item Binary targets (encoded 0/1), Continuous targets (standardized during training)
-            \item Standardization fitted on training set only
-            \item Applied to validation/test sets 
-            \item Inverse transform for regression outputs (for visualization)
-        \end{itemize}
-    \item Task definitions and labels and reasons for task selection
-        \begin{itemize}
-            \item Classification: Binary diagnosis prediction (e.g., ASD vs. TD)
-            \item Regression: Age prediction (brain age estimation)
-            \item Task selection rationale: Clinical relevance, data availability, and established benchmarks in the literature
-        \end{itemize}
-    \item Evaluation Metrics
-        \begin{itemize}
-            \item Classification: Accuracy, AUC, F1-score
-            \item Regression: R², MAE
-            \item Mean ± std across folds
-            \item Statistical comparison tests (e.g., paired t-tests, Wilcoxon signed-rank tests) to assess significance of performance differences between models
-        \end{itemize}
-    \item Models Used
-        \begin{itemize}
-            \item Dummy baseline (e.g., majority class for classification, mean predictor for regression)
-            \item Classical ML pipeline: Linear models (e.g., logistic regression, linear regression), Random Forests, Support Vector Machines (SVM) + their PCA versions
-            \item Deep Learning models (e.g., dinov2, medicalnet)
-            \item Unified hyperparameter search strategy (e.g., grid search or random search with cross-validation on the training set)
-        \end{itemize}
+\subsubsection{Microstructural normalization}
+    \begin{itemize}
+        \item Binary targets (encoded 0/1), Continuous targets (standardized during training)
+        \item Standardization fitted on training set only
+        \item Applied to validation/test sets 
+        \item Inverse transform for regression outputs (for visualization)
+    \end{itemize}
+
+\subsection{Prediction models}
+    \begin{itemize}
+        \item Dummy baseline (e.g., majority class for classification, mean predictor for regression)
+        \item Classical ML pipeline: Linear models (e.g., logistic regression, linear regression), Random Forests, Support Vector Machines (SVM) + their PCA versions
+        \item Deep Learning models (e.g., dinov2, medicalnet)
+        \item Unified hyperparameter search strategy (e.g., grid search or random search with cross-validation on the training set)
 \end{itemize}
 
-\subsection{Validation, Evaluation and Visualizations}
+\subsection{Benchmarks tasks and evaluation metrics}
+Task selection rationale: Clinical relevance, data availability, and established benchmarks in the literature.
+
+\subsubsection{Classification} 
+\begin{itemize}
+    \item Task description: Binary diagnosis prediction (e.g., ASD vs. TD)
+    \item Evaluation Metrics: Accuracy, AUC, F1-score
+\end{itemize}
+
+\subsubsection{Regression} 
+\begin{itemize}
+    \item Task description: Age prediction (brain age estimation)
+    \item Evaluation Metrics: R², MAE
+\end{itemize}
+
+\subsection{Evaluation protocols}
+
 \begin{itemize}
     \item Data Splitting Strategy (Fixed train/test splits)
     \item Cross-validation within training set. Stratification
     \item No information leakage
-    \item Explanation of plots and statistics
+    \item Mean ± std across folds
+    \item Statistical comparison tests (e.g., paired t-tests, Wilcoxon signed-rank tests) to assess significance of performance differences between models
 \end{itemize}
+
+% \subsection{Prediction}
+% \begin{itemize}
+%     \item Feature normalization
+%         \begin{itemize}
+%             \item Binary targets (encoded 0/1), Continuous targets (standardized during training)
+%             \item Standardization fitted on training set only
+%             \item Applied to validation/test sets 
+%             \item Inverse transform for regression outputs (for visualization)
+%         \end{itemize}
+%     \item Task definitions and labels and reasons for task selection
+%         \begin{itemize}
+%             \item Classification: Binary diagnosis prediction (e.g., ASD vs. TD)
+%             \item Regression: Age prediction (brain age estimation)
+%             \item Task selection rationale: Clinical relevance, data availability, and established benchmarks in the literature
+%         \end{itemize}
+%     \item Evaluation Metrics
+%         \begin{itemize}
+%             \item Classification: Accuracy, AUC, F1-score
+%             \item Regression: R², MAE
+%             \item Mean ± std across folds
+%             \item Statistical comparison tests (e.g., paired t-tests, Wilcoxon signed-rank tests) to assess significance of performance differences between models
+%         \end{itemize}
+%     \item Models Used
+%         \begin{itemize}
+%             \item Dummy baseline (e.g., majority class for classification, mean predictor for regression)
+%             \item Classical ML pipeline: Linear models (e.g., logistic regression, linear regression), Random Forests, Support Vector Machines (SVM) + their PCA versions
+%             \item Deep Learning models (e.g., dinov2, medicalnet)
+%             \item Unified hyperparameter search strategy (e.g., grid search or random search with cross-validation on the training set)
+%         \end{itemize}
+% \end{itemize}
+
+% \subsection{Validation, Evaluation and Visualizations}
+% \begin{itemize}
+%     \item Data Splitting Strategy (Fixed train/test splits)
+%     \item Cross-validation within training set. Stratification
+%     \item No information leakage
+%     \item Explanation of plots and statistics
+% \end{itemize}
