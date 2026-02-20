@@ -1,14 +1,51 @@
-* PLOT: Scheme of the benchmark
+Start with a general introduction of this section that introduce each component of your benchmark + add a figure that presents an overview.
 
 Our benchmark agregates datasets with each dataset preprocessed with the same pipeline, with the exception of HCP which has its own preprocessing pipeline. We perform the feature extraction/data preparation and apply rigorously the analysis and cross validation that we are going to explain.
 \subsection{Datasets}
-\begin{itemize}
-    \item Number of subjects
-    \item Age range / demographics
-    \item Scanner details
-    \item Acquisition protocol or summary table with acquisition parameters
-    \item Prediction targets (classification/regression)
-\end{itemize}
+    
+% \begin{itemize}
+%     \item Introduction sentence about why you picked these datasets
+%     \item Introduce Number of subjects
+%     \item Age range / demographics
+%     \item Scanner details
+%     \item Acquisition protocol or summary table with acquisition parameters
+%     \item Prediction targets (classification/regression)
+% \end{itemize}
+To ensure reproducibility, we evaluate our benchmark on three publicly available datasets 
+covering both healthy and clinical populations, offering diverse demographics, scanner 
+types, and acquisition protocols. For healthy cohorts, we utilize the Human Connectome 
+Project (HCP) Young Adult dataset and the Cambridge Centre for Ageing and Neuroscience 
+(Cam-CAN) dataset, both targeting gender and age prediction (classification and regression, respectively). 
+After filtering, the HCP cohort comprises 1,036 subjects (474 males, 562 females; ages 22-37). HCP data were 
+acquired on a customized Siemens 3T Connectome scanner using a multi-shell Spin-Echo EPI sequence 
+(TR/TE = 5520/89.5 ms, 1.25 mm isotropic, multiband factor 3; $b$-values = 1000, 2000, 3000 
+s/mm$^2$, 90 directions/shell). The Cam-CAN cohort includes 629 subjects (316 males, 313 females; 
+ages 18-88), scanned on a Siemens 3T TIM Trio using a 2D twice-refocused SE EPI sequence 
+(TR/TE = 9100/104 ms, 2.0 mm isotropic; $b$-values = 1000, 2000 s/mm$^2$, 30 directions each). 
+
+For clinical evaluation, we use the Autism Brain Imaging Data Exchange II (ABIDE II) dataset, 
+chosen over ABIDE I due to the availability of diffusion MRI. Targeting Autism Spectrum Disorder 
+(ASD) diagnosis (classification), the filtered ABIDE II cohort consists of 218 subjects 
+(186 males, 32 females; ages 5-64), \textbf{including 119 typically developing individuals and 99 with 
+ASD (NEEDS TO VERIFY)}. As a multi-site dataset, ABIDE II utilizes various 3T scanners (e.g., Siemens, GE) 
+with site-specific single-shell diffusion protocols, providing a realistic scenario for 
+evaluating model robustness to scanner heterogeneity.
+
+% \begin{table*}[htbp]
+%     \centering
+%     \caption{Diffusion MRI acquisition parameters for HCP and Cam-CAN datasets.}
+%     \label{tab:acquisition_params}
+%     \begin{tabular}{lccccccccc}
+%         \toprule
+%         \textbf{Dataset} & \textbf{Sequence} & \textbf{TR/TE (ms)} & \textbf{Res. (mm)} & \textbf{FOV (mm)} & \textbf{Slices} & \textbf{$b$-values (s/mm$^2$)} & \textbf{Dirs.} & \textbf{Echo Sp. (ms)} & \textbf{MB} \\
+%         \midrule
+%         \textbf{HCP} & SE EPI & 5520 / 89.5 & 1.25 iso & 210$\times$180 & 111 & 1000, 2000, 3000 & 90/shell & 0.78 & 3 \\
+%         \textbf{Cam-CAN} & 2D SE EPI & 9100 / 104 & 2.0 iso & 192$\times$192 & 66 & 1000, 2000 & 30 & 0.72 & - \\
+%         \bottomrule
+%     \end{tabular}
+% \end{table*}
+
+If space (unlikely):
 * PLOTS: Demographic distribution (age histograms) | Table with demographics summary (gender classes, age range...)
 
 \subsection{Preprocessing and Feature Extraction}
@@ -20,27 +57,69 @@ Our benchmark agregates datasets with each dataset preprocessed with the same pi
     \item Masking strategy
 \end{itemize}
 
-\subsubsection{Feature extraction}
-\begin{itemize}
-    \item White and Gray matter computation (Maybe merge in Matter representation and include a table with differences between both representations(?))
-    \item Input: Microstructure information
-\end{itemize}
-    \paragraph{Gray Matter Representation}
-    \begin{itemize}
-        \item Voxel-wise features
-        \item High-dimensional representation (~64k features)
-        \item Mask-based extraction
-    \end{itemize}
-    Explain that voxel-wise features preserve spatial resolution but increase dimensionality and risk of overfitting.
+\subsubsection{Microstructural Representation}
+% Explain here the different forms of input representation.
+% The word "feature representation" is ambigiuous because neural network also extract features in a data-driven way. That's why I would rather use the term like "Microstructural Representation".
+% Explain why differences between white and gray matter. Give references here about why there are differences.
+% %%%%%%%%%%%%%%
+% To capture the distinct properties of the brain, we extract specific inputs for gray and 
+% white matter. We use the term ``microstructural representation'' rather than ``feature representation'' 
+% to clearly distinguish our explicitly computed biological metrics from the latent features learned 
+% data-drivenly by neural networks. Gray and white matter exhibit fundamentally different diffusion 
+% profiles due to their distinct cellular architectures—gray matter being rich in cell bodies and 
+% dendrites, while white matter consists primarily of myelinated axonal tracts \cite{jones2010diffusion, 
+% basser1994mr}. Consequently, we employ tailored extraction strategies for each tissue type using our 
+% automated preprocessing pipeline.
 
-    \paragraph{White Matter Representation}
-    \begin{itemize}
-        \item Tract-based aggregation
-        \item Mean values per tract (~48 features)
-        \item Reduced dimensionality
-        \item Anatomical interpretability
-    \end{itemize}
-    Justify tract-averaged representation: Noise reduction, improved stability, lower dimensional feature space, anatomically meaningful structure
+\paragraph{Gray Matter Representation}
+Gray matter microstructure was represented on the subject-specific cortical surface reconstructed from 
+\textbf{T1-weighted images using the Desikan–Killiany atlas (aparc) (REVIEW)}. For each subject, cortical meshes 
+(white/pial surfaces) were generated and diffusion-derived scalar maps (e.g., MD, SH-based metrics) 
+were computed in native diffusion space and rigidly aligned to the anatomical space. Voxelwise 
+diffusion measures were then projected onto the individual cortical surface using ribbon-constrained 
+sampling, preserving vertex-wise resolution (~64k vertices per hemisphere). This subject-specific 
+surface representation was chosen to respect cortical geometry, reduce partial-volume effects, and 
+maintain high spatial specificity while enabling anatomically consistent regional correspondence via 
+the atlas labels across subjects.
+    % \begin{itemize}
+    %     \item Voxel-wise features
+    %     \item High-dimensional representation (~64k features)
+    %     \item Mask-based extraction
+    % \end{itemize}
+    % Explain that voxel-wise features preserve spatial resolution but increase dimensionality and risk of overfitting.
+
+\paragraph{White Matter Representation}
+White matter microstructure was represented within a standardized tract space using the Tract-Based 
+Spatial Statistics (TBSS) framework. Diffusion-derived scalar maps were nonlinearly registered to 
+standard space, projected onto the group-wise white matter skeleton to minimize partial volume effects 
+and residual misalignment, and summarized using the JHU White-Matter Tractography Atlas. Mean 
+microstructural values were extracted from 48 major bundles defined in the atlas, yielding a compact 
+tract-level representation per metric. We intentionally adopted this skeleton-based, atlas-constrained 
+strategy rather than subject-specific tractography to enforce anatomical correspondence across subjects,
+ reduce variability introduced by tracking parameters, and enhance robustness in a multi-dataset 
+ benchmarking setting. Although this representation sacrifices voxel-level granularity relative to the 
+ cortical surface analysis, it provides reproducible, homologous bundle definitions across datasets and
+  mitigates registration and tract delineation inconsistencies—thereby strengthening cross-cohort 
+  comparability and methodological stability.
+
+
+% White matter microstructure was summarized within a common tract space using a predefined tract 
+% dictionary derived from a standardized atlas-based segmentation (e.g., 48 major bundles). Diffusion 
+% scalar maps were computed voxelwise in native space and projected onto a template skeleton to ensure 
+% anatomical correspondence across subjects. For each tract, mean microstructural values were extracted, 
+% yielding a compact 48-dimensional representation per metric. This tract-averaged template-based 
+% strategy was selected to ensure cross-subject anatomical consistency, reduce variability arising from 
+% subject-specific tractography, and improve robustness in a benchmarking setting. Although this results 
+% in lower dimensionality compared to the vertex-wise cortical representation, it provides stable, 
+% reproducible white matter features aligned to homologous bundles across datasets.
+
+    % \begin{itemize}
+    %     \item Tract-based aggregation
+    %     \item Mean values per tract (~48 features)
+    %     \item Reduced dimensionality
+    %     \item Anatomical interpretability
+    % \end{itemize}
+    % Justify tract-averaged representation: Noise reduction, improved stability, lower dimensional feature space, anatomically meaningful structure
 
 \subsection{Prediction}
 \begin{itemize}
