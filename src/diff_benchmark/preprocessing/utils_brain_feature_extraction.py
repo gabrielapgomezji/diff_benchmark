@@ -236,7 +236,7 @@ def compute_rtop(
         rtop_ventricles = map_model.fit(dwi_ventricles.T).rtop()
 
         nrtop = rtop / rtop_ventricles[~np.isnan(rtop_ventricles)].mean()
-        nrtop = nrtop.clip(0, np.percentile(nrtop[~np.isnan(nrtop)], 99))
+        # nrtop = nrtop.clip(0, np.percentile(nrtop[~np.isnan(nrtop)], 99))
         nrtop_img = masker.inverse_transform(nrtop.T)
         return nrtop_img
 

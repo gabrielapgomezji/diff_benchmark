@@ -9,6 +9,7 @@ import pandas as pd
 
 DEFAULT_COMBOS = [
     ("hcp", "Gender", "binary_classification"),
+    ("hcp", "Age", "regression"),
     ("camcan", "Age", "regression"),
     ("camcan", "Gender", "binary_classification"),
     ("abide", "DX_GROUP", "binary_classification"),
