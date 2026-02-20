@@ -1,6 +1,23 @@
 Start with a general introduction of this section that introduce each component of your benchmark + add a figure that presents an overview.
 
-Our benchmark agregates datasets with each dataset preprocessed with the same pipeline, with the exception of HCP which has its own preprocessing pipeline. We perform the feature extraction/data preparation and apply rigorously the analysis and cross validation that we are going to explain.
+Our proposed benchmark provides a standardized, end-to-end framework for evaluating predictive models 
+on diffusion MRI data. As illustrated in Figure~\ref{fig:benchmark_overview}, the pipeline comprises 
+several interconnected modules: uniform preprocessing, microstructural feature 
+extraction, predictive modeling, and rigorous evaluation. Specifically, our benchmark applys a unified 
+preprocessing pipeline to all cohorts—with the exception of the HCP dataset, which utilizes its own 
+established preprocessing pipeline. Following preprocessing, we perform tailored feature extraction 
+to capture tissue-specific microstructural representations. Finally, we apply a rigorous, standardized 
+cross-validation and analysis protocol to evaluate a wide spectrum of predictive models, ensuring 
+reproducibility and fair comparison.
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{Benchmark.drawio.pdf}
+    \caption{Overview of the proposed diffusion MRI benchmark pipeline, illustrating the end-to-end 
+    process from preprocessing to microstructural feature extraction, predictive modeling, and 
+    evaluation.}
+    \label{fig:benchmark_overview}
+\end{figure}
+
 \subsection{Datasets}
     
 % \begin{itemize}
@@ -26,10 +43,13 @@ ages 18-88), scanned on a Siemens 3T TIM Trio using a 2D twice-refocused SE EPI 
 For clinical evaluation, we use the Autism Brain Imaging Data Exchange II (ABIDE II) dataset, 
 chosen over ABIDE I due to the availability of diffusion MRI. Targeting Autism Spectrum Disorder 
 (ASD) diagnosis (classification), the filtered ABIDE II cohort consists of 218 subjects 
-(186 males, 32 females; ages 5-64), \textbf{including 119 typically developing individuals and 99 with 
-ASD (NEEDS TO VERIFY)}. As a multi-site dataset, ABIDE II utilizes various 3T scanners (e.g., Siemens, GE) 
-with site-specific single-shell diffusion protocols, providing a realistic scenario for 
-evaluating model robustness to scanner heterogeneity.
+(186 males, 32 females; ages 5-64), including 119 with ASD and 99 controls. As a multi-site dataset, 
+ABIDE II utilizes various 3T scanners (e.g., Siemens, GE) 
+with highly heterogeneous, site-specific single-shell diffusion protocols. Across the included sites, 
+spatial resolutions range from 0.94 to 3.0 mm, TR/TE from 5200-20244/78-101 ms, $b$-values include 
+1000, 1500, and 2500 s/mm$^2$, and diffusion directions vary between 32 and 64. This extreme variability 
+provides a realistic scenario for evaluating model robustness to scanner heterogeneity.
+
 
 % \begin{table*}[htbp]
 %     \centering
@@ -45,8 +65,8 @@ evaluating model robustness to scanner heterogeneity.
 %     \end{tabular}
 % \end{table*}
 
-If space (unlikely):
-* PLOTS: Demographic distribution (age histograms) | Table with demographics summary (gender classes, age range...)
+% If space (unlikely):
+% * PLOTS: Demographic distribution (age histograms) | Table with demographics summary (gender classes, age range...)
 
 \subsection{Preprocessing and Feature Extraction}
 \subsubsection{Preprocessing (Himanshu)}
@@ -73,7 +93,7 @@ If space (unlikely):
 
 \paragraph{Gray Matter Representation}
 Gray matter microstructure was represented on the subject-specific cortical surface reconstructed from 
-\textbf{T1-weighted images using the Desikan–Killiany atlas (aparc) (REVIEW)}. For each subject, cortical meshes 
+\textbf{T1-weighted images using the Desikan–Killiany atlas (aparc)}. For each subject, cortical meshes 
 (white/pial surfaces) were generated and diffusion-derived scalar maps (e.g., MD, SH-based metrics) 
 were computed in native diffusion space and rigidly aligned to the anatomical space. Voxelwise 
 diffusion measures were then projected onto the individual cortical surface using ribbon-constrained 
@@ -121,47 +141,122 @@ strategy rather than subject-specific tractography to enforce anatomical corresp
     % \end{itemize}
     % Justify tract-averaged representation: Noise reduction, improved stability, lower dimensional feature space, anatomically meaningful structure
 
-\subsubsection{Microstructural normalization}
-    \begin{itemize}
-        \item Binary targets (encoded 0/1), Continuous targets (standardized during training)
-        \item Standardization fitted on training set only
-        \item Applied to validation/test sets 
-        \item Inverse transform for regression outputs (for visualization)
-    \end{itemize}
+
+\subsubsection{Microstructural models and normalization}
+To comprehensively capture the biological properties of brain tissue, we compute a diverse set of 
+microstructural metrics using established diffusion models. These metrics were selected to represent 
+different facets of tissue architecture, ranging from basic diffusion magnitude to complex restricted 
+environments:
+\begin{itemize}
+    \item \textbf{Baseline ($b=0$):} The averaged T2-weighted non-diffusion signal is included as a 
+    baseline to disentangle purely diffusion-driven predictive power from underlying structural T2 
+    contrast.
+    \item \textbf{Mean Diffusivity (MD):} Computed via Diffusion Tensor Imaging (DTI), representing the overall magnitude of water diffusion.
+    \item \textbf{Mean Kurtosis (MK):} Derived from Diffusion Kurtosis Imaging (DKI), capturing the 
+    non-Gaussianity of diffusion as a proxy for microstructural heterogeneity and tissue complexity.
+    \item \textbf{Return-To-Origin Probability (RTOP):} Estimated using a Laplacian-regularized Mean 
+    Apparent Propagator (MAP-MRI) model. RTOP reflects the probability of water molecules remaining in 
+    their initial position, serving as a strong indicator of cellular restriction and density.
+    \item \textbf{Spherical Harmonics (SH) Power:} A model-free representation obtained by computing the 
+    L2 norm of the SH coefficients (up to order 6) directly from the diffusion signal, capturing signal 
+    complexity and anisotropy without assuming a specific tissue compartment model.
+\end{itemize}
+% To mitigate scanner-specific scaling effects and harmonize data across multi-site cohorts 
+% (e.g., ABIDE II), 
+We apply a robust ventricular normalization strategy. For each subject, 
+voxel-wise diffusion metrics are divided by the mean metric value extracted from the cerebrospinal 
+fluid (ventricles). Finally, extreme pathological values are clipped at the 99th percentile to ensure 
+numerical stability during model training.
+
+    % \begin{itemize}
+    %     \item Binary targets (encoded 0/1), Continuous targets (standardized during training)
+    %     \item Standardization fitted on training set only
+    %     \item Applied to validation/test sets 
+    %     \item Inverse transform for regression outputs (for visualization)
+    % \end{itemize}
 
 \subsection{Prediction models}
-    \begin{itemize}
-        \item Dummy baseline (e.g., majority class for classification, mean predictor for regression)
-        \item Classical ML pipeline: Linear models (e.g., logistic regression, linear regression), Random Forests, Support Vector Machines (SVM) + their PCA versions
-        \item Deep Learning models (e.g., dinov2, medicalnet)
-        \item Unified hyperparameter search strategy (e.g., grid search or random search with cross-validation on the training set)
-\end{itemize}
+To establish a comprehensive evaluation, our benchmark incorporates a wide 
+spectrum of predictive models, ranging from simple baselines to advanced deep 
+learning architectures. First, we include dummy estimators (majority class for 
+classification and mean predictor for regression) to provide a lower-bound 
+performance baseline. For classical machine learning, we evaluate linear models 
+(e.g., logistic regression, Lasso), Random Forests, and Support Vector Machines 
+(SVM). Given the high dimensionality of the microstructural representations, we 
+also evaluate these models coupled with Principal Component Analysis (PCA) for 
+feature reduction. 
+
+For deep learning, we benchmark several vision architectures. We leverage 
+pre-trained foundation models, specifically DINOv2 and Curia, utilizing them as 
+frozen feature extractors where representations are computed offline prior to 
+training the prediction head. In contrast, 3D architectures like MedicalNet are 
+fully fine-tuned on our diffusion datasets to adapt to the specific 
+microstructural domains. \textbf{To ensure a fair and rigorous comparison, all models 
+are optimized using a unified hyperparameter search strategy (e.g., grid or 
+random search) with internal cross-validation strictly confined to the training 
+set to prevent data leakage.}
+
+% \begin{itemize}
+%     \item Dummy baseline (e.g., majority class for classification, mean predictor for regression)
+%     \item Classical ML pipeline: Linear models (e.g., logistic regression, linear regression), Random Forests, Support Vector Machines (SVM) + their PCA versions
+%     \item Deep Learning models (e.g., dinov2, medicalnet)
+%     \item Unified hyperparameter search strategy (e.g., grid search or random search with cross-validation on the training set)
+% \end{itemize}
 
 \subsection{Benchmarks tasks and evaluation metrics}
-Task selection rationale: Clinical relevance, data availability, and established benchmarks in the literature.
+% Task selection rationale: Clinical relevance, data availability, and established benchmarks in the literature.
+The selection of prediction tasks in our benchmark is driven by clinical relevance, data availability, 
+and the need to align with established benchmarks in the neuroimaging literature. We evaluate models 
+across two primary paradigms:
 
 \subsubsection{Classification} 
-\begin{itemize}
-    \item Task description: Binary diagnosis prediction (e.g., ASD vs. TD)
-    \item Evaluation Metrics: Accuracy, AUC, F1-score
-\end{itemize}
+For binary classification, we focus on tasks such as Autism Spectrum Disorder (ASD) diagnosis (ASD vs. 
+Typically Developing) using the ABIDE II dataset, as well as gender prediction in the HCP and Cam-CAN 
+cohorts. For all classification tasks, binary targets are strictly encoded as 0 and 1. To comprehensively 
+assess classification performance, especially in the presence of class imbalances, we compute standard 
+and weighted accuracy, precision, recall, and the F1-score.
+
+
+% \begin{itemize}
+%     \item Task description: Binary diagnosis prediction (e.g., ASD vs. TD)
+%     \item Evaluation Metrics: Accuracy, AUC, F1-score
+% \end{itemize}
 
 \subsubsection{Regression} 
-\begin{itemize}
-    \item Task description: Age prediction (brain age estimation)
-    \item Evaluation Metrics: R², MAE
-\end{itemize}
+For continuous targets, we evaluate brain age estimation using the healthy cohorts (HCP and Cam-CAN). 
+During the training of Deep Learning models, these continuous targets are standardized. To prevent data leakage, 
+the standardization parameters are fitted exclusively on the training set and subsequently applied to the 
+validation and test sets. Model performance is quantified using a robust set of metrics to capture 
+different aspects of the error distribution: Root Mean Squared Error (RMSE) and Mean Absolute Error (MAE) 
+(both standard and sample-weighted), R² score, explained variance, Mean Absolute Percentage Error (MAPE), 
+and the Pearson correlation coefficient.
+
+% \begin{itemize}
+%     \item Task description: Age prediction (brain age estimation)
+%     \item Evaluation Metrics: R², MAE
+% \end{itemize}
 
 \subsection{Evaluation protocols}
+To rigorously evaluate the predictive models, we employ a stratified $k$-fold cross-validation strategy. 
+This ensures fixed, reproducible train and test splits while maintaining \textbf{the original target distribution 
+(e.g., class balance for classification or target range for regression)} across all folds. Strict 
+separation between training and testing data is maintained at all stages; preprocessing steps, feature 
+normalization, and hyperparameter tuning are fitted exclusively on the training set of each fold and 
+subsequently applied to the held-out test set, preventing any information leakage. Model performance is 
+aggregated across all folds and reported as the mean $\pm$ standard deviation for each evaluation metric. 
+% Finally, to assess the statistical significance of performance differences between models, we conduct 
+% pairwise statistical comparison tests, such as paired t-tests or Wilcoxon signed-rank tests, on the 
+% fold-wise results.
 
-\begin{itemize}
-    \item Data Splitting Strategy (Fixed train/test splits)
-    \item Cross-validation within training set. Stratification
-    \item No information leakage
-    \item Mean ± std across folds
-    \item Statistical comparison tests (e.g., paired t-tests, Wilcoxon signed-rank tests) to assess significance of performance differences between models
-\end{itemize}
+% \begin{itemize}
+%     \item Data Splitting Strategy (Fixed train/test splits)
+%     \item Cross-validation within training set. Stratification
+%     \item No information leakage
+%     \item Mean ± std across folds
+%     \item Statistical comparison tests (e.g., paired t-tests, Wilcoxon signed-rank tests) to assess significance of performance differences between models
+% \end{itemize}
 
+%%%%%%%%%%%
 % \subsection{Prediction}
 % \begin{itemize}
 %     \item Feature normalization

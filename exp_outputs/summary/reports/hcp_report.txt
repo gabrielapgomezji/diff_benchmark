@@ -3,86 +3,120 @@ DATASET REPORT: hcp
 
 GROUP: model_name=curia, tissue_type=gray, prediction_task=binary_classification, target=['Gender']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: curia_hgramdg_80ad960f (Metric: accuracy_weighted_test_mean, Score: 0.7958)
+  Best Run ID: curia_hgrarog_117b3b18 (Metric: accuracy_weighted_test_mean, Score: 0.8031)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                     Score   PrimaryMetric  bk.learning_rate  data.resize_shape  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id            
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-curia_hgramdg_80ad960f *  0.7958  md             0.0001            None               80ad960f                 ef71797b5608dff02f919f65731...  curia_hgramdg_80ad960f    
-curia_hgrashg_97c451bd    nan     |sh|           0.0001            None               |97c451bd|               |d3e894c9461a10ec237b0a35e2...  |curia_hgrashg_97c451bd|  
-curia_hgramkg_4ec21dcc    nan     |mk|           0.0001            None               |4ec21dcc|               |d39c82417a0883bc79befa3bbd...  |curia_hgramkg_4ec21dcc|  
-curia_hgrarog_117b3b18    nan     |rtop|         0.0001            None               |117b3b18|               |e1ccbaa09c93d3b1f0cedf8022...  |curia_hgrarog_117b3b18|  
-curia_hgramdg_23c8420f    nan     md             |1e-|             |[256, 256]|       |23c8420f|               |ee917a71828a1b79a48a405a68...  |curia_hgramdg_23c8420f|  
-curia_hgramdg_cd44140b    nan     md             0.0001            |[256, 256]|       |cd44140b|               |787641e9fb80a70636218c7f21...  |curia_hgramdg_cd44140b|  
+RunID                     Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id            
+------------------------------------------------------------------------------------------------------------------------------------
+curia_hgrarog_117b3b18 *  0.8031  rtop           117b3b18                 e1ccbaa09c93d3b1f0cedf8022d...  curia_hgrarog_117b3b18    
+curia_hgramdg_80ad960f    0.7953  |md|           |80ad960f|               |ef71797b5608dff02f919f6573...  |curia_hgramdg_80ad960f|  
+curia_hgramkg_4ec21dcc    0.7896  |mk|           |4ec21dcc|               |d39c82417a0883bc79befa3bbd...  |curia_hgramkg_4ec21dcc|  
+curia_hgrashg_97c451bd    0.7827  |sh|           |97c451bd|               |d3e894c9461a10ec237b0a35e2...  |curia_hgrashg_97c451bd|  
+curia_hgrab0g_45fb7ec8    0.5742  |b0|           |45fb7ec8|               |749ddae8ecd03412aa8f2bd84c...  |curia_hgrab0g_45fb7ec8|  
+
+========================================
+
+
+GROUP: model_name=curia, tissue_type=gray, prediction_task=regression, target=['Age']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: curia_hgraroa_01e0c668 (Metric: r2_test_mean, Score: -0.0123)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                     Score    PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id            
+-------------------------------------------------------------------------------------------------------------------------------------
+curia_hgraroa_01e0c668 *  -0.0123  rtop           01e0c668                 6c66307be879c76baf0ffd005ef...  curia_hgraroa_01e0c668    
+curia_hgramda_fce92f2d    -0.0042  |md|           |fce92f2d|               |f96f62c65e27308e10db24e0e9...  |curia_hgramda_fce92f2d|  
+curia_hgramka_96058c53    -0.0002  |mk|           |96058c53|               |2b36b746ded641abbaf034cffc...  |curia_hgramka_96058c53|  
+curia_hgrasha_edfab241    0.0059   |sh|           |edfab241|               |70167d817edc170439b19cdba1...  |curia_hgrasha_edfab241|  
+curia_hgrab0a_4168f167    nan      |b0|           |4168f167|               |60810da98ae409240c239790d2...  |curia_hgrab0a_4168f167|  
 
 ========================================
 
 
 GROUP: model_name=curia, tissue_type=white, prediction_task=binary_classification, target=['Gender']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: curia_hwhimdg_3071ce99 (Metric: accuracy_weighted_test_mean, Score: 0.7788)
+  Best Run ID: curia_hwhimkg_8b5fa714 (Metric: accuracy_weighted_test_mean, Score: 0.8013)
   Highlighting: Parameters different from Best Run are enclosed in |...|
 RunID                     Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id            
 ------------------------------------------------------------------------------------------------------------------------------------
-curia_hwhimdg_3071ce99 *  0.7788  md             3071ce99                 bf9680c5a6cc3028b1fa1b415b7...  curia_hwhimdg_3071ce99    
-curia_hwhishg_5e17dc59    nan     |sh|           |5e17dc59|               |fd3d102cd1e158d9ec6f486279...  |curia_hwhishg_5e17dc59|  
-curia_hwhimkg_8b5fa714    nan     |mk|           |8b5fa714|               |ed32e143cb86fa10a93cb6e140...  |curia_hwhimkg_8b5fa714|  
+curia_hwhimkg_8b5fa714 *  0.8013  mk             8b5fa714                 ed32e143cb86fa10a93cb6e1401...  curia_hwhimkg_8b5fa714    
+curia_hwhishg_5e17dc59    0.7990  |sh|           |5e17dc59|               |fd3d102cd1e158d9ec6f486279...  |curia_hwhishg_5e17dc59|  
+curia_hwhib0g_c989c7ff    0.7855  |b0|           |c989c7ff|               |37baa64a81f1e0d2fdda0428b1...  |curia_hwhib0g_c989c7ff|  
+curia_hwhimdg_3071ce99    0.7646  |md|           |3071ce99|               |bf9680c5a6cc3028b1fa1b415b...  |curia_hwhimdg_3071ce99|  
 curia_hwhirog_8af05401    nan     |rtop|         |8af05401|               |988893e358ad1ff2126d7996a6...  |curia_hwhirog_8af05401|  
+
+========================================
+
+
+GROUP: model_name=curia, tissue_type=white, prediction_task=regression, target=['Age']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: curia_hwhimka_67ad3b19 (Metric: r2_test_mean, Score: -0.0189)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                     Score    PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id            
+-------------------------------------------------------------------------------------------------------------------------------------
+curia_hwhimka_67ad3b19 *  -0.0189  mk             67ad3b19                 2ead30cb6377cd48850eaef4400...  curia_hwhimka_67ad3b19    
+curia_hwhisha_5df14acb    -0.0047  |sh|           |5df14acb|               |68cfe57acae090566ae2e1c94c...  |curia_hwhisha_5df14acb|  
+curia_hwhimda_cab04edc    -0.0042  |md|           |cab04edc|               |78f73acfa1ec22635c899cbb45...  |curia_hwhimda_cab04edc|  
+curia_hwhib0a_497d768f    -0.0009  |b0|           |497d768f|               |f54ca2e1d8941200c3e48a633b...  |curia_hwhib0a_497d768f|  
+curia_hwhiroa_be380c6b    nan      |rtop|         |be380c6b|               |df74b5fdf7250508579d8d030b...  |curia_hwhiroa_be380c6b|  
 
 ========================================
 
 
 GROUP: model_name=dinov2, tissue_type=gray, prediction_task=binary_classification, target=['Gender']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: dinov2_hgrarog_09153c43 (Metric: accuracy_weighted_test_mean, Score: 0.8356)
+  Best Run ID: dinov2_hgrarog_175757de (Metric: accuracy_weighted_test_mean, Score: 0.8370)
   Highlighting: Parameters different from Best Run are enclosed in |...|
 RunID                      Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id             
 --------------------------------------------------------------------------------------------------------------------------------------
-dinov2_hgrarog_09153c43 *  0.8356  rtop           09153c43                 a06fe11a3bee5d12fbc6b504b78...  dinov2_hgrarog_09153c43    
-dinov2_hgramkg_14467093    0.8317  |mk|           |14467093|               |13c0f717b9c78e3313b3771760...  |dinov2_hgramkg_14467093|  
-dinov2_hgrashg_5c682593    0.8265  |sh|           |5c682593|               |a46e86ea926a83ad99822e79fa...  |dinov2_hgrashg_5c682593|  
-dinov2_hgramdg_37fd6da2    0.8232  |md|           |37fd6da2|               |77aec9b9fafe80f335d9638b47...  |dinov2_hgramdg_37fd6da2|  
+dinov2_hgrarog_175757de *  0.8370  rtop           175757de                 1ee5009a64385a18e228b7a9ec5...  dinov2_hgrarog_175757de    
+dinov2_hgramdg_8cc4e63f    0.8339  |md|           |8cc4e63f|               |959125e2aff503a7c655930ab9...  |dinov2_hgramdg_8cc4e63f|  
+dinov2_hgramkg_75096181    0.8271  |mk|           |75096181|               |ea15764e32f0e6a09b87f91472...  |dinov2_hgramkg_75096181|  
+dinov2_hgrashg_891f214c    0.8257  |sh|           |891f214c|               |94263232a32675af4ab927e473...  |dinov2_hgrashg_891f214c|  
+dinov2_hgrab0g_83b93416    0.8231  |b0|           |83b93416|               |f062e33095e319ee2787540da9...  |dinov2_hgrab0g_83b93416|  
 
 ========================================
 
 
 GROUP: model_name=dinov2, tissue_type=gray, prediction_task=regression, target=['Age']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: dinov2_hgramka_c225767a (Metric: r2_test_mean, Score: -0.0047)
+  Best Run ID: dinov2_hgrasha_b7716c5a (Metric: r2_test_mean, Score: 0.0052)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                      Score    PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id             
----------------------------------------------------------------------------------------------------------------------------------------
-dinov2_hgramka_c225767a *  -0.0047  mk             c225767a                 36ceaf1fcd67bcbb6c3a7ed9e2d...  dinov2_hgramka_c225767a    
-dinov2_hgraroa_8e4fba32    -0.0034  |rtop|         |8e4fba32|               |5273068d05944a1f445826d535...  |dinov2_hgraroa_8e4fba32|  
-dinov2_hgramda_53f0e736    -0.0007  |md|           |53f0e736|               |b27115e356809fc2faa280501e...  |dinov2_hgramda_53f0e736|  
-dinov2_hgrasha_7803debd    -0.0002  |sh|           |7803debd|               |a83c410e3469fde9a51b75529e...  |dinov2_hgrasha_7803debd|  
+RunID                      Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id             
+--------------------------------------------------------------------------------------------------------------------------------------
+dinov2_hgrasha_b7716c5a *  0.0052  sh             b7716c5a                 78fad1456247de66bc9bf69e33d...  dinov2_hgrasha_b7716c5a    
+dinov2_hgramda_a7570138    0.0071  |md|           |a7570138|               |9136e52eb53b759e167a5033a6...  |dinov2_hgramda_a7570138|  
+dinov2_hgramka_91abe95b    0.0210  |mk|           |91abe95b|               |0a5860c152e764268e29b7c801...  |dinov2_hgramka_91abe95b|  
+dinov2_hgraroa_9a7ff809    0.0341  |rtop|         |9a7ff809|               |caec8f58849f5b3e27e4142f87...  |dinov2_hgraroa_9a7ff809|  
+dinov2_hgrab0a_9825fa08    nan     |b0|           |9825fa08|               |aaa28fd591b6131765e26eb318...  |dinov2_hgrab0a_9825fa08|  
 
 ========================================
 
 
 GROUP: model_name=dinov2, tissue_type=white, prediction_task=binary_classification, target=['Gender']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: dinov2_hwhishg_2df919c7 (Metric: accuracy_weighted_test_mean, Score: 0.8071)
+  Best Run ID: dinov2_hwhimkg_5144a66e (Metric: accuracy_weighted_test_mean, Score: 0.8149)
   Highlighting: Parameters different from Best Run are enclosed in |...|
 RunID                      Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id             
 --------------------------------------------------------------------------------------------------------------------------------------
-dinov2_hwhishg_2df919c7 *  0.8071  sh             2df919c7                 a50af41fb7504b78db95adbc57b...  dinov2_hwhishg_2df919c7    
-dinov2_hwhimkg_585fd972    0.8068  |mk|           |585fd972|               |222f582cf991395e21cd6494cc...  |dinov2_hwhimkg_585fd972|  
-dinov2_hwhimdg_998a1d85    0.8027  |md|           |998a1d85|               |086cfc91f8daad9ae6277894ed...  |dinov2_hwhimdg_998a1d85|  
-dinov2_hwhirog_08213ada    nan     |rtop|         |08213ada|               |3f28676b202ec65a7927ccd409...  |dinov2_hwhirog_08213ada|  
+dinov2_hwhimkg_5144a66e *  0.8149  mk             5144a66e                 a5109f7cecfad10357b67f905e5...  dinov2_hwhimkg_5144a66e    
+dinov2_hwhimdg_7808a845    0.8146  |md|           |7808a845|               |ff1ef4a31450863ca6933c8ebd...  |dinov2_hwhimdg_7808a845|  
+dinov2_hwhishg_79c1853b    0.8116  |sh|           |79c1853b|               |83a673fa13ffd4170635ea9ab8...  |dinov2_hwhishg_79c1853b|  
+dinov2_hwhib0g_a3e3d646    0.8044  |b0|           |a3e3d646|               |999a3ee43c8f780c733153b7a2...  |dinov2_hwhib0g_a3e3d646|  
+dinov2_hwhirog_a3c5165f    nan     |rtop|         |a3c5165f|               |f0408bfdde1e8a64e74bb37520...  |dinov2_hwhirog_a3c5165f|  
 
 ========================================
 
 
 GROUP: model_name=dinov2, tissue_type=white, prediction_task=regression, target=['Age']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: dinov2_hwhisha_91769b40 (Metric: r2_test_mean, Score: -0.0007)
+  Best Run ID: dinov2_hwhisha_a0b6c208 (Metric: r2_test_mean, Score: 0.0040)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                      Score    PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id             
----------------------------------------------------------------------------------------------------------------------------------------
-dinov2_hwhisha_91769b40 *  -0.0007  sh             91769b40                 c58ab8ed8347940db7a29618522...  dinov2_hwhisha_91769b40    
-dinov2_hwhimda_e1359d05    -0.0006  |md|           |e1359d05|               |f08271ba01b8a7db599c892dc5...  |dinov2_hwhimda_e1359d05|  
-dinov2_hwhimka_8069a3cd    -0.0006  |mk|           |8069a3cd|               |1863eaad606e9c1794c168f367...  |dinov2_hwhimka_8069a3cd|  
-dinov2_hwhiroa_65ee0b68    nan      |rtop|         |65ee0b68|               |5891d0a9b30282adf7146816e7...  |dinov2_hwhiroa_65ee0b68|  
+RunID                      Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id             
+--------------------------------------------------------------------------------------------------------------------------------------
+dinov2_hwhisha_a0b6c208 *  0.0040  sh             a0b6c208                 0e09609301b24bc7d929df7b3b2...  dinov2_hwhisha_a0b6c208    
+dinov2_hwhimka_c709e8b7    0.0120  |mk|           |c709e8b7|               |64af9d5961798db1827cec7179...  |dinov2_hwhimka_c709e8b7|  
+dinov2_hwhimda_a5d31cc5    0.0158  |md|           |a5d31cc5|               |baa70ac5eba16b80e929a430bc...  |dinov2_hwhimda_a5d31cc5|  
+dinov2_hwhib0a_e65f8d1f    0.0167  |b0|           |e65f8d1f|               |a7d61aad9ed98a4f49d98c01c6...  |dinov2_hwhib0a_e65f8d1f|  
+dinov2_hwhiroa_3a963624    nan     |rtop|         |3a963624|               |a11b1a3b1b5906fef545694f72...  |dinov2_hwhiroa_3a963624|  
 
 ========================================
 
@@ -91,56 +125,12 @@ GROUP: model_name=forest, tissue_type=gray, prediction_task=binary_classificatio
 --------------------------------------------------------------------------------------------------------------------------------------------
   Best Run ID: forest_hgramkg_7e068800 (Metric: accuracy_weighted_test_mean, Score: 0.7903)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                      Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id             
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-forest_hgramkg_7e068800 *  0.7903  mk             1                               7e068800                 False                       afa144c3ead1cd95b3e323c8f95...  forest_hgramkg_7e068800    
-forest_hgramkg_8051941e    0.7799  mk             |0.45|                          |8051941e|               |True|                      afa144c3ead1cd95b3e323c8f95...  |forest_hgramkg_8051941e|  
-forest_hgramkg_373b32fd    0.7793  mk             |0.35|                          |373b32fd|               |True|                      afa144c3ead1cd95b3e323c8f95...  |forest_hgramkg_373b32fd|  
-forest_hgramdg_8b941a92    0.7758  |md|           1                               |8b941a92|               False                       |22f9ac3badcf2ea91a04be7a82...  |forest_hgramdg_8b941a92|  
-forest_hgrarog_3879a79d    0.7729  |rtop|         |0.65|                          |3879a79d|               |True|                      |8124a383f62b01fcb0cbe683a9...  |forest_hgrarog_3879a79d|  
-forest_hgrarog_2ecdb943    0.7709  |rtop|         1                               |2ecdb943|               False                       |8124a383f62b01fcb0cbe683a9...  |forest_hgrarog_2ecdb943|  
-forest_hgramdg_21c46464    0.7701  |md|           |0.65|                          |21c46464|               |True|                      |22f9ac3badcf2ea91a04be7a82...  |forest_hgramdg_21c46464|  
-forest_hgramkg_7d7ba932    0.7693  mk             |0.8|                           |7d7ba932|               |True|                      afa144c3ead1cd95b3e323c8f95...  |forest_hgramkg_7d7ba932|  
-forest_hgramdg_09b40081    0.7689  |md|           |0.9|                           |09b40081|               |True|                      |22f9ac3badcf2ea91a04be7a82...  |forest_hgramdg_09b40081|  
-forest_hgramdg_f2152c57    0.7685  |md|           |0.75|                          |f2152c57|               |True|                      |22f9ac3badcf2ea91a04be7a82...  |forest_hgramdg_f2152c57|  
-forest_hgrarog_83f5c378    0.7683  |rtop|         |0.9|                           |83f5c378|               |True|                      |8124a383f62b01fcb0cbe683a9...  |forest_hgrarog_83f5c378|  
-forest_hgramdg_a0c87d85    0.7668  |md|           |0.35|                          |a0c87d85|               |True|                      |22f9ac3badcf2ea91a04be7a82...  |forest_hgramdg_a0c87d85|  
-forest_hgramdg_3d767f07    0.7667  |md|           |0.8|                           |3d767f07|               |True|                      |22f9ac3badcf2ea91a04be7a82...  |forest_hgramdg_3d767f07|  
-forest_hgrarog_f063508d    0.7664  |rtop|         |0.75|                          |f063508d|               |True|                      |8124a383f62b01fcb0cbe683a9...  |forest_hgrarog_f063508d|  
-forest_hgramdg_5d0eee84    0.7657  |md|           |0.5|                           |5d0eee84|               |True|                      |22f9ac3badcf2ea91a04be7a82...  |forest_hgramdg_5d0eee84|  
-forest_hgrarog_c5e73016    0.7653  |rtop|         |0.8|                           |c5e73016|               |True|                      |8124a383f62b01fcb0cbe683a9...  |forest_hgrarog_c5e73016|  
-forest_hgramdg_3fa30126    0.7606  |md|           |0.45|                          |3fa30126|               |True|                      |22f9ac3badcf2ea91a04be7a82...  |forest_hgramdg_3fa30126|  
-forest_hgrarog_918711b3    0.7603  |rtop|         |0.5|                           |918711b3|               |True|                      |8124a383f62b01fcb0cbe683a9...  |forest_hgrarog_918711b3|  
-forest_hgrarog_1c863668    0.7570  |rtop|         |0.35|                          |1c863668|               |True|                      |8124a383f62b01fcb0cbe683a9...  |forest_hgrarog_1c863668|  
-forest_hgramkg_e5478e86    0.7543  mk             |0.75|                          |e5478e86|               |True|                      afa144c3ead1cd95b3e323c8f95...  |forest_hgramkg_e5478e86|  
-forest_hgrarog_4a15c6d4    0.7509  |rtop|         |0.45|                          |4a15c6d4|               |True|                      |8124a383f62b01fcb0cbe683a9...  |forest_hgrarog_4a15c6d4|  
-forest_hgramdg_a1bd5919    0.7493  |md|           |0.2|                           |a1bd5919|               |True|                      |22f9ac3badcf2ea91a04be7a82...  |forest_hgramdg_a1bd5919|  
-forest_hgrarog_5655e1e8    0.7487  |rtop|         |0.1|                           |5655e1e8|               |True|                      |8124a383f62b01fcb0cbe683a9...  |forest_hgrarog_5655e1e8|  
-forest_hgramkg_444dbcdb    0.7453  mk             |0.5|                           |444dbcdb|               |True|                      afa144c3ead1cd95b3e323c8f95...  |forest_hgramkg_444dbcdb|  
-forest_hgrarog_d979cf32    0.7403  |rtop|         |0.2|                           |d979cf32|               |True|                      |8124a383f62b01fcb0cbe683a9...  |forest_hgrarog_d979cf32|  
-forest_hgramkg_e96fbd86    0.7376  mk             |0.65|                          |e96fbd86|               |True|                      afa144c3ead1cd95b3e323c8f95...  |forest_hgramkg_e96fbd86|  
-forest_hgramkg_126fdc72    0.7286  mk             |0.2|                           |126fdc72|               |True|                      afa144c3ead1cd95b3e323c8f95...  |forest_hgramkg_126fdc72|  
-forest_hgramdg_270c4e28    0.7215  |md|           |0.1|                           |270c4e28|               |True|                      |22f9ac3badcf2ea91a04be7a82...  |forest_hgramdg_270c4e28|  
-forest_hgrashg_8d7069e3    0.7041  |sh|           1                               |8d7069e3|               False                       |3c6e037b038554f411f656f57e...  |forest_hgrashg_8d7069e3|  
-forest_hgrashg_51585795    0.6991  |sh|           |0.35|                          |51585795|               |True|                      |3c6e037b038554f411f656f57e...  |forest_hgrashg_51585795|  
-forest_hgrashg_ef7cb47c    0.6937  |sh|           |0.45|                          |ef7cb47c|               |True|                      |3c6e037b038554f411f656f57e...  |forest_hgrashg_ef7cb47c|  
-forest_hgrashg_5013611d    0.6891  |sh|           |0.65|                          |5013611d|               |True|                      |3c6e037b038554f411f656f57e...  |forest_hgrashg_5013611d|  
-forest_hgrashg_a1b0b3df    0.6888  |sh|           |0.8|                           |a1b0b3df|               |True|                      |3c6e037b038554f411f656f57e...  |forest_hgrashg_a1b0b3df|  
-forest_hgrashg_a56c1b32    0.6834  |sh|           |0.5|                           |a56c1b32|               |True|                      |3c6e037b038554f411f656f57e...  |forest_hgrashg_a56c1b32|  
-forest_hgrashg_2e25d7bd    0.6784  |sh|           |0.75|                          |2e25d7bd|               |True|                      |3c6e037b038554f411f656f57e...  |forest_hgrashg_2e25d7bd|  
-forest_hgrashg_29279432    0.6358  |sh|           |0.2|                           |29279432|               |True|                      |3c6e037b038554f411f656f57e...  |forest_hgrashg_29279432|  
-forest_hgramkg_ced84137    0.6207  mk             |0.1|                           |ced84137|               |True|                      afa144c3ead1cd95b3e323c8f95...  |forest_hgramkg_ced84137|  
-forest_hgrashg_fb40e7db    0.5533  |sh|           |0.1|                           |fb40e7db|               |True|                      |3c6e037b038554f411f656f57e...  |forest_hgrashg_fb40e7db|  
-forest_hgramdg_81c444a8    nan     |md|           |0.95|                          |81c444a8|               |True|                      |22f9ac3badcf2ea91a04be7a82...  |forest_hgramdg_81c444a8|  
-forest_hgramdg_3f303af4    nan     |md|           |1.0|                           |3f303af4|               |True|                      |22f9ac3badcf2ea91a04be7a82...  |forest_hgramdg_3f303af4|  
-forest_hgrashg_c3be52a2    nan     |sh|           |0.9|                           |c3be52a2|               |True|                      |3c6e037b038554f411f656f57e...  |forest_hgrashg_c3be52a2|  
-forest_hgrashg_32d11f20    nan     |sh|           |0.95|                          |32d11f20|               |True|                      |3c6e037b038554f411f656f57e...  |forest_hgrashg_32d11f20|  
-forest_hgrashg_a03a2960    nan     |sh|           |1.0|                           |a03a2960|               |True|                      |3c6e037b038554f411f656f57e...  |forest_hgrashg_a03a2960|  
-forest_hgramkg_1f30aeba    nan     mk             |0.9|                           |1f30aeba|               |True|                      afa144c3ead1cd95b3e323c8f95...  |forest_hgramkg_1f30aeba|  
-forest_hgramkg_7c944e52    nan     mk             |0.95|                          |7c944e52|               |True|                      afa144c3ead1cd95b3e323c8f95...  |forest_hgramkg_7c944e52|  
-forest_hgramkg_8d5d82d5    nan     mk             |1.0|                           |8d5d82d5|               |True|                      afa144c3ead1cd95b3e323c8f95...  |forest_hgramkg_8d5d82d5|  
-forest_hgrarog_c769a15b    nan     |rtop|         |0.95|                          |c769a15b|               |True|                      |8124a383f62b01fcb0cbe683a9...  |forest_hgrarog_c769a15b|  
-forest_hgrarog_7e2c0c7d    nan     |rtop|         |1.0|                           |7e2c0c7d|               |True|                      |8124a383f62b01fcb0cbe683a9...  |forest_hgrarog_7e2c0c7d|  
+RunID                      Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id             
+--------------------------------------------------------------------------------------------------------------------------------------
+forest_hgramkg_7e068800 *  0.7903  mk             7e068800                 afa144c3ead1cd95b3e323c8f95...  forest_hgramkg_7e068800    
+forest_hgramdg_8b941a92    0.7758  |md|           |8b941a92|               |22f9ac3badcf2ea91a04be7a82...  |forest_hgramdg_8b941a92|  
+forest_hgrarog_2ecdb943    0.7709  |rtop|         |2ecdb943|               |8124a383f62b01fcb0cbe683a9...  |forest_hgrarog_2ecdb943|  
+forest_hgrashg_8d7069e3    0.7041  |sh|           |8d7069e3|               |3c6e037b038554f411f656f57e...  |forest_hgrashg_8d7069e3|  
 
 ========================================
 
@@ -161,58 +151,13 @@ forest_hgraroa_3ece5f3b    0.0736  |rtop|         |3ece5f3b|               |12a5
 
 GROUP: model_name=forest, tissue_type=white, prediction_task=binary_classification, target=['Gender']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: forest_hwhimkg_ef78a917 (Metric: accuracy_weighted_test_mean, Score: 0.8627)
+  Best Run ID: forest_hwhishg_1291d2e1 (Metric: accuracy_weighted_test_mean, Score: 0.8602)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                      Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id             
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-forest_hwhimkg_ef78a917 *  0.8627  mk             0.95                            ef78a917                 True                        6e66aa9add1c1951bfa3bac3e22...  forest_hwhimkg_ef78a917    
-forest_hwhimdg_db370c17    0.8621  |md|           |0.8|                           |db370c17|               True                        |3076a91d3ebfca50517f9d3bc3...  |forest_hwhimdg_db370c17|  
-forest_hwhimkg_d5b0bf9b    0.8620  mk             |0.9|                           |d5b0bf9b|               True                        6e66aa9add1c1951bfa3bac3e22...  |forest_hwhimkg_d5b0bf9b|  
-forest_hwhishg_1291d2e1    0.8602  |sh|           |1|                             |1291d2e1|               |False|                     |1705e71a5fd3c7e492afb05cf7...  |forest_hwhishg_1291d2e1|  
-forest_hwhishg_e86876c2    0.8602  |sh|           |1.0|                           |e86876c2|               True                        |1705e71a5fd3c7e492afb05cf7...  |forest_hwhishg_e86876c2|  
-forest_hwhimkg_9bfcb18a    0.8595  mk             |1|                             |9bfcb18a|               |False|                     6e66aa9add1c1951bfa3bac3e22...  |forest_hwhimkg_9bfcb18a|  
-forest_hwhimkg_db436370    0.8595  mk             |1.0|                           |db436370|               True                        6e66aa9add1c1951bfa3bac3e22...  |forest_hwhimkg_db436370|  
-forest_hwhimdg_e1de3830    0.8593  |md|           0.95                            |e1de3830|               True                        |3076a91d3ebfca50517f9d3bc3...  |forest_hwhimdg_e1de3830|  
-forest_hwhishg_e2b34779    0.8586  |sh|           |0.65|                          |e2b34779|               True                        |1705e71a5fd3c7e492afb05cf7...  |forest_hwhishg_e2b34779|  
-forest_hwhimdg_62adaa6d    0.8584  |md|           |0.9|                           |62adaa6d|               True                        |3076a91d3ebfca50517f9d3bc3...  |forest_hwhimdg_62adaa6d|  
-forest_hwhimkg_4eefc74f    0.8570  mk             |0.75|                          |4eefc74f|               True                        6e66aa9add1c1951bfa3bac3e22...  |forest_hwhimkg_4eefc74f|  
-forest_hwhishg_5297ae49    0.8554  |sh|           |0.9|                           |5297ae49|               True                        |1705e71a5fd3c7e492afb05cf7...  |forest_hwhishg_5297ae49|  
-forest_hwhishg_572c147c    0.8552  |sh|           |0.8|                           |572c147c|               True                        |1705e71a5fd3c7e492afb05cf7...  |forest_hwhishg_572c147c|  
-forest_hwhimdg_4301279b    0.8548  |md|           |1|                             |4301279b|               |False|                     |3076a91d3ebfca50517f9d3bc3...  |forest_hwhimdg_4301279b|  
-forest_hwhimdg_44cbe835    0.8548  |md|           |1.0|                           |44cbe835|               True                        |3076a91d3ebfca50517f9d3bc3...  |forest_hwhimdg_44cbe835|  
-forest_hwhishg_cbae4b26    0.8544  |sh|           |0.45|                          |cbae4b26|               True                        |1705e71a5fd3c7e492afb05cf7...  |forest_hwhishg_cbae4b26|  
-forest_hwhimkg_08ab64ac    0.8541  mk             |0.8|                           |08ab64ac|               True                        6e66aa9add1c1951bfa3bac3e22...  |forest_hwhimkg_08ab64ac|  
-forest_hwhimkg_02168a87    0.8536  mk             |0.65|                          |02168a87|               True                        6e66aa9add1c1951bfa3bac3e22...  |forest_hwhimkg_02168a87|  
-forest_hwhimdg_e98d8ae9    0.8525  |md|           |0.75|                          |e98d8ae9|               True                        |3076a91d3ebfca50517f9d3bc3...  |forest_hwhimdg_e98d8ae9|  
-forest_hwhishg_c7d9a1dc    0.8503  |sh|           0.95                            |c7d9a1dc|               True                        |1705e71a5fd3c7e492afb05cf7...  |forest_hwhishg_c7d9a1dc|  
-forest_hwhishg_82e78472    0.8496  |sh|           |0.75|                          |82e78472|               True                        |1705e71a5fd3c7e492afb05cf7...  |forest_hwhishg_82e78472|  
-forest_hwhishg_f0777f45    0.8494  |sh|           |0.35|                          |f0777f45|               True                        |1705e71a5fd3c7e492afb05cf7...  |forest_hwhishg_f0777f45|  
-forest_hwhimkg_db835f3b    0.8489  mk             |0.45|                          |db835f3b|               True                        6e66aa9add1c1951bfa3bac3e22...  |forest_hwhimkg_db835f3b|  
-forest_hwhimkg_ba4b502a    0.8488  mk             |0.5|                           |ba4b502a|               True                        6e66aa9add1c1951bfa3bac3e22...  |forest_hwhimkg_ba4b502a|  
-forest_hwhishg_b8c5b60d    0.8472  |sh|           |0.2|                           |b8c5b60d|               True                        |1705e71a5fd3c7e492afb05cf7...  |forest_hwhishg_b8c5b60d|  
-forest_hwhimdg_bf8bb0c8    0.8469  |md|           |0.65|                          |bf8bb0c8|               True                        |3076a91d3ebfca50517f9d3bc3...  |forest_hwhimdg_bf8bb0c8|  
-forest_hwhimkg_6010f6b0    0.8434  mk             |0.35|                          |6010f6b0|               True                        6e66aa9add1c1951bfa3bac3e22...  |forest_hwhimkg_6010f6b0|  
-forest_hwhimdg_1bdabdbf    0.8431  |md|           |0.5|                           |1bdabdbf|               True                        |3076a91d3ebfca50517f9d3bc3...  |forest_hwhimdg_1bdabdbf|  
-forest_hwhishg_40dd3c33    0.8425  |sh|           |0.5|                           |40dd3c33|               True                        |1705e71a5fd3c7e492afb05cf7...  |forest_hwhishg_40dd3c33|  
-forest_hwhishg_bccc6977    0.8402  |sh|           |0.1|                           |bccc6977|               True                        |1705e71a5fd3c7e492afb05cf7...  |forest_hwhishg_bccc6977|  
-forest_hwhimdg_ce53a4e9    0.8353  |md|           |0.35|                          |ce53a4e9|               True                        |3076a91d3ebfca50517f9d3bc3...  |forest_hwhimdg_ce53a4e9|  
-forest_hwhimdg_de190805    0.8348  |md|           |0.45|                          |de190805|               True                        |3076a91d3ebfca50517f9d3bc3...  |forest_hwhimdg_de190805|  
-forest_hwhimdg_a01f7929    0.8303  |md|           |0.2|                           |a01f7929|               True                        |3076a91d3ebfca50517f9d3bc3...  |forest_hwhimdg_a01f7929|  
-forest_hwhimkg_0a7cce32    0.8294  mk             |0.2|                           |0a7cce32|               True                        6e66aa9add1c1951bfa3bac3e22...  |forest_hwhimkg_0a7cce32|  
-forest_hwhimkg_0235f32c    0.8228  mk             |0.1|                           |0235f32c|               True                        6e66aa9add1c1951bfa3bac3e22...  |forest_hwhimkg_0235f32c|  
-forest_hwhimdg_711e5b06    0.8026  |md|           |0.1|                           |711e5b06|               True                        |3076a91d3ebfca50517f9d3bc3...  |forest_hwhimdg_711e5b06|  
-forest_hwhirog_9cb7e6f8    nan     |rtop|         |1|                             |9cb7e6f8|               |False|                     |5cd948e50470a632dfdb06116e...  |forest_hwhirog_9cb7e6f8|  
-forest_hwhirog_0b67f596    nan     |rtop|         |0.1|                           |0b67f596|               True                        |5cd948e50470a632dfdb06116e...  |forest_hwhirog_0b67f596|  
-forest_hwhirog_c764d55d    nan     |rtop|         |0.2|                           |c764d55d|               True                        |5cd948e50470a632dfdb06116e...  |forest_hwhirog_c764d55d|  
-forest_hwhirog_8b803f7d    nan     |rtop|         |0.35|                          |8b803f7d|               True                        |5cd948e50470a632dfdb06116e...  |forest_hwhirog_8b803f7d|  
-forest_hwhirog_a18a67c1    nan     |rtop|         |0.45|                          |a18a67c1|               True                        |5cd948e50470a632dfdb06116e...  |forest_hwhirog_a18a67c1|  
-forest_hwhirog_f946abcb    nan     |rtop|         |0.5|                           |f946abcb|               True                        |5cd948e50470a632dfdb06116e...  |forest_hwhirog_f946abcb|  
-forest_hwhirog_a89541a2    nan     |rtop|         |0.65|                          |a89541a2|               True                        |5cd948e50470a632dfdb06116e...  |forest_hwhirog_a89541a2|  
-forest_hwhirog_206cbe23    nan     |rtop|         |0.75|                          |206cbe23|               True                        |5cd948e50470a632dfdb06116e...  |forest_hwhirog_206cbe23|  
-forest_hwhirog_e9c87aa7    nan     |rtop|         |0.8|                           |e9c87aa7|               True                        |5cd948e50470a632dfdb06116e...  |forest_hwhirog_e9c87aa7|  
-forest_hwhirog_9f3a521a    nan     |rtop|         |0.9|                           |9f3a521a|               True                        |5cd948e50470a632dfdb06116e...  |forest_hwhirog_9f3a521a|  
-forest_hwhirog_75ef5a32    nan     |rtop|         0.95                            |75ef5a32|               True                        |5cd948e50470a632dfdb06116e...  |forest_hwhirog_75ef5a32|  
-forest_hwhirog_0c324b97    nan     |rtop|         |1.0|                           |0c324b97|               True                        |5cd948e50470a632dfdb06116e...  |forest_hwhirog_0c324b97|  
+RunID                      Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id             
+--------------------------------------------------------------------------------------------------------------------------------------
+forest_hwhishg_1291d2e1 *  0.8602  sh             1291d2e1                 1705e71a5fd3c7e492afb05cf79...  forest_hwhishg_1291d2e1    
+forest_hwhimkg_9bfcb18a    0.8595  |mk|           |9bfcb18a|               |6e66aa9add1c1951bfa3bac3e2...  |forest_hwhimkg_9bfcb18a|  
+forest_hwhimdg_4301279b    0.8548  |md|           |4301279b|               |3076a91d3ebfca50517f9d3bc3...  |forest_hwhimdg_4301279b|  
 
 ========================================
 
@@ -226,61 +171,20 @@ RunID                      Score   PrimaryMetric  runtime.experiment_hash  runti
 forest_hwhimda_157690db *  0.0236  md             157690db                 8ebed35ca159c5edcb4d8ee9696...  forest_hwhimda_157690db    
 forest_hwhimka_642ecf7e    0.0300  |mk|           |642ecf7e|               |024e3dacb75d02bdd8ed55e2d9...  |forest_hwhimka_642ecf7e|  
 forest_hwhisha_58c4efce    0.0641  |sh|           |58c4efce|               |0d61a50ae9a6a0ef4c201be358...  |forest_hwhisha_58c4efce|  
-forest_hwhiroa_e4e63b95    nan     |rtop|         |e4e63b95|               |67b4e485a02a829ad44f2444b2...  |forest_hwhiroa_e4e63b95|  
 
 ========================================
 
 
 GROUP: model_name=lasso, tissue_type=gray, prediction_task=binary_classification, target=['Gender']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: lasso_hgramkg_26db85d8 (Metric: accuracy_weighted_test_mean, Score: 0.8908)
+  Best Run ID: lasso_hgramkg_26db85d8 (Metric: accuracy_weighted_test_mean, Score: 0.8917)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                     Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id            
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-lasso_hgramkg_26db85d8 *  0.8908  mk             1                               26db85d8                 False                       0821388630b08095fd155da5cdb...  lasso_hgramkg_26db85d8    
-lasso_hgrarog_501c3fe0    0.8773  |rtop|         1                               |501c3fe0|               False                       |92fc009b154b977256e838ed2e...  |lasso_hgrarog_501c3fe0|  
-lasso_hgrashg_2f3abb09    0.8513  |sh|           1                               |2f3abb09|               False                       |f35a6e3694bd3e468ee2cf8028...  |lasso_hgrashg_2f3abb09|  
-lasso_hgramdg_9e728b8b    0.8487  |md|           1                               |9e728b8b|               False                       |6e7eb189987a4cab96854075a3...  |lasso_hgramdg_9e728b8b|  
-lasso_hgramdg_b8125890    nan     |md|           |0.1|                           |b8125890|               |True|                      |6e7eb189987a4cab96854075a3...  |lasso_hgramdg_b8125890|  
-lasso_hgramdg_5819b31d    nan     |md|           |0.2|                           |5819b31d|               |True|                      |6e7eb189987a4cab96854075a3...  |lasso_hgramdg_5819b31d|  
-lasso_hgramdg_e589de80    nan     |md|           |0.35|                          |e589de80|               |True|                      |6e7eb189987a4cab96854075a3...  |lasso_hgramdg_e589de80|  
-lasso_hgramdg_b465dffc    nan     |md|           |0.45|                          |b465dffc|               |True|                      |6e7eb189987a4cab96854075a3...  |lasso_hgramdg_b465dffc|  
-lasso_hgramdg_3095c9e2    nan     |md|           |0.5|                           |3095c9e2|               |True|                      |6e7eb189987a4cab96854075a3...  |lasso_hgramdg_3095c9e2|  
-lasso_hgramdg_e2cf40ed    nan     |md|           |0.65|                          |e2cf40ed|               |True|                      |6e7eb189987a4cab96854075a3...  |lasso_hgramdg_e2cf40ed|  
-lasso_hgramdg_d58e7657    nan     |md|           |0.75|                          |d58e7657|               |True|                      |6e7eb189987a4cab96854075a3...  |lasso_hgramdg_d58e7657|  
-lasso_hgramdg_d68a0237    nan     |md|           |0.8|                           |d68a0237|               |True|                      |6e7eb189987a4cab96854075a3...  |lasso_hgramdg_d68a0237|  
-lasso_hgramdg_bf3d6ed7    nan     |md|           |0.9|                           |bf3d6ed7|               |True|                      |6e7eb189987a4cab96854075a3...  |lasso_hgramdg_bf3d6ed7|  
-lasso_hgramdg_955da2e7    nan     |md|           |0.95|                          |955da2e7|               |True|                      |6e7eb189987a4cab96854075a3...  |lasso_hgramdg_955da2e7|  
-lasso_hgramdg_76549a10    nan     |md|           |1.0|                           |76549a10|               |True|                      |6e7eb189987a4cab96854075a3...  |lasso_hgramdg_76549a10|  
-lasso_hgrashg_91a4d903    nan     |sh|           |0.1|                           |91a4d903|               |True|                      |f35a6e3694bd3e468ee2cf8028...  |lasso_hgrashg_91a4d903|  
-lasso_hgrashg_9124f6ec    nan     |sh|           |0.2|                           |9124f6ec|               |True|                      |f35a6e3694bd3e468ee2cf8028...  |lasso_hgrashg_9124f6ec|  
-lasso_hgrashg_cf2c77a0    nan     |sh|           |0.35|                          |cf2c77a0|               |True|                      |f35a6e3694bd3e468ee2cf8028...  |lasso_hgrashg_cf2c77a0|  
-lasso_hgrashg_cf0d708a    nan     |sh|           |0.45|                          |cf0d708a|               |True|                      |f35a6e3694bd3e468ee2cf8028...  |lasso_hgrashg_cf0d708a|  
-lasso_hgrashg_a4c45501    nan     |sh|           |0.5|                           |a4c45501|               |True|                      |f35a6e3694bd3e468ee2cf8028...  |lasso_hgrashg_a4c45501|  
-lasso_hgrashg_edd54452    nan     |sh|           |0.65|                          |edd54452|               |True|                      |f35a6e3694bd3e468ee2cf8028...  |lasso_hgrashg_edd54452|  
-lasso_hgrashg_15820e87    nan     |sh|           |0.75|                          |15820e87|               |True|                      |f35a6e3694bd3e468ee2cf8028...  |lasso_hgrashg_15820e87|  
-lasso_hgrashg_11c6813f    nan     |sh|           |0.8|                           |11c6813f|               |True|                      |f35a6e3694bd3e468ee2cf8028...  |lasso_hgrashg_11c6813f|  
-lasso_hgrashg_fa67f133    nan     |sh|           |0.9|                           |fa67f133|               |True|                      |f35a6e3694bd3e468ee2cf8028...  |lasso_hgrashg_fa67f133|  
-lasso_hgrashg_7750c3e8    nan     |sh|           |0.95|                          |7750c3e8|               |True|                      |f35a6e3694bd3e468ee2cf8028...  |lasso_hgrashg_7750c3e8|  
-lasso_hgrashg_b52301fb    nan     |sh|           |1.0|                           |b52301fb|               |True|                      |f35a6e3694bd3e468ee2cf8028...  |lasso_hgrashg_b52301fb|  
-lasso_hgramkg_5c2d6872    nan     mk             |0.1|                           |5c2d6872|               |True|                      0821388630b08095fd155da5cdb...  |lasso_hgramkg_5c2d6872|  
-lasso_hgramkg_59b55307    nan     mk             |0.2|                           |59b55307|               |True|                      0821388630b08095fd155da5cdb...  |lasso_hgramkg_59b55307|  
-lasso_hgramkg_11b8a684    nan     mk             |0.35|                          |11b8a684|               |True|                      0821388630b08095fd155da5cdb...  |lasso_hgramkg_11b8a684|  
-lasso_hgramkg_15ca1203    nan     mk             |0.45|                          |15ca1203|               |True|                      0821388630b08095fd155da5cdb...  |lasso_hgramkg_15ca1203|  
-lasso_hgramkg_5dbc098a    nan     mk             |0.5|                           |5dbc098a|               |True|                      0821388630b08095fd155da5cdb...  |lasso_hgramkg_5dbc098a|  
-lasso_hgramkg_df1053ac    nan     mk             |0.65|                          |df1053ac|               |True|                      0821388630b08095fd155da5cdb...  |lasso_hgramkg_df1053ac|  
-lasso_hgramkg_2e629a27    nan     mk             |0.75|                          |2e629a27|               |True|                      0821388630b08095fd155da5cdb...  |lasso_hgramkg_2e629a27|  
-lasso_hgramkg_afa8b46f    nan     mk             |0.8|                           |afa8b46f|               |True|                      0821388630b08095fd155da5cdb...  |lasso_hgramkg_afa8b46f|  
-lasso_hgramkg_105595f6    nan     mk             |0.9|                           |105595f6|               |True|                      0821388630b08095fd155da5cdb...  |lasso_hgramkg_105595f6|  
-lasso_hgramkg_b1f5d42d    nan     mk             |0.95|                          |b1f5d42d|               |True|                      0821388630b08095fd155da5cdb...  |lasso_hgramkg_b1f5d42d|  
-lasso_hgramkg_9e03e373    nan     mk             |1.0|                           |9e03e373|               |True|                      0821388630b08095fd155da5cdb...  |lasso_hgramkg_9e03e373|  
-lasso_hgrarog_9980ca14    nan     |rtop|         |0.1|                           |9980ca14|               |True|                      |92fc009b154b977256e838ed2e...  |lasso_hgrarog_9980ca14|  
-lasso_hgrarog_7fa1a9c3    nan     |rtop|         |0.2|                           |7fa1a9c3|               |True|                      |92fc009b154b977256e838ed2e...  |lasso_hgrarog_7fa1a9c3|  
-lasso_hgrarog_3f07cc56    nan     |rtop|         |0.35|                          |3f07cc56|               |True|                      |92fc009b154b977256e838ed2e...  |lasso_hgrarog_3f07cc56|  
-lasso_hgrarog_ef5e9d02    nan     |rtop|         |0.45|                          |ef5e9d02|               |True|                      |92fc009b154b977256e838ed2e...  |lasso_hgrarog_ef5e9d02|  
-lasso_hgrarog_7f04c216    nan     |rtop|         |0.5|                           |7f04c216|               |True|                      |92fc009b154b977256e838ed2e...  |lasso_hgrarog_7f04c216|  
-lasso_hgrarog_b860714a    nan     |rtop|         |0.65|                          |b860714a|               |True|                      |92fc009b154b977256e838ed2e...  |lasso_hgrarog_b860714a|  
-lasso_hgrarog_f2644f6c    nan     |rtop|         |0.75|                          |f2644f6c|               |True|                      |92fc009b154b977256e838ed2e...  |lasso_hgrarog_f2644f6c|  
+RunID                     Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id            
+------------------------------------------------------------------------------------------------------------------------------------
+lasso_hgramkg_26db85d8 *  0.8917  mk             26db85d8                 0821388630b08095fd155da5cdb...  lasso_hgramkg_26db85d8    
+lasso_hgrashg_2f3abb09    0.8504  |sh|           |2f3abb09|               |f35a6e3694bd3e468ee2cf8028...  |lasso_hgrashg_2f3abb09|  
+lasso_hgramdg_9e728b8b    nan     |md|           |9e728b8b|               |6e7eb189987a4cab96854075a3...  |lasso_hgramdg_9e728b8b|  
+lasso_hgrarog_501c3fe0    nan     |rtop|         |501c3fe0|               |92fc009b154b977256e838ed2e...  |lasso_hgrarog_501c3fe0|  
 
 ========================================
 
@@ -308,7 +212,6 @@ RunID                     Score   PrimaryMetric  runtime.experiment_hash  runtim
 lasso_hwhimdg_ff43b0ca *  0.8866  md             ff43b0ca                 fec81d2635881ebdb1e8d8a995f...  lasso_hwhimdg_ff43b0ca    
 lasso_hwhishg_9cdd3b01    0.8666  |sh|           |9cdd3b01|               |f87db7fe396812e732fbddc5bd...  |lasso_hwhishg_9cdd3b01|  
 lasso_hwhimkg_f4d1ea5e    0.8572  |mk|           |f4d1ea5e|               |e66d92d97243ca8243e15003d9...  |lasso_hwhimkg_f4d1ea5e|  
-lasso_hwhirog_344b0789    nan     |rtop|         |344b0789|               |35b0234876ffaa63de2e883080...  |lasso_hwhirog_344b0789|  
 
 ========================================
 
@@ -322,7 +225,6 @@ RunID                     Score   PrimaryMetric  runtime.experiment_hash  runtim
 lasso_hwhimda_62c2653b *  0.0066  md             62c2653b                 cd2a1090c3391f5efda6f6e9adc...  lasso_hwhimda_62c2653b    
 lasso_hwhimka_81df00bb    0.0257  |mk|           |81df00bb|               |296100b33336fc02a5c9cc4d82...  |lasso_hwhimka_81df00bb|  
 lasso_hwhisha_fa641078    0.0328  |sh|           |fa641078|               |95185676f9d60010b7b647376e...  |lasso_hwhisha_fa641078|  
-lasso_hwhiroa_79f53a73    nan     |rtop|         |79f53a73|               |5042c8b5c94441e9844828cf8c...  |lasso_hwhiroa_79f53a73|  
 
 ========================================
 
@@ -331,56 +233,12 @@ GROUP: model_name=linear, tissue_type=gray, prediction_task=binary_classificatio
 --------------------------------------------------------------------------------------------------------------------------------------------
   Best Run ID: linear_hgramkg_666a508e (Metric: accuracy_weighted_test_mean, Score: 0.9002)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                      Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id             
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-linear_hgramkg_666a508e *  0.9002  mk             1                               666a508e                 False                       c16eb4a7428f95fe558b4914550...  linear_hgramkg_666a508e    
-linear_hgramkg_57ebd3ed    0.9002  mk             |1.0|                           |57ebd3ed|               |True|                      c16eb4a7428f95fe558b4914550...  |linear_hgramkg_57ebd3ed|  
-linear_hgramkg_93d6716c    0.8937  mk             |0.95|                          |93d6716c|               |True|                      c16eb4a7428f95fe558b4914550...  |linear_hgramkg_93d6716c|  
-linear_hgramkg_7311e067    0.8933  mk             |0.8|                           |7311e067|               |True|                      c16eb4a7428f95fe558b4914550...  |linear_hgramkg_7311e067|  
-linear_hgramkg_a0f992bb    0.8930  mk             |0.75|                          |a0f992bb|               |True|                      c16eb4a7428f95fe558b4914550...  |linear_hgramkg_a0f992bb|  
-linear_hgramkg_c6081e5e    0.8866  mk             |0.9|                           |c6081e5e|               |True|                      c16eb4a7428f95fe558b4914550...  |linear_hgramkg_c6081e5e|  
-linear_hgramkg_3f4a07f0    0.8853  mk             |0.65|                          |3f4a07f0|               |True|                      c16eb4a7428f95fe558b4914550...  |linear_hgramkg_3f4a07f0|  
-linear_hgrarog_122a67de    0.8754  |rtop|         |0.9|                           |122a67de|               |True|                      |13164d6f5f338c939856f4d8a4...  |linear_hgrarog_122a67de|  
-linear_hgrarog_e1ec8676    0.8725  |rtop|         1                               |e1ec8676|               False                       |13164d6f5f338c939856f4d8a4...  |linear_hgrarog_e1ec8676|  
-linear_hgrarog_0132f4ff    0.8725  |rtop|         |1.0|                           |0132f4ff|               |True|                      |13164d6f5f338c939856f4d8a4...  |linear_hgrarog_0132f4ff|  
-linear_hgrarog_0f85ae7b    0.8713  |rtop|         |0.75|                          |0f85ae7b|               |True|                      |13164d6f5f338c939856f4d8a4...  |linear_hgrarog_0f85ae7b|  
-linear_hgrarog_071db3fa    0.8701  |rtop|         |0.95|                          |071db3fa|               |True|                      |13164d6f5f338c939856f4d8a4...  |linear_hgrarog_071db3fa|  
-linear_hgramkg_673c8b49    0.8691  mk             |0.45|                          |673c8b49|               |True|                      c16eb4a7428f95fe558b4914550...  |linear_hgramkg_673c8b49|  
-linear_hgrarog_f410b1f7    0.8671  |rtop|         |0.8|                           |f410b1f7|               |True|                      |13164d6f5f338c939856f4d8a4...  |linear_hgrarog_f410b1f7|  
-linear_hgrarog_d7b755cf    0.8669  |rtop|         |0.65|                          |d7b755cf|               |True|                      |13164d6f5f338c939856f4d8a4...  |linear_hgrarog_d7b755cf|  
-linear_hgramkg_dd1e1984    0.8664  mk             |0.5|                           |dd1e1984|               |True|                      c16eb4a7428f95fe558b4914550...  |linear_hgramkg_dd1e1984|  
-linear_hgramdg_c9e97660    0.8617  |md|           |0.95|                          |c9e97660|               |True|                      |5e67f795b31f48eb2c64bb0d68...  |linear_hgramdg_c9e97660|  
-linear_hgramdg_bcab57c5    0.8604  |md|           1                               |bcab57c5|               False                       |5e67f795b31f48eb2c64bb0d68...  |linear_hgramdg_bcab57c5|  
-linear_hgramdg_9900c74a    0.8604  |md|           |1.0|                           |9900c74a|               |True|                      |5e67f795b31f48eb2c64bb0d68...  |linear_hgramdg_9900c74a|  
-linear_hgramdg_032a475b    0.8598  |md|           |0.9|                           |032a475b|               |True|                      |5e67f795b31f48eb2c64bb0d68...  |linear_hgramdg_032a475b|  
-linear_hgrashg_47aa29dc    0.8565  |sh|           1                               |47aa29dc|               False                       |9da1b44e3c18be61aff4f1563f...  |linear_hgrashg_47aa29dc|  
-linear_hgrashg_daae7e47    0.8565  |sh|           |1.0|                           |daae7e47|               |True|                      |9da1b44e3c18be61aff4f1563f...  |linear_hgrashg_daae7e47|  
-linear_hgramdg_7fc4f5d1    0.8565  |md|           |0.8|                           |7fc4f5d1|               |True|                      |5e67f795b31f48eb2c64bb0d68...  |linear_hgramdg_7fc4f5d1|  
-linear_hgramdg_7118be75    0.8552  |md|           |0.75|                          |7118be75|               |True|                      |5e67f795b31f48eb2c64bb0d68...  |linear_hgramdg_7118be75|  
-linear_hgrarog_a037f0ee    0.8522  |rtop|         |0.5|                           |a037f0ee|               |True|                      |13164d6f5f338c939856f4d8a4...  |linear_hgrarog_a037f0ee|  
-linear_hgrashg_166cef2e    0.8504  |sh|           |0.9|                           |166cef2e|               |True|                      |9da1b44e3c18be61aff4f1563f...  |linear_hgrashg_166cef2e|  
-linear_hgrashg_68f69f39    0.8502  |sh|           |0.95|                          |68f69f39|               |True|                      |9da1b44e3c18be61aff4f1563f...  |linear_hgrashg_68f69f39|  
-linear_hgrarog_fba224bc    0.8498  |rtop|         |0.45|                          |fba224bc|               |True|                      |13164d6f5f338c939856f4d8a4...  |linear_hgrarog_fba224bc|  
-linear_hgramkg_925a03a9    0.8486  mk             |0.35|                          |925a03a9|               |True|                      c16eb4a7428f95fe558b4914550...  |linear_hgramkg_925a03a9|  
-linear_hgrashg_4ddb1a19    0.8474  |sh|           |0.8|                           |4ddb1a19|               |True|                      |9da1b44e3c18be61aff4f1563f...  |linear_hgrashg_4ddb1a19|  
-linear_hgrarog_11c0ddca    0.8446  |rtop|         |0.35|                          |11c0ddca|               |True|                      |13164d6f5f338c939856f4d8a4...  |linear_hgrarog_11c0ddca|  
-linear_hgrashg_98c2c020    0.8422  |sh|           |0.75|                          |98c2c020|               |True|                      |9da1b44e3c18be61aff4f1563f...  |linear_hgrashg_98c2c020|  
-linear_hgramdg_342250d9    0.8386  |md|           |0.65|                          |342250d9|               |True|                      |5e67f795b31f48eb2c64bb0d68...  |linear_hgramdg_342250d9|  
-linear_hgramdg_6bf430ac    0.8264  |md|           |0.5|                           |6bf430ac|               |True|                      |5e67f795b31f48eb2c64bb0d68...  |linear_hgramdg_6bf430ac|  
-linear_hgrashg_3dde3f6c    0.8261  |sh|           |0.65|                          |3dde3f6c|               |True|                      |9da1b44e3c18be61aff4f1563f...  |linear_hgrashg_3dde3f6c|  
-linear_hgramdg_01a155f9    0.8213  |md|           |0.45|                          |01a155f9|               |True|                      |5e67f795b31f48eb2c64bb0d68...  |linear_hgramdg_01a155f9|  
-linear_hgrarog_db7afdd4    0.8172  |rtop|         |0.2|                           |db7afdd4|               |True|                      |13164d6f5f338c939856f4d8a4...  |linear_hgrarog_db7afdd4|  
-linear_hgrashg_2422d195    0.8149  |sh|           |0.45|                          |2422d195|               |True|                      |9da1b44e3c18be61aff4f1563f...  |linear_hgrashg_2422d195|  
-linear_hgramkg_5fe0cbb8    0.8145  mk             |0.2|                           |5fe0cbb8|               |True|                      c16eb4a7428f95fe558b4914550...  |linear_hgramkg_5fe0cbb8|  
-linear_hgrashg_93e417b0    0.8092  |sh|           |0.5|                           |93e417b0|               |True|                      |9da1b44e3c18be61aff4f1563f...  |linear_hgrashg_93e417b0|  
-linear_hgramdg_439d3d2a    0.7997  |md|           |0.35|                          |439d3d2a|               |True|                      |5e67f795b31f48eb2c64bb0d68...  |linear_hgramdg_439d3d2a|  
-linear_hgrashg_ba967833    0.7870  |sh|           |0.35|                          |ba967833|               |True|                      |9da1b44e3c18be61aff4f1563f...  |linear_hgrashg_ba967833|  
-linear_hgrarog_40af4464    0.7619  |rtop|         |0.1|                           |40af4464|               |True|                      |13164d6f5f338c939856f4d8a4...  |linear_hgrarog_40af4464|  
-linear_hgramdg_7e187a89    0.7599  |md|           |0.2|                           |7e187a89|               |True|                      |5e67f795b31f48eb2c64bb0d68...  |linear_hgramdg_7e187a89|  
-linear_hgrashg_e4822083    0.7598  |sh|           |0.2|                           |e4822083|               |True|                      |9da1b44e3c18be61aff4f1563f...  |linear_hgrashg_e4822083|  
-linear_hgramkg_b39f17b7    0.7585  mk             |0.1|                           |b39f17b7|               |True|                      c16eb4a7428f95fe558b4914550...  |linear_hgramkg_b39f17b7|  
-linear_hgramdg_da1bfa54    0.7358  |md|           |0.1|                           |da1bfa54|               |True|                      |5e67f795b31f48eb2c64bb0d68...  |linear_hgramdg_da1bfa54|  
-linear_hgrashg_c24ae9cd    0.6874  |sh|           |0.1|                           |c24ae9cd|               |True|                      |9da1b44e3c18be61aff4f1563f...  |linear_hgrashg_c24ae9cd|  
+RunID                      Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id             
+--------------------------------------------------------------------------------------------------------------------------------------
+linear_hgramkg_666a508e *  0.9002  mk             666a508e                 c16eb4a7428f95fe558b4914550...  linear_hgramkg_666a508e    
+linear_hgrarog_e1ec8676    0.8725  |rtop|         |e1ec8676|               |13164d6f5f338c939856f4d8a4...  |linear_hgrarog_e1ec8676|  
+linear_hgramdg_bcab57c5    0.8604  |md|           |bcab57c5|               |5e67f795b31f48eb2c64bb0d68...  |linear_hgramdg_bcab57c5|  
+linear_hgrashg_47aa29dc    0.8565  |sh|           |47aa29dc|               |9da1b44e3c18be61aff4f1563f...  |linear_hgrashg_47aa29dc|  
 
 ========================================
 
@@ -403,56 +261,11 @@ GROUP: model_name=linear, tissue_type=white, prediction_task=binary_classificati
 --------------------------------------------------------------------------------------------------------------------------------------------
   Best Run ID: linear_hwhimdg_5b8ca730 (Metric: accuracy_weighted_test_mean, Score: 0.8850)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                      Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id             
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-linear_hwhimdg_5b8ca730 *  0.8850  md             1                               5b8ca730                 False                       d602fc1f46848b5dad2e010e074...  linear_hwhimdg_5b8ca730    
-linear_hwhimdg_4aa08b35    0.8850  md             |1.0|                           |4aa08b35|               |True|                      d602fc1f46848b5dad2e010e074...  |linear_hwhimdg_4aa08b35|  
-linear_hwhimdg_2373d97d    0.8816  md             |0.75|                          |2373d97d|               |True|                      d602fc1f46848b5dad2e010e074...  |linear_hwhimdg_2373d97d|  
-linear_hwhimdg_3a7203ba    0.8813  md             |0.8|                           |3a7203ba|               |True|                      d602fc1f46848b5dad2e010e074...  |linear_hwhimdg_3a7203ba|  
-linear_hwhimdg_e3997012    0.8799  md             |0.95|                          |e3997012|               |True|                      d602fc1f46848b5dad2e010e074...  |linear_hwhimdg_e3997012|  
-linear_hwhimdg_420dfbba    0.8763  md             |0.9|                           |420dfbba|               |True|                      d602fc1f46848b5dad2e010e074...  |linear_hwhimdg_420dfbba|  
-linear_hwhimdg_ee690943    0.8748  md             |0.65|                          |ee690943|               |True|                      d602fc1f46848b5dad2e010e074...  |linear_hwhimdg_ee690943|  
-linear_hwhimdg_b8dd71fc    0.8724  md             |0.45|                          |b8dd71fc|               |True|                      d602fc1f46848b5dad2e010e074...  |linear_hwhimdg_b8dd71fc|  
-linear_hwhimdg_0f453af4    0.8708  md             |0.5|                           |0f453af4|               |True|                      d602fc1f46848b5dad2e010e074...  |linear_hwhimdg_0f453af4|  
-linear_hwhishg_f723af90    0.8683  |sh|           1                               |f723af90|               False                       |d0d2fd577dba5cff8e595d7575...  |linear_hwhishg_f723af90|  
-linear_hwhishg_3720ebb7    0.8683  |sh|           |1.0|                           |3720ebb7|               |True|                      |d0d2fd577dba5cff8e595d7575...  |linear_hwhishg_3720ebb7|  
-linear_hwhimkg_ef197add    0.8653  |mk|           |0.75|                          |ef197add|               |True|                      |78a7e673c9024ed2178cc8854a...  |linear_hwhimkg_ef197add|  
-linear_hwhishg_bc5e54f7    0.8649  |sh|           |0.9|                           |bc5e54f7|               |True|                      |d0d2fd577dba5cff8e595d7575...  |linear_hwhishg_bc5e54f7|  
-linear_hwhishg_650ba483    0.8628  |sh|           |0.95|                          |650ba483|               |True|                      |d0d2fd577dba5cff8e595d7575...  |linear_hwhishg_650ba483|  
-linear_hwhimdg_71a030e9    0.8625  md             |0.35|                          |71a030e9|               |True|                      d602fc1f46848b5dad2e010e074...  |linear_hwhimdg_71a030e9|  
-linear_hwhishg_8e3d0954    0.8616  |sh|           |0.75|                          |8e3d0954|               |True|                      |d0d2fd577dba5cff8e595d7575...  |linear_hwhishg_8e3d0954|  
-linear_hwhishg_3477874c    0.8612  |sh|           |0.8|                           |3477874c|               |True|                      |d0d2fd577dba5cff8e595d7575...  |linear_hwhishg_3477874c|  
-linear_hwhimkg_41e40cdf    0.8611  |mk|           1                               |41e40cdf|               False                       |78a7e673c9024ed2178cc8854a...  |linear_hwhimkg_41e40cdf|  
-linear_hwhimkg_db6a4b1d    0.8611  |mk|           |1.0|                           |db6a4b1d|               |True|                      |78a7e673c9024ed2178cc8854a...  |linear_hwhimkg_db6a4b1d|  
-linear_hwhimkg_8e48a7a2    0.8602  |mk|           |0.8|                           |8e48a7a2|               |True|                      |78a7e673c9024ed2178cc8854a...  |linear_hwhimkg_8e48a7a2|  
-linear_hwhishg_7898dff3    0.8596  |sh|           |0.65|                          |7898dff3|               |True|                      |d0d2fd577dba5cff8e595d7575...  |linear_hwhishg_7898dff3|  
-linear_hwhimkg_91538ba7    0.8589  |mk|           |0.95|                          |91538ba7|               |True|                      |78a7e673c9024ed2178cc8854a...  |linear_hwhimkg_91538ba7|  
-linear_hwhimkg_e51d7e5f    0.8564  |mk|           |0.65|                          |e51d7e5f|               |True|                      |78a7e673c9024ed2178cc8854a...  |linear_hwhimkg_e51d7e5f|  
-linear_hwhimkg_4f35aa30    0.8560  |mk|           |0.9|                           |4f35aa30|               |True|                      |78a7e673c9024ed2178cc8854a...  |linear_hwhimkg_4f35aa30|  
-linear_hwhimkg_dcd14013    0.8519  |mk|           |0.45|                          |dcd14013|               |True|                      |78a7e673c9024ed2178cc8854a...  |linear_hwhimkg_dcd14013|  
-linear_hwhimdg_57cddcd9    0.8497  md             |0.2|                           |57cddcd9|               |True|                      d602fc1f46848b5dad2e010e074...  |linear_hwhimdg_57cddcd9|  
-linear_hwhishg_fd79c3d4    0.8489  |sh|           |0.5|                           |fd79c3d4|               |True|                      |d0d2fd577dba5cff8e595d7575...  |linear_hwhishg_fd79c3d4|  
-linear_hwhimkg_2c468917    0.8487  |mk|           |0.5|                           |2c468917|               |True|                      |78a7e673c9024ed2178cc8854a...  |linear_hwhimkg_2c468917|  
-linear_hwhishg_b251e1dd    0.8471  |sh|           |0.35|                          |b251e1dd|               |True|                      |d0d2fd577dba5cff8e595d7575...  |linear_hwhishg_b251e1dd|  
-linear_hwhishg_6b925393    0.8454  |sh|           |0.45|                          |6b925393|               |True|                      |d0d2fd577dba5cff8e595d7575...  |linear_hwhishg_6b925393|  
-linear_hwhimkg_be211009    0.8447  |mk|           |0.35|                          |be211009|               |True|                      |78a7e673c9024ed2178cc8854a...  |linear_hwhimkg_be211009|  
-linear_hwhimdg_cc0e0b36    0.8418  md             |0.1|                           |cc0e0b36|               |True|                      d602fc1f46848b5dad2e010e074...  |linear_hwhimdg_cc0e0b36|  
-linear_hwhishg_abcbc193    0.8334  |sh|           |0.2|                           |abcbc193|               |True|                      |d0d2fd577dba5cff8e595d7575...  |linear_hwhishg_abcbc193|  
-linear_hwhimkg_6feaff3f    0.8310  |mk|           |0.2|                           |6feaff3f|               |True|                      |78a7e673c9024ed2178cc8854a...  |linear_hwhimkg_6feaff3f|  
-linear_hwhishg_36f4cfcf    0.8185  |sh|           |0.1|                           |36f4cfcf|               |True|                      |d0d2fd577dba5cff8e595d7575...  |linear_hwhishg_36f4cfcf|  
-linear_hwhimkg_0cf41dc3    0.8131  |mk|           |0.1|                           |0cf41dc3|               |True|                      |78a7e673c9024ed2178cc8854a...  |linear_hwhimkg_0cf41dc3|  
-linear_hwhirog_b09374ed    nan     |rtop|         1                               |b09374ed|               False                       |301f1f52f981e66ef986e50a09...  |linear_hwhirog_b09374ed|  
-linear_hwhirog_93977fee    nan     |rtop|         |0.1|                           |93977fee|               |True|                      |301f1f52f981e66ef986e50a09...  |linear_hwhirog_93977fee|  
-linear_hwhirog_38a35cdf    nan     |rtop|         |0.2|                           |38a35cdf|               |True|                      |301f1f52f981e66ef986e50a09...  |linear_hwhirog_38a35cdf|  
-linear_hwhirog_aa9aa05c    nan     |rtop|         |0.35|                          |aa9aa05c|               |True|                      |301f1f52f981e66ef986e50a09...  |linear_hwhirog_aa9aa05c|  
-linear_hwhirog_8c82228c    nan     |rtop|         |0.45|                          |8c82228c|               |True|                      |301f1f52f981e66ef986e50a09...  |linear_hwhirog_8c82228c|  
-linear_hwhirog_512357f8    nan     |rtop|         |0.5|                           |512357f8|               |True|                      |301f1f52f981e66ef986e50a09...  |linear_hwhirog_512357f8|  
-linear_hwhirog_8997f50f    nan     |rtop|         |0.65|                          |8997f50f|               |True|                      |301f1f52f981e66ef986e50a09...  |linear_hwhirog_8997f50f|  
-linear_hwhirog_beba304f    nan     |rtop|         |0.75|                          |beba304f|               |True|                      |301f1f52f981e66ef986e50a09...  |linear_hwhirog_beba304f|  
-linear_hwhirog_3e43632d    nan     |rtop|         |0.8|                           |3e43632d|               |True|                      |301f1f52f981e66ef986e50a09...  |linear_hwhirog_3e43632d|  
-linear_hwhirog_10e4d8a8    nan     |rtop|         |0.9|                           |10e4d8a8|               |True|                      |301f1f52f981e66ef986e50a09...  |linear_hwhirog_10e4d8a8|  
-linear_hwhirog_9262f798    nan     |rtop|         |0.95|                          |9262f798|               |True|                      |301f1f52f981e66ef986e50a09...  |linear_hwhirog_9262f798|  
-linear_hwhirog_55699805    nan     |rtop|         |1.0|                           |55699805|               |True|                      |301f1f52f981e66ef986e50a09...  |linear_hwhirog_55699805|  
+RunID                      Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id             
+--------------------------------------------------------------------------------------------------------------------------------------
+linear_hwhimdg_5b8ca730 *  0.8850  md             5b8ca730                 d602fc1f46848b5dad2e010e074...  linear_hwhimdg_5b8ca730    
+linear_hwhishg_f723af90    0.8683  |sh|           |f723af90|               |d0d2fd577dba5cff8e595d7575...  |linear_hwhishg_f723af90|  
+linear_hwhimkg_41e40cdf    0.8611  |mk|           |41e40cdf|               |78a7e673c9024ed2178cc8854a...  |linear_hwhimkg_41e40cdf|  
 
 ========================================
 
@@ -466,107 +279,104 @@ RunID                      Score   PrimaryMetric  runtime.experiment_hash  runti
 linear_hwhimda_f28dc1e2 *  0.0202  md             f28dc1e2                 82d0ed70258f8ed51f926589373...  linear_hwhimda_f28dc1e2    
 linear_hwhimka_e244ec8e    0.0287  |mk|           |e244ec8e|               |dd65a2fde5bfc0d607fcac0b36...  |linear_hwhimka_e244ec8e|  
 linear_hwhisha_a7cdd674    0.0473  |sh|           |a7cdd674|               |9839d6167e88add207dfe72b52...  |linear_hwhisha_a7cdd674|  
-linear_hwhiroa_763074ea    nan     |rtop|         |763074ea|               |2e806b6584ffe83d8f4b3f84be...  |linear_hwhiroa_763074ea|  
 
 ========================================
 
 
 GROUP: model_name=medicalnet, tissue_type=gray, prediction_task=binary_classification, target=['Gender']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: medicalnet_hgramdg_316deef8 (Metric: accuracy_weighted_test_mean, Score: 0.8523)
+  Best Run ID: medicalnet_hgrashg_29f932a9 (Metric: accuracy_weighted_test_mean, Score: 0.8838)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                          Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                 
-----------------------------------------------------------------------------------------------------------------------------------------------
-medicalnet_hgramdg_316deef8 *  0.8523  md             316deef8                 d3e51d1898b05e173f3014f21e8...  medicalnet_hgramdg_316deef8    
-medicalnet_hgrashg_78553cc7    0.8080  |sh|           |78553cc7|               |1bf5c2c7f5c7bd8654daa6bc60...  |medicalnet_hgrashg_78553cc7|  
-medicalnet_hgramkg_e9eb9704    0.7591  |mk|           |e9eb9704|               |d7cb751b2f9c196b5a6a8a0947...  |medicalnet_hgramkg_e9eb9704|  
-medicalnet_hgrarog_2db125ff    0.7071  |rtop|         |2db125ff|               |2bb563aec9485eb41ed2a3f1f6...  |medicalnet_hgrarog_2db125ff|  
+RunID                          Score   PrimaryMetric  backbone.depth  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                 
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+medicalnet_hgrashg_29f932a9 *  0.8838  sh             200             29f932a9                 8d9f10f4200b4a02cf27916d1cb...  medicalnet_hgrashg_29f932a9    
+medicalnet_hgrashg_b37fc0fe    0.8774  sh             |10|            |b37fc0fe|               |d2a27ba08554ac8f0fe5d33ec8...  |medicalnet_hgrashg_b37fc0fe|  
+medicalnet_hgrarog_1e6cd73d    0.8755  |rtop|         |10|            |1e6cd73d|               |a9e1d9efcef69fb4df2582948c...  |medicalnet_hgrarog_1e6cd73d|  
+medicalnet_hgramkg_a9021fd8    0.8692  |mk|           |10|            |a9021fd8|               |39c243ab510b93d9107ccf6e04...  |medicalnet_hgramkg_a9021fd8|  
+medicalnet_hgramdg_0beb28cd    0.8590  |md|           200             |0beb28cd|               |67499aae827acb69acc889086d...  |medicalnet_hgramdg_0beb28cd|  
+medicalnet_hgrab0g_2dcb6d59    0.7755  |b0|           |10|            |2dcb6d59|               |0fdd49d740c4ddd93c80a5f6c0...  |medicalnet_hgrab0g_2dcb6d59|  
+medicalnet_hgramdg_781b3d9f    nan     |md|           |10|            |781b3d9f|               |04b5e71a725cbead96bc16d19c...  |medicalnet_hgramdg_781b3d9f|  
+medicalnet_hgramkg_76055ed4    nan     |mk|           200             |76055ed4|               |5a1b85329de302b258f075d1d0...  |medicalnet_hgramkg_76055ed4|  
+medicalnet_hgrarog_53f3fb69    nan     |rtop|         200             |53f3fb69|               |67240d4b02937e2ff2b92ca1bf...  |medicalnet_hgrarog_53f3fb69|  
+medicalnet_hgrab0g_3eaff1da    nan     |b0|           200             |3eaff1da|               |a2603ab412d49f65c169bb9a0e...  |medicalnet_hgrab0g_3eaff1da|  
+
+========================================
+
+
+GROUP: model_name=medicalnet, tissue_type=gray, prediction_task=regression, target=['Age']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: medicalnet_hgramka_5d1662f9 (Metric: r2_test_mean, Score: -0.0038)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                          Score    PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                 
+-----------------------------------------------------------------------------------------------------------------------------------------------
+medicalnet_hgramka_5d1662f9 *  -0.0038  mk             5d1662f9                 a7da3cef04364ab54a01acb8a31...  medicalnet_hgramka_5d1662f9    
+medicalnet_hgrasha_c8a26ca1    -0.0038  |sh|           |c8a26ca1|               |e8409ef804665251c453442b2a...  |medicalnet_hgrasha_c8a26ca1|  
+medicalnet_hgramda_4c3b8b46    0.0113   |md|           |4c3b8b46|               |26bfbbec356e300f58fcfd85ea...  |medicalnet_hgramda_4c3b8b46|  
+medicalnet_hgraroa_0564b593    nan      |rtop|         |0564b593|               |c826ae16dc61e9273ff23f483d...  |medicalnet_hgraroa_0564b593|  
+medicalnet_hgrab0a_1bbec9f8    nan      |b0|           |1bbec9f8|               |6357e023265eb40b645aca2aca...  |medicalnet_hgrab0a_1bbec9f8|  
 
 ========================================
 
 
 GROUP: model_name=medicalnet, tissue_type=white, prediction_task=binary_classification, target=['Gender']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: medicalnet_hwhimdg_d3a374a2 (Metric: accuracy_weighted_test_mean, Score: 0.7461)
+  Best Run ID: medicalnet_hwhimdg_ac2fc88a (Metric: accuracy_weighted_test_mean, Score: 0.8770)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                          Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                 
-----------------------------------------------------------------------------------------------------------------------------------------------
-medicalnet_hwhimdg_d3a374a2 *  0.7461  md             d3a374a2                 a22b782b03930daff6bc415365a...  medicalnet_hwhimdg_d3a374a2    
-medicalnet_hwhishg_c25f3fe5    0.7435  |sh|           |c25f3fe5|               |23d15cdd7f8d5a4d5f259d8bbb...  |medicalnet_hwhishg_c25f3fe5|  
-medicalnet_hwhimkg_90711fad    0.6816  |mk|           |90711fad|               |1c7d4e0eeb0b8e97e2e8ef260c...  |medicalnet_hwhimkg_90711fad|  
-medicalnet_hwhirog_dff60a65    nan     |rtop|         |dff60a65|               |82d62271cee665ea0f2fbfa018...  |medicalnet_hwhirog_dff60a65|  
+RunID                          Score   PrimaryMetric  backbone.depth  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                 
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+medicalnet_hwhimdg_ac2fc88a *  0.8770  md             10              ac2fc88a                 1ebccd7dfbb358b853a566093e8...  medicalnet_hwhimdg_ac2fc88a    
+medicalnet_hwhishg_37299604    0.8755  |sh|           10              |37299604|               |7e56d6c0e699fd4b2bd2c30e4f...  |medicalnet_hwhishg_37299604|  
+medicalnet_hwhimkg_0137c0fe    0.8746  |mk|           10              |0137c0fe|               |da38c8eb4754fb0c79c549e8c5...  |medicalnet_hwhimkg_0137c0fe|  
+medicalnet_hwhib0g_b29a2bdb    0.8663  |b0|           10              |b29a2bdb|               |f986df7343af3a06e6e23aacf6...  |medicalnet_hwhib0g_b29a2bdb|  
+medicalnet_hwhirog_f4e380ec    nan     |rtop|         10              |f4e380ec|               |6e0b84108f5bddc2cdbe1dff5c...  |medicalnet_hwhirog_f4e380ec|  
+medicalnet_hwhimdg_5cf0c341    nan     md             |200|           |5cf0c341|               |f1dbd22ccc059c32ef1ded8037...  |medicalnet_hwhimdg_5cf0c341|  
+medicalnet_hwhishg_e59b06da    nan     |sh|           |200|           |e59b06da|               |74e56509147916f109843991e5...  |medicalnet_hwhishg_e59b06da|  
+medicalnet_hwhimkg_07f5ccdf    nan     |mk|           |200|           |07f5ccdf|               |4a73835794fbd59f7e96dff697...  |medicalnet_hwhimkg_07f5ccdf|  
+medicalnet_hwhirog_b819db60    nan     |rtop|         |200|           |b819db60|               |4c0ff6ce46d86a9505b28ea216...  |medicalnet_hwhirog_b819db60|  
+medicalnet_hwhib0g_f3b47d27    nan     |b0|           |200|           |f3b47d27|               |fa30d93e3e9b55408c8384b024...  |medicalnet_hwhib0g_f3b47d27|  
+
+========================================
+
+
+GROUP: model_name=medicalnet, tissue_type=white, prediction_task=regression, target=['Age']
+--------------------------------------------------------------------------------------------------------------------------------------------
+  Best Run ID: medicalnet_hwhimda_9ec23840 (Metric: r2_test_mean, Score: -0.0012)
+  Highlighting: Parameters different from Best Run are enclosed in |...|
+RunID                          Score    PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                 
+-----------------------------------------------------------------------------------------------------------------------------------------------
+medicalnet_hwhimda_9ec23840 *  -0.0012  md             9ec23840                 93477468145af969a0d8b51515f...  medicalnet_hwhimda_9ec23840    
+medicalnet_hwhisha_c2e581c1    -0.0009  |sh|           |c2e581c1|               |25fa9bba537f63ec0999e29b90...  |medicalnet_hwhisha_c2e581c1|  
+medicalnet_hwhib0a_d94a9d6b    -0.0006  |b0|           |d94a9d6b|               |465219c328c9a07f88101b2e32...  |medicalnet_hwhib0a_d94a9d6b|  
+medicalnet_hwhimka_c6344954    -0.0004  |mk|           |c6344954|               |cb10306dab0fa6d40877695fd7...  |medicalnet_hwhimka_c6344954|  
+medicalnet_hwhiroa_2e754e32    nan      |rtop|         |2e754e32|               |9f112eef5f4f797bb1809015c8...  |medicalnet_hwhiroa_2e754e32|  
 
 ========================================
 
 
 GROUP: model_name=pca_forest, tissue_type=gray, prediction_task=binary_classification, target=['Gender']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: pca_forest_hgramkg_2de83384 (Metric: accuracy_weighted_test_mean, Score: 0.8369)
+  Best Run ID: pca_forest_hgramkg_2de83384 (Metric: accuracy_weighted_test_mean, Score: 0.8323)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                          Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id                 
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-pca_forest_hgramkg_2de83384 *  0.8369  mk             1                               2de83384                 False                       975d8cc683fe6a66de3155df668...  pca_forest_hgramkg_2de83384    
-pca_forest_hgramkg_8e218d55    0.8362  mk             |0.65|                          |8e218d55|               |True|                      975d8cc683fe6a66de3155df668...  |pca_forest_hgramkg_8e218d55|  
-pca_forest_hgramkg_ce9fdf69    0.8318  mk             |0.8|                           |ce9fdf69|               |True|                      975d8cc683fe6a66de3155df668...  |pca_forest_hgramkg_ce9fdf69|  
-pca_forest_hgrarog_7c2471b9    0.8306  |rtop|         |0.8|                           |7c2471b9|               |True|                      |fe1752dcb21f95d9f6820b1639...  |pca_forest_hgrarog_7c2471b9|  
-pca_forest_hgramkg_4a4b0514    0.8303  mk             |0.75|                          |4a4b0514|               |True|                      975d8cc683fe6a66de3155df668...  |pca_forest_hgramkg_4a4b0514|  
-pca_forest_hgramkg_02146af7    0.8294  mk             |1.0|                           |02146af7|               |True|                      975d8cc683fe6a66de3155df668...  |pca_forest_hgramkg_02146af7|  
-pca_forest_hgrarog_3498d93c    0.8275  |rtop|         |1.0|                           |3498d93c|               |True|                      |fe1752dcb21f95d9f6820b1639...  |pca_forest_hgrarog_3498d93c|  
-pca_forest_hgrarog_a9340e50    0.8271  |rtop|         1                               |a9340e50|               False                       |fe1752dcb21f95d9f6820b1639...  |pca_forest_hgrarog_a9340e50|  
-pca_forest_hgramkg_ee4d9b35    0.8260  mk             |0.95|                          |ee4d9b35|               |True|                      975d8cc683fe6a66de3155df668...  |pca_forest_hgramkg_ee4d9b35|  
-pca_forest_hgramkg_daa47b99    0.8253  mk             |0.9|                           |daa47b99|               |True|                      975d8cc683fe6a66de3155df668...  |pca_forest_hgramkg_daa47b99|  
-pca_forest_hgrarog_b9723a93    0.8239  |rtop|         |0.75|                          |b9723a93|               |True|                      |fe1752dcb21f95d9f6820b1639...  |pca_forest_hgrarog_b9723a93|  
-pca_forest_hgramkg_45095816    0.8205  mk             |0.5|                           |45095816|               |True|                      975d8cc683fe6a66de3155df668...  |pca_forest_hgramkg_45095816|  
-pca_forest_hgramkg_d32370c2    0.8178  mk             |0.45|                          |d32370c2|               |True|                      975d8cc683fe6a66de3155df668...  |pca_forest_hgramkg_d32370c2|  
-pca_forest_hgrarog_fbc54c43    0.8167  |rtop|         |0.9|                           |fbc54c43|               |True|                      |fe1752dcb21f95d9f6820b1639...  |pca_forest_hgrarog_fbc54c43|  
-pca_forest_hgrarog_588949d0    0.8162  |rtop|         |0.65|                          |588949d0|               |True|                      |fe1752dcb21f95d9f6820b1639...  |pca_forest_hgrarog_588949d0|  
-pca_forest_hgrarog_bbd801ec    0.8153  |rtop|         |0.95|                          |bbd801ec|               |True|                      |fe1752dcb21f95d9f6820b1639...  |pca_forest_hgrarog_bbd801ec|  
-pca_forest_hgramkg_683c5916    0.8107  mk             |0.35|                          |683c5916|               |True|                      975d8cc683fe6a66de3155df668...  |pca_forest_hgramkg_683c5916|  
-pca_forest_hgrarog_e4297ef6    0.8096  |rtop|         |0.35|                          |e4297ef6|               |True|                      |fe1752dcb21f95d9f6820b1639...  |pca_forest_hgrarog_e4297ef6|  
-pca_forest_hgrarog_e1c27cab    0.8069  |rtop|         |0.5|                           |e1c27cab|               |True|                      |fe1752dcb21f95d9f6820b1639...  |pca_forest_hgrarog_e1c27cab|  
-pca_forest_hgrarog_5e28d57b    0.8048  |rtop|         |0.45|                          |5e28d57b|               |True|                      |fe1752dcb21f95d9f6820b1639...  |pca_forest_hgrarog_5e28d57b|  
-pca_forest_hgramdg_9ca39418    0.7940  |md|           |0.9|                           |9ca39418|               |True|                      |a4ce4ee0f89645e801783bdc37...  |pca_forest_hgramdg_9ca39418|  
-pca_forest_hgramdg_40240b55    0.7931  |md|           |1.0|                           |40240b55|               |True|                      |a4ce4ee0f89645e801783bdc37...  |pca_forest_hgramdg_40240b55|  
-pca_forest_hgramdg_897b3494    0.7914  |md|           1                               |897b3494|               False                       |a4ce4ee0f89645e801783bdc37...  |pca_forest_hgramdg_897b3494|  
-pca_forest_hgramdg_c43735ec    0.7851  |md|           |0.65|                          |c43735ec|               |True|                      |a4ce4ee0f89645e801783bdc37...  |pca_forest_hgramdg_c43735ec|  
-pca_forest_hgrashg_e57a14e1    0.7843  |sh|           |1.0|                           |e57a14e1|               |True|                      |4d00c2a9767eb511c58f9bc252...  |pca_forest_hgrashg_e57a14e1|  
-pca_forest_hgramdg_d14b4295    0.7802  |md|           |0.8|                           |d14b4295|               |True|                      |a4ce4ee0f89645e801783bdc37...  |pca_forest_hgramdg_d14b4295|  
-pca_forest_hgrashg_eb122ae4    0.7770  |sh|           1                               |eb122ae4|               False                       |4d00c2a9767eb511c58f9bc252...  |pca_forest_hgrashg_eb122ae4|  
-pca_forest_hgramdg_d2e40a1a    0.7729  |md|           |0.95|                          |d2e40a1a|               |True|                      |a4ce4ee0f89645e801783bdc37...  |pca_forest_hgramdg_d2e40a1a|  
-pca_forest_hgramdg_e801aa7f    0.7725  |md|           |0.75|                          |e801aa7f|               |True|                      |a4ce4ee0f89645e801783bdc37...  |pca_forest_hgramdg_e801aa7f|  
-pca_forest_hgrashg_7cb4d1c7    0.7669  |sh|           |0.8|                           |7cb4d1c7|               |True|                      |4d00c2a9767eb511c58f9bc252...  |pca_forest_hgrashg_7cb4d1c7|  
-pca_forest_hgrashg_e0d30d2b    0.7656  |sh|           |0.9|                           |e0d30d2b|               |True|                      |4d00c2a9767eb511c58f9bc252...  |pca_forest_hgrashg_e0d30d2b|  
-pca_forest_hgrashg_db23ee3c    0.7609  |sh|           |0.95|                          |db23ee3c|               |True|                      |4d00c2a9767eb511c58f9bc252...  |pca_forest_hgrashg_db23ee3c|  
-pca_forest_hgramdg_01687c3d    0.7599  |md|           |0.5|                           |01687c3d|               |True|                      |a4ce4ee0f89645e801783bdc37...  |pca_forest_hgramdg_01687c3d|  
-pca_forest_hgrashg_8a47757a    0.7581  |sh|           |0.75|                          |8a47757a|               |True|                      |4d00c2a9767eb511c58f9bc252...  |pca_forest_hgrashg_8a47757a|  
-pca_forest_hgrarog_ca8f5a7b    0.7564  |rtop|         |0.2|                           |ca8f5a7b|               |True|                      |fe1752dcb21f95d9f6820b1639...  |pca_forest_hgrarog_ca8f5a7b|  
-pca_forest_hgramdg_56255143    0.7485  |md|           |0.35|                          |56255143|               |True|                      |a4ce4ee0f89645e801783bdc37...  |pca_forest_hgramdg_56255143|  
-pca_forest_hgrashg_7d435d27    0.7418  |sh|           |0.5|                           |7d435d27|               |True|                      |4d00c2a9767eb511c58f9bc252...  |pca_forest_hgrashg_7d435d27|  
-pca_forest_hgramdg_cb963845    0.7412  |md|           |0.45|                          |cb963845|               |True|                      |a4ce4ee0f89645e801783bdc37...  |pca_forest_hgramdg_cb963845|  
-pca_forest_hgrashg_da45d1b2    0.7371  |sh|           |0.65|                          |da45d1b2|               |True|                      |4d00c2a9767eb511c58f9bc252...  |pca_forest_hgrashg_da45d1b2|  
-pca_forest_hgramkg_9b99c63a    0.7330  mk             |0.2|                           |9b99c63a|               |True|                      975d8cc683fe6a66de3155df668...  |pca_forest_hgramkg_9b99c63a|  
-pca_forest_hgramdg_6c8be4b1    0.7328  |md|           |0.1|                           |6c8be4b1|               |True|                      |a4ce4ee0f89645e801783bdc37...  |pca_forest_hgramdg_6c8be4b1|  
-pca_forest_hgrashg_4b54b9ec    0.7165  |sh|           |0.45|                          |4b54b9ec|               |True|                      |4d00c2a9767eb511c58f9bc252...  |pca_forest_hgrashg_4b54b9ec|  
-pca_forest_hgramdg_0c7bf9fe    0.7150  |md|           |0.2|                           |0c7bf9fe|               |True|                      |a4ce4ee0f89645e801783bdc37...  |pca_forest_hgramdg_0c7bf9fe|  
-pca_forest_hgrashg_321fb19d    0.6973  |sh|           |0.35|                          |321fb19d|               |True|                      |4d00c2a9767eb511c58f9bc252...  |pca_forest_hgrashg_321fb19d|  
-pca_forest_hgrarog_129fb6aa    0.6734  |rtop|         |0.1|                           |129fb6aa|               |True|                      |fe1752dcb21f95d9f6820b1639...  |pca_forest_hgrarog_129fb6aa|  
-pca_forest_hgrashg_8f92b0a1    0.6681  |sh|           |0.2|                           |8f92b0a1|               |True|                      |4d00c2a9767eb511c58f9bc252...  |pca_forest_hgrashg_8f92b0a1|  
-pca_forest_hgramkg_e7455f2d    0.6260  mk             |0.1|                           |e7455f2d|               |True|                      975d8cc683fe6a66de3155df668...  |pca_forest_hgramkg_e7455f2d|  
-pca_forest_hgrashg_77759101    0.5555  |sh|           |0.1|                           |77759101|               |True|                      |4d00c2a9767eb511c58f9bc252...  |pca_forest_hgrashg_77759101|  
+RunID                          Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                 
+----------------------------------------------------------------------------------------------------------------------------------------------
+pca_forest_hgramkg_2de83384 *  0.8323  mk             2de83384                 975d8cc683fe6a66de3155df668...  pca_forest_hgramkg_2de83384    
+pca_forest_hgrarog_a9340e50    0.8210  |rtop|         |a9340e50|               |fe1752dcb21f95d9f6820b1639...  |pca_forest_hgrarog_a9340e50|  
+pca_forest_hgramdg_897b3494    0.7881  |md|           |897b3494|               |a4ce4ee0f89645e801783bdc37...  |pca_forest_hgramdg_897b3494|  
+pca_forest_hgrashg_eb122ae4    0.7829  |sh|           |eb122ae4|               |4d00c2a9767eb511c58f9bc252...  |pca_forest_hgrashg_eb122ae4|  
 
 ========================================
 
 
 GROUP: model_name=pca_forest, tissue_type=gray, prediction_task=regression, target=['Age']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: pca_forest_hgrasha_b49bc69a (Metric: r2_test_mean, Score: 0.0456)
+  Best Run ID: pca_forest_hgrasha_b49bc69a (Metric: r2_test_mean, Score: 0.0330)
   Highlighting: Parameters different from Best Run are enclosed in |...|
 RunID                          Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                 
 ----------------------------------------------------------------------------------------------------------------------------------------------
-pca_forest_hgrasha_b49bc69a *  0.0456  sh             b49bc69a                 3dcffcb25e03c42857e5b6d0688...  pca_forest_hgrasha_b49bc69a    
-pca_forest_hgraroa_7e309233    0.0584  |rtop|         |7e309233|               |95a9c301ecd0927311a7c2a7d8...  |pca_forest_hgraroa_7e309233|  
-pca_forest_hgramka_22460ab4    0.0750  |mk|           |22460ab4|               |cd5b30a237925a9a5e8e2b1d9e...  |pca_forest_hgramka_22460ab4|  
-pca_forest_hgramda_d2d55dcb    0.0823  |md|           |d2d55dcb|               |debdae3581af397572f51bc504...  |pca_forest_hgramda_d2d55dcb|  
+pca_forest_hgrasha_b49bc69a *  0.0330  sh             b49bc69a                 3dcffcb25e03c42857e5b6d0688...  pca_forest_hgrasha_b49bc69a    
+pca_forest_hgraroa_7e309233    0.0534  |rtop|         |7e309233|               |95a9c301ecd0927311a7c2a7d8...  |pca_forest_hgraroa_7e309233|  
+pca_forest_hgramka_22460ab4    0.0738  |mk|           |22460ab4|               |cd5b30a237925a9a5e8e2b1d9e...  |pca_forest_hgramka_22460ab4|  
+pca_forest_hgramda_d2d55dcb    0.0923  |md|           |d2d55dcb|               |debdae3581af397572f51bc504...  |pca_forest_hgramda_d2d55dcb|  
 
 ========================================
 
@@ -575,200 +385,65 @@ GROUP: model_name=pca_forest, tissue_type=white, prediction_task=binary_classifi
 --------------------------------------------------------------------------------------------------------------------------------------------
   Best Run ID: pca_forest_hwhimdg_15131213 (Metric: accuracy_weighted_test_mean, Score: 0.8497)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                          Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id                 
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-pca_forest_hwhimdg_15131213 *  0.8497  md             1                               15131213                 False                       0c1e4f2850425309a81c2ff6ba7...  pca_forest_hwhimdg_15131213    
-pca_forest_hwhimdg_d2037121    0.8497  md             |1.0|                           |d2037121|               |True|                      0c1e4f2850425309a81c2ff6ba7...  |pca_forest_hwhimdg_d2037121|  
-pca_forest_hwhimdg_55733e63    0.8475  md             |0.95|                          |55733e63|               |True|                      0c1e4f2850425309a81c2ff6ba7...  |pca_forest_hwhimdg_55733e63|  
-pca_forest_hwhimdg_4f39c801    0.8462  md             |0.9|                           |4f39c801|               |True|                      0c1e4f2850425309a81c2ff6ba7...  |pca_forest_hwhimdg_4f39c801|  
-pca_forest_hwhimdg_905a2a3e    0.8453  md             |0.75|                          |905a2a3e|               |True|                      0c1e4f2850425309a81c2ff6ba7...  |pca_forest_hwhimdg_905a2a3e|  
-pca_forest_hwhimdg_41a70d94    0.8435  md             |0.8|                           |41a70d94|               |True|                      0c1e4f2850425309a81c2ff6ba7...  |pca_forest_hwhimdg_41a70d94|  
-pca_forest_hwhimdg_821b0b28    0.8434  md             |0.65|                          |821b0b28|               |True|                      0c1e4f2850425309a81c2ff6ba7...  |pca_forest_hwhimdg_821b0b28|  
-pca_forest_hwhimdg_56ad6bda    0.8427  md             |0.45|                          |56ad6bda|               |True|                      0c1e4f2850425309a81c2ff6ba7...  |pca_forest_hwhimdg_56ad6bda|  
-pca_forest_hwhimdg_2d081c67    0.8379  md             |0.5|                           |2d081c67|               |True|                      0c1e4f2850425309a81c2ff6ba7...  |pca_forest_hwhimdg_2d081c67|  
-pca_forest_hwhishg_ffd84f8c    0.8352  |sh|           1                               |ffd84f8c|               False                       |8ac5818c4f3f1831590125d344...  |pca_forest_hwhishg_ffd84f8c|  
-pca_forest_hwhishg_d8041a60    0.8352  |sh|           |1.0|                           |d8041a60|               |True|                      |8ac5818c4f3f1831590125d344...  |pca_forest_hwhishg_d8041a60|  
-pca_forest_hwhishg_4bb65e2f    0.8344  |sh|           |0.9|                           |4bb65e2f|               |True|                      |8ac5818c4f3f1831590125d344...  |pca_forest_hwhishg_4bb65e2f|  
-pca_forest_hwhishg_f7297682    0.8332  |sh|           |0.95|                          |f7297682|               |True|                      |8ac5818c4f3f1831590125d344...  |pca_forest_hwhishg_f7297682|  
-pca_forest_hwhimkg_14878bd3    0.8315  |mk|           1                               |14878bd3|               False                       |3c166f9c9ca54243cf83c28ac2...  |pca_forest_hwhimkg_14878bd3|  
-pca_forest_hwhimkg_7eebebca    0.8315  |mk|           |1.0|                           |7eebebca|               |True|                      |3c166f9c9ca54243cf83c28ac2...  |pca_forest_hwhimkg_7eebebca|  
-pca_forest_hwhimdg_121e8999    0.8312  md             |0.35|                          |121e8999|               |True|                      0c1e4f2850425309a81c2ff6ba7...  |pca_forest_hwhimdg_121e8999|  
-pca_forest_hwhimdg_89220a4c    0.8297  md             |0.2|                           |89220a4c|               |True|                      0c1e4f2850425309a81c2ff6ba7...  |pca_forest_hwhimdg_89220a4c|  
-pca_forest_hwhimkg_ff9de0b1    0.8280  |mk|           |0.75|                          |ff9de0b1|               |True|                      |3c166f9c9ca54243cf83c28ac2...  |pca_forest_hwhimkg_ff9de0b1|  
-pca_forest_hwhishg_6fdc6438    0.8279  |sh|           |0.75|                          |6fdc6438|               |True|                      |8ac5818c4f3f1831590125d344...  |pca_forest_hwhishg_6fdc6438|  
-pca_forest_hwhimkg_b765a4ff    0.8266  |mk|           |0.95|                          |b765a4ff|               |True|                      |3c166f9c9ca54243cf83c28ac2...  |pca_forest_hwhimkg_b765a4ff|  
-pca_forest_hwhimkg_1c629984    0.8262  |mk|           |0.9|                           |1c629984|               |True|                      |3c166f9c9ca54243cf83c28ac2...  |pca_forest_hwhimkg_1c629984|  
-pca_forest_hwhimkg_c31a1bc4    0.8239  |mk|           |0.8|                           |c31a1bc4|               |True|                      |3c166f9c9ca54243cf83c28ac2...  |pca_forest_hwhimkg_c31a1bc4|  
-pca_forest_hwhimkg_c0579362    0.8226  |mk|           |0.65|                          |c0579362|               |True|                      |3c166f9c9ca54243cf83c28ac2...  |pca_forest_hwhimkg_c0579362|  
-pca_forest_hwhishg_916400de    0.8205  |sh|           |0.35|                          |916400de|               |True|                      |8ac5818c4f3f1831590125d344...  |pca_forest_hwhishg_916400de|  
-pca_forest_hwhishg_ee17e555    0.8202  |sh|           |0.5|                           |ee17e555|               |True|                      |8ac5818c4f3f1831590125d344...  |pca_forest_hwhishg_ee17e555|  
-pca_forest_hwhishg_3ca9bdc8    0.8198  |sh|           |0.8|                           |3ca9bdc8|               |True|                      |8ac5818c4f3f1831590125d344...  |pca_forest_hwhishg_3ca9bdc8|  
-pca_forest_hwhishg_a816ef8f    0.8186  |sh|           |0.65|                          |a816ef8f|               |True|                      |8ac5818c4f3f1831590125d344...  |pca_forest_hwhishg_a816ef8f|  
-pca_forest_hwhishg_4471669c    0.8163  |sh|           |0.45|                          |4471669c|               |True|                      |8ac5818c4f3f1831590125d344...  |pca_forest_hwhishg_4471669c|  
-pca_forest_hwhimkg_0e4870d3    0.8132  |mk|           |0.35|                          |0e4870d3|               |True|                      |3c166f9c9ca54243cf83c28ac2...  |pca_forest_hwhimkg_0e4870d3|  
-pca_forest_hwhimkg_b3478d33    0.8101  |mk|           |0.45|                          |b3478d33|               |True|                      |3c166f9c9ca54243cf83c28ac2...  |pca_forest_hwhimkg_b3478d33|  
-pca_forest_hwhishg_5d00a1bc    0.8093  |sh|           |0.2|                           |5d00a1bc|               |True|                      |8ac5818c4f3f1831590125d344...  |pca_forest_hwhishg_5d00a1bc|  
-pca_forest_hwhimkg_10592bee    0.8033  |mk|           |0.5|                           |10592bee|               |True|                      |3c166f9c9ca54243cf83c28ac2...  |pca_forest_hwhimkg_10592bee|  
-pca_forest_hwhimkg_fbac1f90    0.7958  |mk|           |0.2|                           |fbac1f90|               |True|                      |3c166f9c9ca54243cf83c28ac2...  |pca_forest_hwhimkg_fbac1f90|  
-pca_forest_hwhimdg_e01bcb52    0.7927  md             |0.1|                           |e01bcb52|               |True|                      0c1e4f2850425309a81c2ff6ba7...  |pca_forest_hwhimdg_e01bcb52|  
-pca_forest_hwhishg_a026e0bc    0.7817  |sh|           |0.1|                           |a026e0bc|               |True|                      |8ac5818c4f3f1831590125d344...  |pca_forest_hwhishg_a026e0bc|  
-pca_forest_hwhimkg_c5138564    0.7751  |mk|           |0.1|                           |c5138564|               |True|                      |3c166f9c9ca54243cf83c28ac2...  |pca_forest_hwhimkg_c5138564|  
-pca_forest_hwhirog_d8fe6439    nan     |rtop|         1                               |d8fe6439|               False                       |50af9f476c216a434184e3d78c...  |pca_forest_hwhirog_d8fe6439|  
-pca_forest_hwhirog_183aab9d    nan     |rtop|         |0.1|                           |183aab9d|               |True|                      |50af9f476c216a434184e3d78c...  |pca_forest_hwhirog_183aab9d|  
-pca_forest_hwhirog_81340cea    nan     |rtop|         |0.2|                           |81340cea|               |True|                      |50af9f476c216a434184e3d78c...  |pca_forest_hwhirog_81340cea|  
-pca_forest_hwhirog_efd7de3b    nan     |rtop|         |0.35|                          |efd7de3b|               |True|                      |50af9f476c216a434184e3d78c...  |pca_forest_hwhirog_efd7de3b|  
-pca_forest_hwhirog_241d558a    nan     |rtop|         |0.45|                          |241d558a|               |True|                      |50af9f476c216a434184e3d78c...  |pca_forest_hwhirog_241d558a|  
-pca_forest_hwhirog_6e819b7b    nan     |rtop|         |0.5|                           |6e819b7b|               |True|                      |50af9f476c216a434184e3d78c...  |pca_forest_hwhirog_6e819b7b|  
-pca_forest_hwhirog_dcdb1ec3    nan     |rtop|         |0.65|                          |dcdb1ec3|               |True|                      |50af9f476c216a434184e3d78c...  |pca_forest_hwhirog_dcdb1ec3|  
-pca_forest_hwhirog_51831c1a    nan     |rtop|         |0.75|                          |51831c1a|               |True|                      |50af9f476c216a434184e3d78c...  |pca_forest_hwhirog_51831c1a|  
-pca_forest_hwhirog_657e3832    nan     |rtop|         |0.8|                           |657e3832|               |True|                      |50af9f476c216a434184e3d78c...  |pca_forest_hwhirog_657e3832|  
-pca_forest_hwhirog_8d5b3013    nan     |rtop|         |0.9|                           |8d5b3013|               |True|                      |50af9f476c216a434184e3d78c...  |pca_forest_hwhirog_8d5b3013|  
-pca_forest_hwhirog_8f103d4b    nan     |rtop|         |0.95|                          |8f103d4b|               |True|                      |50af9f476c216a434184e3d78c...  |pca_forest_hwhirog_8f103d4b|  
-pca_forest_hwhirog_94875ee2    nan     |rtop|         |1.0|                           |94875ee2|               |True|                      |50af9f476c216a434184e3d78c...  |pca_forest_hwhirog_94875ee2|  
+RunID                          Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                 
+----------------------------------------------------------------------------------------------------------------------------------------------
+pca_forest_hwhimdg_15131213 *  0.8497  md             15131213                 0c1e4f2850425309a81c2ff6ba7...  pca_forest_hwhimdg_15131213    
+pca_forest_hwhishg_ffd84f8c    0.8352  |sh|           |ffd84f8c|               |8ac5818c4f3f1831590125d344...  |pca_forest_hwhishg_ffd84f8c|  
+pca_forest_hwhimkg_14878bd3    0.8349  |mk|           |14878bd3|               |3c166f9c9ca54243cf83c28ac2...  |pca_forest_hwhimkg_14878bd3|  
 
 ========================================
 
 
 GROUP: model_name=pca_forest, tissue_type=white, prediction_task=regression, target=['Age']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: pca_forest_hwhimda_dc1c49fd (Metric: r2_test_mean, Score: 0.0161)
+  Best Run ID: pca_forest_hwhimda_dc1c49fd (Metric: r2_test_mean, Score: 0.0159)
   Highlighting: Parameters different from Best Run are enclosed in |...|
 RunID                          Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                 
 ----------------------------------------------------------------------------------------------------------------------------------------------
-pca_forest_hwhimda_dc1c49fd *  0.0161  md             dc1c49fd                 f021c9b87b35fe5a02186769099...  pca_forest_hwhimda_dc1c49fd    
-pca_forest_hwhimka_b473c29d    0.0211  |mk|           |b473c29d|               |088c73c30854b48b1bb82477f4...  |pca_forest_hwhimka_b473c29d|  
+pca_forest_hwhimda_dc1c49fd *  0.0159  md             dc1c49fd                 f021c9b87b35fe5a02186769099...  pca_forest_hwhimda_dc1c49fd    
+pca_forest_hwhimka_b473c29d    0.0204  |mk|           |b473c29d|               |088c73c30854b48b1bb82477f4...  |pca_forest_hwhimka_b473c29d|  
 pca_forest_hwhisha_ad3c4366    0.0301  |sh|           |ad3c4366|               |9df3d30d4ea4da8bd1a69a9ad6...  |pca_forest_hwhisha_ad3c4366|  
-pca_forest_hwhiroa_51d13810    nan     |rtop|         |51d13810|               |13fd70544d24138689b7b6b08c...  |pca_forest_hwhiroa_51d13810|  
 
 ========================================
 
 
 GROUP: model_name=pca_linear, tissue_type=gray, prediction_task=binary_classification, target=['Gender']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: pca_linear_hgramkg_6ea8e080 (Metric: accuracy_weighted_test_mean, Score: 0.8965)
+  Best Run ID: pca_linear_hgramkg_80c84769 (Metric: accuracy_weighted_test_mean, Score: 0.8841)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                          Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id                 
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-pca_linear_hgramkg_6ea8e080 *  0.8965  mk             0.8                             6ea8e080                 True                        dc54f876e27eda0ff66ef4b691e...  pca_linear_hgramkg_6ea8e080    
-pca_linear_hgramkg_60d8c483    0.8870  mk             |0.95|                          |60d8c483|               True                        dc54f876e27eda0ff66ef4b691e...  |pca_linear_hgramkg_60d8c483|  
-pca_linear_hgramkg_27650c80    0.8856  mk             |0.65|                          |27650c80|               True                        dc54f876e27eda0ff66ef4b691e...  |pca_linear_hgramkg_27650c80|  
-pca_linear_hgramkg_aa594340    0.8840  mk             |0.9|                           |aa594340|               True                        dc54f876e27eda0ff66ef4b691e...  |pca_linear_hgramkg_aa594340|  
-pca_linear_hgramkg_8bd419a3    0.8826  mk             |1.0|                           |8bd419a3|               True                        dc54f876e27eda0ff66ef4b691e...  |pca_linear_hgramkg_8bd419a3|  
-pca_linear_hgramkg_80c84769    0.8815  mk             |1|                             |80c84769|               |False|                     dc54f876e27eda0ff66ef4b691e...  |pca_linear_hgramkg_80c84769|  
-pca_linear_hgrarog_cab49631    0.8810  |rtop|         0.8                             |cab49631|               True                        |f93eb8ade1f556cb2d0c814f02...  |pca_linear_hgrarog_cab49631|  
-pca_linear_hgramkg_f87ea1eb    0.8791  mk             |0.75|                          |f87ea1eb|               True                        dc54f876e27eda0ff66ef4b691e...  |pca_linear_hgramkg_f87ea1eb|  
-pca_linear_hgrarog_44e15102    0.8781  |rtop|         |0.9|                           |44e15102|               True                        |f93eb8ade1f556cb2d0c814f02...  |pca_linear_hgrarog_44e15102|  
-pca_linear_hgrarog_1102e26f    0.8746  |rtop|         |1.0|                           |1102e26f|               True                        |f93eb8ade1f556cb2d0c814f02...  |pca_linear_hgrarog_1102e26f|  
-pca_linear_hgrarog_eafe8a9a    0.8727  |rtop|         |0.95|                          |eafe8a9a|               True                        |f93eb8ade1f556cb2d0c814f02...  |pca_linear_hgrarog_eafe8a9a|  
-pca_linear_hgrarog_0bcd83ba    0.8726  |rtop|         |1|                             |0bcd83ba|               |False|                     |f93eb8ade1f556cb2d0c814f02...  |pca_linear_hgrarog_0bcd83ba|  
-pca_linear_hgrarog_e23ce1c8    0.8721  |rtop|         |0.75|                          |e23ce1c8|               True                        |f93eb8ade1f556cb2d0c814f02...  |pca_linear_hgrarog_e23ce1c8|  
-pca_linear_hgrarog_153e29cb    0.8719  |rtop|         |0.65|                          |153e29cb|               True                        |f93eb8ade1f556cb2d0c814f02...  |pca_linear_hgrarog_153e29cb|  
-pca_linear_hgramdg_c4d5dafc    0.8708  |md|           |1|                             |c4d5dafc|               |False|                     |c194b42a1540183df63bbd95a3...  |pca_linear_hgramdg_c4d5dafc|  
-pca_linear_hgramdg_ea7f36c6    0.8646  |md|           |0.95|                          |ea7f36c6|               True                        |c194b42a1540183df63bbd95a3...  |pca_linear_hgramdg_ea7f36c6|  
-pca_linear_hgramdg_7806a4d4    0.8639  |md|           |1.0|                           |7806a4d4|               True                        |c194b42a1540183df63bbd95a3...  |pca_linear_hgramdg_7806a4d4|  
-pca_linear_hgramkg_74d101ac    0.8635  mk             |0.45|                          |74d101ac|               True                        dc54f876e27eda0ff66ef4b691e...  |pca_linear_hgramkg_74d101ac|  
-pca_linear_hgramkg_96fea66c    0.8599  mk             |0.5|                           |96fea66c|               True                        dc54f876e27eda0ff66ef4b691e...  |pca_linear_hgramkg_96fea66c|  
-pca_linear_hgramdg_472ddb3c    0.8545  |md|           0.8                             |472ddb3c|               True                        |c194b42a1540183df63bbd95a3...  |pca_linear_hgramdg_472ddb3c|  
-pca_linear_hgramdg_de2b0655    0.8488  |md|           |0.9|                           |de2b0655|               True                        |c194b42a1540183df63bbd95a3...  |pca_linear_hgramdg_de2b0655|  
-pca_linear_hgrashg_5cbd0a3c    0.8477  |sh|           |1.0|                           |5cbd0a3c|               True                        |727fa84ba9d44790e20785c77b...  |pca_linear_hgrashg_5cbd0a3c|  
-pca_linear_hgrashg_c16f8b30    0.8467  |sh|           |0.95|                          |c16f8b30|               True                        |727fa84ba9d44790e20785c77b...  |pca_linear_hgrashg_c16f8b30|  
-pca_linear_hgramdg_994461bf    0.8466  |md|           |0.75|                          |994461bf|               True                        |c194b42a1540183df63bbd95a3...  |pca_linear_hgramdg_994461bf|  
-pca_linear_hgrashg_e22cf867    0.8446  |sh|           |1|                             |e22cf867|               |False|                     |727fa84ba9d44790e20785c77b...  |pca_linear_hgrashg_e22cf867|  
-pca_linear_hgrashg_c2b0d246    0.8437  |sh|           |0.75|                          |c2b0d246|               True                        |727fa84ba9d44790e20785c77b...  |pca_linear_hgrashg_c2b0d246|  
-pca_linear_hgrarog_437521f6    0.8431  |rtop|         |0.5|                           |437521f6|               True                        |f93eb8ade1f556cb2d0c814f02...  |pca_linear_hgrarog_437521f6|  
-pca_linear_hgrashg_3dd48097    0.8407  |sh|           |0.9|                           |3dd48097|               True                        |727fa84ba9d44790e20785c77b...  |pca_linear_hgrashg_3dd48097|  
-pca_linear_hgrashg_7816ab1f    0.8384  |sh|           0.8                             |7816ab1f|               True                        |727fa84ba9d44790e20785c77b...  |pca_linear_hgrashg_7816ab1f|  
-pca_linear_hgrarog_d33d9e36    0.8371  |rtop|         |0.45|                          |d33d9e36|               True                        |f93eb8ade1f556cb2d0c814f02...  |pca_linear_hgrarog_d33d9e36|  
-pca_linear_hgramkg_dd32a06a    0.8364  mk             |0.35|                          |dd32a06a|               True                        dc54f876e27eda0ff66ef4b691e...  |pca_linear_hgramkg_dd32a06a|  
-pca_linear_hgramdg_79746a66    0.8304  |md|           |0.65|                          |79746a66|               True                        |c194b42a1540183df63bbd95a3...  |pca_linear_hgramdg_79746a66|  
-pca_linear_hgrarog_12d36a53    0.8296  |rtop|         |0.35|                          |12d36a53|               True                        |f93eb8ade1f556cb2d0c814f02...  |pca_linear_hgrarog_12d36a53|  
-pca_linear_hgrashg_1f460fa8    0.8259  |sh|           |0.65|                          |1f460fa8|               True                        |727fa84ba9d44790e20785c77b...  |pca_linear_hgrashg_1f460fa8|  
-pca_linear_hgramdg_c91ed6db    0.8152  |md|           |0.45|                          |c91ed6db|               True                        |c194b42a1540183df63bbd95a3...  |pca_linear_hgramdg_c91ed6db|  
-pca_linear_hgramkg_8d82625d    0.8144  mk             |0.2|                           |8d82625d|               True                        dc54f876e27eda0ff66ef4b691e...  |pca_linear_hgramkg_8d82625d|  
-pca_linear_hgramdg_3abb9f61    0.8096  |md|           |0.5|                           |3abb9f61|               True                        |c194b42a1540183df63bbd95a3...  |pca_linear_hgramdg_3abb9f61|  
-pca_linear_hgramdg_b22c0298    0.7984  |md|           |0.35|                          |b22c0298|               True                        |c194b42a1540183df63bbd95a3...  |pca_linear_hgramdg_b22c0298|  
-pca_linear_hgrashg_6f62036e    0.7943  |sh|           |0.45|                          |6f62036e|               True                        |727fa84ba9d44790e20785c77b...  |pca_linear_hgrashg_6f62036e|  
-pca_linear_hgrashg_e3a19602    0.7806  |sh|           |0.5|                           |e3a19602|               True                        |727fa84ba9d44790e20785c77b...  |pca_linear_hgrashg_e3a19602|  
-pca_linear_hgrarog_a781f305    0.7768  |rtop|         |0.2|                           |a781f305|               True                        |f93eb8ade1f556cb2d0c814f02...  |pca_linear_hgrarog_a781f305|  
-pca_linear_hgrashg_b5b395b7    0.7752  |sh|           |0.35|                          |b5b395b7|               True                        |727fa84ba9d44790e20785c77b...  |pca_linear_hgrashg_b5b395b7|  
-pca_linear_hgramdg_96e4ff49    0.7685  |md|           |0.2|                           |96e4ff49|               True                        |c194b42a1540183df63bbd95a3...  |pca_linear_hgramdg_96e4ff49|  
-pca_linear_hgramkg_6f22f7bc    0.7516  mk             |0.1|                           |6f22f7bc|               True                        dc54f876e27eda0ff66ef4b691e...  |pca_linear_hgramkg_6f22f7bc|  
-pca_linear_hgrashg_e62f82fc    0.7395  |sh|           |0.2|                           |e62f82fc|               True                        |727fa84ba9d44790e20785c77b...  |pca_linear_hgrashg_e62f82fc|  
-pca_linear_hgramdg_d4882a2a    0.7314  |md|           |0.1|                           |d4882a2a|               True                        |c194b42a1540183df63bbd95a3...  |pca_linear_hgramdg_d4882a2a|  
-pca_linear_hgrarog_c6743436    0.7310  |rtop|         |0.1|                           |c6743436|               True                        |f93eb8ade1f556cb2d0c814f02...  |pca_linear_hgrarog_c6743436|  
-pca_linear_hgrashg_4c2b076c    0.6620  |sh|           |0.1|                           |4c2b076c|               True                        |727fa84ba9d44790e20785c77b...  |pca_linear_hgrashg_4c2b076c|  
+RunID                          Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                 
+----------------------------------------------------------------------------------------------------------------------------------------------
+pca_linear_hgramkg_80c84769 *  0.8841  mk             80c84769                 dc54f876e27eda0ff66ef4b691e...  pca_linear_hgramkg_80c84769    
+pca_linear_hgrarog_0bcd83ba    0.8752  |rtop|         |0bcd83ba|               |f93eb8ade1f556cb2d0c814f02...  |pca_linear_hgrarog_0bcd83ba|  
+pca_linear_hgramdg_c4d5dafc    0.8669  |md|           |c4d5dafc|               |c194b42a1540183df63bbd95a3...  |pca_linear_hgramdg_c4d5dafc|  
+pca_linear_hgrashg_e22cf867    0.8433  |sh|           |e22cf867|               |727fa84ba9d44790e20785c77b...  |pca_linear_hgrashg_e22cf867|  
 
 ========================================
 
 
 GROUP: model_name=pca_linear, tissue_type=gray, prediction_task=regression, target=['Age']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: pca_linear_hgraroa_65e2b5b6 (Metric: r2_test_mean, Score: -29.0875)
+  Best Run ID: pca_linear_hgraroa_65e2b5b6 (Metric: r2_test_mean, Score: -30.1088)
   Highlighting: Parameters different from Best Run are enclosed in |...|
 RunID                          Score     PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                 
 ------------------------------------------------------------------------------------------------------------------------------------------------
-pca_linear_hgraroa_65e2b5b6 *  -29.0875  rtop           65e2b5b6                 760559abe29e8513c0dc9fb22c3...  pca_linear_hgraroa_65e2b5b6    
-pca_linear_hgramka_2b6a834b    -14.2122  |mk|           |2b6a834b|               |e5f0804edbd0fd5877d0de151a...  |pca_linear_hgramka_2b6a834b|  
-pca_linear_hgrasha_906d0188    -12.0097  |sh|           |906d0188|               |18ff64d7b177aca73c04f9a133...  |pca_linear_hgrasha_906d0188|  
-pca_linear_hgramda_2347f1e0    -3.8785   |md|           |2347f1e0|               |9c1e9808dea7d689c7bd7978c4...  |pca_linear_hgramda_2347f1e0|  
+pca_linear_hgraroa_65e2b5b6 *  -30.1088  rtop           65e2b5b6                 760559abe29e8513c0dc9fb22c3...  pca_linear_hgraroa_65e2b5b6    
+pca_linear_hgrasha_906d0188    -13.0906  |sh|           |906d0188|               |18ff64d7b177aca73c04f9a133...  |pca_linear_hgrasha_906d0188|  
+pca_linear_hgramka_2b6a834b    -13.0470  |mk|           |2b6a834b|               |e5f0804edbd0fd5877d0de151a...  |pca_linear_hgramka_2b6a834b|  
+pca_linear_hgramda_2347f1e0    -4.4017   |md|           |2347f1e0|               |9c1e9808dea7d689c7bd7978c4...  |pca_linear_hgramda_2347f1e0|  
 
 ========================================
 
 
 GROUP: model_name=pca_linear, tissue_type=white, prediction_task=binary_classification, target=['Gender']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: pca_linear_hwhimdg_295cd39e (Metric: accuracy_weighted_test_mean, Score: 0.8917)
+  Best Run ID: pca_linear_hwhimdg_7b6180f2 (Metric: accuracy_weighted_test_mean, Score: 0.8859)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                          Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id                 
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-pca_linear_hwhimdg_295cd39e *  0.8917  md             0.95                            295cd39e                 True                        5047ae336bba4c76f7ac60673ea...  pca_linear_hwhimdg_295cd39e    
-pca_linear_hwhimdg_69493c80    0.8901  md             |0.9|                           |69493c80|               True                        5047ae336bba4c76f7ac60673ea...  |pca_linear_hwhimdg_69493c80|  
-pca_linear_hwhimdg_7b6180f2    0.8859  md             |1|                             |7b6180f2|               |False|                     5047ae336bba4c76f7ac60673ea...  |pca_linear_hwhimdg_7b6180f2|  
-pca_linear_hwhimdg_dd6a168a    0.8859  md             |1.0|                           |dd6a168a|               True                        5047ae336bba4c76f7ac60673ea...  |pca_linear_hwhimdg_dd6a168a|  
-pca_linear_hwhimdg_101ffea4    0.8826  md             |0.75|                          |101ffea4|               True                        5047ae336bba4c76f7ac60673ea...  |pca_linear_hwhimdg_101ffea4|  
-pca_linear_hwhimdg_7f8b534d    0.8814  md             |0.8|                           |7f8b534d|               True                        5047ae336bba4c76f7ac60673ea...  |pca_linear_hwhimdg_7f8b534d|  
-pca_linear_hwhimdg_322a38bf    0.8714  md             |0.5|                           |322a38bf|               True                        5047ae336bba4c76f7ac60673ea...  |pca_linear_hwhimdg_322a38bf|  
-pca_linear_hwhimdg_600efd4a    0.8689  md             |0.65|                          |600efd4a|               True                        5047ae336bba4c76f7ac60673ea...  |pca_linear_hwhimdg_600efd4a|  
-pca_linear_hwhimdg_4a53b864    0.8665  md             |0.45|                          |4a53b864|               True                        5047ae336bba4c76f7ac60673ea...  |pca_linear_hwhimdg_4a53b864|  
-pca_linear_hwhimkg_cfdab992    0.8649  |mk|           0.95                            |cfdab992|               True                        |a59ad7b0c102e7c13d227a9952...  |pca_linear_hwhimkg_cfdab992|  
-pca_linear_hwhimdg_8eaed755    0.8644  md             |0.35|                          |8eaed755|               True                        5047ae336bba4c76f7ac60673ea...  |pca_linear_hwhimdg_8eaed755|  
-pca_linear_hwhimkg_128485bd    0.8619  |mk|           |1|                             |128485bd|               |False|                     |a59ad7b0c102e7c13d227a9952...  |pca_linear_hwhimkg_128485bd|  
-pca_linear_hwhimkg_12cc4c57    0.8619  |mk|           |1.0|                           |12cc4c57|               True                        |a59ad7b0c102e7c13d227a9952...  |pca_linear_hwhimkg_12cc4c57|  
-pca_linear_hwhimkg_a353c3fd    0.8619  |mk|           |0.9|                           |a353c3fd|               True                        |a59ad7b0c102e7c13d227a9952...  |pca_linear_hwhimkg_a353c3fd|  
-pca_linear_hwhishg_bd8a0bf9    0.8568  |sh|           |0.75|                          |bd8a0bf9|               True                        |2af5519b8440c1b0759c2fba46...  |pca_linear_hwhishg_bd8a0bf9|  
-pca_linear_hwhishg_19417c65    0.8554  |sh|           |0.9|                           |19417c65|               True                        |2af5519b8440c1b0759c2fba46...  |pca_linear_hwhishg_19417c65|  
-pca_linear_hwhishg_502529e1    0.8551  |sh|           |0.45|                          |502529e1|               True                        |2af5519b8440c1b0759c2fba46...  |pca_linear_hwhishg_502529e1|  
-pca_linear_hwhishg_4ffbbae7    0.8550  |sh|           |0.65|                          |4ffbbae7|               True                        |2af5519b8440c1b0759c2fba46...  |pca_linear_hwhishg_4ffbbae7|  
-pca_linear_hwhimkg_a13d900f    0.8542  |mk|           |0.8|                           |a13d900f|               True                        |a59ad7b0c102e7c13d227a9952...  |pca_linear_hwhimkg_a13d900f|  
-pca_linear_hwhishg_23e7d15f    0.8538  |sh|           0.95                            |23e7d15f|               True                        |2af5519b8440c1b0759c2fba46...  |pca_linear_hwhishg_23e7d15f|  
-pca_linear_hwhishg_79b88a9a    0.8534  |sh|           |1|                             |79b88a9a|               |False|                     |2af5519b8440c1b0759c2fba46...  |pca_linear_hwhishg_79b88a9a|  
-pca_linear_hwhishg_48ef97a9    0.8534  |sh|           |1.0|                           |48ef97a9|               True                        |2af5519b8440c1b0759c2fba46...  |pca_linear_hwhishg_48ef97a9|  
-pca_linear_hwhishg_1f38677b    0.8526  |sh|           |0.5|                           |1f38677b|               True                        |2af5519b8440c1b0759c2fba46...  |pca_linear_hwhishg_1f38677b|  
-pca_linear_hwhimkg_e4b5ca68    0.8522  |mk|           |0.45|                          |e4b5ca68|               True                        |a59ad7b0c102e7c13d227a9952...  |pca_linear_hwhimkg_e4b5ca68|  
-pca_linear_hwhimdg_37f3c92e    0.8512  md             |0.2|                           |37f3c92e|               True                        5047ae336bba4c76f7ac60673ea...  |pca_linear_hwhimdg_37f3c92e|  
-pca_linear_hwhishg_dd45ab5d    0.8506  |sh|           |0.8|                           |dd45ab5d|               True                        |2af5519b8440c1b0759c2fba46...  |pca_linear_hwhishg_dd45ab5d|  
-pca_linear_hwhimkg_ea072531    0.8499  |mk|           |0.5|                           |ea072531|               True                        |a59ad7b0c102e7c13d227a9952...  |pca_linear_hwhimkg_ea072531|  
-pca_linear_hwhimkg_3214071f    0.8489  |mk|           |0.65|                          |3214071f|               True                        |a59ad7b0c102e7c13d227a9952...  |pca_linear_hwhimkg_3214071f|  
-pca_linear_hwhimkg_e27bdaea    0.8444  |mk|           |0.75|                          |e27bdaea|               True                        |a59ad7b0c102e7c13d227a9952...  |pca_linear_hwhimkg_e27bdaea|  
-pca_linear_hwhishg_82eaf6d8    0.8440  |sh|           |0.35|                          |82eaf6d8|               True                        |2af5519b8440c1b0759c2fba46...  |pca_linear_hwhishg_82eaf6d8|  
-pca_linear_hwhimkg_05b61de6    0.8424  |mk|           |0.35|                          |05b61de6|               True                        |a59ad7b0c102e7c13d227a9952...  |pca_linear_hwhimkg_05b61de6|  
-pca_linear_hwhimdg_cf392582    0.8355  md             |0.1|                           |cf392582|               True                        5047ae336bba4c76f7ac60673ea...  |pca_linear_hwhimdg_cf392582|  
-pca_linear_hwhimkg_b559d13f    0.8312  |mk|           |0.2|                           |b559d13f|               True                        |a59ad7b0c102e7c13d227a9952...  |pca_linear_hwhimkg_b559d13f|  
-pca_linear_hwhishg_1372bb2e    0.8309  |sh|           |0.2|                           |1372bb2e|               True                        |2af5519b8440c1b0759c2fba46...  |pca_linear_hwhishg_1372bb2e|  
-pca_linear_hwhishg_3a40621a    0.8211  |sh|           |0.1|                           |3a40621a|               True                        |2af5519b8440c1b0759c2fba46...  |pca_linear_hwhishg_3a40621a|  
-pca_linear_hwhimkg_b1010035    0.7930  |mk|           |0.1|                           |b1010035|               True                        |a59ad7b0c102e7c13d227a9952...  |pca_linear_hwhimkg_b1010035|  
-pca_linear_hwhirog_a9aa1e87    nan     |rtop|         |1|                             |a9aa1e87|               |False|                     |62496336686d3550d107476d00...  |pca_linear_hwhirog_a9aa1e87|  
-pca_linear_hwhirog_2f94a57a    nan     |rtop|         |0.1|                           |2f94a57a|               True                        |62496336686d3550d107476d00...  |pca_linear_hwhirog_2f94a57a|  
-pca_linear_hwhirog_1a23f734    nan     |rtop|         |0.2|                           |1a23f734|               True                        |62496336686d3550d107476d00...  |pca_linear_hwhirog_1a23f734|  
-pca_linear_hwhirog_dad2ef9e    nan     |rtop|         |0.35|                          |dad2ef9e|               True                        |62496336686d3550d107476d00...  |pca_linear_hwhirog_dad2ef9e|  
-pca_linear_hwhirog_004fd423    nan     |rtop|         |0.45|                          |004fd423|               True                        |62496336686d3550d107476d00...  |pca_linear_hwhirog_004fd423|  
-pca_linear_hwhirog_213fed5e    nan     |rtop|         |0.5|                           |213fed5e|               True                        |62496336686d3550d107476d00...  |pca_linear_hwhirog_213fed5e|  
-pca_linear_hwhirog_8d1f0bda    nan     |rtop|         |0.65|                          |8d1f0bda|               True                        |62496336686d3550d107476d00...  |pca_linear_hwhirog_8d1f0bda|  
-pca_linear_hwhirog_6b361df1    nan     |rtop|         |0.75|                          |6b361df1|               True                        |62496336686d3550d107476d00...  |pca_linear_hwhirog_6b361df1|  
-pca_linear_hwhirog_0698237c    nan     |rtop|         |0.8|                           |0698237c|               True                        |62496336686d3550d107476d00...  |pca_linear_hwhirog_0698237c|  
-pca_linear_hwhirog_5fdaef40    nan     |rtop|         |0.9|                           |5fdaef40|               True                        |62496336686d3550d107476d00...  |pca_linear_hwhirog_5fdaef40|  
-pca_linear_hwhirog_aac4ffd9    nan     |rtop|         0.95                            |aac4ffd9|               True                        |62496336686d3550d107476d00...  |pca_linear_hwhirog_aac4ffd9|  
-pca_linear_hwhirog_ceffbd41    nan     |rtop|         |1.0|                           |ceffbd41|               True                        |62496336686d3550d107476d00...  |pca_linear_hwhirog_ceffbd41|  
+RunID                          Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                 
+----------------------------------------------------------------------------------------------------------------------------------------------
+pca_linear_hwhimdg_7b6180f2 *  0.8859  md             7b6180f2                 5047ae336bba4c76f7ac60673ea...  pca_linear_hwhimdg_7b6180f2    
+pca_linear_hwhimkg_128485bd    0.8619  |mk|           |128485bd|               |a59ad7b0c102e7c13d227a9952...  |pca_linear_hwhimkg_128485bd|  
+pca_linear_hwhishg_79b88a9a    0.8534  |sh|           |79b88a9a|               |2af5519b8440c1b0759c2fba46...  |pca_linear_hwhishg_79b88a9a|  
 
 ========================================
 
@@ -782,79 +457,34 @@ RunID                          Score   PrimaryMetric  runtime.experiment_hash  r
 pca_linear_hwhimda_b7f4521d *  0.0153  md             b7f4521d                 79911b321be8d0c99c19050cb64...  pca_linear_hwhimda_b7f4521d    
 pca_linear_hwhimka_1d37e8ea    0.0237  |mk|           |1d37e8ea|               |c7a765028bc166c4b0a390db1a...  |pca_linear_hwhimka_1d37e8ea|  
 pca_linear_hwhisha_0f3f6a12    0.0426  |sh|           |0f3f6a12|               |3f244d4c75500593431a514169...  |pca_linear_hwhisha_0f3f6a12|  
-pca_linear_hwhiroa_0450f0fa    nan     |rtop|         |0450f0fa|               |387eab21a8517fc186af834690...  |pca_linear_hwhiroa_0450f0fa|  
 
 ========================================
 
 
 GROUP: model_name=pca_svm, tissue_type=gray, prediction_task=binary_classification, target=['Gender']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: pca_svm_hgramkg_a54c5003 (Metric: accuracy_weighted_test_mean, Score: 0.8835)
+  Best Run ID: pca_svm_hgramkg_68f3e21b (Metric: accuracy_weighted_test_mean, Score: 0.8803)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                       Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id              
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-pca_svm_hgramkg_a54c5003 *  0.8835  mk             0.95                            a54c5003                 True                        bd05edaae9561d46fd4dea1609f...  pca_svm_hgramkg_a54c5003    
-pca_svm_hgramkg_195f3787    0.8830  mk             |0.9|                           |195f3787|               True                        bd05edaae9561d46fd4dea1609f...  |pca_svm_hgramkg_195f3787|  
-pca_svm_hgramkg_22247d51    0.8827  mk             |1.0|                           |22247d51|               True                        bd05edaae9561d46fd4dea1609f...  |pca_svm_hgramkg_22247d51|  
-pca_svm_hgramkg_68f3e21b    0.8797  mk             |1|                             |68f3e21b|               |False|                     bd05edaae9561d46fd4dea1609f...  |pca_svm_hgramkg_68f3e21b|  
-pca_svm_hgramkg_abc11401    0.8771  mk             |0.8|                           |abc11401|               True                        bd05edaae9561d46fd4dea1609f...  |pca_svm_hgramkg_abc11401|  
-pca_svm_hgramkg_16a89140    0.8765  mk             |0.75|                          |16a89140|               True                        bd05edaae9561d46fd4dea1609f...  |pca_svm_hgramkg_16a89140|  
-pca_svm_hgramkg_68bdeaa9    0.8754  mk             |0.65|                          |68bdeaa9|               True                        bd05edaae9561d46fd4dea1609f...  |pca_svm_hgramkg_68bdeaa9|  
-pca_svm_hgrarog_23d12f7b    0.8713  |rtop|         |1|                             |23d12f7b|               |False|                     |796457bb8823ae794087c5192f...  |pca_svm_hgrarog_23d12f7b|  
-pca_svm_hgrarog_ee9d88e0    0.8682  |rtop|         |0.75|                          |ee9d88e0|               True                        |796457bb8823ae794087c5192f...  |pca_svm_hgrarog_ee9d88e0|  
-pca_svm_hgrarog_df359c89    0.8673  |rtop|         |1.0|                           |df359c89|               True                        |796457bb8823ae794087c5192f...  |pca_svm_hgrarog_df359c89|  
-pca_svm_hgrarog_3b188feb    0.8668  |rtop|         |0.9|                           |3b188feb|               True                        |796457bb8823ae794087c5192f...  |pca_svm_hgrarog_3b188feb|  
-pca_svm_hgrarog_616b8201    0.8616  |rtop|         0.95                            |616b8201|               True                        |796457bb8823ae794087c5192f...  |pca_svm_hgrarog_616b8201|  
-pca_svm_hgrarog_710faadc    0.8581  |rtop|         |0.8|                           |710faadc|               True                        |796457bb8823ae794087c5192f...  |pca_svm_hgrarog_710faadc|  
-pca_svm_hgrarog_af1bc8e0    0.8531  |rtop|         |0.65|                          |af1bc8e0|               True                        |796457bb8823ae794087c5192f...  |pca_svm_hgrarog_af1bc8e0|  
-pca_svm_hgramkg_716c8195    0.8503  mk             |0.5|                           |716c8195|               True                        bd05edaae9561d46fd4dea1609f...  |pca_svm_hgramkg_716c8195|  
-pca_svm_hgramkg_f552ce3b    0.8502  mk             |0.45|                          |f552ce3b|               True                        bd05edaae9561d46fd4dea1609f...  |pca_svm_hgramkg_f552ce3b|  
-pca_svm_hgrarog_7a460214    0.8415  |rtop|         |0.5|                           |7a460214|               True                        |796457bb8823ae794087c5192f...  |pca_svm_hgrarog_7a460214|  
-pca_svm_hgramdg_7807f17b    0.8388  |md|           |1|                             |7807f17b|               |False|                     |b88f37ccc524e39c80fe38a879...  |pca_svm_hgramdg_7807f17b|  
-pca_svm_hgramkg_f04043d8    0.8384  mk             |0.35|                          |f04043d8|               True                        bd05edaae9561d46fd4dea1609f...  |pca_svm_hgramkg_f04043d8|  
-pca_svm_hgrarog_7c1d5ae4    0.8383  |rtop|         |0.45|                          |7c1d5ae4|               True                        |796457bb8823ae794087c5192f...  |pca_svm_hgrarog_7c1d5ae4|  
-pca_svm_hgramdg_2da52fc2    0.8377  |md|           |1.0|                           |2da52fc2|               True                        |b88f37ccc524e39c80fe38a879...  |pca_svm_hgramdg_2da52fc2|  
-pca_svm_hgrarog_e79b703c    0.8349  |rtop|         |0.35|                          |e79b703c|               True                        |796457bb8823ae794087c5192f...  |pca_svm_hgrarog_e79b703c|  
-pca_svm_hgramdg_cbe255ea    0.8327  |md|           |0.8|                           |cbe255ea|               True                        |b88f37ccc524e39c80fe38a879...  |pca_svm_hgramdg_cbe255ea|  
-pca_svm_hgramdg_dc6c0b09    0.8311  |md|           |0.75|                          |dc6c0b09|               True                        |b88f37ccc524e39c80fe38a879...  |pca_svm_hgramdg_dc6c0b09|  
-pca_svm_hgramdg_7aa8d135    0.8296  |md|           |0.9|                           |7aa8d135|               True                        |b88f37ccc524e39c80fe38a879...  |pca_svm_hgramdg_7aa8d135|  
-pca_svm_hgramdg_2a3329e0    0.8294  |md|           0.95                            |2a3329e0|               True                        |b88f37ccc524e39c80fe38a879...  |pca_svm_hgramdg_2a3329e0|  
-pca_svm_hgramdg_5ffd6690    0.8193  |md|           |0.65|                          |5ffd6690|               True                        |b88f37ccc524e39c80fe38a879...  |pca_svm_hgramdg_5ffd6690|  
-pca_svm_hgrashg_3e610d1c    0.8165  |sh|           |0.75|                          |3e610d1c|               True                        |4594c9001b2fb8a54a90da2266...  |pca_svm_hgrashg_3e610d1c|  
-pca_svm_hgrashg_c4adebb3    0.8153  |sh|           |0.9|                           |c4adebb3|               True                        |4594c9001b2fb8a54a90da2266...  |pca_svm_hgrashg_c4adebb3|  
-pca_svm_hgrashg_e86fc8f8    0.8139  |sh|           |1.0|                           |e86fc8f8|               True                        |4594c9001b2fb8a54a90da2266...  |pca_svm_hgrashg_e86fc8f8|  
-pca_svm_hgrashg_79d61c5f    0.8105  |sh|           0.95                            |79d61c5f|               True                        |4594c9001b2fb8a54a90da2266...  |pca_svm_hgrashg_79d61c5f|  
-pca_svm_hgrashg_b750199b    0.8089  |sh|           |0.8|                           |b750199b|               True                        |4594c9001b2fb8a54a90da2266...  |pca_svm_hgrashg_b750199b|  
-pca_svm_hgrashg_0db06467    0.8082  |sh|           |1|                             |0db06467|               |False|                     |4594c9001b2fb8a54a90da2266...  |pca_svm_hgrashg_0db06467|  
-pca_svm_hgrashg_6472630b    0.8064  |sh|           |0.65|                          |6472630b|               True                        |4594c9001b2fb8a54a90da2266...  |pca_svm_hgrashg_6472630b|  
-pca_svm_hgramdg_cca8480f    0.8003  |md|           |0.5|                           |cca8480f|               True                        |b88f37ccc524e39c80fe38a879...  |pca_svm_hgramdg_cca8480f|  
-pca_svm_hgrarog_8a8a1e75    0.7972  |rtop|         |0.2|                           |8a8a1e75|               True                        |796457bb8823ae794087c5192f...  |pca_svm_hgrarog_8a8a1e75|  
-pca_svm_hgramkg_90f396b8    0.7938  mk             |0.2|                           |90f396b8|               True                        bd05edaae9561d46fd4dea1609f...  |pca_svm_hgramkg_90f396b8|  
-pca_svm_hgramdg_73d19e9e    0.7898  |md|           |0.45|                          |73d19e9e|               True                        |b88f37ccc524e39c80fe38a879...  |pca_svm_hgramdg_73d19e9e|  
-pca_svm_hgramdg_cead49cf    0.7869  |md|           |0.35|                          |cead49cf|               True                        |b88f37ccc524e39c80fe38a879...  |pca_svm_hgramdg_cead49cf|  
-pca_svm_hgramdg_34371c16    0.7780  |md|           |0.2|                           |34371c16|               True                        |b88f37ccc524e39c80fe38a879...  |pca_svm_hgramdg_34371c16|  
-pca_svm_hgrashg_432bbfa5    0.7774  |sh|           |0.5|                           |432bbfa5|               True                        |4594c9001b2fb8a54a90da2266...  |pca_svm_hgrashg_432bbfa5|  
-pca_svm_hgramkg_3f526a21    0.7723  mk             |0.1|                           |3f526a21|               True                        bd05edaae9561d46fd4dea1609f...  |pca_svm_hgramkg_3f526a21|  
-pca_svm_hgrashg_b7c7dc7f    0.7701  |sh|           |0.45|                          |b7c7dc7f|               True                        |4594c9001b2fb8a54a90da2266...  |pca_svm_hgrashg_b7c7dc7f|  
-pca_svm_hgrashg_bed30d4a    0.7545  |sh|           |0.35|                          |bed30d4a|               True                        |4594c9001b2fb8a54a90da2266...  |pca_svm_hgrashg_bed30d4a|  
-pca_svm_hgrarog_94d8241c    0.7507  |rtop|         |0.1|                           |94d8241c|               True                        |796457bb8823ae794087c5192f...  |pca_svm_hgrarog_94d8241c|  
-pca_svm_hgramdg_ac3efa8e    0.7483  |md|           |0.1|                           |ac3efa8e|               True                        |b88f37ccc524e39c80fe38a879...  |pca_svm_hgramdg_ac3efa8e|  
-pca_svm_hgrashg_f644bb75    0.7079  |sh|           |0.2|                           |f644bb75|               True                        |4594c9001b2fb8a54a90da2266...  |pca_svm_hgrashg_f644bb75|  
-pca_svm_hgrashg_d3011800    0.6653  |sh|           |0.1|                           |d3011800|               True                        |4594c9001b2fb8a54a90da2266...  |pca_svm_hgrashg_d3011800|  
+RunID                       Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id              
+----------------------------------------------------------------------------------------------------------------------------------------
+pca_svm_hgramkg_68f3e21b *  0.8803  mk             68f3e21b                 bd05edaae9561d46fd4dea1609f...  pca_svm_hgramkg_68f3e21b    
+pca_svm_hgrarog_23d12f7b    0.8614  |rtop|         |23d12f7b|               |796457bb8823ae794087c5192f...  |pca_svm_hgrarog_23d12f7b|  
+pca_svm_hgramdg_7807f17b    0.8430  |md|           |7807f17b|               |b88f37ccc524e39c80fe38a879...  |pca_svm_hgramdg_7807f17b|  
+pca_svm_hgrashg_0db06467    0.8194  |sh|           |0db06467|               |4594c9001b2fb8a54a90da2266...  |pca_svm_hgrashg_0db06467|  
 
 ========================================
 
 
 GROUP: model_name=pca_svm, tissue_type=gray, prediction_task=regression, target=['Age']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: pca_svm_hgraroa_7dc823c1 (Metric: r2_test_mean, Score: -75.8680)
+  Best Run ID: pca_svm_hgraroa_7dc823c1 (Metric: r2_test_mean, Score: -47.2219)
   Highlighting: Parameters different from Best Run are enclosed in |...|
 RunID                       Score     PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id              
 ------------------------------------------------------------------------------------------------------------------------------------------
-pca_svm_hgraroa_7dc823c1 *  -75.8680  rtop           7dc823c1                 abd85f6619be66c53297c4b29cd...  pca_svm_hgraroa_7dc823c1    
-pca_svm_hgramka_7141d545    -13.9899  |mk|           |7141d545|               |367f128333faa21cea34bcccaf...  |pca_svm_hgramka_7141d545|  
-pca_svm_hgrasha_a8ac61c6    -13.1352  |sh|           |a8ac61c6|               |fc00a5aa38c9ab62dc77f3e0c7...  |pca_svm_hgrasha_a8ac61c6|  
-pca_svm_hgramda_65850db5    -6.4691   |md|           |65850db5|               |5cf7f6ac6f28b223dd9fe48396...  |pca_svm_hgramda_65850db5|  
+pca_svm_hgraroa_7dc823c1 *  -47.2219  rtop           7dc823c1                 abd85f6619be66c53297c4b29cd...  pca_svm_hgraroa_7dc823c1    
+pca_svm_hgrasha_a8ac61c6    -14.5446  |sh|           |a8ac61c6|               |fc00a5aa38c9ab62dc77f3e0c7...  |pca_svm_hgrasha_a8ac61c6|  
+pca_svm_hgramda_65850db5    -8.9840   |md|           |65850db5|               |5cf7f6ac6f28b223dd9fe48396...  |pca_svm_hgramda_65850db5|  
+pca_svm_hgramka_7141d545    -6.4983   |mk|           |7141d545|               |367f128333faa21cea34bcccaf...  |pca_svm_hgramka_7141d545|  
 
 ========================================
 
@@ -864,56 +494,11 @@ GROUP: model_name=pca_svm, tissue_type=white, prediction_task=binary_classificat
   Warning: Could not find performance metric column. Task: binary_classification
   Best Run ID: pca_svm_hwhimdg_cb107e9f (Metric: run_id, Score: N/A)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                       Score  PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id              
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-pca_svm_hwhimdg_cb107e9f *  -      md             1                               cb107e9f                 False                       43593ac1d332871ef0ac227d925...  pca_svm_hwhimdg_cb107e9f    
-pca_svm_hwhishg_f79a1fee    -      |sh|           1                               |f79a1fee|               False                       |b263d22abda672d2d88bed1287...  |pca_svm_hwhishg_f79a1fee|  
-pca_svm_hwhimkg_a73a8231    -      |mk|           1                               |a73a8231|               False                       |811a6892cdc4c393df4ba871ba...  |pca_svm_hwhimkg_a73a8231|  
-pca_svm_hwhirog_bfb3ca39    -      |rtop|         1                               |bfb3ca39|               False                       |24ffe04ada172ae2358dbcd153...  |pca_svm_hwhirog_bfb3ca39|  
-pca_svm_hwhimdg_403b7628    -      md             |0.1|                           |403b7628|               |True|                      43593ac1d332871ef0ac227d925...  |pca_svm_hwhimdg_403b7628|  
-pca_svm_hwhimdg_527b0e53    -      md             |0.2|                           |527b0e53|               |True|                      43593ac1d332871ef0ac227d925...  |pca_svm_hwhimdg_527b0e53|  
-pca_svm_hwhimdg_b30f929a    -      md             |0.35|                          |b30f929a|               |True|                      43593ac1d332871ef0ac227d925...  |pca_svm_hwhimdg_b30f929a|  
-pca_svm_hwhimdg_7c645528    -      md             |0.45|                          |7c645528|               |True|                      43593ac1d332871ef0ac227d925...  |pca_svm_hwhimdg_7c645528|  
-pca_svm_hwhimdg_066e7d34    -      md             |0.5|                           |066e7d34|               |True|                      43593ac1d332871ef0ac227d925...  |pca_svm_hwhimdg_066e7d34|  
-pca_svm_hwhimdg_3eeb0c01    -      md             |0.65|                          |3eeb0c01|               |True|                      43593ac1d332871ef0ac227d925...  |pca_svm_hwhimdg_3eeb0c01|  
-pca_svm_hwhimdg_a7292658    -      md             |0.75|                          |a7292658|               |True|                      43593ac1d332871ef0ac227d925...  |pca_svm_hwhimdg_a7292658|  
-pca_svm_hwhimdg_d0ff6266    -      md             |0.8|                           |d0ff6266|               |True|                      43593ac1d332871ef0ac227d925...  |pca_svm_hwhimdg_d0ff6266|  
-pca_svm_hwhimdg_e1795ebe    -      md             |0.9|                           |e1795ebe|               |True|                      43593ac1d332871ef0ac227d925...  |pca_svm_hwhimdg_e1795ebe|  
-pca_svm_hwhimdg_b80d0f59    -      md             |0.95|                          |b80d0f59|               |True|                      43593ac1d332871ef0ac227d925...  |pca_svm_hwhimdg_b80d0f59|  
-pca_svm_hwhimdg_6eef3246    -      md             |1.0|                           |6eef3246|               |True|                      43593ac1d332871ef0ac227d925...  |pca_svm_hwhimdg_6eef3246|  
-pca_svm_hwhishg_7e82cdf5    -      |sh|           |0.1|                           |7e82cdf5|               |True|                      |b263d22abda672d2d88bed1287...  |pca_svm_hwhishg_7e82cdf5|  
-pca_svm_hwhishg_712f61c1    -      |sh|           |0.2|                           |712f61c1|               |True|                      |b263d22abda672d2d88bed1287...  |pca_svm_hwhishg_712f61c1|  
-pca_svm_hwhishg_8e2e9116    -      |sh|           |0.35|                          |8e2e9116|               |True|                      |b263d22abda672d2d88bed1287...  |pca_svm_hwhishg_8e2e9116|  
-pca_svm_hwhishg_37c30cf1    -      |sh|           |0.45|                          |37c30cf1|               |True|                      |b263d22abda672d2d88bed1287...  |pca_svm_hwhishg_37c30cf1|  
-pca_svm_hwhishg_ca5dd38e    -      |sh|           |0.5|                           |ca5dd38e|               |True|                      |b263d22abda672d2d88bed1287...  |pca_svm_hwhishg_ca5dd38e|  
-pca_svm_hwhishg_55ec3274    -      |sh|           |0.65|                          |55ec3274|               |True|                      |b263d22abda672d2d88bed1287...  |pca_svm_hwhishg_55ec3274|  
-pca_svm_hwhishg_fb50fc60    -      |sh|           |0.75|                          |fb50fc60|               |True|                      |b263d22abda672d2d88bed1287...  |pca_svm_hwhishg_fb50fc60|  
-pca_svm_hwhishg_643206ac    -      |sh|           |0.8|                           |643206ac|               |True|                      |b263d22abda672d2d88bed1287...  |pca_svm_hwhishg_643206ac|  
-pca_svm_hwhishg_f410cdbc    -      |sh|           |0.9|                           |f410cdbc|               |True|                      |b263d22abda672d2d88bed1287...  |pca_svm_hwhishg_f410cdbc|  
-pca_svm_hwhishg_f935e893    -      |sh|           |0.95|                          |f935e893|               |True|                      |b263d22abda672d2d88bed1287...  |pca_svm_hwhishg_f935e893|  
-pca_svm_hwhishg_90994951    -      |sh|           |1.0|                           |90994951|               |True|                      |b263d22abda672d2d88bed1287...  |pca_svm_hwhishg_90994951|  
-pca_svm_hwhimkg_112a4185    -      |mk|           |0.1|                           |112a4185|               |True|                      |811a6892cdc4c393df4ba871ba...  |pca_svm_hwhimkg_112a4185|  
-pca_svm_hwhimkg_debcf302    -      |mk|           |0.2|                           |debcf302|               |True|                      |811a6892cdc4c393df4ba871ba...  |pca_svm_hwhimkg_debcf302|  
-pca_svm_hwhimkg_2d78e985    -      |mk|           |0.35|                          |2d78e985|               |True|                      |811a6892cdc4c393df4ba871ba...  |pca_svm_hwhimkg_2d78e985|  
-pca_svm_hwhimkg_e799f004    -      |mk|           |0.45|                          |e799f004|               |True|                      |811a6892cdc4c393df4ba871ba...  |pca_svm_hwhimkg_e799f004|  
-pca_svm_hwhimkg_9e6fc453    -      |mk|           |0.5|                           |9e6fc453|               |True|                      |811a6892cdc4c393df4ba871ba...  |pca_svm_hwhimkg_9e6fc453|  
-pca_svm_hwhimkg_99845757    -      |mk|           |0.65|                          |99845757|               |True|                      |811a6892cdc4c393df4ba871ba...  |pca_svm_hwhimkg_99845757|  
-pca_svm_hwhimkg_af0b18c1    -      |mk|           |0.75|                          |af0b18c1|               |True|                      |811a6892cdc4c393df4ba871ba...  |pca_svm_hwhimkg_af0b18c1|  
-pca_svm_hwhimkg_8b760677    -      |mk|           |0.8|                           |8b760677|               |True|                      |811a6892cdc4c393df4ba871ba...  |pca_svm_hwhimkg_8b760677|  
-pca_svm_hwhimkg_7d909feb    -      |mk|           |0.9|                           |7d909feb|               |True|                      |811a6892cdc4c393df4ba871ba...  |pca_svm_hwhimkg_7d909feb|  
-pca_svm_hwhimkg_7da2563d    -      |mk|           |0.95|                          |7da2563d|               |True|                      |811a6892cdc4c393df4ba871ba...  |pca_svm_hwhimkg_7da2563d|  
-pca_svm_hwhimkg_4398ebb7    -      |mk|           |1.0|                           |4398ebb7|               |True|                      |811a6892cdc4c393df4ba871ba...  |pca_svm_hwhimkg_4398ebb7|  
-pca_svm_hwhirog_46c08295    -      |rtop|         |0.1|                           |46c08295|               |True|                      |24ffe04ada172ae2358dbcd153...  |pca_svm_hwhirog_46c08295|  
-pca_svm_hwhirog_0e9c30ec    -      |rtop|         |0.2|                           |0e9c30ec|               |True|                      |24ffe04ada172ae2358dbcd153...  |pca_svm_hwhirog_0e9c30ec|  
-pca_svm_hwhirog_03ccf0ff    -      |rtop|         |0.35|                          |03ccf0ff|               |True|                      |24ffe04ada172ae2358dbcd153...  |pca_svm_hwhirog_03ccf0ff|  
-pca_svm_hwhirog_9b425001    -      |rtop|         |0.45|                          |9b425001|               |True|                      |24ffe04ada172ae2358dbcd153...  |pca_svm_hwhirog_9b425001|  
-pca_svm_hwhirog_cc2eae8a    -      |rtop|         |0.5|                           |cc2eae8a|               |True|                      |24ffe04ada172ae2358dbcd153...  |pca_svm_hwhirog_cc2eae8a|  
-pca_svm_hwhirog_832304b9    -      |rtop|         |0.65|                          |832304b9|               |True|                      |24ffe04ada172ae2358dbcd153...  |pca_svm_hwhirog_832304b9|  
-pca_svm_hwhirog_17038e14    -      |rtop|         |0.75|                          |17038e14|               |True|                      |24ffe04ada172ae2358dbcd153...  |pca_svm_hwhirog_17038e14|  
-pca_svm_hwhirog_9274d179    -      |rtop|         |0.8|                           |9274d179|               |True|                      |24ffe04ada172ae2358dbcd153...  |pca_svm_hwhirog_9274d179|  
-pca_svm_hwhirog_28456f0a    -      |rtop|         |0.9|                           |28456f0a|               |True|                      |24ffe04ada172ae2358dbcd153...  |pca_svm_hwhirog_28456f0a|  
-pca_svm_hwhirog_e433c554    -      |rtop|         |0.95|                          |e433c554|               |True|                      |24ffe04ada172ae2358dbcd153...  |pca_svm_hwhirog_e433c554|  
-pca_svm_hwhirog_6c66fec5    -      |rtop|         |1.0|                           |6c66fec5|               |True|                      |24ffe04ada172ae2358dbcd153...  |pca_svm_hwhirog_6c66fec5|  
+RunID                       Score  PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id              
+---------------------------------------------------------------------------------------------------------------------------------------
+pca_svm_hwhimdg_cb107e9f *  -      md             cb107e9f                 43593ac1d332871ef0ac227d925...  pca_svm_hwhimdg_cb107e9f    
+pca_svm_hwhishg_f79a1fee    -      |sh|           |f79a1fee|               |b263d22abda672d2d88bed1287...  |pca_svm_hwhishg_f79a1fee|  
+pca_svm_hwhimkg_a73a8231    -      |mk|           |a73a8231|               |811a6892cdc4c393df4ba871ba...  |pca_svm_hwhimkg_a73a8231|  
 
 ========================================
 
@@ -928,7 +513,6 @@ RunID                       Score  PrimaryMetric  runtime.experiment_hash  runti
 pca_svm_hwhimda_8026e1dc *  -      md             8026e1dc                 cceedf8791c8bf0f41056c39a4b...  pca_svm_hwhimda_8026e1dc    
 pca_svm_hwhisha_088d08c4    -      |sh|           |088d08c4|               |7c7a342797e76df8058739e53d...  |pca_svm_hwhisha_088d08c4|  
 pca_svm_hwhimka_b1c1359a    -      |mk|           |b1c1359a|               |a353248893cc0d81b4b3888f8d...  |pca_svm_hwhimka_b1c1359a|  
-pca_svm_hwhiroa_0565457e    -      |rtop|         |0565457e|               |84c6192f0867f040aad49bdfa2...  |pca_svm_hwhiroa_0565457e|  
 
 ========================================
 
@@ -937,141 +521,51 @@ GROUP: model_name=svm, tissue_type=gray, prediction_task=binary_classification, 
 --------------------------------------------------------------------------------------------------------------------------------------------
   Best Run ID: svm_hgramkg_03727ae8 (Metric: accuracy_weighted_test_mean, Score: 0.9055)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                   Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id          
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-svm_hgramkg_03727ae8 *  0.9055  mk             1                               03727ae8                 False                       154252d1b03adf67518027ed705...  svm_hgramkg_03727ae8    
-svm_hgramkg_9b8151e8    0.9055  mk             |1.0|                           |9b8151e8|               |True|                      154252d1b03adf67518027ed705...  |svm_hgramkg_9b8151e8|  
-svm_hgramkg_6c85e83b    0.8994  mk             |0.9|                           |6c85e83b|               |True|                      154252d1b03adf67518027ed705...  |svm_hgramkg_6c85e83b|  
-svm_hgramkg_7e1be0ce    0.8987  mk             |0.95|                          |7e1be0ce|               |True|                      154252d1b03adf67518027ed705...  |svm_hgramkg_7e1be0ce|  
-svm_hgramkg_a49bb712    0.8974  mk             |0.75|                          |a49bb712|               |True|                      154252d1b03adf67518027ed705...  |svm_hgramkg_a49bb712|  
-svm_hgramkg_0323cecf    0.8974  mk             |0.8|                           |0323cecf|               |True|                      154252d1b03adf67518027ed705...  |svm_hgramkg_0323cecf|  
-svm_hgramkg_5a762b37    0.8963  mk             |0.65|                          |5a762b37|               |True|                      154252d1b03adf67518027ed705...  |svm_hgramkg_5a762b37|  
-svm_hgrarog_03e0805d    0.8770  |rtop|         |0.95|                          |03e0805d|               |True|                      |09272e3266bf4d0c33efdd070e...  |svm_hgrarog_03e0805d|  
-svm_hgrarog_c1de298b    0.8768  |rtop|         1                               |c1de298b|               False                       |09272e3266bf4d0c33efdd070e...  |svm_hgrarog_c1de298b|  
-svm_hgrarog_d87897b4    0.8768  |rtop|         |1.0|                           |d87897b4|               |True|                      |09272e3266bf4d0c33efdd070e...  |svm_hgrarog_d87897b4|  
-svm_hgrarog_ecba0269    0.8730  |rtop|         |0.75|                          |ecba0269|               |True|                      |09272e3266bf4d0c33efdd070e...  |svm_hgrarog_ecba0269|  
-svm_hgrarog_9c259627    0.8730  |rtop|         |0.8|                           |9c259627|               |True|                      |09272e3266bf4d0c33efdd070e...  |svm_hgrarog_9c259627|  
-svm_hgrarog_9ad8348e    0.8706  |rtop|         |0.9|                           |9ad8348e|               |True|                      |09272e3266bf4d0c33efdd070e...  |svm_hgrarog_9ad8348e|  
-svm_hgrarog_dc0ce48b    0.8690  |rtop|         |0.65|                          |dc0ce48b|               |True|                      |09272e3266bf4d0c33efdd070e...  |svm_hgrarog_dc0ce48b|  
-svm_hgramkg_515c23d1    0.8689  mk             |0.5|                           |515c23d1|               |True|                      154252d1b03adf67518027ed705...  |svm_hgramkg_515c23d1|  
-svm_hgramkg_2c5e6af3    0.8572  mk             |0.45|                          |2c5e6af3|               |True|                      154252d1b03adf67518027ed705...  |svm_hgramkg_2c5e6af3|  
-svm_hgramdg_aafa8999    0.8561  |md|           1                               |aafa8999|               False                       |4631258c472aa76daba8f18964...  |svm_hgramdg_aafa8999|  
-svm_hgramdg_b9880392    0.8561  |md|           |1.0|                           |b9880392|               |True|                      |4631258c472aa76daba8f18964...  |svm_hgramdg_b9880392|  
-svm_hgrarog_4e912051    0.8546  |rtop|         |0.45|                          |4e912051|               |True|                      |09272e3266bf4d0c33efdd070e...  |svm_hgrarog_4e912051|  
-svm_hgramdg_903b0f6e    0.8545  |md|           |0.95|                          |903b0f6e|               |True|                      |4631258c472aa76daba8f18964...  |svm_hgramdg_903b0f6e|  
-svm_hgrashg_76c68271    0.8539  |sh|           |0.9|                           |76c68271|               |True|                      |5072dfa652d3f3fa68106420ab...  |svm_hgrashg_76c68271|  
-svm_hgramdg_e3283add    0.8538  |md|           |0.9|                           |e3283add|               |True|                      |4631258c472aa76daba8f18964...  |svm_hgramdg_e3283add|  
-svm_hgrashg_8ee7f954    0.8525  |sh|           |0.95|                          |8ee7f954|               |True|                      |5072dfa652d3f3fa68106420ab...  |svm_hgrashg_8ee7f954|  
-svm_hgrarog_a682bee4    0.8520  |rtop|         |0.5|                           |a682bee4|               |True|                      |09272e3266bf4d0c33efdd070e...  |svm_hgrarog_a682bee4|  
-svm_hgrashg_d7daaa80    0.8511  |sh|           1                               |d7daaa80|               False                       |5072dfa652d3f3fa68106420ab...  |svm_hgrashg_d7daaa80|  
-svm_hgrashg_22cb645c    0.8511  |sh|           |1.0|                           |22cb645c|               |True|                      |5072dfa652d3f3fa68106420ab...  |svm_hgrashg_22cb645c|  
-svm_hgramdg_f8d41fe3    0.8476  |md|           |0.75|                          |f8d41fe3|               |True|                      |4631258c472aa76daba8f18964...  |svm_hgramdg_f8d41fe3|  
-svm_hgramdg_5863bf29    0.8471  |md|           |0.8|                           |5863bf29|               |True|                      |4631258c472aa76daba8f18964...  |svm_hgramdg_5863bf29|  
-svm_hgramkg_73b21346    0.8464  mk             |0.35|                          |73b21346|               |True|                      154252d1b03adf67518027ed705...  |svm_hgramkg_73b21346|  
-svm_hgrashg_b9e770c1    0.8449  |sh|           |0.75|                          |b9e770c1|               |True|                      |5072dfa652d3f3fa68106420ab...  |svm_hgrashg_b9e770c1|  
-svm_hgrashg_2bb11280    0.8438  |sh|           |0.8|                           |2bb11280|               |True|                      |5072dfa652d3f3fa68106420ab...  |svm_hgrashg_2bb11280|  
-svm_hgrarog_5b93e972    0.8376  |rtop|         |0.35|                          |5b93e972|               |True|                      |09272e3266bf4d0c33efdd070e...  |svm_hgrarog_5b93e972|  
-svm_hgrashg_d1cb0fbb    0.8337  |sh|           |0.65|                          |d1cb0fbb|               |True|                      |5072dfa652d3f3fa68106420ab...  |svm_hgrashg_d1cb0fbb|  
-svm_hgramdg_f8f3e91b    0.8307  |md|           |0.65|                          |f8f3e91b|               |True|                      |4631258c472aa76daba8f18964...  |svm_hgramdg_f8f3e91b|  
-svm_hgramdg_3fd0c59c    0.8224  |md|           |0.5|                           |3fd0c59c|               |True|                      |4631258c472aa76daba8f18964...  |svm_hgramdg_3fd0c59c|  
-svm_hgramdg_6cf04754    0.8197  |md|           |0.45|                          |6cf04754|               |True|                      |4631258c472aa76daba8f18964...  |svm_hgramdg_6cf04754|  
-svm_hgramkg_cf257b09    0.8194  mk             |0.2|                           |cf257b09|               |True|                      154252d1b03adf67518027ed705...  |svm_hgramkg_cf257b09|  
-svm_hgrashg_62a88843    0.8187  |sh|           |0.5|                           |62a88843|               |True|                      |5072dfa652d3f3fa68106420ab...  |svm_hgrashg_62a88843|  
-svm_hgrashg_f5fa8041    0.8153  |sh|           |0.45|                          |f5fa8041|               |True|                      |5072dfa652d3f3fa68106420ab...  |svm_hgrashg_f5fa8041|  
-svm_hgrarog_acb4efd2    0.8149  |rtop|         |0.2|                           |acb4efd2|               |True|                      |09272e3266bf4d0c33efdd070e...  |svm_hgrarog_acb4efd2|  
-svm_hgramdg_d9d863ca    0.8064  |md|           |0.35|                          |d9d863ca|               |True|                      |4631258c472aa76daba8f18964...  |svm_hgramdg_d9d863ca|  
-svm_hgrashg_a7369f88    0.7979  |sh|           |0.35|                          |a7369f88|               |True|                      |5072dfa652d3f3fa68106420ab...  |svm_hgrashg_a7369f88|  
-svm_hgramdg_af1effa7    0.7771  |md|           |0.2|                           |af1effa7|               |True|                      |4631258c472aa76daba8f18964...  |svm_hgramdg_af1effa7|  
-svm_hgramkg_e8f42f19    0.7766  mk             |0.1|                           |e8f42f19|               |True|                      154252d1b03adf67518027ed705...  |svm_hgramkg_e8f42f19|  
-svm_hgrashg_17cab38a    0.7714  |sh|           |0.2|                           |17cab38a|               |True|                      |5072dfa652d3f3fa68106420ab...  |svm_hgrashg_17cab38a|  
-svm_hgrarog_5a55cecf    0.7570  |rtop|         |0.1|                           |5a55cecf|               |True|                      |09272e3266bf4d0c33efdd070e...  |svm_hgrarog_5a55cecf|  
-svm_hgramdg_3a7cb4a4    0.7353  |md|           |0.1|                           |3a7cb4a4|               |True|                      |4631258c472aa76daba8f18964...  |svm_hgramdg_3a7cb4a4|  
-svm_hgrashg_7bf926ea    0.7065  |sh|           |0.1|                           |7bf926ea|               |True|                      |5072dfa652d3f3fa68106420ab...  |svm_hgrashg_7bf926ea|  
+RunID                   Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id          
+--------------------------------------------------------------------------------------------------------------------------------
+svm_hgramkg_03727ae8 *  0.9055  mk             03727ae8                 154252d1b03adf67518027ed705...  svm_hgramkg_03727ae8    
+svm_hgrarog_c1de298b    0.8768  |rtop|         |c1de298b|               |09272e3266bf4d0c33efdd070e...  |svm_hgrarog_c1de298b|  
+svm_hgramdg_aafa8999    0.8561  |md|           |aafa8999|               |4631258c472aa76daba8f18964...  |svm_hgramdg_aafa8999|  
+svm_hgrashg_d7daaa80    0.8511  |sh|           |d7daaa80|               |5072dfa652d3f3fa68106420ab...  |svm_hgrashg_d7daaa80|  
 
 ========================================
 
 
 GROUP: model_name=svm, tissue_type=gray, prediction_task=regression, target=['Age']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: svm_hgraroa_4094ce83 (Metric: r2_test_mean, Score: -54.9690)
+  Best Run ID: svm_hgraroa_4094ce83 (Metric: r2_test_mean, Score: -53.9868)
   Highlighting: Parameters different from Best Run are enclosed in |...|
 RunID                   Score     PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id          
 ----------------------------------------------------------------------------------------------------------------------------------
-svm_hgraroa_4094ce83 *  -54.9690  rtop           4094ce83                 bf0aad070de7165ab9c5c4ea819...  svm_hgraroa_4094ce83    
-svm_hgramda_d9972ad6    -22.7009  |md|           |d9972ad6|               |1c476cd137d73725148da9980d...  |svm_hgramda_d9972ad6|  
-svm_hgrasha_75218f90    -11.9822  |sh|           |75218f90|               |883d5a73ad16d026f554593c5f...  |svm_hgrasha_75218f90|  
-svm_hgramka_ab3a16f5    -11.6917  |mk|           |ab3a16f5|               |e6557a09f81fc194115e80bc07...  |svm_hgramka_ab3a16f5|  
+svm_hgraroa_4094ce83 *  -53.9868  rtop           4094ce83                 bf0aad070de7165ab9c5c4ea819...  svm_hgraroa_4094ce83    
+svm_hgramda_d9972ad6    -22.6917  |md|           |d9972ad6|               |1c476cd137d73725148da9980d...  |svm_hgramda_d9972ad6|  
+svm_hgrasha_75218f90    -11.9800  |sh|           |75218f90|               |883d5a73ad16d026f554593c5f...  |svm_hgrasha_75218f90|  
+svm_hgramka_ab3a16f5    -11.6872  |mk|           |ab3a16f5|               |e6557a09f81fc194115e80bc07...  |svm_hgramka_ab3a16f5|  
 
 ========================================
 
 
 GROUP: model_name=svm, tissue_type=white, prediction_task=binary_classification, target=['Gender']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: svm_hwhimdg_7a5d7e8f (Metric: accuracy_weighted_test_mean, Score: 0.8841)
+  Best Run ID: svm_hwhimdg_4be33bea (Metric: accuracy_weighted_test_mean, Score: 0.8832)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                   Score   PrimaryMetric  data.data_partition.train_size  runtime.experiment_hash  runtime.learning_curve_exp  runtime.learning_curve_id       runtime.run_id          
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-svm_hwhimdg_7a5d7e8f *  0.8841  md             0.95                            7a5d7e8f                 True                        2a2ce770cf6f40cbf4f91d5bc6c...  svm_hwhimdg_7a5d7e8f    
-svm_hwhimdg_4be33bea    0.8832  md             |1|                             |4be33bea|               |False|                     2a2ce770cf6f40cbf4f91d5bc6c...  |svm_hwhimdg_4be33bea|  
-svm_hwhimdg_0ca65b0a    0.8832  md             |1.0|                           |0ca65b0a|               True                        2a2ce770cf6f40cbf4f91d5bc6c...  |svm_hwhimdg_0ca65b0a|  
-svm_hwhimdg_f17eaed3    0.8821  md             |0.9|                           |f17eaed3|               True                        2a2ce770cf6f40cbf4f91d5bc6c...  |svm_hwhimdg_f17eaed3|  
-svm_hwhimdg_da26f25d    0.8786  md             |0.75|                          |da26f25d|               True                        2a2ce770cf6f40cbf4f91d5bc6c...  |svm_hwhimdg_da26f25d|  
-svm_hwhimdg_f931b378    0.8782  md             |0.5|                           |f931b378|               True                        2a2ce770cf6f40cbf4f91d5bc6c...  |svm_hwhimdg_f931b378|  
-svm_hwhimdg_b7045fe0    0.8778  md             |0.8|                           |b7045fe0|               True                        2a2ce770cf6f40cbf4f91d5bc6c...  |svm_hwhimdg_b7045fe0|  
-svm_hwhimdg_b4cc253c    0.8767  md             |0.65|                          |b4cc253c|               True                        2a2ce770cf6f40cbf4f91d5bc6c...  |svm_hwhimdg_b4cc253c|  
-svm_hwhimdg_2496173a    0.8701  md             |0.45|                          |2496173a|               True                        2a2ce770cf6f40cbf4f91d5bc6c...  |svm_hwhimdg_2496173a|  
-svm_hwhimdg_4e824822    0.8689  md             |0.35|                          |4e824822|               True                        2a2ce770cf6f40cbf4f91d5bc6c...  |svm_hwhimdg_4e824822|  
-svm_hwhishg_f67f3d98    0.8658  |sh|           |0.8|                           |f67f3d98|               True                        |a7bbb4973eb2dee9a0609fa9ff...  |svm_hwhishg_f67f3d98|  
-svm_hwhishg_c714e2c2    0.8647  |sh|           0.95                            |c714e2c2|               True                        |a7bbb4973eb2dee9a0609fa9ff...  |svm_hwhishg_c714e2c2|  
-svm_hwhishg_6d562c90    0.8644  |sh|           |1|                             |6d562c90|               |False|                     |a7bbb4973eb2dee9a0609fa9ff...  |svm_hwhishg_6d562c90|  
-svm_hwhishg_c93b381c    0.8644  |sh|           |1.0|                           |c93b381c|               True                        |a7bbb4973eb2dee9a0609fa9ff...  |svm_hwhishg_c93b381c|  
-svm_hwhishg_50efa2f9    0.8631  |sh|           |0.9|                           |50efa2f9|               True                        |a7bbb4973eb2dee9a0609fa9ff...  |svm_hwhishg_50efa2f9|  
-svm_hwhimkg_eff3ab95    0.8592  |mk|           |0.75|                          |eff3ab95|               True                        |de8f8585966153d9cc69b36fa6...  |svm_hwhimkg_eff3ab95|  
-svm_hwhishg_7a3b2f71    0.8591  |sh|           |0.75|                          |7a3b2f71|               True                        |a7bbb4973eb2dee9a0609fa9ff...  |svm_hwhishg_7a3b2f71|  
-svm_hwhimkg_c10c516e    0.8571  |mk|           0.95                            |c10c516e|               True                        |de8f8585966153d9cc69b36fa6...  |svm_hwhimkg_c10c516e|  
-svm_hwhimkg_acadb11f    0.8571  |mk|           |1|                             |acadb11f|               |False|                     |de8f8585966153d9cc69b36fa6...  |svm_hwhimkg_acadb11f|  
-svm_hwhimkg_23f8a1d4    0.8571  |mk|           |1.0|                           |23f8a1d4|               True                        |de8f8585966153d9cc69b36fa6...  |svm_hwhimkg_23f8a1d4|  
-svm_hwhishg_8dfc2490    0.8565  |sh|           |0.65|                          |8dfc2490|               True                        |a7bbb4973eb2dee9a0609fa9ff...  |svm_hwhishg_8dfc2490|  
-svm_hwhimkg_c997ec1b    0.8546  |mk|           |0.8|                           |c997ec1b|               True                        |de8f8585966153d9cc69b36fa6...  |svm_hwhimkg_c997ec1b|  
-svm_hwhimkg_78048b68    0.8544  |mk|           |0.9|                           |78048b68|               True                        |de8f8585966153d9cc69b36fa6...  |svm_hwhimkg_78048b68|  
-svm_hwhimdg_84ca1af4    0.8521  md             |0.2|                           |84ca1af4|               True                        2a2ce770cf6f40cbf4f91d5bc6c...  |svm_hwhimdg_84ca1af4|  
-svm_hwhimkg_067bf76d    0.8510  |mk|           |0.65|                          |067bf76d|               True                        |de8f8585966153d9cc69b36fa6...  |svm_hwhimkg_067bf76d|  
-svm_hwhimkg_79cd8a84    0.8490  |mk|           |0.5|                           |79cd8a84|               True                        |de8f8585966153d9cc69b36fa6...  |svm_hwhimkg_79cd8a84|  
-svm_hwhimkg_5817b1a5    0.8464  |mk|           |0.45|                          |5817b1a5|               True                        |de8f8585966153d9cc69b36fa6...  |svm_hwhimkg_5817b1a5|  
-svm_hwhishg_c3790633    0.8441  |sh|           |0.45|                          |c3790633|               True                        |a7bbb4973eb2dee9a0609fa9ff...  |svm_hwhishg_c3790633|  
-svm_hwhishg_6f8e564b    0.8425  |sh|           |0.5|                           |6f8e564b|               True                        |a7bbb4973eb2dee9a0609fa9ff...  |svm_hwhishg_6f8e564b|  
-svm_hwhimdg_a8590117    0.8387  md             |0.1|                           |a8590117|               True                        2a2ce770cf6f40cbf4f91d5bc6c...  |svm_hwhimdg_a8590117|  
-svm_hwhishg_2c534ae3    0.8367  |sh|           |0.35|                          |2c534ae3|               True                        |a7bbb4973eb2dee9a0609fa9ff...  |svm_hwhishg_2c534ae3|  
-svm_hwhimkg_1bfed04b    0.8351  |mk|           |0.35|                          |1bfed04b|               True                        |de8f8585966153d9cc69b36fa6...  |svm_hwhimkg_1bfed04b|  
-svm_hwhimkg_f3959bfe    0.8229  |mk|           |0.2|                           |f3959bfe|               True                        |de8f8585966153d9cc69b36fa6...  |svm_hwhimkg_f3959bfe|  
-svm_hwhishg_f1c60c15    0.8207  |sh|           |0.2|                           |f1c60c15|               True                        |a7bbb4973eb2dee9a0609fa9ff...  |svm_hwhishg_f1c60c15|  
-svm_hwhimkg_7db6c805    0.8068  |mk|           |0.1|                           |7db6c805|               True                        |de8f8585966153d9cc69b36fa6...  |svm_hwhimkg_7db6c805|  
-svm_hwhishg_5265acbc    0.8004  |sh|           |0.1|                           |5265acbc|               True                        |a7bbb4973eb2dee9a0609fa9ff...  |svm_hwhishg_5265acbc|  
-svm_hwhirog_0bfec014    nan     |rtop|         |1|                             |0bfec014|               |False|                     |e4528de5f3cb38da333cdd957e...  |svm_hwhirog_0bfec014|  
-svm_hwhirog_d5a6e960    nan     |rtop|         |0.1|                           |d5a6e960|               True                        |e4528de5f3cb38da333cdd957e...  |svm_hwhirog_d5a6e960|  
-svm_hwhirog_957cde36    nan     |rtop|         |0.2|                           |957cde36|               True                        |e4528de5f3cb38da333cdd957e...  |svm_hwhirog_957cde36|  
-svm_hwhirog_7ca14e99    nan     |rtop|         |0.35|                          |7ca14e99|               True                        |e4528de5f3cb38da333cdd957e...  |svm_hwhirog_7ca14e99|  
-svm_hwhirog_5d6035e4    nan     |rtop|         |0.45|                          |5d6035e4|               True                        |e4528de5f3cb38da333cdd957e...  |svm_hwhirog_5d6035e4|  
-svm_hwhirog_42c74e0e    nan     |rtop|         |0.5|                           |42c74e0e|               True                        |e4528de5f3cb38da333cdd957e...  |svm_hwhirog_42c74e0e|  
-svm_hwhirog_041afd96    nan     |rtop|         |0.65|                          |041afd96|               True                        |e4528de5f3cb38da333cdd957e...  |svm_hwhirog_041afd96|  
-svm_hwhirog_63c834e5    nan     |rtop|         |0.75|                          |63c834e5|               True                        |e4528de5f3cb38da333cdd957e...  |svm_hwhirog_63c834e5|  
-svm_hwhirog_5622048e    nan     |rtop|         |0.8|                           |5622048e|               True                        |e4528de5f3cb38da333cdd957e...  |svm_hwhirog_5622048e|  
-svm_hwhirog_8379a102    nan     |rtop|         |0.9|                           |8379a102|               True                        |e4528de5f3cb38da333cdd957e...  |svm_hwhirog_8379a102|  
-svm_hwhirog_828d9a8b    nan     |rtop|         0.95                            |828d9a8b|               True                        |e4528de5f3cb38da333cdd957e...  |svm_hwhirog_828d9a8b|  
-svm_hwhirog_d707c9ad    nan     |rtop|         |1.0|                           |d707c9ad|               True                        |e4528de5f3cb38da333cdd957e...  |svm_hwhirog_d707c9ad|  
+RunID                   Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id          
+--------------------------------------------------------------------------------------------------------------------------------
+svm_hwhimdg_4be33bea *  0.8832  md             4be33bea                 2a2ce770cf6f40cbf4f91d5bc6c...  svm_hwhimdg_4be33bea    
+svm_hwhishg_6d562c90    0.8644  |sh|           |6d562c90|               |a7bbb4973eb2dee9a0609fa9ff...  |svm_hwhishg_6d562c90|  
+svm_hwhimkg_acadb11f    0.8571  |mk|           |acadb11f|               |de8f8585966153d9cc69b36fa6...  |svm_hwhimkg_acadb11f|  
 
 ========================================
 
 
 GROUP: model_name=svm, tissue_type=white, prediction_task=regression, target=['Age']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: svm_hwhimda_ab3c36b4 (Metric: r2_test_mean, Score: -0.0987)
+  Best Run ID: svm_hwhimda_ab3c36b4 (Metric: r2_test_mean, Score: -0.0982)
   Highlighting: Parameters different from Best Run are enclosed in |...|
 RunID                   Score    PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id          
 ---------------------------------------------------------------------------------------------------------------------------------
-svm_hwhimda_ab3c36b4 *  -0.0987  md             ab3c36b4                 dbdcd3cd3b94656bace75678734...  svm_hwhimda_ab3c36b4    
-svm_hwhimka_58b7907c    -0.0807  |mk|           |58b7907c|               |b46c5fddb54a1dccdfbc2a3288...  |svm_hwhimka_58b7907c|  
-svm_hwhisha_df686287    -0.0282  |sh|           |df686287|               |e8392f0c1f32832a4d494202f4...  |svm_hwhisha_df686287|  
-svm_hwhiroa_603c2bc2    nan      |rtop|         |603c2bc2|               |300d756747079d35676aa82b1e...  |svm_hwhiroa_603c2bc2|  
+svm_hwhimda_ab3c36b4 *  -0.0982  md             ab3c36b4                 dbdcd3cd3b94656bace75678734...  svm_hwhimda_ab3c36b4    
+svm_hwhimka_58b7907c    -0.0801  |mk|           |58b7907c|               |b46c5fddb54a1dccdfbc2a3288...  |svm_hwhimka_58b7907c|  
+svm_hwhisha_df686287    -0.0280  |sh|           |df686287|               |e8392f0c1f32832a4d494202f4...  |svm_hwhisha_df686287|  
 
 ========================================
