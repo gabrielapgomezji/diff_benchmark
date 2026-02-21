@@ -16,14 +16,13 @@ dinov2_abigramkdx__51d1e174    nan     |mk|           |51d1e174|               |
 
 GROUP: model_name=dinov2, tissue_type=white, prediction_task=binary_classification, target=['dx_group']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Warning: Could not find performance metric column. Task: binary_classification
-  Best Run ID: dinov2_abiwhimddx__61ba1ff3 (Metric: run_id, Score: N/A)
+  Best Run ID: dinov2_abiwhimddx__61ba1ff3 (Metric: accuracy_weighted_test_mean, Score: 0.5000)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                          Score  PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                 
----------------------------------------------------------------------------------------------------------------------------------------------
-dinov2_abiwhimddx__61ba1ff3 *  -      md             61ba1ff3                 cda8e6bc0f4105110f50a082957...  dinov2_abiwhimddx__61ba1ff3    
-dinov2_abiwhishdx__142252ab    -      |sh|           |142252ab|               |104e6e0b0399fcf77473d9cb66...  |dinov2_abiwhishdx__142252ab|  
-dinov2_abiwhimkdx__17a3d1e7    -      |mk|           |17a3d1e7|               |d4f8b57e57ef126a4edff799c3...  |dinov2_abiwhimkdx__17a3d1e7|  
+RunID                          Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                 
+----------------------------------------------------------------------------------------------------------------------------------------------
+dinov2_abiwhimddx__61ba1ff3 *  0.5000  md             61ba1ff3                 cda8e6bc0f4105110f50a082957...  dinov2_abiwhimddx__61ba1ff3    
+dinov2_abiwhishdx__142252ab    0.5000  |sh|           |142252ab|               |104e6e0b0399fcf77473d9cb66...  |dinov2_abiwhishdx__142252ab|  
+dinov2_abiwhimkdx__17a3d1e7    nan     |mk|           |17a3d1e7|               |d4f8b57e57ef126a4edff799c3...  |dinov2_abiwhimkdx__17a3d1e7|  
 
 ========================================
 
@@ -108,28 +107,26 @@ forest_abiwhisha_5eab7b66    0.2967  |sh|           |5eab7b66|               |13
 
 GROUP: model_name=lasso, tissue_type=gray, prediction_task=binary_classification, target=['Gender']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Warning: Could not find performance metric column. Task: binary_classification
-  Best Run ID: lasso_abigramdg_8caf3c2c (Metric: run_id, Score: N/A)
+  Best Run ID: lasso_abigramdg_8caf3c2c (Metric: accuracy_weighted_test_mean, Score: 0.5665)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                       Score  PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id              
----------------------------------------------------------------------------------------------------------------------------------------
-lasso_abigramdg_8caf3c2c *  -      md             8caf3c2c                 385bee967961b937a6104284354...  lasso_abigramdg_8caf3c2c    
-lasso_abigrashg_06e1489d    -      |sh|           |06e1489d|               |7d29e0d8d0ad3f916f166fe53d...  |lasso_abigrashg_06e1489d|  
-lasso_abigrab0g_fc7a086b    -      |b0|           |fc7a086b|               |2c1389fd34b5659db7cd07b513...  |lasso_abigrab0g_fc7a086b|  
+RunID                       Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id              
+----------------------------------------------------------------------------------------------------------------------------------------
+lasso_abigramdg_8caf3c2c *  0.5665  md             8caf3c2c                 385bee967961b937a6104284354...  lasso_abigramdg_8caf3c2c    
+lasso_abigrab0g_fc7a086b    0.5365  |b0|           |fc7a086b|               |2c1389fd34b5659db7cd07b513...  |lasso_abigrab0g_fc7a086b|  
+lasso_abigrashg_06e1489d    0.4887  |sh|           |06e1489d|               |7d29e0d8d0ad3f916f166fe53d...  |lasso_abigrashg_06e1489d|  
 
 ========================================
 
 
 GROUP: model_name=lasso, tissue_type=gray, prediction_task=binary_classification, target=['dx_group']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Warning: Could not find performance metric column. Task: binary_classification
-  Best Run ID: lasso_abigramddx__943f754b (Metric: run_id, Score: N/A)
+  Best Run ID: lasso_abigrashdx__916d6201 (Metric: accuracy_weighted_test_mean, Score: 0.6353)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                         Score  PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                
--------------------------------------------------------------------------------------------------------------------------------------------
-lasso_abigramddx__943f754b *  -      md             943f754b                 ba358031dc5eaa22f90a3960f9d...  lasso_abigramddx__943f754b    
-lasso_abigrashdx__916d6201    -      |sh|           |916d6201|               |0bbcc5fb6844632a9d65efc15a...  |lasso_abigrashdx__916d6201|  
-lasso_abigrab0dx__c659ee70    -      |b0|           |c659ee70|               |73930d29211fc7ce5771a04f44...  |lasso_abigrab0dx__c659ee70|  
+RunID                         Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                
+--------------------------------------------------------------------------------------------------------------------------------------------
+lasso_abigrashdx__916d6201 *  0.6353  sh             916d6201                 0bbcc5fb6844632a9d65efc15a9...  lasso_abigrashdx__916d6201    
+lasso_abigramddx__943f754b    0.6022  |md|           |943f754b|               |ba358031dc5eaa22f90a3960f9...  |lasso_abigramddx__943f754b|  
+lasso_abigrab0dx__c659ee70    0.5457  |b0|           |c659ee70|               |73930d29211fc7ce5771a04f44...  |lasso_abigrab0dx__c659ee70|  
 
 ========================================
 

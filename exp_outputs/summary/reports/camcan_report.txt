@@ -107,28 +107,28 @@ dinov2_cwhisha_a9ccc4fe    nan     |sh|           |a9ccc4fe|               |738a
 
 GROUP: model_name=forest, tissue_type=gray, prediction_task=binary_classification, target=['Gender']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: forest_cgrashg_3f641a62 (Metric: accuracy_weighted_test_mean, Score: 0.7024)
+  Best Run ID: forest_cgrab0g_ab1cf87b (Metric: accuracy_weighted_test_mean, Score: 0.7533)
   Highlighting: Parameters different from Best Run are enclosed in |...|
 RunID                      Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id             
 --------------------------------------------------------------------------------------------------------------------------------------
-forest_cgrashg_3f641a62 *  0.7024  sh             3f641a62                 d9b30f7b3b2d924831058d02ac1...  forest_cgrashg_3f641a62    
+forest_cgrab0g_ab1cf87b *  0.7533  b0             ab1cf87b                 b75803f3cb5195c1cac614fb0be...  forest_cgrab0g_ab1cf87b    
+forest_cgrashg_3f641a62    0.7024  |sh|           |3f641a62|               |d9b30f7b3b2d924831058d02ac...  |forest_cgrashg_3f641a62|  
 forest_cgramdg_ef8b36d0    0.6866  |md|           |ef8b36d0|               |ba14afc56e892d394ca8a0bce3...  |forest_cgramdg_ef8b36d0|  
 forest_cgramkg_7942d454    0.6425  |mk|           |7942d454|               |585743163a4f22d617c77f4e65...  |forest_cgramkg_7942d454|  
-forest_cgrab0g_ab1cf87b    nan     |b0|           |ab1cf87b|               |b75803f3cb5195c1cac614fb0b...  |forest_cgrab0g_ab1cf87b|  
 
 ========================================
 
 
 GROUP: model_name=forest, tissue_type=gray, prediction_task=regression, target=['Age']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: forest_cgramda_71ee5309 (Metric: r2_test_mean, Score: 0.5392)
+  Best Run ID: forest_cgrab0a_764ccbef (Metric: r2_test_mean, Score: 0.5368)
   Highlighting: Parameters different from Best Run are enclosed in |...|
 RunID                      Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id             
 --------------------------------------------------------------------------------------------------------------------------------------
-forest_cgramda_71ee5309 *  0.5392  md             71ee5309                 01732699a32c3ff1192315bc691...  forest_cgramda_71ee5309    
+forest_cgrab0a_764ccbef *  0.5368  b0             764ccbef                 bf980cfe7e380f3e0f90557450e...  forest_cgrab0a_764ccbef    
+forest_cgramda_71ee5309    0.5392  |md|           |71ee5309|               |01732699a32c3ff1192315bc69...  |forest_cgramda_71ee5309|  
 forest_cgramka_cd54e9bc    0.5775  |mk|           |cd54e9bc|               |1aee663b2f53777da0ace5154f...  |forest_cgramka_cd54e9bc|  
 forest_cgrasha_cca739ce    0.7251  |sh|           |cca739ce|               |e9aaa1625cd56e245473c3a7ba...  |forest_cgrasha_cca739ce|  
-forest_cgrab0a_764ccbef    nan     |b0|           |764ccbef|               |bf980cfe7e380f3e0f90557450...  |forest_cgrab0a_764ccbef|  
 
 ========================================
 
@@ -163,14 +163,14 @@ forest_cwhisha_403525e3    0.3627  |sh|           |403525e3|               |e40c
 
 GROUP: model_name=lasso, tissue_type=gray, prediction_task=binary_classification, target=['Gender']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: lasso_cgrashg_23393d92 (Metric: accuracy_weighted_test_mean, Score: 0.8584)
+  Best Run ID: lasso_cgrab0g_2532e619 (Metric: accuracy_weighted_test_mean, Score: 0.8726)
   Highlighting: Parameters different from Best Run are enclosed in |...|
 RunID                     Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id            
 ------------------------------------------------------------------------------------------------------------------------------------
-lasso_cgrashg_23393d92 *  0.8584  sh             23393d92                 21e2999a5e6ccd2e62c4dfc176e...  lasso_cgrashg_23393d92    
+lasso_cgrab0g_2532e619 *  0.8726  b0             2532e619                 27c114aace6936145e09320f755...  lasso_cgrab0g_2532e619    
+lasso_cgrashg_23393d92    0.8584  |sh|           |23393d92|               |21e2999a5e6ccd2e62c4dfc176...  |lasso_cgrashg_23393d92|  
 lasso_cgramdg_ec2b53ff    0.8553  |md|           |ec2b53ff|               |2f8b1708befdc99003336c0191...  |lasso_cgramdg_ec2b53ff|  
 lasso_cgramkg_a996a5b5    0.7869  |mk|           |a996a5b5|               |ee3d6cd854782fb29620754a36...  |lasso_cgramkg_a996a5b5|  
-lasso_cgrab0g_2532e619    nan     |b0|           |2532e619|               |27c114aace6936145e09320f75...  |lasso_cgrab0g_2532e619|  
 
 ========================================
 
@@ -288,12 +288,12 @@ medicalnet_cgramdg_c7e335f1    0.5000  |md|           |c7e335f1|               |
 
 GROUP: model_name=medicalnet, tissue_type=gray, prediction_task=regression, target=['Age']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: medicalnet_cgrasha_e3ee15fe (Metric: r2_test_mean, Score: 0.6615)
+  Best Run ID: medicalnet_cgramda_acd79ba5 (Metric: r2_test_mean, Score: 0.0512)
   Highlighting: Parameters different from Best Run are enclosed in |...|
 RunID                          Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                 
 ----------------------------------------------------------------------------------------------------------------------------------------------
-medicalnet_cgrasha_e3ee15fe *  0.6615  sh             e3ee15fe                 8c05f6e2112376b905de4a61fe9...  medicalnet_cgrasha_e3ee15fe    
-medicalnet_cgramda_acd79ba5    nan     |md|           |acd79ba5|               |fd1d1bbaf2a0e810659daed36b...  |medicalnet_cgramda_acd79ba5|  
+medicalnet_cgramda_acd79ba5 *  0.0512  md             acd79ba5                 fd1d1bbaf2a0e810659daed36b2...  medicalnet_cgramda_acd79ba5    
+medicalnet_cgrasha_e3ee15fe    0.6615  |sh|           |e3ee15fe|               |8c05f6e2112376b905de4a61fe...  |medicalnet_cgrasha_e3ee15fe|  
 medicalnet_cgramka_e758d673    nan     |mk|           |e758d673|               |81fd992b254c1ab274f14a3a47...  |medicalnet_cgramka_e758d673|  
 medicalnet_cgraroa_da444af9    nan     |rtop|         |da444af9|               |bea0ea15a125219f7187a26d9a...  |medicalnet_cgraroa_da444af9|  
 medicalnet_cgrab0a_f2832b46    nan     |b0|           |f2832b46|               |4720d4640534649f5b7c1f8ff2...  |medicalnet_cgrab0a_f2832b46|  
@@ -316,16 +316,15 @@ medicalnet_cwhishg_ca7b756c    0.5531  |sh|           |ca7b756c|               |
 
 GROUP: model_name=medicalnet, tissue_type=white, prediction_task=regression, target=['Age']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Warning: Could not find performance metric column. Task: regression
-  Best Run ID: medicalnet_cwhimda_c1b3fdff (Metric: run_id, Score: N/A)
+  Best Run ID: medicalnet_cwhimda_c1b3fdff (Metric: r2_test_mean, Score: 0.0028)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                          Score  PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                 
----------------------------------------------------------------------------------------------------------------------------------------------
-medicalnet_cwhimda_c1b3fdff *  -      md             c1b3fdff                 12a5dc4325d0e9312deb0f36321...  medicalnet_cwhimda_c1b3fdff    
-medicalnet_cwhisha_e3c6933f    -      |sh|           |e3c6933f|               |95a51916df76d8e563553508c6...  |medicalnet_cwhisha_e3c6933f|  
-medicalnet_cwhimka_cd496b9c    -      |mk|           |cd496b9c|               |c85f23d6c7c504cb53ad66d317...  |medicalnet_cwhimka_cd496b9c|  
-medicalnet_cwhiroa_caa809d2    -      |rtop|         |caa809d2|               |2109c3cd74e3dcc9658bdc7184...  |medicalnet_cwhiroa_caa809d2|  
-medicalnet_cwhib0a_d19d4b7d    -      |b0|           |d19d4b7d|               |0c82ebf549996d8e0d9dbac2b3...  |medicalnet_cwhib0a_d19d4b7d|  
+RunID                          Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                 
+----------------------------------------------------------------------------------------------------------------------------------------------
+medicalnet_cwhimda_c1b3fdff *  0.0028  md             c1b3fdff                 12a5dc4325d0e9312deb0f36321...  medicalnet_cwhimda_c1b3fdff    
+medicalnet_cwhisha_e3c6933f    nan     |sh|           |e3c6933f|               |95a51916df76d8e563553508c6...  |medicalnet_cwhisha_e3c6933f|  
+medicalnet_cwhimka_cd496b9c    nan     |mk|           |cd496b9c|               |c85f23d6c7c504cb53ad66d317...  |medicalnet_cwhimka_cd496b9c|  
+medicalnet_cwhiroa_caa809d2    nan     |rtop|         |caa809d2|               |2109c3cd74e3dcc9658bdc7184...  |medicalnet_cwhiroa_caa809d2|  
+medicalnet_cwhib0a_d19d4b7d    nan     |b0|           |d19d4b7d|               |0c82ebf549996d8e0d9dbac2b3...  |medicalnet_cwhib0a_d19d4b7d|  
 
 ========================================
 
