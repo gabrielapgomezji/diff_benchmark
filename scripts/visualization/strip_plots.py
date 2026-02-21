@@ -10,6 +10,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from config import apply_miccai_style
 from utils import (
     DEFAULT_COMBOS,
     build_strip_data,
@@ -25,6 +26,7 @@ def generate_strip_plots(
     out_dir: str = "analysis_results/visualization_demo/plots/folds",
     best_run: bool = True,
 ) -> Path:
+    apply_miccai_style()
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
@@ -52,7 +54,20 @@ def generate_strip_plots(
             vals = strip_df[strip_df["label"] == label]["value"].values
             jitter = (rng.random(len(vals)) - 0.5) * 0.15
             plt.scatter(np.full(len(vals), i) + jitter, vals, s=14, alpha=0.7)
-            plt.plot(i, np.mean(vals), "o", color="black", markersize=4)
+            mean_val = float(np.mean(vals))
+            std_val = float(np.std(vals, ddof=1)) if len(vals) > 1 else 0.0
+            plt.errorbar(
+                i,
+                mean_val,
+                yerr=std_val,
+                fmt="o",
+                color="black",
+                ecolor="black",
+                elinewidth=1.2,
+                capsize=3,
+                markersize=4,
+                zorder=5,
+            )
 
         pretty_labels = [format_label(l) for l in labels]
         plt.xticks(np.arange(len(labels)), pretty_labels, rotation=45, ha="right", fontsize=8)
