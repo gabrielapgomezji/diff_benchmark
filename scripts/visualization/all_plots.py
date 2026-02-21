@@ -3,7 +3,10 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from combined_plot import plot_combined
+from delta_to_linear_plot import plot_delta_to_linear
 from feature_plots import plot_feature_heatmap
+from prep_sensitivity_plot import plot_prep_sensitivity
 from show_spread import plot_model_family_spread
 from strip_plots import generate_strip_plots
 from white_vs_gray_plots import plot_white_vs_gray_tscore
@@ -23,16 +26,25 @@ def generate_all_plots(
     features_dir = out_path / "features"
 
     generate_strip_plots(parquet_path, str(folds_dir), best_run=best_run)
-    print(f"[1/4] Strip plots generated in {folds_dir}")
+    print(f"[1/7] Strip plots generated in {folds_dir}")
 
     plot_white_vs_gray_tscore(parquet_path, str(folds_dir))
-    print(f"[2/4] White-vs-gray plots generated in {folds_dir}")
+    print(f"[2/7] White-vs-gray plots generated in {folds_dir}")
 
     plot_feature_heatmap(parquet_path, str(features_dir))
-    print(f"[3/4] Feature heatmap generated in {features_dir}")
+    print(f"[3/7] Feature heatmap generated in {features_dir}")
 
     plot_model_family_spread(parquet_path, str(folds_dir))
-    print(f"[4/4] Spread plot generated in {folds_dir}")
+    print(f"[4/7] Spread plot generated in {folds_dir}")
+
+    plot_delta_to_linear(parquet_path, str(folds_dir))
+    print(f"[5/7] Delta-to-linear plot generated in {folds_dir}")
+
+    plot_prep_sensitivity(parquet_path, str(folds_dir))
+    print(f"[6/7] Prep-sensitivity plot generated in {folds_dir}")
+
+    plot_combined(parquet_path, str(folds_dir))
+    print(f"[7/7] Combined plot generated in {folds_dir}")
 
     return out_path
 

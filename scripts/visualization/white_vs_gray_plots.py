@@ -17,9 +17,8 @@ from config import (
 )
 from utils import (
     DEFAULT_COMBOS,
-    calculate_paired_stats,
     calculate_paired_ttest,
-    choose_fold_metric,
+    choose_spread_metric,
     clean_target,
     filter_combos,
     fold_columns,
@@ -30,18 +29,18 @@ from utils import (
 )
 
 PLOT_TITLES = {
-    "full": "White vs Gray Matter: Standardized Difference (All Dataset/Target/Task/Feature)",
-    "dataset": "White vs Gray Matter: Standardized Difference (Dataset Aggregated)",
-    "feature": "White vs Gray Matter: Standardized Difference (Feature Aggregated)",
+    "full": "White vs Gray Matter: Normalized Score Difference (All Dataset/Target/Task/Feature)",
+    "dataset": "White vs Gray Matter: Dataset Tissue Effect (Feature Baseline Removed)",
+    "feature": "White vs Gray Matter: Feature Tissue Effect (Dataset-Task Baseline Removed)",
     "pair": "White vs Gray Matter: Aggregated Tissue Effect Comparison",
 }
-X_AXIS_LABEL = "Standardized Paired Fold Difference"
+X_AXIS_LABEL = "\u0394 Normalized score (white \u2212 gray)"
 LEFT_REGION_LABEL = "Gray matter wins"
 RIGHT_REGION_LABEL = "White matter wins"
 POINTS_COLOR = "#4C78A8"
 MEAN_STD_COLOR = "#B22222"
 BOX_COLOR = "#D6E3F3"
-AGG_PANEL_XLABELS = ("By Dataset", "By Feature")
+AGG_PANEL_XLABELS = ("By Dataset (feature effect removed)", "By Feature (dataset effect removed)")
 TOP_REGION_COLOR = "#D6E4F1"
 BOTTOM_REGION_COLOR = "#FAEFDB"
 TOP_REGION_LABEL = "White matter wins"
@@ -76,52 +75,29 @@ def _select_best_tissue_rows(
     return best_white, best_gray
 
 
-def _run_white_vs_gray_paired_test(
-    white_vals: np.ndarray,
-    gray_vals: np.ndarray,
-    higher_is_better: bool,
-) -> dict[str, float | np.ndarray] | None:
-    white_vals = np.asarray(white_vals, dtype=float)
-    gray_vals = np.asarray(gray_vals, dtype=float)
+def _normalize_fold_val(val: float, prediction_task: str) -> float:
+    """Map a raw fold metric value to [0, 1] relative to dummy baseline.
 
-    if white_vals.shape != gray_vals.shape:
-        return None
-
-    valid_mask = np.isfinite(white_vals) & np.isfinite(gray_vals)
-    white_vals = white_vals[valid_mask]
-    gray_vals = gray_vals[valid_mask]
-    if white_vals.size == 0:
-        return None
-
-    t_score, mean_diff, std_diff, normalized_diffs = calculate_paired_stats(
-        white_vals,
-        gray_vals,
-        higher_is_better,
-    )
-
-    if std_diff == 0.0:
-        if mean_diff == 0.0:
-            return None
-        normalized_diffs = np.full(white_vals.shape[0], np.sign(mean_diff), dtype=float)
-        t_score = float(np.sign(mean_diff))
-
-    p_value = calculate_paired_ttest(white_vals, gray_vals)
-
-    return {
-        "t_score": float(t_score),
-        "mean_diff": float(mean_diff),
-        "std_diff": float(std_diff),
-        "p_value": float(p_value),
-        "normalized_diffs": np.asarray(normalized_diffs, dtype=float),
-    }
+    - Binary classification (balanced accuracy): dummy = 0.5, perfect = 1.0
+    - Regression (R²):                           dummy = 0.0, perfect = 1.0
+    """
+    if prediction_task == "binary_classification":
+        return (val - 0.5) / 0.5
+    return float(val)  # R²: already 0 = dummy, 1 = perfect
 
 
 def _collect_pairwise_effects(df: pd.DataFrame) -> pd.DataFrame:
-    """Collect fold-level standardized white-vs-gray effects for each dataset/target/task/feature."""
+    """Collect fold-level normalized score differences (white − gray) per dataset/target/task/feature."""
     rows = []
 
     for (dataset, target, task), group in df.groupby(["dataset", "target_clean", "prediction_task"]):
-        fold_prefix, metric_label, higher_is_better = choose_fold_metric(group, task)
+        try:
+            fold_prefix, metric_label = choose_spread_metric(group, task)
+        except (RuntimeError, ValueError):
+            continue
+
+        # choose_spread_metric always returns higher-is-better metrics (R² / balanced accuracy)
+        higher_is_better = True
         best = select_best_runs(group, fold_prefix, higher_is_better)
         if best.empty or "_fold_mean" not in best.columns:
             continue
@@ -140,15 +116,24 @@ def _collect_pairwise_effects(df: pd.DataFrame) -> pd.DataFrame:
                 continue
             best_white, best_gray = best_tissues
 
-            stats = _run_white_vs_gray_paired_test(
-                best_white[fold_cols].values,
-                best_gray[fold_cols].values,
-                higher_is_better,
-            )
-            if stats is None:
+            white_vals = np.asarray(best_white[fold_cols].values, dtype=float)
+            gray_vals  = np.asarray(best_gray[fold_cols].values, dtype=float)
+
+            valid = np.isfinite(white_vals) & np.isfinite(gray_vals)
+            white_vals = white_vals[valid]
+            gray_vals  = gray_vals[valid]
+            if white_vals.size == 0:
                 continue
 
-            for fold_idx, norm_diff in enumerate(stats["normalized_diffs"]):
+            # Normalize each fold to [0,1] then subtract: positive = white matter wins
+            norm_white = np.array([_normalize_fold_val(v, task) for v in white_vals])
+            norm_gray  = np.array([_normalize_fold_val(v, task) for v in gray_vals])
+            diffs = norm_white - norm_gray
+
+            # P-value from paired t-test on raw values (linear scaling preserves significance)
+            p_value = calculate_paired_ttest(white_vals, gray_vals)
+
+            for fold_idx, diff in enumerate(diffs):
                 rows.append(
                     {
                         "dataset": dataset,
@@ -157,15 +142,85 @@ def _collect_pairwise_effects(df: pd.DataFrame) -> pd.DataFrame:
                         "feature": feature,
                         "metric_label": metric_label,
                         "fold": fold_idx,
-                        "normalized_diff": float(norm_diff),
-                        "t_score": float(stats["t_score"]),
-                        "mean_diff": float(stats["mean_diff"]),
-                        "std_diff": float(stats["std_diff"]),
-                        "p_value": float(stats["p_value"]),
+                        "normalized_diff": float(diff),
+                        "p_value": float(p_value),
                     }
                 )
 
     return pd.DataFrame(rows)
+
+
+def _center_dataset_effects(diffs: pd.DataFrame) -> pd.DataFrame:
+    """Remove feature baseline offsets to isolate dataset-task-specific tissue effects.
+
+    Procedure:
+    1. Collapse fold-level diffs to one mean effect per (dataset, target, task, feature)
+       so that fold count imbalance does not distort the baseline estimate.
+    2. Compute the feature baseline: mean of those per-combination means across all
+       (dataset, target, task) combinations for each feature.
+    3. Residualize each individual fold: normalized_diff -= feature_baseline.
+
+    Fold-level rows are preserved so individual folds appear in the plot.
+    """
+    group_cols = ["dataset", "target", "task", "feature", "metric_label"]
+    # Step 1: per-combination means for baseline estimation
+    combo_means = (
+        diffs.groupby(group_cols, as_index=False)["normalized_diff"]
+        .mean()
+    )
+
+    # Step 2: feature baseline = mean of combo means across dataset/target/task
+    cluster_means = (
+        combo_means.groupby(["feature"])["normalized_diff"]
+        .mean()
+        .rename("cluster_mean")
+        .reset_index()
+    )
+
+    # Step 3: apply residual to every fold-level row
+    result = diffs.merge(cluster_means, on=["feature"], how="left")
+    result = result.copy()
+    result["normalized_diff"] = result["normalized_diff"] - result["cluster_mean"]
+    result = result.drop(columns=["cluster_mean"])
+
+    return result
+
+
+def _center_feature_effects(diffs: pd.DataFrame) -> pd.DataFrame:
+    """Remove dataset-task baseline offsets to isolate feature-specific tissue effects.
+
+    Procedure:
+    1. Collapse fold-level diffs to one mean effect per (dataset, target, task, feature)
+       so that fold count imbalance does not distort the baseline estimate.
+    2. Compute the dataset-task cluster baseline: mean of those per-combination means
+       across all features within each (dataset, target, task) group.
+    3. Residualize each individual fold: normalized_diff -= cluster_baseline.
+
+    Fold-level rows are preserved so individual folds appear in the plot.
+    """
+    group_cols = ["dataset", "target", "task", "feature", "metric_label"]
+    # Step 1: per-combination means for baseline estimation
+    combo_means = (
+        diffs.groupby(group_cols, as_index=False)["normalized_diff"]
+        .mean()
+    )
+
+    # Step 2: dataset-task baseline = mean of combo means across features in each cluster
+    cluster_cols = ["dataset", "target", "task"]
+    cluster_means = (
+        combo_means.groupby(cluster_cols)["normalized_diff"]
+        .mean()
+        .rename("cluster_mean")
+        .reset_index()
+    )
+
+    # Step 3: apply residual to every fold-level row
+    result = diffs.merge(cluster_means, on=cluster_cols, how="left")
+    result = result.copy()
+    result["normalized_diff"] = result["normalized_diff"] - result["cluster_mean"]
+    result = result.drop(columns=["cluster_mean"])
+
+    return result
 
 
 def _build_labels(
@@ -477,10 +532,8 @@ def _plot_aggregated_pair_comparison(
     _draw_box_with_points(axes[0], dataset_df, dataset_order, vertical=True)
     _draw_box_with_points(axes[1], feature_df, feature_order, vertical=True)
 
-    all_vals = pd.concat([dataset_df["normalized_diff"], feature_df["normalized_diff"]], axis=0)
-    max_abs = float(np.nanmax(np.abs(all_vals.to_numpy(dtype=float))))
-    y_lim = max(4.0, 1.1 * max_abs)
-    forced_ticks = [-4, -2, 0, 2, 4]
+    y_lim = 0.8
+    forced_ticks = [-0.8, -0.4, 0.0, 0.4, 0.8]
 
     panel_defs = (
         (axes[0], dataset_df, dataset_order),
@@ -551,8 +604,9 @@ def generate_white_vs_gray_plots(
         output_file=out_path / "white_vs_gray_tscore.png",
     )
 
+    centered_diffs_dataset = _center_dataset_effects(diffs)
     dataset_df = _build_labels(
-        diffs,
+        centered_diffs_dataset,
         view="dataset",
         aggregate_tasks=aggregate_tasks_dataset,
     )
@@ -563,8 +617,9 @@ def generate_white_vs_gray_plots(
         output_file=out_path / f"white_vs_gray_tscore_{dataset_suffix}.png",
     )
 
+    centered_diffs = _center_feature_effects(diffs)
     feature_df = _build_labels(
-        diffs,
+        centered_diffs,
         view="feature",
         aggregate_tasks=aggregate_tasks_feature,
     )

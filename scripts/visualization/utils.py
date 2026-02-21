@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable, List, Tuple
+from typing import Iterable, List, Sequence, Tuple
 import re
 
 import numpy as np
@@ -273,6 +273,7 @@ def build_strip_data(
 
 
 MODEL_FAMILY_ORDER = ["Linear", "RandomForest", "DeepEmbedding+LinearHead"]
+MODEL_DISPLAY_ORDER = ["Linear", "RandomForest", "medicalnet", "dinov2", "curia"]
 
 LINEAR_MODELS = {"linear", "pca_linear", "lasso", "svm", "pca_svm"}
 RANDOM_FOREST_MODELS = {"forest", "pca_forest", "random_forest", "randomforest", "rf"}
@@ -290,6 +291,18 @@ def map_model_family(model_name: str) -> str | None:
     if name in DEEP_EMBED_MODELS:
         return "DeepEmbedding+LinearHead"
     return None
+
+
+def map_model_display_group(model_name: str) -> str | None:
+    name = str(model_name).strip().lower()
+    family = map_model_family(name)
+    if family is None:
+        return None
+    if family == "DeepEmbedding+LinearHead":
+        if name in DEEP_EMBED_MODELS:
+            return name
+        return None
+    return family
 
 
 def _has_metric_values(df: pd.DataFrame, fold_prefix: str) -> bool:
@@ -355,6 +368,43 @@ def normalize_score(row: pd.Series) -> float:
     return float(np.clip(score_norm, 0.0, 1.0))
 
 
+def minmax_normalize_with_baseline(
+    df: pd.DataFrame,
+    score_col: str = "score_raw",
+    group_cols: Sequence[str] = ("dataset", "target_clean", "prediction_task"),
+) -> pd.DataFrame:
+    out = df.copy()
+    if score_col not in out.columns:
+        raise ValueError(f"Missing score column '{score_col}' for min-max normalization")
+
+    def _baseline(row: pd.Series) -> float:
+        task = str(row.get("prediction_task", ""))
+        if task == "binary_classification":
+            n_classes = row.get("n_classes", np.nan)
+            if pd.notna(n_classes) and int(n_classes) != 2:
+                raise ValueError(
+                    "Multiclass classification detected; provide a `dummy_score` column."
+                )
+            return 0.5
+        if task == "regression":
+            # These spread plots use R2 for regression, where dummy baseline is 0.
+            return 0.0
+        raise ValueError(f"Unsupported prediction task for normalization: {task}")
+
+    out["_baseline"] = out.apply(_baseline, axis=1)
+    out["_group_max"] = out.groupby(list(group_cols), dropna=False)[score_col].transform("max")
+    denom = out["_group_max"] - out["_baseline"]
+
+    out["score_norm"] = 0.0
+    valid = denom > 0
+    out.loc[valid, "score_norm"] = (
+        (out.loc[valid, score_col] - out.loc[valid, "_baseline"]) / denom.loc[valid]
+    )
+    out["score_norm"] = out["score_norm"].clip(0.0, 1.0)
+    out = out.drop(columns=["_baseline", "_group_max"])
+    return out
+
+
 def aggregate_run_scores(
     df: pd.DataFrame,
     score_col: str = "score_norm",
@@ -399,3 +449,20 @@ def aggregate_run_scores(
         .rename(columns={score_col: "score_norm_run"})
     )
     return run_df
+
+
+def make_dataset_task_label(dataset: str, target_clean: str) -> str:
+    return f"{dataset}::{target_clean}"
+
+
+def ordered_dataset_task_labels_from_combos(
+    present_labels: Sequence[str],
+    combos: Sequence[Tuple[str, str, str]],
+) -> List[str]:
+    seen = set(present_labels)
+    ordered: List[str] = []
+    for dataset, target, _task in combos:
+        label = make_dataset_task_label(dataset, target)
+        if label in seen:
+            ordered.append(label)
+    return ordered
