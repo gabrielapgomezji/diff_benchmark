@@ -11,6 +11,9 @@ class DinoViTBackbone(nn.Module):
     """
     Hugging Face DINO Vision Transformer backbone adapted for 3D volumes
     via slice-wise processing.
+    
+    Note: Expects input data normalized with mean=0.5, std=0.5 (from cache).
+    This will be unnormalized back to [0, 1] before passing to HuggingFace processor.
     """
 
     data_type = "images"
@@ -19,7 +22,7 @@ class DinoViTBackbone(nn.Module):
         self,
         model_name: str = "facebook/dinov2-base",
         freeze_backbone: bool = False,
-        slice_axis: int = 2,  # axial slices
+        slice_axis: int = 0,  # axial slices
         pooling: str = "mean",  # mean | max | cls
     ):
         super().__init__()
@@ -51,15 +54,23 @@ class DinoViTBackbone(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:
-            x: Tensor of shape (B, 1, D, H, W)
+            x: Tensor of shape (B, D, H, W) or (B, 1, D, H, W) - normalized data from cache (mean=0.5, std=0.5)
         Returns:
             Tensor of shape (B, embedding_dim)
         """
-        # B, C, D, H, W = x.unsqueeze(1).shape
-        # assert C == 1, "Expected single-channel MRI volumes"
+        # Check if input is already pre-computed features (from cache): (B, embedding_dim)
+        # Must be checked BEFORE unnormalization — cached embeddings must not be rescaled.
+        if x.ndim == 2:
+            return x
 
-        # # (B, D, H, W)
-        # x = x.squeeze(1)
+        # Unnormalize: convert from cache normalization [-1, 1] back to [0, 1]
+        # x_original = x_normalized * std + mean = x * 0.5 + 0.5
+        x = x * 0.5 + 0.5
+        
+        # Handle both (B, D, H, W) and (B, 1, D, H, W) formats
+        if x.ndim == 5 and x.shape[1] == 1:
+            x = x.squeeze(1)  # (B, D, H, W)
+        
         B, D, H, W = x.shape
         # Reorder slices depending on axis
         if self.slice_axis == 0:

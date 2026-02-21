@@ -18,6 +18,12 @@ MICROSTRUCTURE_ABBR = {
     "rtop": "ro",
     "rtap": "ra",
     "rtpp": "rp",
+    "sh": "sh",
+}
+
+TISSUE_TYPE_ABBR = {
+    "white_matter": "w",
+    "gray_matter": "g",
 }
 
 DATASET_ABBR = {
@@ -33,18 +39,40 @@ EXCLUDE_KEYS = {
     "cluster",
     "slurm",
     "paths",
-    "choices"
+    "choices",
+    "analysis"
 }
 
-def config_fingerprint(cfg) -> str:
+# def config_fingerprint(cfg) -> str:
+#     cfg_dict = OmegaConf.to_container(cfg, resolve=True)
+#     def strip_keys(d):
+#         if isinstance(d, dict):
+#             return {
+#                 k: strip_keys(v)
+#                 for k, v in d.items()
+#                 if k not in EXCLUDE_KEYS
+#             }
+#         elif isinstance(d, list):
+#             return [strip_keys(x) for x in d]
+#         return d
+
+#     clean_cfg = strip_keys(cfg_dict)
+#     serialized = json.dumps(clean_cfg, sort_keys=True)
+#     return hashlib.sha1(serialized.encode()).hexdigest()
+
+def config_fingerprint(cfg, exclude_extra: set | None = None) -> str:
     cfg_dict = OmegaConf.to_container(cfg, resolve=True)
+    
+    exclude = EXCLUDE_KEYS
+    if exclude_extra:
+        exclude = EXCLUDE_KEYS.union(exclude_extra)
 
     def strip_keys(d):
         if isinstance(d, dict):
             return {
                 k: strip_keys(v)
                 for k, v in d.items()
-                if k not in EXCLUDE_KEYS
+                if k not in exclude
             }
         elif isinstance(d, list):
             return [strip_keys(x) for x in d]
@@ -53,6 +81,13 @@ def config_fingerprint(cfg) -> str:
     clean_cfg = strip_keys(cfg_dict)
     serialized = json.dumps(clean_cfg, sort_keys=True)
     return hashlib.sha1(serialized.encode()).hexdigest()
+
+def get_learning_curve_id(cfg) -> str:
+    """
+    Generates a unique ID for grouping experiments into a learning curve.
+    It works exactly like config_fingerprint but also excludes 'train_size'.
+    """
+    return config_fingerprint(cfg, exclude_extra={"train_size"})
 
 def abbr(value: str, table: dict, fallback_len=3):
     """
@@ -67,11 +102,11 @@ def build_readable_prefix(cfg):
     model = cfg.model.name.lower()
 
     dataset = abbr(cfg.dataset.name, DATASET_ABBR)
+    tissue = abbr(cfg.dataset.tissue_type, TISSUE_TYPE_ABBR)
     micro = abbr(cfg.dataset.metric_to_compute, MICROSTRUCTURE_ABBR)
     target = abbr(cfg.target.target_column[0], TARGET_ABBR)
 
-    return f"{model}_{dataset}{micro}{target}"
-
+    return f"{model}_{dataset}{tissue}{micro}{target}"
 def make_run_id(cfg, force=False):
     """
     Returns:

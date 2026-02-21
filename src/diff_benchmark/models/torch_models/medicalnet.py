@@ -472,6 +472,16 @@ class ResNet(nn.Module):
         Returns:
             torch.Tensor: Output tensor after passing through the network.
         """
+        # # Unnormalize to match pre-training distribution if coming from normalized cache/loader
+        # # Maps [-1, 1] back to [0, 1]
+        # # This aligns with DinoV2 behavior and helps frozen BN statistics
+        # if x.ndim >= 3: # Only unnormalize images/volumes
+        #      x = x * 0.5 + 0.5
+
+        # Check if input is already features (from cache) or raw images
+        if x.ndim == 2:
+            return x
+
         if x.ndim == 4:  # (B, D, H, W)
             x = x.unsqueeze(1)  # → (B, 1, D, H, W)
 
@@ -590,13 +600,24 @@ class MedicalNet(ResNet):
         
         # Apply transforms after standardization
         if transform:
-            xs = [transform(x) for x in xs]
+            # Only apply transforms if input is an image (3D volume)
+            # Features are 1D vectors
+            if xs[0].ndim >= 3:
+                xs = [transform(x) for x in xs]
+            else:
+                # pass
+                logger.debug("Skipping transforms for feature inputs")
 
         # Stack with channel dimension: (B, 1, D, H, W)
-        xs = torch.stack([x.unsqueeze(0) for x in xs], dim=0)
+        if xs[0].ndim >= 3:
+            xs = torch.stack([x.unsqueeze(0) for x in xs], dim=0)
+            # Normalize images mean=0.5, std=0.5
+            # xs = (xs - mean) / std
+        else:
+            # Stack features: (B, F)
+            xs = torch.stack(xs)
+        
         ys = torch.stack(ys)
         gs = torch.stack(gs)
 
-        # Normalize
-        xs = (xs - mean) / std
         return xs, ys, gs

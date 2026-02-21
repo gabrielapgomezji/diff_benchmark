@@ -11,5 +11,7 @@ big_delta_per_bvalue:
   1000: 24
   2000: 30
 
+tissue_type: gray
+
 # CamCAN data will be resampled to fsLR 32k for analysis
 surface_space: fslr_32k

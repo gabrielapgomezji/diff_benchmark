@@ -15,6 +15,32 @@ from collections import deque
 from diff_benchmark.utils.logger import setup_logger
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Subset
+import copy
+
+
+def configure_cached_dataset_augmentation(dataset, mode: str = "random"):
+    """
+    Configure augmentation mode for cached feature datasets.
+    
+    Args:
+        dataset: Dataset or Subset wrapping a CachedFeatureDataset
+        mode: "random" for training (consistent per subject), "fixed" for val/test (no augmentation)
+    
+    This function handles both direct CachedFeatureDataset and Subset wrappers.
+    """
+    # Unwrap Subset to get the actual dataset
+    actual_dataset = dataset
+    if isinstance(dataset, Subset):
+        if hasattr(dataset.dataset, "dataset"):
+            actual_dataset = dataset.dataset.dataset
+        else:
+            actual_dataset = dataset.dataset
+    
+    # Check if it's a CachedFeatureDataset
+    if hasattr(actual_dataset, 'set_augmentation_indices'):
+        actual_dataset.set_augmentation_indices(mode=mode)
+        return True
+    return False
 
 
 train_transforms = transforms.Compose(
@@ -42,6 +68,8 @@ class BaseTrainer(ABC):
     def __init__(self, model: nn.Module):
         self.model = model
         self.fold_idx: int | None = None  # add fold placeholder
+        self.target_mean = 0.0 # default values; will be set properly during training if needed
+        self.target_std = 1.0
 
     @property
     def data_type(self):
@@ -111,7 +139,6 @@ class SklearnModel(ABC, BaseEstimator):
         self
             Returns the fitted trainer instance for method chaining.
         """
-
         self.model.fit(X, y)
         return self
 
@@ -200,6 +227,11 @@ class SklearnTrainer(BaseTrainer):
 def split_loader(dataloader, collate_fn: Callable | None, val_ratio=0.2, seed=42):
     """
     Split a PyTorch DataLoader into training and validation subsets.
+    
+    For cached feature datasets, automatically configures augmentation:
+    - Training: randomly selects one augmentation per subject (consistent across epochs)
+    - Validation: uses only non-transformed features (augmentation_idx=0)
+    
     This function takes an existing DataLoader and splits its underlying dataset
     into training and validation sets based on a specified ratio. It creates new
     DataLoaders with the same configuration as the input DataLoader while preserving
@@ -213,9 +245,9 @@ def split_loader(dataloader, collate_fn: Callable | None, val_ratio=0.2, seed=42
     Returns:
         tuple[DataLoader, DataLoader]: A tuple containing:
             - train_loader (DataLoader): DataLoader for the training subset with
-              shuffling enabled.
+              shuffling enabled and random augmentation per subject.
             - val_loader (DataLoader): DataLoader for the validation subset with
-              shuffling disabled.
+              shuffling disabled and no augmentation.
     """
     print(f"Val ratio: {val_ratio}, seed: {seed}")
     dataset = dataloader.dataset
@@ -228,8 +260,33 @@ def split_loader(dataloader, collate_fn: Callable | None, val_ratio=0.2, seed=42
         random_state=42,
     )
 
+    # Create distinct improved copies for validation to allow independent augmentation state
+    # We shallow copy the top-level dataset (Subset) and its underlying dataset (CachedFeatureDataset)
+    # This allows setting different augmentation modes for train vs val while sharing heavy data
+    dataset_val = copy.copy(dataset)
+    if hasattr(dataset, "dataset"):
+        dataset_val.dataset = copy.copy(dataset.dataset)
+
     train_ds = Subset(dataset, train_idx)
-    val_ds = Subset(dataset, val_idx)
+    val_ds = Subset(dataset_val, val_idx)
+    
+    # Configure augmentation for cached datasets
+    # Training: random augmentation per subject (consistent across epochs)
+    is_cached_train = configure_cached_dataset_augmentation(train_ds, mode="random")
+
+    # aug_indices inside the CahedFeaturesDataset is set to random
+    # Validation: no augmentation (use original features)
+    is_cached_val = configure_cached_dataset_augmentation(val_ds, mode="fixed")
+
+    # the same aug_indices from the same CahedFeaturesDataset is set to fixed
+    # so train_ds will use the fixed mode as well
+    
+    if is_cached_train or is_cached_val:
+        print("✓ Detected cached feature dataset")
+        if is_cached_train:
+            print("  - Training: using random augmentation per subject (consistent)")
+        if is_cached_val:
+            print("  - Validation: using non-transformed features only")
 
     train_loader = DataLoader(
         train_ds,
@@ -281,6 +338,8 @@ class TorchTrainer(BaseTrainer):
         #     lr=learning_rate,
         #     weight_decay=weight_decay,
         # )
+        self.lr = learning_rate
+        self.weight_decay = weight_decay
         self.optimizer = torch.optim.Adam(
             self.model.parameters(),
             lr=learning_rate,   # default to 1e-5
@@ -313,6 +372,19 @@ class TorchTrainer(BaseTrainer):
             
     def fit(self, dataloader):
         train_loader, val_loader = split_loader(dataloader, collate_fn=self.model.collate_fn, val_ratio=self.val_ratio, seed=self.seed)
+        
+        print(f"Learning rate: {self.lr}, weight decay: {self.weight_decay}")
+
+        if self.prediction_task != "binary_classification":
+            targets = []
+            for batch in train_loader:
+                _, y, *_ = batch
+                targets.append(y)
+            all_targets = torch.cat(targets).float()
+            self.target_mean = all_targets.mean().item()
+            self.target_std = all_targets.std().item() + 1e-8
+            self.log.info(f"Whitening targets: mean={self.target_mean:.4f}, std={self.target_std:.4f}")
+
         show_progress = not self.logger.enabled or self.logger.enabled
         
         self.log.info(f"Starting training for {self.epochs} epochs...") 
@@ -340,6 +412,8 @@ class TorchTrainer(BaseTrainer):
                     y = y.long().to(self.device, non_blocking=True)
                 else:
                     y = y.float().to(self.device, non_blocking=True)
+                    y = (y - self.target_mean) / self.target_std
+                    # Here you rescale
 
                 self.optimizer.zero_grad()
                 preds = self.model(x)
@@ -348,6 +422,8 @@ class TorchTrainer(BaseTrainer):
                 else:
                     preds = preds.squeeze(1)
                 loss = self.criterion(preds, y)
+                # Here you compute the loss on the normalized targets, so gradient will be smaller.
+                # Learning rate should be adjusted accordingly, probably increased.
                 loss.backward()
                 self.optimizer.step()
 
@@ -366,8 +442,13 @@ class TorchTrainer(BaseTrainer):
                     fold= self.fold_idx if self.fold_idx is not None else -1,
                 )
                 if self.logger.enabled:
-                    train_preds.append(preds.detach().cpu())
-                    train_targets.append(y.detach().cpu())
+                    train_preds_unnorm = preds.detach().cpu()
+                    train_targets_unnorm = y.detach().cpu()
+                    if self.prediction_task != "binary_classification":
+                        train_preds_unnorm = train_preds_unnorm * self.target_std + self.target_mean
+                        train_targets_unnorm = train_targets_unnorm * self.target_std + self.target_mean
+                    train_preds.append(train_preds_unnorm)
+                    train_targets.append(train_targets_unnorm)
     
             metrics = None
             if self.logger.enabled:
@@ -392,7 +473,7 @@ class TorchTrainer(BaseTrainer):
                 f"[{self.run_id}] "
                 f"Epoch {epoch+1}/{self.epochs} | "
                 f"train_loss={train_loss / len(train_loader):.4f} | "
-                f"val_loss={val_loss:.4f}"
+                f"val_loss={val_loss:.4f} | "
             )
         
         self.logger.flush(trainer=self)
@@ -411,6 +492,7 @@ class TorchTrainer(BaseTrainer):
                     y = y.long().to(self.device, non_blocking=True)
                 else:
                     y = y.float().to(self.device, non_blocking=True)
+                    y = (y - self.target_mean) / self.target_std
 
                 preds = self.model(x)
                 if self.prediction_task == "binary_classification":
@@ -421,8 +503,13 @@ class TorchTrainer(BaseTrainer):
                 val_loss += loss.item()
                 
                 if self.logger.enabled:
-                    all_preds.append(preds.cpu())
-                    all_targets.append(y.cpu())
+                    train_preds_unnorm = preds.cpu()
+                    train_targets_unnorm = y.cpu()
+                    if self.prediction_task != "binary_classification":
+                        train_preds_unnorm = train_preds_unnorm * self.target_std + self.target_mean
+                        train_targets_unnorm = train_targets_unnorm * self.target_std + self.target_mean
+                    all_preds.append(train_preds_unnorm)
+                    all_targets.append(train_targets_unnorm)
 
         val_loss /= len(val_loader)
         metrics = None
@@ -434,6 +521,7 @@ class TorchTrainer(BaseTrainer):
                         y_pred=preds.numpy(),
                         prediction_task=self.prediction_task,
                     )
+        print(f"Validation accuracy: {metrics['accuracy']:.4f}" if metrics and "accuracy" in metrics else f"Validation mae: {metrics['mae']:.4f}" if metrics and "mae" in metrics else "")   
         self.logger.log_epoch(
             split="val",
             epoch=epoch,
@@ -448,6 +536,9 @@ class TorchTrainer(BaseTrainer):
         outputs = []
 
         collate_fn = self.model.collate_fn
+        
+        # Configure cached dataset to use non-transformed features for prediction
+        configure_cached_dataset_augmentation(dataloader.dataset, mode="fixed")
 
         predict_dataloader = DataLoader(
             dataloader.dataset,
@@ -468,6 +559,7 @@ class TorchTrainer(BaseTrainer):
                     preds = preds.argmax(dim=1)
                 else:
                     preds = preds.squeeze(1)
+                    preds = preds * self.target_std + self.target_mean
                 outputs.append(preds.cpu().detach())
 
         return torch.cat(outputs).numpy()
@@ -504,6 +596,9 @@ class _LightningModuleAdapter(pl.LightningModule):
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
 
+        self.register_buffer("target_mean", torch.tensor(0.0))
+        self.register_buffer("target_std", torch.tensor(1.0))
+
         self.criterion = (
             nn.CrossEntropyLoss()
             if prediction_task == "binary_classification"
@@ -521,12 +616,11 @@ class _LightningModuleAdapter(pl.LightningModule):
             y = y.long()
         else:
             y = y.float()
+            y = (y - self.target_mean) / self.target_std
+            preds = preds.squeeze(1)
+
         loss = self.criterion(preds, y)
-        # if self.prediction_task == "classification":
-        #     preds = preds.argmax(dim=1)
-        # else:
-        #     preds = preds.squeeze(1)
-        # metrics
+        
         self.log(
             "train_loss",
             loss,
@@ -544,12 +638,11 @@ class _LightningModuleAdapter(pl.LightningModule):
             y = y.long()
         else:
             y = y.float()
+            y = (y - self.target_mean) / self.target_std
+            preds = preds.squeeze(1)
+
         loss = self.criterion(preds, y)
-        # if self.prediction_task == "classification":
-        #     preds = preds.argmax(dim=1)
-        # else:
-        #     preds = preds.squeeze(1)
-        # metrics
+        
         self.log(
             "val_loss",
             loss,
@@ -659,11 +752,30 @@ class LightningTrainer(BaseTrainer):
                 
     def fit(self, dataloader):
         train_loader, val_loader = split_loader(dataloader, val_ratio=self.val_ratio, seed=self.seed)
+        
+        if self.lightning_model.prediction_task != "binary_classification":
+            targets = []
+            for batch in train_loader:
+                _, y, *_ = batch
+                targets.append(y)
+            all_targets = torch.cat(targets).float()
+            
+            self.lightning_model.target_mean.fill_(all_targets.mean())
+            self.lightning_model.target_std.fill_(all_targets.std() + 1e-8)
+            print(f"Whitening targets: mean={self.lightning_model.target_mean.item():.4f}, std={self.lightning_model.target_std.item():.4f}")
+
         # self.trainer.fit(self.model, train_loader, val_loader)
         self.trainer.fit(self.lightning_model, train_loader, val_loader)
 
     def predict(self, dataloader):
+        # Configure cached dataset to use non-transformed features for prediction
+        configure_cached_dataset_augmentation(dataloader.dataset, mode="fixed")
+        
         # preds = self.trainer.predict(self.model, dataloader)
         preds = self.trainer.predict(dataloaders=x_only_loader(dataloader), model=self.lightning_model)
         preds = torch.cat([p.cpu() for p in preds])
+        
+        if self.lightning_model.prediction_task != "binary_classification":
+             preds = preds * self.lightning_model.target_std.cpu() + self.lightning_model.target_mean.cpu()
+
         return preds.numpy()

@@ -1,0 +1,56 @@
+\textbf{First paragraph:}
+\begin{itemize}
+    \item Context: Diffusion MRI provides quantitative microstructural biomarkers
+    \item Increasing use of ML for prediction (age, diagnosis, cognition, etc.)
+    \item Lack of standardized benchmark
+\end{itemize}
+
+\noindent \textbf{Second paragraph: literature review:}
+\begin{itemize}
+    \item  Literature review of techniques: Variability of the proposed approach (ML-based, deep-learning based etc)
+    \item Problems: High variability in reported performance across studies + Limited reproducibility 
+\end{itemize}
+
+% \noindent \textbf{Third paragraph: reasons for these problems}
+% \begin{itemize}
+%     \item Reason 1: Heterogeneous preprocessing pipelines
+%     \item Reason 2: Inconsistent feature representations (voxel-wise vs ROI-based), not analysis cross microstructure features
+%     \item Reason 3: Evaluation protocols not directly comparable + results on different datasets
+%     \item Reason 4: Missing code
+%     \item Our solution: "To address these challenges, we propose: 1) an open-source and standardized benchmark; 2) of various machine learning techniques in dMRI; 3) on several tasks (classification, regression) 4) encompassing N datasets 
+% \end{itemize}
+
+These inconsistencies largely stem from four recurrent factors. First, studies often rely on 
+heterogeneous preprocessing pipelines (and sometimes different quality-control criteria), 
+making results difficult to compare across cohorts. Second, diffusion information is represented in 
+markedly different ways (e.g., voxel/vertex-wise maps, tract/ROI summaries, or learned embeddings), 
+and evaluations rarely disentangle how the choice of microstructural representation affects downstream 
+performance. Third, evaluation protocols vary substantially (e.g., different split strategies, 
+cross-validation schemes, and hyperparameter tuning procedures), and models are frequently assessed on 
+different datasets, further confounding comparisons. Finally, incomplete release of code, 
+configurations, and split definitions limits reproducibility and slows iterative progress. To address 
+these challenges, we propose an open-source and standardized benchmark that unifies preprocessing and 
+feature extraction, evaluates a diverse set of machine learning approaches on both regression and 
+classification tasks, and spans multiple publicly available datasets under a controlled and leakage-free 
+evaluation protocol.
+
+
+% \noindent \textbf{Fourth paragraph: your contributions}
+% \begin{itemize}
+%     \item Standardized preprocessing pipeline for diffusion MRI
+%     \item Implemented various representation of the microstructural input data
+%     \item Unified feature extraction strategy
+%     \item Controlled evaluation protocol (train/test splits)
+%     \item Comparison of multiple feature representations
+%     \item Integration of both classical and DL predictors
+%     \item Public release of code and benchmark configuration
+%     \item End-to-end analysis
+% \end{itemize}
+In this work, we introduce an open-source, end-to-end benchmark for predictive modeling with 
+diffusion MRI that targets reproducibility and fair comparison across studies. Our contributions 
+are: (i) a standardized preprocessing and data preparation pipeline; (ii) a unified feature-extraction 
+framework supporting multiple microstructural representations for gray and white matter; (iii) a 
+controlled evaluation protocol with consistent, leakage-free train/validation/test splits and 
+cross-validation; (iv) a systematic comparison of feature representations and predictors, spanning 
+classical machine learning baselines and deep-learning models; and (v) the public release of code, 
+configurations, and scripts to facilitate transparent reuse and extension.

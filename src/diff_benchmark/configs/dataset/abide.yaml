@@ -13,5 +13,7 @@ bvec_extensions:
 bval_extensions:
   - bval
 
+tissue_type: gray
+
 # ABIDE data will be resampled to fsLR 32k for analysis
 surface_space: fslr_32k

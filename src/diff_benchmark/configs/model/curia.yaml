@@ -1,6 +1,6 @@
 name: curia
 
 backbone:
-  freeze_backbone: False
-  slice_axis: 2
+  freeze_backbone: true
+  slice_axis: 0
   pooling: mean

@@ -2,6 +2,6 @@ name: medicalnet
 
 backbone:
   depth: 10 # options: 10, 18, 34, 50, 101, 152, 200
-  pretrained: true
+  pretrained: True
   pretrain_path: medicalnet
   input_channels: 1

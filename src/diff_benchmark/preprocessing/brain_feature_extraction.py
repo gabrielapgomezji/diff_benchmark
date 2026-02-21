@@ -26,8 +26,8 @@ class DefaultPipeline(BrainDataPreparationPipeline):
         big_delta (float): The big delta value for diffusion metrics.
         small_delta (float): The small delta value for diffusion metrics.
     Methods:
-        verify_subject_files(subject_id: str, metric: str) -> bool:
-            Checks if both hemispheres' .scalar.gii files exist for the given subject and metric.
+        verify_subject_files(subject_id: str, metric: str, tissue_type: str) -> bool:
+            Checks if required .scalar.gii files exist for the given subject, metric, and tissue type.
         compute_microstructure(subject_id: str):
             Computes microstructure metrics for the given subject and saves the results.
         run_analysis():
@@ -40,7 +40,7 @@ class DefaultPipeline(BrainDataPreparationPipeline):
         super().__init__(dataset_config)
         self.results_root = Path(dataset_config.results_dir) / "default"
 
-    def verify_subject_files(self, subject_id: str, metric: str) -> bool:
+    def verify_subject_files(self, subject_id: str, metric: str, tissue_type: str) -> bool:
         """
         Check if both hemispheres' .scalar.gii files exist for the given subject and metric.
         Args:
@@ -53,10 +53,10 @@ class DefaultPipeline(BrainDataPreparationPipeline):
             self.results_root / "derivatives" / f"sub-{subject_id}" / "dwi"
         )
         left_file = (
-            derivatives_dir / f"sub-{subject_id}_hemi-L_param-{metric}.scalar.gii"
+            derivatives_dir / f"sub-{subject_id}_hemi-L_param-{metric}_tissue-{tissue_type}.scalar.gii"
         )
         right_file = (
-            derivatives_dir / f"sub-{subject_id}_hemi-R_param-{metric}.scalar.gii"
+            derivatives_dir / f"sub-{subject_id}_hemi-R_param-{metric}_tissue-{tissue_type}.scalar.gii"
         )
 
         return left_file.exists() and right_file.exists()
@@ -178,9 +178,11 @@ class DefaultPipeline(BrainDataPreparationPipeline):
 
     def run_analysis(self):
         """Run analysis extracting region data."""
+        tissue_type = self.dataset_config.tissue_type
+        
         scalar_files = sorted(
             self.results_root.glob(
-                f"derivatives/sub-*/dwi/*_hemi-L_param-{self.metric}.scalar.gii"
+                f"derivatives/sub-*/dwi/*_hemi-L_param-{self.metric}_tissue-{tissue_type}.scalar.gii"
             )
         )
         for left_file in tqdm(scalar_files, desc="Running analysis"):
@@ -197,20 +199,48 @@ class DefaultPipeline(BrainDataPreparationPipeline):
                 right_data = np.nan_to_num(nib.load(right_file).darrays[0].data).clip(
                     0, 7
                 )
-
+                target = self.dataset_config.region
+                
+                if tissue_type == "white":
+                    # Load midline data for white matter
+                    midline_file = left_file.with_name(
+                        left_file.name.replace("hemi-L", "hemi-M")
+                    )
+                    if midline_file.exists():
+                        midline_data = np.nan_to_num(nib.load(midline_file).darrays[0].data).clip(0, 7)
+                        # Concatenate L, R, M for white matter
+                        if target is not None:
+                            # Regional WM analysis - extract specific tract groups
+                            from diff_benchmark.preprocessing.utils_brain_feature_extraction import extract_wm_tract_subset
+                            
+                            tract_data = extract_wm_tract_subset(
+                                left_data,
+                                right_data,
+                                midline_data,
+                                target_tracts=[target] if isinstance(target, str) else target
+                            )
+                            logger.info(f"[{subject_id}] Extracted {len(tract_data)} tracts matching '{target}'")
+                        else:
+                            # All tracts
+                            tract_data = np.concatenate([left_data, right_data, midline_data])
+                        
+                        self.results[subject_id] = tract_data
+                    else:
+                        tract_data = np.concatenate([left_data, right_data])
+                        self.results[subject_id] = tract_data
                 # No resampling needed here - data should already be in template space
                 # If you see warnings about mismatched sizes, it means preprocessing 
                 # was done before this optimization was implemented
-
-                target = self.dataset_config.region
-                avg_data = extract_region_data(
-                    left_data,
-                    right_data,
-                    self.schaefer_resampled,
-                    target_substring=target,
-                    average=False,
-                )
-                self.results[subject_id] = avg_data
+                else:
+                    
+                    avg_data = extract_region_data(
+                        left_data,
+                        right_data,
+                        self.schaefer_resampled,
+                        target_substring=target,
+                        average=False,
+                    )
+                    self.results[subject_id] = avg_data
             except (FileNotFoundError, OSError, ValueError, IndexError) as e:
                 print(f"[{subject_id}] Expected error during analysis: {e}")
                 logger.warning(f"[{subject_id}] Expected error during analysis: {e}")
@@ -228,8 +258,8 @@ class ImagePipeline(BrainDataPreparationPipeline):
         big_delta (float): The big delta value for diffusion metrics.
         small_delta (float): The small delta value for diffusion metrics.
     Methods:
-        verify_subject_files(subject_id: str, metric: str) -> bool:
-            Checks if both hemispheres' .scalar.gii files exist for the given subject and metric.
+        verify_subject_files(subject_id: str, metric: str, tissue_type: str) -> bool:
+            Checks if required .nii.gz files exist for the given subject, metric, and tissue type.
         compute_microstructure(subject_id: str):
             Computes microstructure metrics for the given subject and saves the results.
         run_analysis():
@@ -243,27 +273,30 @@ class ImagePipeline(BrainDataPreparationPipeline):
         # self.in_derivatives = self.base_dir / "derivatives"
         self.results_root = Path(dataset_config.results_dir) / "default"
 
-    def verify_subject_files(self, subject_id: str, metric: str) -> bool:
+    def verify_subject_files(self, subject_id: str, metric: str, tissue_type: str) -> bool:
         """
-        Check if whole brain .nii.gii files exist for the given subject and metric.
+        Check if whole brain .nii.gz files exist for the given subject, metric, and tissue type.
         Args:
             subject_id (str): The subject identifier.
             metric (str): The metric to check (e.g., 'rtop', 'md').
+            tissue_type (str): Type of tissue ('gray' or 'white').
         Returns:
             bool: True if the file exists, False otherwise.
         """
+        tissue_type = self.dataset_config.tissue_type
         derivatives_dir = (
             self.results_root / "derivatives" / f"sub-{subject_id}" / "dwi"
         )
-        file = derivatives_dir / f"sub-{subject_id}_param-{metric}_dwimap.nii.gz"
+        file = derivatives_dir / f"sub-{subject_id}_param-{metric}_tissue-{tissue_type}_dwimap.nii.gz"
 
         return file.exists()
 
     def run_analysis(self):
         """Run analysis extracting region data."""
+        tissue_type = self.dataset_config.tissue_type
         img_files = sorted(
             self.results_root.glob(
-                f"derivatives/sub-*/dwi/*_param-{self.metric}_dwimap.nii.gz"
+                f"derivatives/sub-*/dwi/*_param-{self.metric}_tissue-{tissue_type}_dwimap.nii.gz"
             )
         )
         for file in tqdm(img_files, desc="Running analysis"):
@@ -275,9 +308,10 @@ class ImagePipeline(BrainDataPreparationPipeline):
 
     def run_analysis_region(self):
         """Run analysis extracting region data."""
+        tissue_type = self.dataset_config.tissue_type
         img_files = sorted(
             self.results_root.glob(
-                f"derivatives/sub-*/dwi/*_param-{self.metric}_dwimap.nii.gz"
+                f"derivatives/sub-*/dwi/*_param-{self.metric}_tissue-{tissue_type}_dwimap.nii.gz"
             )
         )
 

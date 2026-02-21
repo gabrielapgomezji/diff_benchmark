@@ -1,6 +1,7 @@
 name: margaret
 
 paths:
+  cache_dir: /data/parietal/store3/work/ggomezji/benchmark
   hcp:
     base_dir: /data/parietal/store4/data/HCP
     results_dir: /data/parietal/store3/work/ggomezji/benchmark/HCP900
@@ -8,6 +9,7 @@ paths:
   camcan:
     base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/camcan
     results_dir: /data/parietal/store3/work/ggomezji/benchmark/CamCAN
+    demographics_path: /data/parietal/store3/work/ggomezji/datasets/camcan/cc700-scored
   wand:
     base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/WAND-concat
     results_dir: /data/parietal/store3/work/ggomezji/benchmark/WAND
@@ -18,6 +20,8 @@ paths:
 conf:
   enabled: true
   parallel_type: slurm #None #
+  n_jobs: 50
+  wait_for_results: false
 
 slurm_cfg:
   slurm_partition: parietal,normal,gpu-best #gpu

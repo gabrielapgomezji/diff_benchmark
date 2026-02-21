@@ -6,41 +6,111 @@ defaults:
   - data: default
   - target: gender
   - cluster: margaret
+  - analysis: default
   - _self_
 
 random_state: 42
 runtime:
   force: false
+  learning_curve_exp: false
   run_id: null
+  learning_curve_id: null
   experiment_hash: null
   # fold_idx: null
 
 
 choices:
-  # model: [pca_linear, linear, pca_forest, forest] #[medicalnet] #[pca_linear] #[2dcnn, medicalnet]
-  # backend: [sklearn]
+  model: [dummy_classifier, linear, pca_linear, forest, pca_forest, svm, pca_svm, lasso]
+  dataset: [camcan]
+  backend: [sklearn]
+  # pred_head: [regression]
+  # target: [age]
+  dataset.tissue_type: [white, gray]
+  cluster: [margaret_cpu]
+  dataset.metric_to_compute: [b0] #, rtop] b0
+  # data.data_partition.train_size: [0.1, 0.2, 0.35, 0.45, 0.5, 0.65, 0.75, 0.8, 0.9, 0.95, 1.0]
+  # runtime.learning_curve_exp: [true]
+  # cluster.conf.parallel_type: [None]
+  #########
+  # model: [vit]
+  # dataset.metric_to_compute: [md]
+  # dataset: [hcp]
+  # data.num_augmentations: [10]
+  # pred_head: [regression]
+  # target: [age]
+  # cluster.conf.parallel_type: [None]
+  # data.resize_shape: [null]
+  # # pred_head.dropout: [0.3, 0.2, 0.1]
+  # # pred_head.hidden_dims: ["[128]", "[512]", "[128, 64]", "[128, 8]"] 
+  # # backend.lr: [1e-4, 1e-5]
+  # # backend.weight_decay: [1e-3, 1e-5, 1e-1, 1e-2]
+  ##########
+  # model: [vit]
+  # dataset.metric_to_compute: [md]
+  # dataset: [camcan]
+  # data.num_augmentations: [10]
+  # pred_head: [regression]
+  # target: [age]
+  # cluster.conf.parallel_type: [None]
+  # pred_head.dropout: [0.3, 0.2, 0.1]
+  # pred_head.hidden_dims: ["[128]", "[512]", "[512, 512, 128, 64]", "[512, 128, 32, 8]"] 
+  # backend.lr: [1e-4, 1e-5]
+  # backend.weight_decay: [1e-3, 1e-5, 1e-1, 1e-2]
+  ###########
+  # model: [dinov2] #[pca_linear] #[2dcnn, medicalnet]
   # dataset: [abide] #[camcan] #, hcp, wand] #
+  # # backend: [sklearn] #[torch]
+  # # cluster: [margaret_cpu]
   # target: [dx_group]
-  # data.batch_size: [1]
-  # cluster: [margaret_cpu]
-  # # cluster.conf.parallel_type: [None]
-  # dataset.metric_to_compute: [md]
   # # pred_head: [regression]
-  # # target: [age]
-  # # cluster: [margaret]
-  # # model.backbone.depth: [10, 18]
+  # data.batch_size: [8]
+  # backend.epochs: [100]
+  # # data.data_partition.train_size: [1] #[0.1, 0.2, 0.35, 0.45, 0.5, 0.65, 0.75, 0.8, 0.9, 0.95, 1.0]
+  # data.num_augmentations: [10]
+  # # data.resize_shape: [null]
+  # # cluster.conf.parallel_type: [None]
+  # # runtime.learning_curve_exp: [true]
+  # dataset.metric_to_compute: [md, sh, mk] #, rtop]
+  # dataset.tissue_type: [gray, white]
+  # # model.backbone.depth: [10]
+  # pred_head.dropout: [0.1]
+  # # pred_head.hidden_dims: ["[512]"] 
+  # backend.learning_rate: [1e-4]
+  # backend.weight_decay: [1e-2]
+  ########### TESTING!!
+  # model: [dinov2] #[pca_linear] #[2dcnn, medicalnet]
+  # dataset: [hcp] #[camcan] #, hcp, wand] #
+  # target: [age]
+  # pred_head: [regression]
+  # backend.epochs: [50]
+  # data.batch_size: [8]
+  # data.resize_shape: [null]
+  # # model.backbone.depth: [10]
+  # # cluster.conf.parallel_type: [None]
+  # dataset.metric_to_compute: [b0] #[md, sh, mk] #, rtop, b0]
+  # dataset.tissue_type: [white, gray]
+  # data.num_augmentations: [10]
+  # pred_head.dropout: [0.3] #, 0.2, 0.3]
+  # # pred_head.hidden_dims: ["[512, 512, 128, 16]"] 
+  # backend.learning_rate: [1e-3] #, 1e-2]
+  # backend.weight_decay: [1e-3] #, 1e-1, 1e-3, 1e-4]
   ########
-  # model: [linear, pca_linear, forest, pca_forest] #[2dcnn, medicalnet]
+  # model: [linear, pca_linear, forest, pca_forest, svm, pca_svm]
   # backend: [sklearn]
-  # dataset: [wand]
+  # dataset: [hcp]
+  # target: [ddisk, ER40_CR]
+  # pred_head: [regression]
+  # dataset.tissue_type: [gray]
   # cluster: [margaret_cpu]
-  # dataset.metric_to_compute: [md]
+  # dataset.metric_to_compute: [sh]
+  # cluster.conf.parallel_type: [None]
   ######
-  model: [vit]
-  cluster.conf.parallel_type: [None]
-  dataset.metric_to_compute: [md]
-  # model.backbone.depth: [10]
-  data.batch_size: [4]
-  dataset: [hcp]
-  data.num_workers: [13]
+  # model: [dinov2]
+  # # cluster.conf.parallel_type: [None]
+  # cluster.slurm_cfg.timeout_min: [4920]
+  # dataset.metric_to_compute: [md]
+  # # model.backbone.depth: [10]
+  # data.batch_size: [4]
+  # dataset: [hcp]
+  # data.num_workers: [13]
   

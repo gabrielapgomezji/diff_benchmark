@@ -69,6 +69,50 @@ class PreprocessedData:
     def get_fold_indices(self) -> list[tuple[np.ndarray, np.ndarray]]:
         """Returns the indices for each fold in the stratified K-Folds."""
         indices = list(self.skf.split(np.zeros(len(self.genders)), self.genders))
+         # Handle train_size parameter
+        train_size = self.config.data.data_partition.train_size
+        
+        # If using absolute number > 1 or percentage < 1 (where 1.0 means 100% so no change)
+        if train_size != 1.0:
+            # logger.info(f"Applying train_size: {train_size}")
+            print(f"Applying train_size: {train_size}")
+            
+            # Use a fixed random state for reproducibility and nested subsets independent of the main seed
+            # We specifically want the "first 100" to always be the "same 100" regardless of other config changes
+            rng = np.random.RandomState(self.config.random_state)
+            
+            # We need to modify the indices list in place so get_dataloader_fold uses the new indices
+            # Since 'indices' is a list of tuples, we need to create a new list or modify elements
+            new_indices = []
+            
+            for fold_idx, (train_idx, test_idx) in enumerate(indices):
+                # Deterministically shuffle the training indices
+                shuffled_train_idx = train_idx.copy()
+                rng.shuffle(shuffled_train_idx)
+                
+                n_train = len(train_idx)
+                if train_size > 1:
+                    # Absolute number of samples
+                    n_samples = int(train_size)
+                    if n_samples > n_train:
+                        # logger.warning(f"Requested train_size {n_samples} is larger than available training data {n_train}. Using all data.")
+                        n_samples = n_train
+                elif 0 < train_size <= 1:
+                    # Percentage
+                    n_samples = int(n_train * train_size)
+                else:
+                    raise ValueError(f"Invalid train_size: {train_size}. Must be positive number.")
+                
+                # Select the first n_samples
+                # This ensures nested subsets: smaller train_size is always a subset of larger train_size
+                selected_train_idx = shuffled_train_idx[:n_samples]
+                
+                new_indices.append((selected_train_idx, test_idx))
+                
+                # logger.info(f"Fold {i}: Reduced training set from {n_train} to {len(selected_train_idx)} samples")
+                print(f"Fold {fold_idx}: Reduced training set from {n_train} to {len(selected_train_idx)} samples")
+                
+            indices = new_indices
         return indices
 
     def safe_collate(self, batch: list) -> torch.Tensor:

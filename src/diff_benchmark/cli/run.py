@@ -14,13 +14,13 @@ from diff_benchmark.data.prepare_data import DatasetPreparation
 from diff_benchmark.models.model_configurations import get_model#, make_run_id
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
 from diff_benchmark.utils.parquet_helper import ParquetSaver, metrics_to_rows
-from diff_benchmark.utils.job_manager import run_jobs
+from diff_benchmark.utils.job_manager import run_jobs #, JobResult
 from diff_benchmark.utils.scores import compute_metrics
 from diff_benchmark.utils.summary_saver import update_summary, compute_summary_stats
 from diff_benchmark.utils.logger import setup_logger, configure_logging
 from omegaconf import OmegaConf
 from diff_benchmark.cli.utils import build_config_grid, cartesian_cfgs
-from diff_benchmark.utils.run_id import make_run_id, is_cached
+from diff_benchmark.utils.run_id import make_run_id, is_cached, get_learning_curve_id
 from datetime import datetime
 import socket
 
@@ -28,12 +28,12 @@ import socket
 def run_single_model(cfg_og, model_name, results_path):
     cfg = OmegaConf.merge(cfg_og)
     logger = setup_logger("Job.run_single_model")
-    metrics_rows = []
-
-    # run_id = make_run_id(cfg.model.name, cfg)
-    # cfg.runtime.run_id = run_id
-    run_id = cfg.runtime.run_id
+    metrics_rows = []    
     
+    run_id = cfg.runtime.run_id
+    learning_curve_id = get_learning_curve_id(cfg)
+    cfg.runtime.learning_curve_id = learning_curve_id
+    print(f"Computing a learning curve experiment: {cfg.runtime.learning_curve_exp}")
     experiment_dir = (
         Path(results_path)
         / "experiments"
@@ -42,9 +42,12 @@ def run_single_model(cfg_og, model_name, results_path):
 
     metadata = {
         "run_id": run_id,
+        "learning_curve_id": learning_curve_id,
         "experiment_hash": cfg.runtime.experiment_hash,
         "model": model_name,
         "dataset": cfg.dataset.name,
+        "tissue_type": cfg.dataset.tissue_type,
+        "primary_metric": cfg.dataset.metric_to_compute,
         "status": "running",
         "n_folds_expected": cfg.data.data_partition.n_splits,
         "n_folds_completed": 0,
@@ -71,7 +74,6 @@ def run_single_model(cfg_og, model_name, results_path):
         results_dir=Path(cluster_cfg.results_dir),
     )
 
-
     torch_dataset_preparator = DatasetPreparation(
         cfg=cfg,
         source_dataset=dataset_selected,
@@ -81,7 +83,7 @@ def run_single_model(cfg_og, model_name, results_path):
     print("Data preparation completed.")
     targets_path = experiment_dir / "predictions" / "targets.parquet"
     targets_path.parent.mkdir(parents=True, exist_ok=True)
-
+ 
     target_name = cfg.target.target_column[0]
     rows = [
         {"dataset": dataset_selected.name, "sample_id": sid, "target": target_name, "value": float(v)}
@@ -94,7 +96,6 @@ def run_single_model(cfg_og, model_name, results_path):
     )
     saver.add_rows(rows)
     saver.save()
-
     specs = preprocessed.get_specs()
     logger.debug(f"Dataset specs: {specs}")
     print(f"Dataset specs: {specs}")
@@ -107,25 +108,6 @@ def run_single_model(cfg_og, model_name, results_path):
     train_scores, test_scores = [], []
     train_preds, test_preds = [], []
     train_targets, test_targets = [], []
-
-    # summary = {
-    #     "model_name": model_name,
-    #     "config": OmegaConf.to_container(cfg, resolve=True),
-    #     "results": {
-    #         "train_average_score": None,  # will fill after loop
-    #         "train_std_score": None,  # will fill after loop
-    #         "test_average_score": None,  # will fill after loop
-    #         "test_std_score": None,  # will fill after loop
-    #         "number_folds": len(indices),
-    #         "folds": {},  # will fill inside loop
-    #     },
-    # }
-    # # cfg_path = Path(results_path) / "analysis_results" / f"{run_id}_config.yaml" # CHECK TO INCLUDE
-    # # OmegaConf.save(cfg, cfg_path) # CHECK TO INCLUDE
-
-    # save_model_results(
-    #     summary, Path(results_path) / "analysis_results" / f"{run_id}_partial.json"
-    # )
     
     predictions_path = experiment_dir / "predictions" / "predictions.parquet"
     key_cols = ["run_id", "model", "dataset", "fold", "split", "sample_id", "target"]
@@ -147,25 +129,19 @@ def run_single_model(cfg_og, model_name, results_path):
                 num_workers=cfg.data.num_workers,
                 batch_size=cfg.data.batch_size,
             )
+
             train_idx, test_idx = indices[fold_idx]
             targets = dataset.targets.numpy()
             y_train = np.array(targets[train_idx]).squeeze()
             y_test = np.array(targets[test_idx]).squeeze()
 
-            # local_config["backbone"]["prediction_task"] = config.get(
-            #     "prediction_task", "regression"
-            # )
-            # local_config["backend"]["run_id"] = run_id
             model = get_model(cfg.model.name, 
                           OmegaConf.to_container(cfg, resolve=True),)
 
             model.set_fold(fold_idx)
             model.fit(train_loader)
             train_pred = model.predict(train_loader)
-            
-            # plot_true_vs_pred(
-            #     y_train, train_pred, fold_idx=fold_idx, run_id=run_id, type="train"
-            # )
+
             train_score = compute_metrics(y_train, train_pred, prediction_task=cfg.pred_head.prediction_task)
 
             train_scores.append(train_score)
@@ -189,9 +165,7 @@ def run_single_model(cfg_og, model_name, results_path):
             pred_saver.add_rows(train_rows)
             
             test_pred = model.predict(test_loader)
-            # plot_true_vs_pred(
-            #     y_test, test_pred, fold_idx=fold_idx, run_id=run_id, type="test"
-            # )
+
             test_score = compute_metrics(y_test, test_pred, prediction_task=cfg.pred_head.prediction_task)
             logger.info(f"Fold {fold_idx} - Train score: {train_score}, Test score: {test_score}")
             print(f"Fold {fold_idx} - Train score: {train_score}, Test score: {test_score}")
@@ -218,7 +192,6 @@ def run_single_model(cfg_og, model_name, results_path):
             pred_saver.save()
 
             primary_metric = {"binary_classification": "accuracy", "regression": "mse"}[cfg.pred_head.prediction_task]
-            # summary = update_summary(summary, fold_idx, train_score, test_score, y_train, train_pred, y_test, test_pred, primary_metric)
 
             metrics_rows.extend(
                 metrics_to_rows(
@@ -227,6 +200,8 @@ def run_single_model(cfg_og, model_name, results_path):
                     model_name=model_name,
                     dataset=dataset_selected.name,
                     prediction_task=cfg.pred_head.prediction_task,
+                    tissue_type=cfg.dataset.tissue_type,
+                    primary_metric=cfg.dataset.metric_to_compute,
                     fold=fold_idx,
                     split="train",
                 )
@@ -239,77 +214,54 @@ def run_single_model(cfg_og, model_name, results_path):
                     model_name=model_name,
                     dataset=dataset_selected.name,
                     prediction_task=cfg.pred_head.prediction_task,
+                    tissue_type=cfg.dataset.tissue_type,
+                    primary_metric=cfg.dataset.metric_to_compute,
                     fold=fold_idx,
                     split="test",
                 )
             )
 
-            # save_model_results(
-            #     summary,
-            #     Path(results_path) / "analysis_results" / f"{run_id}_partial.json",
-            # )
             metadata["n_folds_completed"] += 1
             OmegaConf.save(metadata, experiment_dir / "metadata.yaml")
         except Exception as e:
             logger.exception(f"Crash in fold {fold_idx} of {run_id}: {e}")
             print(f"Crash in fold {fold_idx} of {run_id}: {e}")
-            # save_model_results(
-            #     summary,
-            #     Path(results_path) / "analysis_results" / f"{run_id}_crashed.json",
-            # )
+
             metadata["status"] = "crashed"
             metadata["error"] = str(e)
+            metadata["end_time"] = datetime.utcnow().isoformat()
             OmegaConf.save(metadata, experiment_dir / "metadata.yaml")
-            raise
+            
+            # Save partial metrics for completed folds before crashing
+            if metrics_rows:
+                logger.info(f"Saving partial metrics for {len(metrics_rows)} completed fold(s)")
+                metrics_path = experiment_dir / "metrics" / "fold_metrics.parquet"
+                metrics_path.parent.mkdir(parents=True, exist_ok=True)
+                df = pd.DataFrame(metrics_rows)
+                df.to_parquet(metrics_path, index=False)
+            
+            # Don't re-raise - continue to save what we have
+            break
     
-    metadata["status"] = "success"
-    metadata["end_time"] = datetime.utcnow().isoformat()
+    # Only mark as success if all folds completed
+    if metadata["n_folds_completed"] == cfg.data.data_partition.n_splits:
+        metadata["status"] = "success"
+    elif metadata.get("status") != "crashed":
+        metadata["status"] = "partial"
+    
+    if "end_time" not in metadata:
+        metadata["end_time"] = datetime.utcnow().isoformat()
+    
     OmegaConf.save(metadata, experiment_dir / "metadata.yaml")
-    metrics_path = experiment_dir / "metrics" / "fold_metrics.parquet"
-    metrics_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Save metrics for all completed folds (success or partial)
+    if metrics_rows:
+        metrics_path = experiment_dir / "metrics" / "fold_metrics.parquet"
+        metrics_path.parent.mkdir(parents=True, exist_ok=True)
+        df = pd.DataFrame(metrics_rows)
+        df.to_parquet(metrics_path, index=False)
 
-    df = pd.DataFrame(metrics_rows)
-    df.to_parquet(metrics_path, index=False)
-
-    # summary["results"]["train_average_score"], summary["results"]["train_std_score"] = compute_summary_stats(train_scores, primary_metric)
-    # summary["results"]["test_average_score"], summary["results"]["test_std_score"] = compute_summary_stats(test_scores, primary_metric)
-
-    # save_model_results(summary, Path(results_path) / "analysis_results")
     return model_name, run_id
-
-# KEEP RESULTS AND UPDATE GLOBAL METRICS FILE
-# import warnings
-# for result in results:
-#     if not result.ok:
-#         warnings.warn(f"Job failed:\n{result.traceback}")
-
-# metrics_dir = Path("./data/results/parquet/analysis_results")
-# global_path = metrics_dir / "metrics.parquet"
-
-# if global_path.exists():
-#     df_global = pd.read_parquet(global_path)
-#     existing_run_ids = set(df_global["run_id"].unique())
-# else:
-#     df_global = None
-#     existing_run_ids = set()
-
-# new_dfs = []
-
-# for p in metrics_dir.glob("metrics_*.parquet"):
-#     run_id = p.stem.replace("metrics_", "")
-#     if run_id not in existing_run_ids:
-#         new_dfs.append(pd.read_parquet(p))
-
-# if new_dfs:
-#     df_new = pd.concat(new_dfs, ignore_index=True)
-#     if df_global is not None:
-#         df_out = pd.concat([df_global, df_new], ignore_index=True)
-#     else:
-#         df_out = df_new
-
-#     df_out.to_parquet(global_path, index=False)
-
-#################
 
 import hydra
 from omegaconf import DictConfig
@@ -396,9 +348,24 @@ def main():
         fn_kwargs_list=fn_kwargs_list,
         parallel_type=parallel_type,
         slurm_cfg=cluster_cfg.slurm_cfg,
-        n_jobs=50,
-        wait_for_results=False,
+        n_jobs=cluster_cfg.conf.n_jobs,
+        wait_for_results=cluster_cfg.conf.wait_for_results,
     )
+
+    # failed = [
+    #     (i, r) for i, r in enumerate(results)
+    #     if isinstance(r, JobResult) and not r.ok
+    # ]
+    # if failed:
+    #     for i, r in failed:
+    #         cfg_i = filtered_confs[i]
+    #         print(
+    #             f"\n❌ Job {i} FAILED "
+    #             f"(model={cfg_i.model.name}, dataset={cfg_i.dataset.name})\n"
+    #             f"   Error: {r.error}\n"
+    #             f"   Traceback:\n{r.traceback}"
+    #         )
+    #     raise SystemExit(1)
 
 if __name__ == "__main__":
     main()

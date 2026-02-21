@@ -12,6 +12,7 @@ from sklearn.metrics import (
 )
 from sklearn.feature_selection import r_regression
 from sklearn.utils.class_weight import compute_sample_weight
+import numpy as np
 
 __all__ = ["compute_metrics"]
 
@@ -63,7 +64,7 @@ def compute_metrics(
             "rmse_weighted": root_mean_squared_error(
                 y_true, y_pred, sample_weight=sample_weight
             ),
-            # "correlation": 
+            "pearson_correlation": np.corrcoef(y_true, y_pred)[0, 1],
         }
 
     raise ValueError(

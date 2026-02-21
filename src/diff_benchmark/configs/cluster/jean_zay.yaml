@@ -1,6 +1,7 @@
 name: jean_zay
 
 paths:
+  cache_dir: /lustre/fswork/projects/rech/qlr/commun/HCP900
   hcp:
     base_dir: /lustre/fswork/projects/rech/qlr/commun/HCP900
     results_dir: /lustre/fswork/projects/rech/qlr/commun/HCP900
@@ -18,6 +19,8 @@ paths:
 conf:
   enabled: true
   parallel_type: slurm
+  n_jobs: 50
+  wait_for_results: false
 
 slurm_cfg:
   # log_folder: "./slurm_logs"

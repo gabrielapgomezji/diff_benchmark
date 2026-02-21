@@ -3,9 +3,11 @@ from typing import List, Tuple, Union
 import bids
 import numpy as np
 import pandas as pd
+import torch
 
 from diff_benchmark.data.dataloaders import PreprocessedData
 from diff_benchmark.data.generate_dataset import CustomDataset
+from diff_benchmark.data.cached_features import CachedFeatureDataset, get_cache_path
 from diff_benchmark.models.model_configurations import get_model
 from diff_benchmark.preprocessing.brain_feature_extraction import (
     DefaultPipeline,
@@ -15,9 +17,36 @@ from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
 from diff_benchmark.preprocessing.preparation_pipeline import DemographicsPreparationPipeline, BrainDataPreparationPipeline
 from diff_benchmark.utils.logger import setup_logger
 from omegaconf import DictConfig, OmegaConf
+from pathlib import Path
+from torch.utils.data import DataLoader
 
 logger = setup_logger(__name__)
 
+
+def _parse_image_size(resize_shape) -> Union[Tuple[int, int], None]:
+    """
+    Parse image_size from config, handling Hydra's string conversion issues.
+    
+    Args:
+        resize_shape: Value from config (can be None, list, tuple, or string)
+        
+    Returns:
+        Tuple of (H, W) or None
+    """
+    if resize_shape is None:
+        return None
+    
+    if isinstance(resize_shape, (list, tuple)):
+        # Check if it's a list containing None or string "None"
+        if len(resize_shape) == 1 and (resize_shape[0] is None or resize_shape[0] == "None"):
+            return None
+        return tuple(resize_shape)
+    
+    # If it's a string "None", return None
+    if isinstance(resize_shape, str) and resize_shape == "None":
+        return None
+    
+    return resize_shape
 
 
 def get_data_pipeline(data_type: str, dataset: DatasetConfig) -> BrainDataPreparationPipeline:
@@ -66,6 +95,223 @@ class DatasetPreparation:
         self.cfg = cfg
         self.model_name = cfg.model.name
         self.source_dataset = source_dataset
+    
+    def _should_use_cache(self) -> bool:
+        """
+        Determine if this model should use cached features.
+        
+        Returns:
+            bool: True if model is cacheable and freeze_backbone=True
+        """
+        # Only cache for heavy pretrained models
+        cacheable_models = ["vit", "dinov2", "curia"] #, "medicalnet"]
+        
+        if self.model_name not in cacheable_models:
+            return False
+        
+        # Check if freeze_backbone is True
+        freeze_backbone = self.cfg.model.backbone.get("freeze_backbone", False)
+        
+        # Special handling for medicalnet: treat as cacheable even if freeze_backbone missing
+        # (user can override by explicitly setting freeze_backbone=False) 
+        
+        if self.model_name == "medicalnet" and "freeze_backbone" not in self.cfg.model.backbone and self.cfg.model.backbone.pretrained == True:
+            freeze_backbone = True
+            
+        if not freeze_backbone:
+            logger.debug(f"Model {self.model_name} has freeze_backbone=False, not using cache")
+            return False
+        
+        logger.info(f"Model {self.model_name} with freeze_backbone=True → will use cache")
+        return True
+    
+    def _get_cache_info(self) -> Tuple[Path, bool, int, int]:
+        """
+        Check cache status and requirements.
+        
+        Returns:
+            Tuple of (cache_path, exists, required_augs, cached_augs)
+        """
+        cache_dir = Path(self.cfg.cluster.paths.cache_dir) / "dl_features"
+        
+        # Get image_size from config to ensure separate caches for resized/non-resized
+        image_size = _parse_image_size(self.cfg.data.get("resize_shape"))
+        
+        # Get tissue_type from dataset config
+        tissue_type = self.source_dataset.tissue_type if hasattr(self.source_dataset, 'tissue_type') else None
+        
+        # Get microstructure metric from dataset config
+        metric_to_compute = self.source_dataset.metric_to_compute if hasattr(self.source_dataset, 'metric_to_compute') else None
+        
+        # Determine model name for cache key (handle variants)
+        model_name_for_cache = self.model_name
+        if self.model_name == "medicalnet":
+            # Append depth to model name for unique caching
+            depth = self.cfg.model.backbone.get("depth")
+            if depth:
+                model_name_for_cache = f"{self.model_name}_depth{depth}"
+        
+        cache_path = get_cache_path(
+            model_name_for_cache,
+            self.source_dataset.name,
+            cache_dir,
+            image_size=image_size,
+            tissue_type=tissue_type,
+            metric_to_compute=metric_to_compute,
+        )
+        
+        required_augs = self.cfg.data.num_augmentations
+        
+        if not cache_path.exists():
+            return cache_path, False, required_augs, 0
+        
+        # Check how many augmentations are in the cache
+        import json
+        meta_path = cache_path.with_suffix('.meta.json')
+        if meta_path.exists():
+            with open(meta_path, 'r') as f:
+                metadata = json.load(f)
+            cached_augs = metadata.get('num_augmentations', 0)
+        else:
+            # Fallback: read from parquet
+            df = pd.read_parquet(cache_path)
+            cached_augs = df['augmentation_idx'].max() + 1
+        
+        return cache_path, True, required_augs, cached_augs
+    
+    def _compute_or_update_cache(
+        self,
+        cache_path: Path,
+        cache_exists: bool,
+        required_augs: int,
+        cached_augs: int,
+        regular_dataset: CustomDataset,
+    ):
+        """
+        Compute cache if missing, or update if more augmentations needed.
+        
+        Args:
+            cache_path: Path to cache file
+            cache_exists: Whether cache currently exists
+            required_augs: Number of augmentations required
+            cached_augs: Number of augmentations already cached
+            regular_dataset: The regular dataset (for computing features)
+        """
+        from diff_benchmark.data.cached_features import append_augmentations_to_cache
+
+        # def safe_collate(batch):
+        #     batch = [b for b in batch if b is not None]
+        #     if not batch:
+        #         return None
+        #     return torch.utils.data.dataloader.default_collate(batch)
+
+        if not cache_exists:
+            # Need to compute from scratch
+            logger.info(f"Cache not found. Computing {required_augs} augmentations...")
+            print(f"⚠️  Cache not found for {self.model_name} on {self.source_dataset.name}")
+            print(f"    Computing {required_augs} augmentations (this will take some time)...")
+            
+            # Create backbone model
+            model = get_model(
+                self.model_name,
+                OmegaConf.to_container(self.cfg, resolve=True),
+            )
+            if hasattr(model, "model"):
+                model = model.model
+            backbone = model.backbone if hasattr(model, 'backbone') else model
+            
+            # Create dataloader
+            dataloader = DataLoader(
+                regular_dataset,
+                batch_size=self.cfg.data.batch_size,
+                shuffle=False,
+                num_workers=0,  # No multiprocessing for caching
+                # collate_fn=safe_collate,
+            )
+            
+            # Get device
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            
+            # Get normalization parameters
+            norm_mean = self.cfg.data.normalization.mean
+            norm_std = self.cfg.data.normalization.std
+            image_size = _parse_image_size(self.cfg.data.get("resize_shape"))
+            
+            # Create cached dataset (which computes features)
+            _ = CachedFeatureDataset(
+                cache_path=cache_path,
+                backbone=backbone,
+                source_dataloader=dataloader,
+                device=device,
+                num_augmentations=required_augs,
+                image_size=image_size,
+                norm_mean=norm_mean,
+                norm_std=norm_std,
+                force_recompute=False,
+            )
+            
+            logger.info(f"✓ Cache created with {required_augs} augmentations")
+            print(f"✓ Cache created successfully")
+            
+        elif cached_augs < required_augs:
+            # Need to add more augmentations
+            missing_augs = required_augs - cached_augs
+            logger.info(f"Cache has {cached_augs} augmentations, need {required_augs}")
+            logger.info(f"Computing {missing_augs} additional augmentations...")
+            print(f"⚠️  Cache has {cached_augs} augmentations, but {required_augs} required")
+            print(f"    Computing {missing_augs} additional augmentations...")
+            
+            # Create backbone model
+            model = get_model(
+                self.model_name,
+                OmegaConf.to_container(self.cfg, resolve=True),
+            )
+            if hasattr(model, "model"):
+                model = model.model
+            backbone = model.backbone if hasattr(model, 'backbone') else model
+            
+            # Create dataloader
+            dataloader = DataLoader(
+                regular_dataset,
+                batch_size=self.cfg.data.batch_size,
+                shuffle=False,
+                num_workers=0,
+                # collate_fn=safe_collate,
+            )
+            
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            image_size = _parse_image_size(self.cfg.data.get("resize_shape"))
+            
+            # Create new transforms for additional augmentations
+            from diff_benchmark.data.cached_features import get_deterministic_rotation_transforms
+            norm_mean = self.cfg.data.normalization.mean
+            norm_std = self.cfg.data.normalization.std
+            
+            all_transforms = get_deterministic_rotation_transforms(
+                num_rotations=required_augs,
+                image_size=image_size,
+                norm_mean=norm_mean,
+                norm_std=norm_std,
+            )
+            new_transforms = all_transforms[cached_augs:]  # Only the new ones
+            
+            # Append to cache
+            append_augmentations_to_cache(
+                cache_path=cache_path,
+                backbone=backbone,
+                source_dataloader=dataloader,
+                device=device,
+                new_transforms=new_transforms,
+                start_aug_idx=cached_augs,
+                image_size=image_size,
+            )
+            
+            logger.info(f"✓ Added {missing_augs} augmentations (now {required_augs} total)")
+            print(f"✓ Cache updated successfully")
+        else:
+            # Cache is complete
+            logger.info(f"✓ Cache found with {cached_augs} augmentations (using {required_augs})")
+            print(f"✓ Using cached features ({cached_augs} augmentations available)")
 
     def _extract_participants_files_from_layouts(
         self,
@@ -193,32 +439,115 @@ class DatasetPreparation:
         Returns:
             Tuple[CustomDataset, PreprocessedData]: Created dataset and preprocessed data.
         """
+        use_cache = self._should_use_cache()
         # -------- DATASET CREATION --------
         X = brain_filtered
         y = np.asarray(demographics_filtered[self.cfg.target.target_column[0]])
         gender = np.asarray(demographics_filtered["Gender"])
-        torch_dataset = CustomDataset(X, y, gender)
-        preprocessed = PreprocessedData(X, y, gender, config=self.cfg)
-        return torch_dataset, preprocessed
+        subject_ids = demographics_filtered["Subject"].values
+    
+        if use_cache:
+            # Load cached features
+            cache_path, cache_exists, required_augs, cached_augs = self._get_cache_info()
+            
+            logger.info(f"Loading cached features from {cache_path}")
+            
+            # Load cache with normalization parameters
+            norm_mean = self.cfg.data.normalization.mean
+            norm_std = self.cfg.data.normalization.std
+            image_size = _parse_image_size(self.cfg.data.get("resize_shape"))
+
+            # Create a reference regular dataset to verify subject alignment
+            # This is cheap as we don't load images, just the file paths/dataframe
+            regular_dataset = CustomDataset(X, y, gender)
+            reference_loader = DataLoader(
+                regular_dataset,
+                batch_size=self.cfg.data.batch_size,
+                shuffle=False,
+                num_workers=0
+            )
+            
+            cached_dataset = CachedFeatureDataset(
+                cache_path=cache_path,
+                num_augmentations=required_augs,
+                image_size=image_size,
+                norm_mean=norm_mean,
+                norm_std=norm_std,
+                source_dataloader=reference_loader,
+            )
+            
+            # Store targets and genders using the public properties
+            # These provide a consistent interface with CustomDataset
+            cached_dataset.subject_ids = subject_ids.tolist()
+            cached_dataset.targets = y  # Stored as numpy array, converted to tensor in __getitem__
+            cached_dataset.gender = gender  # Stored as numpy array, converted to tensor in __getitem__
+            
+            # Create PreprocessedData with dummy X (features are in cache)
+            X_dummy = pd.DataFrame({"subject_id": subject_ids})
+            preprocessed = PreprocessedData(X_dummy, y, gender, config=self.cfg)
+            
+            return cached_dataset, preprocessed
+        else:
+            # Regular dataset
+            torch_dataset = CustomDataset(X, y, gender)
+            preprocessed = PreprocessedData(X, y, gender, config=self.cfg)
+            return torch_dataset, preprocessed
 
     def pipeline(self) -> Tuple[CustomDataset, PreprocessedData]:
         """
         Orchestrates the data preparation pipeline.
+        
+        Automatically handles cached features for cacheable models (vit, dinov2, curia)
+        with freeze_backbone=True. Computes cache if missing or incomplete.
+        
         Returns:
-            Tuple[CustomDataset, PreprocessedData]: The prepared dataset and preprocessed data.
+            Tuple[Union[CustomDataset, CachedFeatureDataset], PreprocessedData]: 
+                The prepared dataset and preprocessed data.
         """
-        # demographics_df = self._get_demographics_df()
-        # breakpoint()
-        print("Preparing brain data...")
-        brain_df = self._get_brain_df()
+        # Check if we should use cache
+        use_cache = self._should_use_cache()
+        
+        # Always prepare demographics (needed for both cached and non-cached)
         print("Preparing demographics data...")
+        brain_df = self._get_brain_df()  # Need this to align subjects
         demographics_df = self._get_demographics_df()
+        
         print("Aligning and filtering data...")
         brain_filtered, demographics_filtered = self._filter_dfs(
             brain_df, demographics_df
         )
-        print("Creating dataset...")
-        torch_dataset, preprocessed = self._create_torch_dataset(
-            brain_filtered, demographics_filtered
-        )
+        
+        if use_cache:
+            # Check cache status
+            cache_path, cache_exists, required_augs, cached_augs = self._get_cache_info()
+            
+            # Compute or update cache if needed
+            if not cache_exists or cached_augs < required_augs:
+                print("Creating regular dataset for cache computation...")
+                regular_dataset = CustomDataset(
+                    brain_filtered,
+                    np.asarray(demographics_filtered[self.cfg.target.target_column[0]]),
+                    np.asarray(demographics_filtered["Gender"])
+                )
+                
+                self._compute_or_update_cache(
+                    cache_path,
+                    cache_exists,
+                    required_augs,
+                    cached_augs,
+                    regular_dataset,
+                )
+            
+            # Now create cached dataset
+            print("Creating cached feature dataset...")
+            torch_dataset, preprocessed = self._create_torch_dataset(
+                brain_filtered, demographics_filtered
+            )
+        else:
+            # Regular path (no caching)
+            print("Creating dataset...")
+            torch_dataset, preprocessed = self._create_torch_dataset(
+                brain_filtered, demographics_filtered
+            )
+        
         return torch_dataset, preprocessed

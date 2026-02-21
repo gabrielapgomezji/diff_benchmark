@@ -122,7 +122,7 @@ class BrainDataPreparationPipeline(ABC):
         config (dict): Configuration settings for data preparation and analysis.
         results (dict): A dictionary to store results of the analysis.
     Methods:
-        verify_subject_files(subject_id: str, metric: str) -> bool:
+        verify_subject_files(subject_id: str, metric: str, tissue_type: str) -> bool:
             Abstract method to verify the existence of required files for a subject.
         compute_microstructure(subject_id: str):
             Abstract method to compute microstructure data for a subject.
@@ -138,10 +138,12 @@ class BrainDataPreparationPipeline(ABC):
     """
 
     def __init__(self, dataset_config: DatasetConfig):
+        self.tissue_type = dataset_config.tissue_type
         self.dataset_config = dataset_config
         self.data_reading = dataset_config.data_reading
         self.base_dir = Path(dataset_config.base_dir)
         self.in_derivatives = self.base_dir / "derivatives"
+        self.results_dir = Path(dataset_config.results_dir)
         self.metric = dataset_config.metric_to_compute
         self.scale = dataset_config.scale
         self.surface_space = dataset_config.surface_space
@@ -158,7 +160,10 @@ class BrainDataPreparationPipeline(ABC):
         self.aparcaseg_extension = dataset_config.aparcaseg_extension
 
         if "bids" in self.data_reading:
-            # File extension
+            # Check for generic cache file in the results directory
+            if not self.results_dir.exists():
+                 self.results_dir.mkdir(parents=True, exist_ok=True)
+            
             # --- Detect uni vs multicenter automatically ---
             if (self.base_dir / "sub-").exists() or any(
                 p.name.startswith("sub-") for p in self.base_dir.iterdir()
@@ -167,14 +172,30 @@ class BrainDataPreparationPipeline(ABC):
             else:
                 center_dirs = [p for p in self.base_dir.iterdir() if p.is_dir()]
 
-            self.layouts = [
-                bids.BIDSLayout(
-                    str(center),
-                    derivatives=center / "derivatives",
-                    validate=False,
+            self.layouts = []
+            for i, center in enumerate(center_dirs):
+                # If multiple centers, append index to db name to avoid conflicts if needed, 
+                # or use center name. Here assuming dataset_config.name is unique enough 
+                # or we just use one db if it handles multiple roots (BIDSLayout usually takes one root).
+                # But here we are creating multiple BIDSLayouts.
+                
+                if len(center_dirs) > 1:
+                    db_name = f"bids_layout_{self.dataset_config.name}_{center.name}.db"
+                else:
+                    db_name = f"bids_layout_{self.dataset_config.name}.db"
+                
+                database_path = self.results_dir / db_name
+                
+                logger.info(f"Using BIDS layout database: {database_path}")
+                
+                self.layouts.append(
+                    bids.BIDSLayout(
+                        str(center),
+                        derivatives=center / "derivatives",
+                        validate=False,
+                        database_path=database_path
+                    )
                 )
-                for center in center_dirs
-            ]
 
     def get_subjects(self) -> list[str]:
         """
@@ -319,7 +340,7 @@ class BrainDataPreparationPipeline(ABC):
         return True
 
     @abstractmethod
-    def verify_subject_files(self, subject_id: str, metric: str) -> bool:
+    def verify_subject_files(self, subject_id: str, metric: str, tissue_type: str) -> bool:
         """
         Verifies the existence and validity of subject files for a given subject ID and metric.
         Args:
@@ -347,14 +368,14 @@ class BrainDataPreparationPipeline(ABC):
             aparc_aseg = files.aparc_aseg
             dwi_nib = nib.load(files.dwi_data)
             bvals = np.loadtxt(files.bvals)
-            labels = extract_selected_labels(aparc_aseg)
+            labels = extract_selected_labels(aparc_aseg, tissue_type=self.tissue_type)
 
             surfaces = files.surfaces
 
             if self.data_reading == "hcp":
                 nodif_mask = files.nodif_mask
                 bvecs = np.loadtxt(files.bvecs).T
-                nodif_mask = files["nodif mask"]
+                nodif_mask = files.nodif_mask
                 aparc_resampled = nimage.resample_to_img(
                     aparc_aseg,
                     nodif_mask,
@@ -375,20 +396,22 @@ class BrainDataPreparationPipeline(ABC):
                     force_resample=True,
                     copy_header=True,
                 )
+                if self.tissue_type == "gray":
+                    selected_labels = [
+                        k
+                        for k in labels
+                        if (
+                            ("ctx" in k)
+                            or ("thalamus" in k)
+                            or ("caudate" in k)
+                            or ("putamen" in k)
+                            or ("pallidum" in k)
+                        )
+                    ]
+                elif self.tissue_type == "white":
+                    selected_labels = None
 
-                selected_labels = [
-                    k
-                    for k in labels
-                    if (
-                        ("ctx" in k)
-                        or ("thalamus" in k)
-                        or ("caudate" in k)
-                        or ("putamen" in k)
-                        or ("pallidum" in k)
-                    )
-                ]
-
-            ctx_mask, vent_mask = create_masks(aparc_resampled, labels, selected_labels)
+            ctx_mask, vent_mask = create_masks(aparc_resampled, labels, selected_labels, tissue_type=self.tissue_type)
 
             compute_save_and_project_metric(
                 metric=self.metric,
@@ -406,6 +429,7 @@ class BrainDataPreparationPipeline(ABC):
                 layouts=getattr(self, 'layouts', None),
                 target_space=getattr(self, 'surface_space', 'fslr_32k'),
                 data_reading=self.data_reading,
+                tissue_type=self.tissue_type,
             )
         except (
             FileNotFoundError,
@@ -484,20 +508,19 @@ class BrainDataPreparationPipeline(ABC):
 
         # Track if we computed/recomputed microstructure
         computed_microstructure = False
-        
-        if self.verify_subject_files(subject_id, self.metric) and recompute:
-            logger.info(f"[{subject_id}] Recomputing microstructure.")
-            print(f"[{subject_id}] Recomputing microstructure.")
+        if self.verify_subject_files(subject_id, self.metric, self.tissue_type) and recompute:
+            logger.info(f"[{subject_id}] Recomputing microstructure for {self.tissue_type} matter.")
+            print(f"[{subject_id}] Recomputing microstructure for {self.tissue_type} matter.")
             self.compute_microstructure(subject_id)
             computed_microstructure = True
-        elif not self.verify_subject_files(subject_id, self.metric):
-            logger.info(f"[{subject_id}] Computing microstructure.")
-            print(f"[{subject_id}] Computing microstructure.")
+        elif not self.verify_subject_files(subject_id, self.metric, self.tissue_type):
+            logger.info(f"[{subject_id}] Computing microstructure for {self.tissue_type} matter.")
+            print(f"[{subject_id}] Computing microstructure for {self.tissue_type} matter.")
             self.compute_microstructure(subject_id)
             computed_microstructure = True
         else:
-            logger.info(f"[{subject_id}] Microstructure files already present.")
-            print(f"[{subject_id}] Microstructure files already present.")
+            logger.info(f"[{subject_id}] Microstructure files for {self.tissue_type} matter already present.")
+            print(f"[{subject_id}] Microstructure files for {self.tissue_type} matter already present.")
         
         # Handle resampling - works for all pipelines (polymorphic behavior)
         if computed_microstructure:
@@ -520,7 +543,7 @@ class BrainDataPreparationPipeline(ABC):
                 logger.debug(f"[{subject_id}] Existing data already properly resampled")
                 print(f"[{subject_id}] Existing data already properly resampled")
 
-    def run_pipeline(self, recompute: bool = False) -> pd.DataFrame:
+    def run_pipeline(self, cluster_conf: Dict, slurm_cfg: Dict, recompute: bool = False) -> pd.DataFrame:
         """
         Main orchestration: ensures all required files exist before running analysis.
         Args:
@@ -555,6 +578,11 @@ class BrainDataPreparationPipeline(ABC):
 
         subject_list = parse_subject_ids(self.dataset_config)
 
+        parallel_type = (
+            None
+            if cluster_conf.parallel_type not in ["slurm", "joblib"]
+            else cluster_conf.parallel_type
+        )
         run_jobs(
             run_fn=process_subject_wrapper,
             fn_kwargs_list=[
@@ -566,13 +594,15 @@ class BrainDataPreparationPipeline(ABC):
                 }
                 for subject_id in subject_list
             ],
-            parallel_type="slurm", #None, #
-            slurm_cfg={
-                "cpus_per_task": 1,
-                "timeout_min": 900,
-                "mem_gb": 50,
-            },
-            n_jobs=100,
+            parallel_type=parallel_type,
+            slurm_cfg=slurm_cfg,
+            # slurm_cfg={
+            #     "cpus_per_task": 1,
+            #     "timeout_min": 900,
+            #     "mem_gb": 50,
+            # },
+            n_jobs=cluster_conf.n_jobs,
+            wait_for_results=cluster_conf.wait_for_results,
         )
 
         # Once all files are ready, run the analysis
@@ -644,11 +674,12 @@ class DemographicsPreparationPipeline:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-    def preprocess(self, target_columns: list[str]) -> pd.DataFrame:
+    def preprocess(self, target_columns: list[str], binarize: bool = True) -> pd.DataFrame:
         """
         Entry point used by the benchmark.
         Args:
             target_columns: List of target demographic columns to retain.
+            binarize: If True, binarize columns with exactly 2 unique values (0 and 1).
         Returns:
             Preprocessed demographics DataFrame.
         """
@@ -658,9 +689,12 @@ class DemographicsPreparationPipeline:
             if age_cols:
                 logger.info("HCP detected in demographics paths; dropping columns: %s", age_cols)
                 df = df.drop(columns=age_cols)
+
         df = self._filter(df, target_columns)
         df = self._normalize_subject_ids(df)
         df = self._categorical_to_numeric(df)
+        if binarize:
+            df = self._binarize_columns(df)
         df = df.dropna()
         return df
 
@@ -888,3 +922,122 @@ class DemographicsPreparationPipeline:
                 .map({"M": 1, "F": 0, "MALE": 1, "FEMALE": 0})
             )
         return df
+
+    def _binarize_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Detects binary columns (2 unique non-NaN values) and maps them to 0 and 1.
+        Sorts the unique values to determine mapping (lower -> 0, higher -> 1).
+        Does not affect Subject or Site columns.
+        """
+        for col in df.columns:
+            if col == "Subject" or col == self.site_column:
+                continue
+
+            unique_vals = df[col].dropna().unique()
+            if len(unique_vals) == 2:
+                try:
+                    v0, v1 = sorted(unique_vals)
+                except TypeError:
+                    v0, v1 = sorted(unique_vals, key=str)
+
+                # Skip if already 0/1 to avoid redundant re-mapping
+                if {v0, v1} == {0, 1}:
+                    continue
+
+                mapping = {v0: 0, v1: 1}
+                logger.info(f"Binarizing column '{col}': {mapping}")
+                df[col] = df[col].map(mapping)
+        
+        return df
+
+class CachedBIDSFile:
+    """Wrapper for a file in CachedBIDSLayout."""
+    def __init__(self, row):
+        self._row = row
+        self.path = str(row['path'])
+        self.filename = Path(self.path).name
+        
+    def get_entities(self):
+        # Return dict of entities, excluding 'path' and internal pandas cols
+        return {k: v for k, v in self._row.items() 
+                if k != 'path' and pd.notna(v) and not str(k).startswith('Unnamed')}
+    
+    def __repr__(self):
+        return f"<CachedBIDSFile filename='{self.filename}'>"
+
+class CachedBIDSLayout:
+    """A BIDSLayout-like interface backed by a DataFrame for faster loading."""
+    def __init__(self, df):
+        self.df = df
+        # Ensure subject is string if it exists
+        if 'subject' in self.df.columns:
+            self.df['subject'] = self.df['subject'].astype(str)
+            
+    def get_subjects(self):
+        if 'subject' not in self.df.columns:
+            return []
+        return sorted(self.df['subject'].dropna().unique().tolist())
+        
+    def get(self, return_type='object', **kwargs):
+        # Start with all rows
+        mask = np.ones(len(self.df), dtype=bool)
+        
+        for k, v in kwargs.items():
+            if k in ['return_type', 'scope', 'regex_search']:
+                continue
+            
+            # Helper for extension normalization
+            if k == 'extension':
+                if 'extension' in self.df.columns:
+                    col_vals = self.df['extension'].astype(str)
+                    
+                    if isinstance(v, list):
+                        v_no_dot = [x.lstrip('.') for x in v]
+                        v_with_dot = ['.' + x.lstrip('.') for x in v]
+                        mask &= (col_vals.isin(v_no_dot) | col_vals.isin(v_with_dot))
+                    else:
+                        v_str = str(v)
+                        v_no_dot = v_str.lstrip('.')
+                        v_with_dot = '.' + v_no_dot
+                        mask &= ((col_vals == v_no_dot) | (col_vals == v_with_dot))
+                continue
+
+            # Standard filtering
+            if k in self.df.columns:
+                if v is None:
+                    mask &= self.df[k].isna()
+                else:
+                    col_vals = self.df[k]
+                    if isinstance(v, list):
+                        mask &= col_vals.isin(v)
+                    else:
+                        mask &= (col_vals == v)
+        
+        filtered = self.df[mask]
+        
+        # Sort by path to be deterministic
+        if 'path' in filtered.columns:
+            filtered = filtered.sort_values('path')
+            
+        if return_type in ['file', 'files', 'filename', 'filenames']:
+            return filtered['path'].tolist()
+        
+        return [CachedBIDSFile(row) for _, row in filtered.iterrows()]
+    
+    def to_df(self):
+        return self.df
+    
+    def get_file(self, filename):
+        """Mock get_file to return something with a .path attribute if found."""
+        # This is strictly used for 'participants.tsv' in prepare_data.py
+        # Check if filename is in df (might not be if it's top level tsv and not in layout?)
+        # Standard BIDSLayout includes participants.tsv in the index if it's there.
+        
+        # We try to match by filename (ignoring path structure)
+        # BIDS files are indexed by path, so we can check if any path ends with filename
+        if 'path' in self.df.columns:
+            matches = self.df[self.df['path'].astype(str).str.endswith(filename)]
+            if not matches.empty:
+                # Return the first match wrapped
+                return CachedBIDSFile(matches.iloc[0])
+        return None
