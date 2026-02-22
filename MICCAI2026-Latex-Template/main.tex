@@ -12,6 +12,13 @@
 % Used for displaying a sample figure. If possible, figure files should
 % be included in EPS format.
 %
+\usepackage{xcolor}
+\usepackage{soul}
+% \replace{old text}{new proposal} — strikes out old in red, shows proposal in blue
+\newcommand{\replace}[2]{\textcolor{red}{\st{#1}} \textcolor{blue}{#2}}
+% \todo{note} — highlighted in yellow
+\newcommand{\todo}[1]{\textcolor{orange}{\textbf{[TODO: #1]}}}
+%
 % If you use the hyperref package, please uncomment the following two lines
 % to display URLs in blue roman font according to Springer's eBook style:
 %\usepackage{color}
@@ -52,11 +59,11 @@ ABC Institute, Rupert-Karls-University Heidelberg, Heidelberg, Germany\\
 %
 \begin{abstract}
 % The abstract should briefly summarize the contents of the paper in 150--250 words.  If you are to include a link to your Repository, please make sure it is anonymized for the double-blind review phase.
-Diffusion MRI is widely used to explore brain microstructure, and numerous machine learning methods have been proposed to extract predictive information. Yet progress remains difficult to assess: studies rely on single datasets, heterogeneous pipelines, limited evaluation, and often lack accessible code, preventing meaningful comparison and reproducibility.
-
+Diffusion MRI is widely used to explore brain microstructure, and numerous machine learning methods have been proposed to extract predictive information.
+Yet progress remains difficult to assess: studies rely on single datasets, heterogeneous pipelines, limited evaluation, and often lack accessible code, preventing meaningful comparison and reproducibility.
 We introduce a modular and transparent benchmarking framework for machine learning in dMRI microstructure. The benchmark unifies multiple representative datasets within a standardized end-to-end pipeline and enables systematic comparison across tissue types, feature representations and models.
-
-It reveals differences between white and gray matter analyses, quantify the impact of diffusion microstructure feature choices, and show that fast linear baselines can rival more complex deep learning methods. Standardized benchmarking is essential to move the field beyond proxy tasks and toward robust methods with real clinical relevance.
+It reveals differences between white and gray matter analyses, quantify the impact of diffusion microstructure feature choices, and show that fast linear baselines can rival more complex deep learning methods.
+\replace{Standardized benchmarking is essential to move the field beyond proxy tasks and toward robust methods with real clinical relevance.}{This shows that standardized benchmarking is essential to move the field beyond proxy tasks and toward robust methods with real clinical relevance.}
 \keywords{Benchmark  \and Brain \and diffusion MRI.}
 % Authors must provide keywords and are not allowed to remove this Keyword section.
 
