@@ -5,6 +5,7 @@ from pathlib import Path
 
 from combined_plot import plot_combined
 from delta_to_linear_plot import plot_delta_to_linear
+from feature_benefit_heatmap import plot_feature_benefit_heatmap
 from feature_vs_b0_plot import plot_feature_vs_b0
 from feature_plots import plot_feature_heatmap
 from prep_sensitivity_plot import plot_prep_sensitivity
@@ -49,6 +50,9 @@ def generate_all_plots(
 
     plot_combined(parquet_path, str(folds_dir))
     print(f"[8/8] Combined plot generated in {folds_dir}")
+
+    plot_feature_benefit_heatmap(parquet_path, str(features_dir))
+    print(f"[9/9] Feature benefit heatmap generated in {features_dir}")
 
     return out_path
 
