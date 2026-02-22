@@ -1,0 +1,4 @@
+# abide
+target_column: 
+  - dx_group
+prediction_task: binary_classification
