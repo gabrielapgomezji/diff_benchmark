@@ -1,0 +1,93 @@
+\begin{thebibliography}{10}
+\providecommand{\url}[1]{\texttt{#1}}
+\providecommand{\urlprefix}{URL }
+\providecommand{\doi}[1]{https://doi.org/#1}
+
+\bibitem{basser1994mr}
+Basser, P.J., Mattiello, J., LeBihan, D.: Mr diffusion tensor spectroscopy and
+  imaging. Biophysical journal  \textbf{66}(1),  259--267 (1994)
+
+\bibitem{chen2024deep}
+Chen, J., Bayanagari, V.L., Chung, S., Wang, Y., Lui, Y.W.: Deep learning with
+  diffusion mri as in vivo microscope reveals sex-related differences in human
+  white matter microstructure. Scientific reports  \textbf{14}(1), ~9835 (2024)
+
+\bibitem{chen2019med3d}
+Chen, S., Ma, K., Zheng, Y.: Med3d: Transfer learning for 3d medical image
+  analysis. arXiv preprint arXiv:1904.00625  (2019)
+
+\bibitem{dancette2025curia}
+Dancette, C., Khlaut, J., Saporta, A., Philippe, H., Ferreres, E., Callard, B.,
+  Danielou, T., Alberge, L., Machado, L., Tordjman, D., et~al.: Curia: A
+  multi-modal foundation model for radiology. arXiv preprint arXiv:2509.06830
+  (2025)
+
+\bibitem{di2017enhancing}
+Di~Martino, A., O’connor, D., Chen, B., Alaerts, K., Anderson, J.S., Assaf,
+  M., Balsters, J.H., Baxter, L., Beggiato, A., Bernaerts, S., et~al.:
+  Enhancing studies of the connectome in autism using the autism brain imaging
+  data exchange ii. Scientific data  \textbf{4}(1),  1--15 (2017)
+
+\bibitem{egle2022prediction}
+Egle, M., Hilal, S., Tuladhar, A.M., Pirpamer, L., Hofer, E., Duering, M.,
+  Wason, J., Morris, R.G., Dichgans, M., Schmidt, R., et~al.: Prediction of
+  dementia using diffusion tensor mri measures: the optimal collaboration.
+  Journal of Neurology, Neurosurgery \& Psychiatry  \textbf{93}(1),  14--23
+  (2022)
+
+\bibitem{he2022model}
+He, H., Zhang, F., Pieper, S., Makris, N., Rathi, Y., Wells, W., O’Donnell,
+  L.J.: Model and predict age and sex in healthy subjects using brain white
+  matter features: a deep learning approach. In: 2022 IEEE 19th International
+  Symposium on Biomedical Imaging (ISBI). pp.~1--5. IEEE (2022)
+
+\bibitem{jensen2005diffusional}
+Jensen, J.H., Helpern, J.A., Ramani, A., Lu, H., Kaczynski, K.: Diffusional
+  kurtosis imaging: the quantification of non-gaussian water diffusion by means
+  of magnetic resonance imaging. Magnetic Resonance in Medicine: An Official
+  Journal of the International Society for Magnetic Resonance in Medicine
+  \textbf{53}(6),  1432--1440 (2005)
+
+\bibitem{kotikalapudi2025replicability}
+Kotikalapudi, R., Kincses, B., Gallitto, G., Englert, R., Hofffschlag, K., Li,
+  J., B{\"u}chel, C., Bingel, U., Spisak, T.: On the replicability of diffusion
+  weighted mri-based brain-behavior models. Communications Biology
+  \textbf{8}(1), ~1512 (2025)
+
+\bibitem{novikov2019quantifying}
+Novikov, D.S., Fieremans, E., Jespersen, S.N., Kiselev, V.G.: Quantifying brain
+  microstructure with diffusion mri: Theory and parameter estimation. NMR in
+  Biomedicine  \textbf{32}(4),  e3998 (2019)
+
+\bibitem{oquab2023dinov2}
+Oquab, M., Darcet, T., Moutakanni, T., Vo, H., Szafraniec, M., Khalidov, V.,
+  Fernandez, P., Haziza, D., Massa, F., El-Nouby, A., et~al.: Dinov2: Learning
+  robust visual features without supervision. arXiv preprint arXiv:2304.07193
+  (2023)
+
+\bibitem{shafto2014cambridge}
+Shafto, M.A., Tyler, L.K., Dixon, M., Taylor, J.R., Rowe, J.B., Cusack, R.,
+  Calder, A.J., Marslen-Wilson, W.D., Duncan, J., Dalgleish, T., et~al.: The
+  cambridge centre for ageing and neuroscience (cam-can) study protocol: a
+  cross-sectional, lifespan, multidisciplinary examination of healthy cognitive
+  ageing. BMC neurology  \textbf{14}(1), ~204 (2014)
+
+\bibitem{smith2006tract}
+Smith, S.M., Jenkinson, M., Johansen-Berg, H., Rueckert, D., Nichols, T.E.,
+  Mackay, C.E., Watkins, K.E., Ciccarelli, O., Cader, M.Z., Matthews, P.M.,
+  et~al.: Tract-based spatial statistics: voxelwise analysis of multi-subject
+  diffusion data. Neuroimage  \textbf{31}(4),  1487--1505 (2006)
+
+\bibitem{van2013wu}
+Van~Essen, D.C., Smith, S.M., Barch, D.M., Behrens, T.E., Yacoub, E., Ugurbil,
+  K., Consortium, W.M.H., et~al.: The wu-minn human connectome project: an
+  overview. Neuroimage  \textbf{80},  62--79 (2013)
+
+\bibitem{wen2021reproducible}
+Wen, J., Samper-Gonz{\'a}lez, J., Bottani, S., Routier, A., Burgos, N.,
+  Jacquemont, T., Fontanella, S., Durrleman, S., Epelbaum, S., Bertrand, A.,
+  et~al.: Reproducible evaluation of diffusion mri features for automatic
+  classification of patients with alzheimer’s disease. Neuroinformatics
+  \textbf{19}(1),  57--78 (2021)
+
+\end{thebibliography}

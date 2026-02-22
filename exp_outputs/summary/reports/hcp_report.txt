@@ -93,14 +93,14 @@ dinov2_hgrab0a_9825fa08    nan     |b0|           |9825fa08|               |aaa2
 
 GROUP: model_name=dinov2, tissue_type=white, prediction_task=binary_classification, target=['Gender']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: dinov2_hwhimkg_5144a66e (Metric: accuracy_weighted_test_mean, Score: 0.8149)
+  Best Run ID: dinov2_hwhib0g_a3e3d646 (Metric: accuracy_weighted_test_mean, Score: 0.8185)
   Highlighting: Parameters different from Best Run are enclosed in |...|
 RunID                      Score   PrimaryMetric  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id             
 --------------------------------------------------------------------------------------------------------------------------------------
-dinov2_hwhimkg_5144a66e *  0.8149  mk             5144a66e                 a5109f7cecfad10357b67f905e5...  dinov2_hwhimkg_5144a66e    
+dinov2_hwhib0g_a3e3d646 *  0.8185  b0             a3e3d646                 999a3ee43c8f780c733153b7a27...  dinov2_hwhib0g_a3e3d646    
+dinov2_hwhimkg_5144a66e    0.8149  |mk|           |5144a66e|               |a5109f7cecfad10357b67f905e...  |dinov2_hwhimkg_5144a66e|  
 dinov2_hwhimdg_7808a845    0.8146  |md|           |7808a845|               |ff1ef4a31450863ca6933c8ebd...  |dinov2_hwhimdg_7808a845|  
 dinov2_hwhishg_79c1853b    0.8116  |sh|           |79c1853b|               |83a673fa13ffd4170635ea9ab8...  |dinov2_hwhishg_79c1853b|  
-dinov2_hwhib0g_a3e3d646    0.8044  |b0|           |a3e3d646|               |999a3ee43c8f780c733153b7a2...  |dinov2_hwhib0g_a3e3d646|  
 dinov2_hwhirog_a3c5165f    nan     |rtop|         |a3c5165f|               |f0408bfdde1e8a64e74bb37520...  |dinov2_hwhirog_a3c5165f|  
 
 ========================================

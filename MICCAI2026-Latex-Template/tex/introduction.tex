@@ -1,15 +1,32 @@
-\textbf{First paragraph:}
-\begin{itemize}
-    \item Context: Diffusion MRI provides quantitative microstructural biomarkers
-    \item Increasing use of ML for prediction (age, diagnosis, cognition, etc.)
-    \item Lack of standardized benchmark
-\end{itemize}
+% \textbf{First paragraph:}
+% \begin{itemize}
+%     \item Context: Diffusion MRI provides quantitative microstructural biomarkers
+%     \item Increasing use of ML for prediction (age, diagnosis, cognition, etc.)
+%     \item Lack of standardized benchmark
+% \end{itemize}
+Diffusion magnetic resonance imaging (dMRI) enables the in vivo quantification of tissue 
+microstructure and provides biologically meaningful biomarkers sensitive to axonal organization, 
+myelination, and tissue complexity \cite{novikov2019quantifying}. Over the past decade, these microstructural descriptors have 
+increasingly been used as input features for predictive modeling, aiming to estimate gender\cite{chen2024deep} age \cite{he2022model}, diagnose 
+neurological and psychiatric conditions \cite{egle2022prediction,wen2021reproducible}, or characterize cognitive and behavioral traits \cite{kotikalapudi2025replicability}. The combination 
+of diffusion-derived biomarkers and machine learning has thus emerged as a powerful framework for 
+data-driven inference in neuroimaging. However, despite the growing number of predictive studies, the 
+field still lacks a standardized benchmark that enables controlled, reproducible, and fair comparison 
+across models, representations, and datasets.
 
-\noindent \textbf{Second paragraph: literature review:}
-\begin{itemize}
-    \item  Literature review of techniques: Variability of the proposed approach (ML-based, deep-learning based etc)
-    \item Problems: High variability in reported performance across studies + Limited reproducibility 
-\end{itemize}
+% \noindent \textbf{Second paragraph: literature review:}
+% \begin{itemize}
+%     \item  Literature review of techniques: Variability of the proposed approach (ML-based, deep-learning based etc)
+%     \item Problems: High variability in reported performance across studies + Limited reproducibility 
+% \end{itemize}
+A broad spectrum of methodological approaches has been proposed, ranging from classical regression to ensemble learning and deep neural networks. These studies differ substantially in 
+preprocessing choices, feature construction strategies, model selection procedures, and evaluation 
+protocols. While many report promising predictive performance, reported accuracies vary widely across 
+datasets and tasks, and direct comparison between studies is often infeasible. In practice, improvements 
+are frequently attributed to model complexity or architectural innovation, yet it remains unclear to what 
+extent performance differences arise from representational choices, preprocessing variability, or evaluation 
+design. The absence of unified evaluation standards and consistent reporting practices has limited 
+reproducibility and slowed cumulative methodological progress.
 
 % \noindent \textbf{Third paragraph: reasons for these problems}
 % \begin{itemize}

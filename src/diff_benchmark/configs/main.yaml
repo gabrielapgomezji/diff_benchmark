@@ -95,6 +95,7 @@ choices:
   # pred_head.hidden_dims: ["[512, 512, 128, 16]"] 
   backend.learning_rate: [1e-3, 1e-4] #, 1e-2]
   backend.weight_decay: [1e-2] #, 1e-1, 1e-3, 1e-4]
+  # cluster.slurm_cfg.timeout_min: [30]
   ########
   # model: [linear, pca_linear, forest, pca_forest, svm, pca_svm]
   # backend: [sklearn]

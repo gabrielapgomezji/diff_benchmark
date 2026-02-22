@@ -14,9 +14,10 @@ and generalizability of different configurations.
     \centering
     \includegraphics[width=\textwidth]{../exp_outputs/summary/plots/folds/combined_model_vs_prep.png}
     \caption{Summary of benchmark results across datasets, feature representations and models.}
-    \label{model_family}
+    \label{fig:model_family}
 \end{figure}
-Figure \ref{fig:model_family} reveals two important patterns. First, regularized linear models consistently 
+
+Figure \ref{fig:model_family}  reveals two important patterns. First, regularized linear models consistently 
 perform on par with deep learning approaches, despite their lower representational capacity. While deep 
 architectures achieve competitive performance, the gap between model families is often smaller than expected,
 suggesting that microstructural feature representation may be as critical as model complexity. Second, and more remarkably, 
@@ -53,18 +54,25 @@ assessing predictive performance in diffusion MRI.
 % representation was more informative). The variability in performance across feature representations and tissue 
 % types further emphasizes the need for comprehensive evaluation to identify robust predictors in diffusion MRI.
 
-We next analyze the impact of tissue type and microstructural representation on predictive performance. 
-While many studies restrict their analysis to a single tissue compartment our results indicate that this choice 
-is far from neutral. As shown in Figure \ref{fig:white_vs_gray}, for a fixed dataset or microstructural parametrization, 
-performance varies substantially depending on both the model and the tissue 
-from which features are extracted. Across datasets and tasks, gray matter representations consistently 
-outperform white matter features in most settings. Importantly, the performance gap between tissue types is often comparable to—or larger than—the difference between model families. This finding suggests that representational choices at the tissue and feature level may be as influential as model complexity itself. The pronounced variability across tissues and microstructural descriptors further reinforces the need for systematic evaluation rather than relying on a single compartment or feature set when drawing conclusions in diffusion MRI prediction studies.
+We further isolate the effect of tissue compartment by performing paired, fold-level 
+comparisons between the best-performing gray and white matter models within each 
+dataset–target–task–feature configuration. Rather than comparing raw averages, we compute a 
+standardized paired difference that accounts for fold variability, thereby estimating a 
+tissue-specific effect size. As shown in Figure \ref{fig:white_vs_gray}, the direction and 
+magnitude of this effect depend strongly on both dataset and microstructural representation.
+
+When aggregated across independent configurations, we observe that the magnitude effect is 
+often comparable to the variability observed across folds, underscoring 
+that tissue choice constitutes a non-negligible design decision. These results suggest 
+that restricting analyses to a single compartment may overlook informative microstructural 
+signals and lead to configuration-dependent conclusions.
 
 
 \begin{figure}
     \centering
-    \includegraphics[width=\textwidth]{../exp_outputs/summary/plots/features/feature_impact_heatmap.png}
-    \caption{}
+    \includegraphics[width=\textwidth]{../exp_outputs/summary/plots/features/feature_benefit_heatmap.png}
+    \caption{Impact of different feature representations on prediction performance across datasets and tasks.}
+    \label{fig:feature_impact}
 \end{figure}
 
 % \subsection{Within-Dataset Performance}
