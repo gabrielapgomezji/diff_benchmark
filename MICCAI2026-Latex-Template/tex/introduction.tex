@@ -7,26 +7,31 @@
 Diffusion magnetic resonance imaging (dMRI) enables the in vivo quantification of tissue 
 microstructure and provides biologically meaningful biomarkers sensitive to axonal organization, 
 myelination, and tissue complexity \cite{novikov2019quantifying}. Over the past decade, these microstructural descriptors have 
-increasingly been used as input features for predictive modeling, aiming to estimate gender\cite{chen2024deep} age \cite{he2022model}, diagnose 
+increasingly been used as input features for predictive modeling, aiming to estimate gender \cite{chen2024deep}, age \cite{he2022model}, diagnose 
 neurological and psychiatric conditions \cite{egle2022prediction,wen2021reproducible}, or characterize cognitive and behavioral traits \cite{kotikalapudi2025replicability}. The combination 
 of diffusion-derived biomarkers and machine learning has thus emerged as a powerful framework for 
-data-driven inference in neuroimaging. However, despite the growing number of predictive studies, the 
+data-driven inference in neuroimaging. \replace{However, despite the growing number of predictive studies, the 
 field still lacks a standardized benchmark that enables controlled, reproducible, and fair comparison 
-across models, representations, and datasets.
+across models, representations, and datasets.}
+{}
+
 
 % \noindent \textbf{Second paragraph: literature review:}
 % \begin{itemize}
 %     \item  Literature review of techniques: Variability of the proposed approach (ML-based, deep-learning based etc)
 %     \item Problems: High variability in reported performance across studies + Limited reproducibility 
 % \end{itemize}
-A broad spectrum of methodological approaches has been proposed, ranging from classical regression to ensemble learning and deep neural networks. These studies differ substantially in 
-preprocessing choices, feature construction strategies, model selection procedures, and evaluation 
+A broad spectrum of methodological approaches has been proposed, ranging from classical regression to ensemble learning and deep neural network.
+\todo{Refs needed}
+These studies differ substantially in preprocessing choices, feature construction strategies, model selection procedures, and evaluation 
 protocols. While many report promising predictive performance, reported accuracies vary widely across 
 datasets and tasks, and direct comparison between studies is often infeasible. In practice, improvements 
 are frequently attributed to model complexity or architectural innovation, yet it remains unclear to what 
 extent performance differences arise from representational choices, preprocessing variability, or evaluation 
-design. The absence of unified evaluation standards and consistent reporting practices has limited 
-reproducibility and slowed cumulative methodological progress.
+design. \replace{The absence of unified evaluation standards and consistent reporting practices has limited 
+reproducibility and slowed cumulative methodological progress.}
+{As the number of dMRI–based prediction studies grows, the absence of a standardized and reproducible evaluation framework has become a critical bottleneck.
+Without controlled evaluation across datasets, preprocessing pipelines, and model families, it is difficult to assess methodological progress and understand the limitations of current approaches.}
 
 % \noindent \textbf{Third paragraph: reasons for these problems}
 % \begin{itemize}
@@ -37,7 +42,8 @@ reproducibility and slowed cumulative methodological progress.
 %     \item Our solution: "To address these challenges, we propose: 1) an open-source and standardized benchmark; 2) of various machine learning techniques in dMRI; 3) on several tasks (classification, regression) 4) encompassing N datasets 
 % \end{itemize}
 
-These inconsistencies largely stem from four recurrent factors. First, studies often rely on 
+
+\replace{These inconsistencies largely stem from four recurrent factors. First, studies often rely on 
 heterogeneous preprocessing pipelines (and sometimes different quality-control criteria), 
 making results difficult to compare across cohorts. Second, diffusion information is represented in 
 markedly different ways (e.g., voxel/vertex-wise maps, tract/ROI summaries, or learned embeddings), 
@@ -49,7 +55,7 @@ configurations, and split definitions limits reproducibility and slows iterative
 these challenges, we propose an open-source and standardized benchmark that unifies preprocessing and 
 feature extraction, evaluates a diverse set of machine learning approaches on both regression and 
 classification tasks, and spans multiple publicly available datasets under a controlled and leakage-free 
-evaluation protocol.
+evaluation protocol.}{}
 
 
 % \noindent \textbf{Fourth paragraph: your contributions}
@@ -63,11 +69,12 @@ evaluation protocol.
 %     \item Public release of code and benchmark configuration
 %     \item End-to-end analysis
 % \end{itemize}
-In this work, we introduce an open-source, end-to-end benchmark for predictive modeling with 
-diffusion MRI that targets reproducibility and fair comparison across studies. Our contributions 
+\replace{In this work, we introduce}{This work introduces} an open-source, end-to-end benchmark for predictive modeling with 
+diffusion MRI that targets reproducibility and fair comparison across \replace{studies}{datasets and preprocessing pipelines}. Our contributions 
 are: (i) a standardized preprocessing and data preparation pipeline; (ii) a unified feature-extraction 
 framework supporting multiple microstructural representations for gray and white matter; (iii) a 
-controlled evaluation protocol with consistent, leakage-free train/validation/test splits and 
-cross-validation; (iv) a systematic comparison of feature representations and predictors, spanning 
-classical machine learning baselines and deep-learning models; and (v) the public release of code, 
+controlled evaluation protocol with \replace{consistent, leakage-free train/validation/test splits and}{} 
+cross-validation; (iv) \replace{a systematic comparison of feature representations and predictors, spanning 
+classical machine learning baselines and deep-learning models}
+{a systematic analysis of benchmark results, highlighting the relative performance of linear and deep learning models, the impact of tissue type, and differences across feature representations}; and (v) the public release of code, 
 configurations, and scripts to facilitate transparent reuse and extension.
