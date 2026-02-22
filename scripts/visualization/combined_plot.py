@@ -24,7 +24,7 @@ from matplotlib.lines import Line2D
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from config import apply_miccai_style
+from config import MICCAI_DOUBLE_COLUMN_FIGSIZE, apply_miccai_style
 from utils import (
     MODEL_DISPLAY_ORDER,
     MODEL_FAMILY_ORDER,
@@ -244,12 +244,7 @@ def _draw_left(ax: plt.Axes, run_df: pd.DataFrame, order: list[str]) -> None:
     ax.set_xlim(-0.65, (len(order) - 1) * GROUP_SPACING_LEFT + 0.65)
     ax.set_xticks([i * GROUP_SPACING_LEFT for i in range(len(order))])
     ax.set_xticklabels(pretty_labels, rotation=24, ha="right")
-    ax.set_title("Model families vs linear baseline", pad=18)
-    ax.text(
-        0.02, 1.02,
-        "Diamond = median per model · Segment = median(Linear)",
-        transform=ax.transAxes, ha="left", va="bottom", color=ANNOT_COLOR,
-    )
+    ax.set_title("Model families vs linear baseline")
 
     legend_handles = [
         Line2D(
@@ -264,11 +259,12 @@ def _draw_left(ax: plt.Axes, run_df: pd.DataFrame, order: list[str]) -> None:
     ]
     ax.legend(
         handles=legend_handles,
-        loc="upper center",
-        bbox_to_anchor=(0.5, 0.99),
-        ncol=len(legend_handles),
-        frameon=False,
-        borderaxespad=0.2,
+        loc="upper right",
+        ncol=1,
+        frameon=True,
+        framealpha=0.85,
+        edgecolor="none",
+        borderaxespad=0.4,
     )
 
 
@@ -289,22 +285,16 @@ def _draw_right(
             continue
         row = row.iloc[0]
 
-        # Full range line
-        ax.vlines(x_center, row["prep_min"], row["prep_max"],
-                  colors=RANGE_LINE_COLOR, linewidth=1.0, alpha=0.55, zorder=2)
-        for y_cap in (row["prep_min"], row["prep_max"]):
-            ax.hlines(y_cap, x_center - 0.08, x_center + 0.08,
-                      colors=RANGE_LINE_COLOR, linewidth=1.0, alpha=0.55, zorder=2)
-
         # IQR bar
         ax.vlines(x_center, row["prep_q1"], row["prep_q3"],
                   colors=IQR_COLOR, linewidth=5.0, alpha=0.30, zorder=3)
 
-        # Δ annotation
-        ax.text(
-            x_center, min(row["prep_max"] + 0.045, 0.97),
-            f"Δ{row['prep_range']:.2f}",
-            ha="center", va="bottom", color=ANNOT_COLOR, zorder=6,
+        # Median marker
+        med = prep_df.loc[prep_df["dataset_task"] == task_label, "prep_score"].median()
+        ax.scatter(
+            [x_center], [med],
+            marker="D", s=18, color=IQR_COLOR, alpha=0.85,
+            edgecolors="white", linewidths=0.4, zorder=4,
         )
 
     # Dots
@@ -320,27 +310,20 @@ def _draw_right(
     ax.set_xlim(-0.55, (len(order) - 1) * GROUP_SPACING_RIGHT + 0.55)
     ax.set_xticks([i * GROUP_SPACING_RIGHT for i in range(len(order))])
     ax.set_xticklabels(pretty_labels, rotation=24, ha="right")
-    ax.set_title("Preprocessing sensitivity", pad=18)
-    ax.text(
-        0.04, 1.02,
-        "Each dot = one (feature, tissue)",
-        transform=ax.transAxes, ha="left", va="bottom", color=ANNOT_COLOR,
-    )
+    ax.set_title("Preprocessing sensitivity")
 
-    dot_h = Line2D([0], [0], marker="o", linestyle="",
-                   markerfacecolor=DOT_COLOR, markeredgecolor="white",
-                   markeredgewidth=0.3, markersize=5, alpha=0.55,
-                   label="Prep. condition")
     iqr_h = Line2D([0], [0], color=IQR_COLOR, linewidth=4, alpha=0.30, label="IQR")
-    rng_h = Line2D([0], [0], color=RANGE_LINE_COLOR, linewidth=1.0, alpha=0.55,
-                   label="Full range")
+    med_h = Line2D([0], [0], marker="D", linestyle="",
+                   markerfacecolor=IQR_COLOR, markeredgecolor="white",
+                   markeredgewidth=0.4, markersize=5, alpha=0.85, label="Median")
     ax.legend(
-        handles=[dot_h, iqr_h, rng_h],
-        loc="upper center",
-        bbox_to_anchor=(0.5, 0.99),
-        ncol=3,
-        frameon=False,
-        borderaxespad=0.2,
+        handles=[iqr_h, med_h],
+        loc="upper right",
+        ncol=1,
+        frameon=True,
+        framealpha=0.85,
+        edgecolor="none",
+        borderaxespad=0.4,
     )
 
 
@@ -364,7 +347,7 @@ def plot_combined(
         raise RuntimeError("No dataset-task labels for combined plot")
 
     # Figure: two panels, 2:1 width ratio, shared y-axis
-    fig = plt.figure(figsize=(11.0, 3.2))
+    fig = plt.figure(figsize=MICCAI_DOUBLE_COLUMN_FIGSIZE)
     gs = gridspec.GridSpec(1, 2, width_ratios=[2, 1], wspace=0.06)
     ax_left  = fig.add_subplot(gs[0])
     ax_right = fig.add_subplot(gs[1], sharey=ax_left)

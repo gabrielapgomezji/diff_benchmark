@@ -51,16 +51,16 @@ FEATURE_PREFERRED_ORDER = ["md", "mk", "sh"]
 FEATURE_EXCLUDE = {"rtop"}
 
 # Robustness-rule thresholds
-EPSILON: float = 0.02   # minimum median delta to count as benefit
+EPSILON: float = 0.03   # minimum median delta to count as benefit
 TAU: float = 0.80       # minimum fraction of positive-delta folds
 
 PVALUE_THRESHOLD: float = 0.05
 
 HEATMAP_CMAP = "Blues"
 
-TITLE_MAIN = f"Proportion of models improved vs b0 per feature and dataset-task"
-TITLE_LEFT = f"p < {PVALUE_THRESHOLD}  (t-test, mean > 0)"
-TITLE_RIGHT = f"median \u0394 \u2265 {EPSILON} - \u2265 {TAU:.0%} folds \u2265 0"
+TITLE_MAIN = "Proportion of models consistently improving over b0, per feature and dataset-task"
+TITLE_LEFT = "Statistical criterion\n(t-test, p<0.05 & mean\u0394>0)"
+TITLE_RIGHT = "Practical criterion\n(med.\u0394\u2265{EPSILON}, \u2265{TAU:.0%} folds positive)".format(EPSILON=EPSILON, TAU=TAU)
 
 
 # ---------------------------------------------------------------------------
@@ -349,7 +349,7 @@ def _draw_heatmap(
                   "format": "%.1f"} if show_cbar else {},
         annot_kws={"size": fs_base},
     )
-    ax.set_title(title, pad=3, fontsize=fs_title)
+    ax.set_title(title, pad=2, fontsize=fs_title)
     ax.set_xlabel("", labelpad=4)
     ax.set_ylabel("", labelpad=4)
     ax.tick_params(axis="x", rotation=30, labelsize=fs_tick)
