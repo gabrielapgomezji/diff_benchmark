@@ -3,11 +3,14 @@
 % folds. Beyond absolute performance, we explicitly analyze performance variability to assess the stability 
 % and generalizability of different configurations.
 
-We systematically quantify the predictive utility of diffusion MRI microstructural representations 
+\replace{We systematically quantify the predictive utility of diffusion MRI microstructural representations 
 across datasets, tasks, tissue compartments, and model families. Rather than focusing solely on 
 peak accuracy, we decompose performance into configuration-specific effects and fold-level 
 variability, enabling explicit assessment of stability, tissue-specific contributions, and the 
-incremental value of diffusion-derived features beyond non-diffusion baselines.
+incremental value of diffusion-derived features beyond non-diffusion baselines.}
+{We evaluated the predictive power of diffusion MRI microstructural representations across datasets, tasks, tissue compartments, and model families.
+Rather than focusing only on peak performance, we analyze global patterns across configurations, allowing us to assess performance stability, tissue-specific contributions, and the added value of diffusion-derived features beyond non-diffusion baselines.
+}
 
 \begin{figure}
     \centering
@@ -36,15 +39,16 @@ incremental value of diffusion-derived features beyond non-diffusion baselines.
 % assessing predictive performance in diffusion MRI.
 Figure \ref{fig:model_family} highlights two central findings. First, when evaluated on a common 
 normalized scale, performance differences between model families are consistently modest. Regularized 
-linear models remain competitive with higher-capacity architectures, and gains attributed to deep 
+linear models remain competitive with \replace{higher-capacity}{deep learning} architectures\replace{, and gains attributed to deep 
 learning are strongly task-dependent. This suggests that representational choices may be as 
-influential as architectural complexity.
+influential as architectural complexity.}{, independently of the task and data preparation strategy. Thus, the current data representation may not be sufficient to leverage the full potential of recent neural architectures.} 
+\todo{Say that: dataset size is a limiting factor for deep learning, remind that you didn't finetune curia and dinov, and that this would probably require more data.}
 
 Second, variability across preprocessing and microstructural parameterizations is substantial. In 
-several tasks, the dispersion induced by feature × tissue configurations rivals or exceeds the 
+several tasks, the dispersion induced by feature and tissue configurations \replace{rivals or exceeds}{is larger than} the 
 differences observed between model families. This sensitivity indicates that predictive performance 
 in diffusion MRI cannot be attributed to model choice alone. Instead, preprocessing strategy 
-constitutes a major and often underreported source of variance. Consequently, conclusions drawn 
+\replace{constitutes}{happens to be} a major and often underreported source of variance. Consequently, conclusions drawn 
 from a single representation or configuration may be unstable, underscoring the need for robustness 
 analyses across preprocessing settings.
 
@@ -74,8 +78,10 @@ analyses across preprocessing settings.
 % that tissue choice constitutes a non-negligible design decision. These results suggest 
 % that restricting analyses to a single compartment may overlook informative microstructural 
 % signals and lead to configuration-dependent conclusions.
-We next quantify the impact of tissue compartment by performing fold-level paired comparisons between
-the best-performing white and gray matter models under identical dataset–target–task–feature 
+
+\subsection{Impact of tissue type}
+We next quantify the impact of tissue \replace{compartment}{type} by \replace{ performing fold-level paired comparisons between
+the best-performing white and gray matter models}{comparing the performance of models with white and gray matter} under identical dataset–target–task–feature 
 configurations. For each fold, performance is normalized relative to a dummy baseline and the
  difference $\Delta = \text{white} - \text{gray}$ is computed, yielding a matched, 
  configuration-specific tissue effect. To disentangle tissue influence from dataset and 
@@ -93,12 +99,12 @@ For ABIDE, the distribution of differences is centered around zero, suggesting n
 predominance of either compartment.
 
 When stratified by microstructural representation, most features do not demonstrate a 
-consistent tissue preference. An exception is mean kurtosis (MK), which shows a modest but 
+consistent tissue preference. \replace{An exception is mean kurtosis (MK), which shows a modest but 
 systematic white-matter advantage. For the remaining representations, tissue-driven differences 
 are small and symmetrically distributed, indicating that their predictive contribution is 
 largely compartment-agnostic. Importantly, the magnitude of these tissue effects remains 
 comparable to cross-fold variability, underscoring that compartment selection constitutes a 
-meaningful yet configuration-sensitive design choice. Collectively, these findings demonstrate 
+meaningful yet configuration-sensitive design choice.}{} Collectively, these findings demonstrate 
 that tissue preference is neither universal nor negligible, but instead emerges from the 
 interaction between dataset characteristics and specific microstructural representations.
 
@@ -116,6 +122,7 @@ interaction between dataset characteristics and specific microstructural represe
     \label{fig:feature_impact}
 \end{figure}
 
+\subsection{Impact of diffusion features}
 To assess whether diffusion-derived microstructural features provide predictive value beyond 
 non-diffusion signal, we quantified model-wise improvements relative to b0. The results reveal 
 that diffusion information does not uniformly enhance performance across tasks or datasets. For 

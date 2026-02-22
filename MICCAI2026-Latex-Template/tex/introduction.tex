@@ -25,19 +25,15 @@ studies, tasks, and datasets, and improvements are frequently attributed to arch
 feature engineering. However, direct comparison between studies is rarely possible, and it remains 
 unclear whether observed gains reflect genuine microstructural signal, dataset-specific properties, or 
 sensitivity to methodological choices. In the absence of standardized evaluation, diffusion MRI 
-prediction risks becoming a comparison of configurations rather than a cumulative scientific endeavor.}{}
-
-A broad spectrum of methodological approaches has been proposed, ranging from classical regression to ensemble learning and deep neural network.
-\todo{Refs needed}
-These studies differ substantially in preprocessing choices, feature construction strategies, model selection procedures, and evaluation 
-protocols. While many report promising predictive performance, reported accuracies vary widely across 
-datasets and tasks, and direct comparison between studies is often infeasible. In practice, improvements 
+prediction risks becoming a comparison of configurations rather than a cumulative scientific endeavor.}
+{While many report promising predictive performance, reported performance varies widely across 
+studies, tasks, and datasets. Direct comparison between studies is often hard to achieve. Improvements 
 are frequently attributed to model complexity or architectural innovation, yet it remains unclear to what 
-extent performance differences arise from representational choices, preprocessing variability, or evaluation 
-design. \replace{The absence of unified evaluation standards and consistent reporting practices has limited 
-reproducibility and slowed cumulative methodological progress.}
-{As the number of dMRI–based prediction studies grows, the absence of a standardized and reproducible evaluation framework has become a critical bottleneck.
-Without controlled evaluation across datasets, preprocessing pipelines, and model families, it is difficult to assess methodological progress and understand the limitations of current approaches.}
+extent these gains arise from representational choices, preprocessing variability, or evaluation 
+design. As the number of dMRI–based prediction studies grows, the absence of a standardized and reproducible evaluation framework has become a critical bottleneck.
+Without controlled evaluation across datasets, preprocessing pipelines, and model families, it is difficult to assess methodological progress and understand the limitations of current approaches.
+}
+
 
 
 % \noindent \textbf{Third paragraph: reasons for these problems}
@@ -74,29 +70,19 @@ determine which reported improvements are stable, generalizable, and biologicall
 % \end{itemize}
 
 
-\replace{To address these limitations, we introduce a standardized, open-source diffusion MRI benchmark that 
-enables controlled, leakage-free comparison across datasets, tissue compartments, microstructural 
-representations, and model families. Rather than focusing solely on peak accuracy, the benchmark 
+To address these limitations, we introduce a\replace{ standardized, }{n }open-source diffusion MRI benchmark that 
+enables controlled\replace{, leakage-free}{} comparison across datasets, tissue \replace{compartments}{types}, microstructural 
+representations, and model families. \replace{Rather than focusing solely on peak accuracy, the}{The} benchmark 
 explicitly quantifies performance variability across folds and configurations, isolates 
 representation and tissue-specific effects, and evaluates the incremental value of diffusion-derived 
-features beyond non-diffusion baselines. By unifying preprocessing, feature extraction, model 
+features beyond non-diffusion baselines. \replace{By unifying preprocessing, feature extraction, model
 selection, and evaluation under a single experimental framework, this work aims to shift diffusion MRI 
 prediction from isolated performance claims toward variance-aware, reproducible benchmarking.
-
 Our contributions are fourfold: (i) a standardized preprocessing and data preparation pipeline; (ii) a 
 unified feature-extraction framework supporting multiple microstructural representations for gray and 
 white matter; (iii) a consistent evaluation protocol with leakage-free cross-validation and 
 configuration-level statistical analysis; and (iv) the public release of code, splits, and experimental 
-configurations to enable transparent reuse and extension. Collectively, this benchmark provides the 
-foundation for disentangling genuine microstructural signal from configuration-driven variability and 
-for establishing comparable evaluation standards in diffusion MRI prediction.}{}
+configurations to enable transparent reuse and extension. Collectively, this benchmark}{It} provides the 
+foundation for \replace{disentangling genuine}{isolating} microstructural signal from configuration-driven variability and 
+for establishing comparable evaluation standards in diffusion MRI prediction.
 
-\replace{In this work, we introduce}{This work introduces} an open-source, end-to-end benchmark for predictive modeling with 
-diffusion MRI that targets reproducibility and fair comparison across \replace{studies}{datasets and preprocessing pipelines}. Our contributions 
-are: (i) a standardized preprocessing and data preparation pipeline; (ii) a unified feature-extraction 
-framework supporting multiple microstructural representations for gray and white matter; (iii) a 
-controlled evaluation protocol with \replace{consistent, leakage-free train/validation/test splits and}{} 
-cross-validation; (iv) \replace{a systematic comparison of feature representations and predictors, spanning 
-classical machine learning baselines and deep-learning models}
-{a systematic analysis of benchmark results, highlighting the relative performance of linear and deep learning models, the impact of tissue type, and differences across feature representations}; and (v) the public release of code, 
-configurations, and scripts to facilitate transparent reuse and extension.

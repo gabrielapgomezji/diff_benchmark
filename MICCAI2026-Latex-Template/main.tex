@@ -13,11 +13,11 @@
 % be included in EPS format.
 %
 \usepackage{xcolor}
-\usepackage{soul}
+\usepackage[normalem]{ulem}
 % \replace{old text}{new proposal} — strikes out old in red, shows proposal in blue
-\newcommand{\replace}[2]{\textcolor{red}{\st{#1}} \textcolor{blue}{#2}}
+\long\newcommand{\replace}[2]{\textcolor{red}{\sout{#1}} \textcolor{blue}{#2}}
 % \todo{note} — highlighted in yellow
-\newcommand{\todo}[1]{\textcolor{orange}{\textbf{[TODO: #1]}}}
+\long\newcommand{\todo}[1]{\textcolor{orange}{\textbf{[TODO: #1]}}}
 %
 % If you use the hyperref package, please uncomment the following two lines
 % to display URLs in blue roman font according to Springer's eBook style:

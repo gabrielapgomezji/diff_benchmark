@@ -1,6 +1,11 @@
 % Start with a general introduction of this section that introduce each component of your benchmark + add a figure that presents an overview.
 
-Our proposed benchmark provides a standardized, end-to-end framework for evaluating predictive models 
+
+
+
+
+
+\replace{Our proposed benchmark provides a standardized, end-to-end framework for evaluating predictive models 
 on diffusion MRI data. As illustrated in Figure~\ref{fig:benchmark_overview}, the pipeline comprises 
 several interconnected modules: uniform preprocessing, microstructural feature 
 extraction, predictive modeling, and rigorous evaluation. Specifically, our benchmark applys a unified 
@@ -8,7 +13,18 @@ preprocessing pipeline to all cohorts—with the exception of the HCP dataset, w
 established preprocessing pipeline. Following preprocessing, we perform tailored feature extraction 
 to capture tissue-specific microstructural representations. Finally, we apply a rigorous, standardized 
 cross-validation and analysis protocol to evaluate a wide spectrum of predictive models, ensuring 
-reproducibility and fair comparison.
+reproducibility and fair comparison.}
+{Comparing predictive models across diffusion MRI studies remains challenging.
+Preprocessing pipelines differ substantially, microstructural information is represented in multiple ways (e.g., voxel-wise maps, ROI summaries, or learned embeddings), and evaluation protocols vary in data splits, cross-validation schemes, and hyperparameter selection.
+As a result, reported performance differences may reflect methodological inconsistencies rather than genuine modeling improvements.
+Limited code and configuration sharing further restrict reproducibility.
+Together, these factors make it difficult to determine which approaches generalize reliably and provide meaningful insights.
+To address these issues, we introduce a standardized benchmark that unifies preprocessing and feature extraction, evaluates both classical and deep learning models on regression and classification tasks, and spans multiple public datasets under a controlled evaluation protocol.
+We now describe the benchmark in detail. Its overall structure is illustrated in Figure~\ref{fig:benchmark_overview}.}
+
+
+
+
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{scheme.pdf}
@@ -29,8 +45,8 @@ reproducibility and fair comparison.
 %     \item Prediction targets (classification/regression)
 % \end{itemize}
 To ensure reproducibility, we evaluate our benchmark on three publicly available datasets 
-covering both healthy and clinical populations, offering diverse demographics, scanner 
-types, and acquisition protocols. For healthy cohorts, we utilize the Human Connectome 
+covering both healthy and clinical populations\replace{, offering diverse demographics, scanner 
+types, and acquisition protocols}{}. \replace{For healthy cohorts, we utilize the Human Connectome 
 Project (HCP) Young Adult dataset \cite{van2013wu} and the Cambridge Centre for Ageing and Neuroscience 
 (Cam-CAN) dataset \cite{shafto2014cambridge}, both targeting gender and age prediction (classification and regression, respectively). 
 After filtering, the HCP cohort comprises 1,036 subjects (474 males, 562 females; ages 22-37). HCP data were 
@@ -39,7 +55,6 @@ acquired on a customized Siemens 3T Connectome scanner using a multi-shell Spin-
 s/mm$^2$, 90 directions/shell). The Cam-CAN cohort includes 629 subjects (316 males, 313 females; 
 ages 18-88), scanned on a Siemens 3T TIM Trio using a 2D twice-refocused SE EPI sequence 
 (TR/TE = 9100/104 ms, 2.0 mm isotropic; $b$-values = 1000, 2000 s/mm$^2$, 30 directions each). 
-
 For clinical evaluation, we use the Autism Brain Imaging Data Exchange II (ABIDE II) dataset \cite{di2017enhancing}, 
 chosen over ABIDE I due to the availability of diffusion MRI. Targeting Autism Spectrum Disorder 
 (ASD) diagnosis (classification), the filtered ABIDE II cohort consists of 218 subjects 
@@ -48,8 +63,15 @@ ABIDE II utilizes various 3T scanners (e.g., Siemens, GE)
 with highly heterogeneous, site-specific single-shell diffusion protocols. Across the included sites, 
 spatial resolutions range from 0.94 to 3.0 mm, TR/TE from 5200-20244/78-101 ms, $b$-values include 
 1000, 1500, and 2500 s/mm$^2$, and diffusion directions vary between 32 and 64. This extreme variability 
-provides a realistic scenario for evaluating model robustness to scanner heterogeneity.
-
+provides a realistic scenario for evaluating model robustness to scanner heterogeneity.}
+{\textbf{HCP}: The Human Connectome Project (HCP) Young Adult dataset \cite{van2013wu} targets gender and age. It includes 1,036 healthy subjects after filtering (474 males, 562 females; ages 22-37).
+HCP data were acquired on a customized Siemens 3T Connectome scanner using a multi-shell Spin-Echo EPI sequence (TR/TE = 5520/89.5 ms, 1.25 mm isotropic, multiband factor 3; $b$-values = 1000, 2000, 3000 s/mm$^2$, 90 directions/shell).
+\textbf{Cam-CAN}: The Cambridge Centre for Ageing and Neuroscience (Cam-CAN) dataset \cite{shafto2014cambridge} targets gender and age. It includes 629 healthy subjects (316 males, 313 females; ages 18-88), scanned on a Siemens 3T TIM Trio using a 2D twice-refocused SE EPI sequence (TR/TE = 9100/104 ms, 2.0 mm isotropic; $b$-values = 1000, 2000 s/mm$^2$, 30 directions each).
+\textbf{ABIDE II}: The Autism Brain Imaging Data Exchange II (ABIDE II) dataset \cite{di2017enhancing} targets Autism Spectrum Disorder (ASD) diagnosis.
+It includes 218 subjects (186 males, 32 females; ages 5-64), including 119 with ASD and 99 controls.
+As a multi-site dataset, ABIDE II data were acquired on various 3T scanners (e.g., Siemens, GE) with highly heterogeneous, site-specific single-shell diffusion protocols.
+Across the included sites, spatial resolutions range from 0.94 to 3.0 mm, TR/TE from 5200-20244/78-101 ms, $b$-values include 1000, 1500, and 2500 s/mm$^2$, and diffusion directions vary between 32 and 64.
+This variability provides a realistic scenario for evaluating model robustness to scanner heterogeneity.}
 
 % \begin{table*}[htbp]
 %     \centering
@@ -92,8 +114,9 @@ provides a realistic scenario for evaluating model robustness to scanner heterog
 % automated preprocessing pipeline.
 
 \paragraph{Gray Matter Representation}
+\todo{Lacks refs}
 Gray matter microstructure was represented on the subject-specific cortical surface reconstructed from 
-\textbf{T1-weighted images using the Desikan–Killiany atlas (aparc)}. For each subject, cortical meshes 
+\replace{\textbf{T1-weighted images using the Desikan–Killiany atlas (aparc)}}{T1-weighted images using the Desikan–Killiany atlas (aparc)}. For each subject, cortical meshes 
 (white/pial surfaces) were generated and diffusion-derived scalar maps %(e.g., MD, SH-based metrics) 
 were computed in native diffusion space and rigidly aligned to the anatomical space. Voxelwise 
 diffusion measures were then projected onto the individual cortical surface using ribbon-constrained 
@@ -112,7 +135,7 @@ the atlas labels across subjects.
 White matter microstructure was represented within a standardized tract space using the Tract-Based 
 Spatial Statistics (TBSS) framework \cite{smith2006tract}. Diffusion-derived scalar maps were nonlinearly registered to 
 standard space, projected onto the group-wise white matter skeleton to minimize partial volume effects 
-and residual misalignment, and summarized using the JHU White-Matter Tractography Atlas. Mean 
+and residual misalignment, and summarized using the JHU White-Matter Tractography Atlas\todo{Ref?}. Mean 
 microstructural values were extracted from 48 major bundles defined in the atlas, yielding a compact 
 tract-level representation per metric. We intentionally adopted this skeleton-based, atlas-constrained 
 strategy rather than subject-specific tractography to enforce anatomical correspondence across subjects,
@@ -158,7 +181,7 @@ environments:
     % Apparent Propagator (MAP-MRI) model. RTOP reflects the probability of water molecules remaining in 
     % their initial position, serving as a strong indicator of cellular restriction and density.
     \item \textbf{Spherical Harmonics (SH) Power:} A model-free representation obtained by computing the 
-    L2 norm of the SH coefficients (up to order 6) directly from the diffusion signal, capturing signal 
+    L2 norm of the SH coefficients \todo{Ref} (up to order 6) directly from the diffusion signal, capturing signal 
     complexity and anisotropy without assuming a specific tissue compartment model.
     % \item \textbf{Spherical Harmonics (SH) Power:} A model-free metric computed by least-squares 
     % projection of the b0-normalized signal $S(\mathbf{g})/S_0$ onto a real, symmetric SH basis 
@@ -168,7 +191,7 @@ environments:
 \end{itemize}
 % To mitigate scanner-specific scaling effects and harmonize data across multi-site cohorts 
 % (e.g., ABIDE II), 
-We apply a robust ventricular normalization strategy. For each subject, 
+We apply a \replace{robust}{} ventricular normalization strategy\todo{Ref}. For each subject, 
 voxel-wise diffusion metrics are divided by the mean metric value extracted from the cerebrospinal 
 fluid (ventricles). Finally, extreme pathological values are clipped at the 99th percentile to ensure 
 numerical stability during model training.
@@ -181,25 +204,25 @@ numerical stability during model training.
     % \end{itemize}
 
 \subsection{Prediction models}
-To establish a comprehensive evaluation, our benchmark incorporates a wide 
-spectrum of predictive models, ranging from simple baselines to advanced deep 
-learning architectures. First, we include dummy estimators (majority class for 
+\replace{To establish a comprehensive evaluation, our}{Our} benchmark \replace{incorporates}{includes} a wide 
+spectrum of predictive models, ranging from \replace{simple}{linear} baselines to advanced deep 
+learning architectures. \replace{First, we include dummy estimators (majority class for 
 classification and mean predictor for regression) to provide a lower-bound 
-performance baseline. For classical machine learning, we evaluate linear models 
-(e.g., logistic regression, Lasso), Random Forests, and Support Vector Machines 
-(SVM). Given the high dimensionality of the microstructural representations, we 
+performance baseline. For classical machine learning, we evaluate}{We first compare} linear models 
+(e.g., logistic regression, Lasso)\todo{Ref}, Random Forests\todo{Ref}, and Support Vector Machines 
+(SVM)\todo{Ref}. Given the high dimensionality of the microstructural representations, we 
 also evaluate these models coupled with Principal Component Analysis (PCA) for 
 feature reduction. 
 
-For deep learning, we benchmark several vision architectures. We leverage 
-pre-trained foundation models, specifically DINOv2 \cite{oquab2023dinov2} and Curia \cite{dancette2025curia}, utilizing them as 
+\replace{For deep learning, we}{We also} benchmark several vision architectures. We leverage 
+pre-trained \replace{foundation}{} models, specifically DINOv2 \cite{oquab2023dinov2} and Curia \cite{dancette2025curia}, utilizing them as 
 frozen feature extractors where representations are computed offline prior to 
-training the prediction head. In contrast, 3D architectures like MedicalNet \cite{chen2019med3d} are 
-fully fine-tuned on our diffusion datasets to adapt to the specific 
-microstructural domains. \textbf{To ensure a fair and rigorous comparison, all models 
+training the prediction head. In contrast, \replace{3D architectures like}{the smaller 3D architecture} MedicalNet \cite{chen2019med3d} \replace{are}{is} 
+\replace{fully}{} fine-tuned on our diffusion datasets to adapt to the specific 
+microstructural domains. \replace{\textbf{To ensure a fair and rigorous comparison, all models 
 are optimized using a unified hyperparameter search strategy (e.g., grid or 
 random search) with internal cross-validation strictly confined to the training 
-set to prevent data leakage.}
+set to prevent data leakage.}}{}
 
 % \begin{itemize}
 %     \item Dummy baseline (e.g., majority class for classification, mean predictor for regression)
@@ -217,9 +240,9 @@ across two primary paradigms:
 \subsubsection{Classification} 
 For binary classification, we focus on tasks such as Autism Spectrum Disorder (ASD) diagnosis (ASD vs. 
 Typically Developing) using the ABIDE II dataset, as well as gender prediction in the HCP and Cam-CAN 
-cohorts. For all classification tasks, binary targets are strictly encoded as 0 and 1. To comprehensively 
+cohorts. \replace{For all classification tasks, binary targets are strictly encoded as 0 and 1. To comprehensively 
 assess classification performance, especially in the presence of class imbalances, we compute standard 
-and weighted accuracy, precision, recall, and the F1-score.
+and weighted accuracy, precision, recall, and the F1-score.}{We report performance using balanced accuracy, taking into account class imbalances.}
 
 
 % \begin{itemize}
@@ -228,13 +251,13 @@ and weighted accuracy, precision, recall, and the F1-score.
 % \end{itemize}
 
 \subsubsection{Regression} 
-For continuous targets, we evaluate brain age estimation using the healthy cohorts from Cam-CAN. 
-During the training of Deep Learning models, these continuous targets are standardized. To prevent data leakage, 
+\replace{For continuous targets, w}{W}e evaluate brain age estimation using the healthy cohorts from Cam-CAN. 
+\replace{During the training of Deep Learning models, these continuous targets are standardized. To prevent data leakage, 
 the standardization parameters are fitted exclusively on the training set and subsequently applied to the 
 validation and test sets. Model performance is quantified using a robust set of metrics to capture 
 different aspects of the error distribution: Root Mean Squared Error (RMSE) and Mean Absolute Error (MAE) 
 (both standard and sample-weighted), R² score, explained variance, Mean Absolute Percentage Error (MAPE), 
-and the Pearson correlation coefficient.
+and the Pearson correlation coefficient.}{We report performance using R² and MAE.}
 
 % \begin{itemize}
 %     \item Task description: Age prediction (brain age estimation)
@@ -242,13 +265,14 @@ and the Pearson correlation coefficient.
 % \end{itemize}
 
 \subsection{Evaluation protocols}
-To rigorously evaluate the predictive models, we employ a stratified $k$-fold cross-validation strategy with $k=5$. 
-This ensures fixed, reproducible train and test splits while maintaining \textbf{the original target distribution 
-(e.g., class balance for classification or target range for regression)} across all folds. Strict 
+To rigorously evaluate the predictive models, we employ a stratified 5-fold cross-validation strategy. 
+\replace{This ensures fixed, reproducible train and test splits while maintaining \textbf{the original target distribution 
+(e.g., class balance for classification or target range for regression)} across all folds.}
+{We also ensure fixed and reproducible splits through seed initialization.} Strict 
 separation between training and testing data is maintained at all stages; preprocessing steps, feature 
 normalization, and hyperparameter tuning are fitted exclusively on the training set of each fold and 
-subsequently applied to the held-out test set, preventing any information leakage. Model performance is 
-aggregated across all folds and reported as the mean $\pm$ standard deviation for each evaluation metric. 
+subsequently applied to the held-out test set, preventing any information leakage. \replace{Model performance is 
+aggregated across all folds and reported as the mean $\pm$ standard deviation for each evaluation metric.}{} 
 % Finally, to assess the statistical significance of performance differences between models, we conduct 
 % pairwise statistical comparison tests, such as paired t-tests or Wilcoxon signed-rank tests, on the 
 % fold-wise results.
