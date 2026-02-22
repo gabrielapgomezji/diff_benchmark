@@ -82,7 +82,7 @@ IQR_COLOR        = "#111111"
 ANNOT_COLOR      = "#555555"
 DOT_COLOR        = "#444444"
 
-Y_LABEL = "Score (min-max, dummy = 0 to perfect = 1)"
+Y_LABEL = "Score (min-max,\ndummy = 0 to perfect = 1)"
 
 
 # ── Data pipelines ────────────────────────────────────────────────────────────
@@ -260,6 +260,7 @@ def _draw_left(ax: plt.Axes, run_df: pd.DataFrame, order: list[str]) -> None:
     ax.legend(
         handles=legend_handles,
         loc="upper right",
+        bbox_to_anchor=(1.0, 1.0),
         ncol=1,
         frameon=True,
         framealpha=0.85,
