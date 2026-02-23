@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.2.18)  23 FEB 2026 17:54
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.2.18)  23 FEB 2026 20:15
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -270,22 +270,7 @@ Package xcolor Info: Model `wave' substituted by `hsb' on input line 1372.
 \ULC@box=\box105
 Package: ulem 2019/11/18
 \ULdepth=\dimen184
-)
-/data/parietal/store3/work/ggomezji/projects/diff_benchmark/MICCAI2026-Latex-Template/main.tex:19: You can't use `\long' or `\outer' or `\protected' with `\let'.
-\@star@or@long #1->\let 
-                        \pr@tectedrel@x \relax \@ifstar {\let \l@ngrel@x \re...
-l.19 \long\newcommand
-                     {\replace}[2]{\textcolor{red}{\sout{#1}} \textcolor{blu...
-I'll pretend you didn't say \long or \outer or \protected here.
-
-/data/parietal/store3/work/ggomezji/projects/diff_benchmark/MICCAI2026-Latex-Template/main.tex:21: You can't use `\long' or `\outer' or `\protected' with `\let'.
-\@star@or@long #1->\let 
-                        \pr@tectedrel@x \relax \@ifstar {\let \l@ngrel@x \re...
-l.21 \long\newcommand
-                     {\todo}[1]{\textcolor{orange}{\textbf{[TODO: #1]}}}
-I'll pretend you didn't say \long or \outer or \protected here.
-
-(/data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
+) (/data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
 File: l3backend-pdftex.def 2025-10-09 L3 backend support: PDF output (pdfTeX)
 \l__color_backend_stack_int=\count327
 ) (./main.aux)
@@ -418,45 +403,55 @@ File: ../exp_outputs/summary/plots/folds/combined_model_vs_prep.pdf Graphic file
 Package pdftex.def Info: ../exp_outputs/summary/plots/folds/combined_model_vs_prep.pdf  used on input line 15.
 (pdftex.def)             Requested size: 347.12354pt x 149.30264pt.
  [6 <../exp_outputs/summary/plots/folds/combined_model_vs_prep.pdf>]
-<../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.png, id=824, 540.0978pt x 214.8828pt>
-File: ../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.png Graphic file (type png)
-<use ../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.png>
-Package pdftex.def Info: ../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.png  used on input line 51.
-(pdftex.def)             Requested size: 347.12354pt x 138.10486pt.
- [7 <../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.png>]
-Overfull \hbox (7.98785pt too wide) in paragraph at lines 91--95
+<../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.pdf, id=824, 540.33821pt x 215.12321pt>
+File: ../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.pdf Graphic file (type pdf)
+<use ../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.pdf>
+Package pdftex.def Info: ../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.pdf  used on input line 51.
+(pdftex.def)             Requested size: 347.12354pt x 138.20358pt.
+ [7 <../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.pdf>]
+Overfull \hbox (7.98785pt too wide) in paragraph at lines 91--97
 []\T1/cmr/m/n/10 When strat-i-fied by mi-crostruc-tural rep-re-sen-ta-tion, most fea-tures do not demon-
  []
 
-<../exp_outputs/summary/plots/features/feature_benefit_heatmap.pdf, id=834, 524.55887pt x 177.04pt>
+<../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_raw_task_raw_combined.pdf, id=854, 539.72864pt x 215.12321pt>
+File: ../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_raw_task_raw_combined.pdf Graphic file (type pdf)
+<use ../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_raw_task_raw_combined.pdf>
+Package pdftex.def Info: ../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_raw_task_raw_combined.pdf  used on input line 101.
+(pdftex.def)             Requested size: 347.12354pt x 138.35457pt.
+
+Overfull \hbox (17.92621pt too wide) in paragraph at lines 108--115
+\T1/cmr/m/n/10 configuration-specific tis-sue ef-fect. Sta-tis-ti-cal in-fer-ence is per-formed on configuration-
+ []
+
+<../exp_outputs/summary/plots/features/feature_benefit_heatmap.pdf, id=855, 524.55887pt x 177.04pt>
 File: ../exp_outputs/summary/plots/features/feature_benefit_heatmap.pdf Graphic file (type pdf)
 <use ../exp_outputs/summary/plots/features/feature_benefit_heatmap.pdf>
-Package pdftex.def Info: ../exp_outputs/summary/plots/features/feature_benefit_heatmap.pdf  used on input line 98.
+Package pdftex.def Info: ../exp_outputs/summary/plots/features/feature_benefit_heatmap.pdf  used on input line 129.
 (pdftex.def)             Requested size: 347.12354pt x 117.16011pt.
-[8 <../exp_outputs/summary/plots/features/feature_benefit_heatmap.pdf>]) (./tex/conclusion.tex [9]
+[8 <../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_raw_task_raw_combined.pdf>]) (./tex/conclusion.tex [9 <../exp_outputs/summary/plots/features/feature_benefit_heatmap.pdf>]
 Overfull \hbox (21.48456pt too wide) in paragraph at lines 78--83
 []\T1/cmr/m/n/10 Ultimately, we hope this frame-work en-cour-ages a shift from iso-lated, configuration-
  []
 
-) (./main.bbl [10]) [11] (./main.aux)
+) [10] (./main.bbl [11]) [12] (./main.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 4040 strings out of 469005
- 64105 string characters out of 5450604
- 479955 words of memory out of 5000000
- 32665 multiletter control sequences out of 15000+600000
+ 4048 strings out of 469005
+ 64846 string characters out of 5450604
+ 479977 words of memory out of 5000000
+ 32673 multiletter control sequences out of 15000+600000
  640690 words of font info for 66 fonts, out of 8000000 for 9000
  319 hyphenation exceptions out of 8191
  59i,9n,67p,678b,341s stack positions out of 10000i,1000n,20000p,200000b,200000s
  </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0600.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecti1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0700.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1200.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ectt0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1440.600pk></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy9.pfb>
-Output written on main.pdf (11 pages, 1597176 bytes).
+Output written on main.pdf (12 pages, 1514736 bytes).
 PDF statistics:
- 1249 PDF objects out of 1440 (max. 8388607)
- 494 compressed objects within 5 object streams
+ 1296 PDF objects out of 1440 (max. 8388607)
+ 513 compressed objects within 6 object streams
  0 named destinations out of 1000 (max. 500000)
- 21 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 26 words of extra memory for PDF output out of 10000 (max. 10000000)
 

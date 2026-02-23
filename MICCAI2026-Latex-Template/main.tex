@@ -16,9 +16,9 @@
 \usepackage{xcolor}
 \usepackage[normalem]{ulem}
 % \replace{old text}{new proposal} — strikes out old in red, shows proposal in blue
-\long\newcommand{\replace}[2]{\textcolor{red}{\sout{#1}} \textcolor{blue}{#2}}
+\newcommand{\replace}[2]{\textcolor{red}{\sout{#1}} \textcolor{blue}{#2}}
 % \todo{note} — highlighted in yellow
-\long\newcommand{\todo}[1]{\textcolor{orange}{\textbf{[TODO: #1]}}}
+\newcommand{\todo}[1]{\textcolor{orange}{\textbf{[TODO: #1]}}}
 %
 % If you use the hyperref package, please uncomment the following two lines
 % to display URLs in blue roman font according to Springer's eBook style:
@@ -145,6 +145,7 @@ This shows that standardized benchmarking is essential to move the field beyond 
 % LNCS Homepage, \url{http://www.springer.com/lncs}, last accessed 2023/10/25
 % \end{thebibliography}
 % \end{document}
+\newpage
 \bibliographystyle{splncs04}
 \bibliography{references}
 \end{document}

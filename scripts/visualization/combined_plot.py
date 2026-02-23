@@ -64,7 +64,7 @@ FAMILY_COLORS = {
 }
 FAMILY_LABELS = {
     "Linear":      "Linear",
-    "RandomForest": "Random forest",
+    "RandomForest": "Random\nForest",
     "medicalnet":  "MedicalNet",
     "dinov2":      "DINOv2",
     "curia":       "Curia",
@@ -245,7 +245,7 @@ def _draw_left(ax: plt.Axes, run_df: pd.DataFrame, order: list[str]) -> None:
     ax.set_xlim(-0.65, (len(order) - 1) * GROUP_SPACING_LEFT + 0.65)
     ax.set_xticks([i * GROUP_SPACING_LEFT for i in range(len(order))])
     ax.set_xticklabels(pretty_labels, rotation=24, ha="right")
-    ax.set_title("Model families vs linear baseline")
+    ax.set_title("Model families vs baseline")
 
     legend_handles = [
         Line2D(
@@ -350,24 +350,28 @@ def plot_combined(
 
     # Figure: two panels, 2:1 width ratio, shared y-axis
     fig = plt.figure(figsize=MICCAI_DOUBLE_COLUMN_FIGSIZE)
-    gs = gridspec.GridSpec(1, 2, width_ratios=[2, 1], wspace=0.06)
+    gs = gridspec.GridSpec(1, 2, width_ratios=[2, 1], wspace=0.08)
     ax_left  = fig.add_subplot(gs[0])
     ax_right = fig.add_subplot(gs[1], sharey=ax_left)
 
     _draw_left(ax_left, run_df, order)
     _draw_right(ax_right, prep_df, stats_df, order)
 
-    # Shared y-axis: label only on left, hide tick-labels on right
+    # Shared y-axis: label + ticks on left; ticks visible on right, no label
     ax_left.set_ylim(0.0, 1.08)
     ax_left.set_ylabel(Y_LABEL)
-    ax_right.tick_params(labelleft=False)
+    ax_right.yaxis.set_tick_params(
+        which="both", labelleft=True, labelright=False, length=0, pad=2
+    )
+    ax_right.yaxis.tick_left()
     ax_right.set_ylabel("")
 
     for ax in (ax_left, ax_right):
         ax.set_xlabel("")
         ax.grid(axis="y", linestyle="--", alpha=0.3)
         ax.grid(axis="x", visible=False)
-        sns.despine(ax=ax, top=True, right=True)
+    sns.despine(ax=ax_left, top=True, right=True)
+    sns.despine(ax=ax_right, top=True, right=True, left=False)
 
     fig.savefig(out_path / "combined_model_vs_prep.pdf", dpi=300, bbox_inches="tight")
     plt.close(fig)

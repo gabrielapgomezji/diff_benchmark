@@ -47,14 +47,16 @@
 \@writefile{toc}{\contentsline {subsubsection}{Regression}{5}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.5}Evaluation protocols}{6}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {3}Results}{6}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Combined analysis of model-family performance and preprocessing sensitivity across four tasks using a normalized score (0 = dummy, 1 = perfect) for cross-metric comparison. Left: Cross-validation results grouped by model family (points = models, violins = distributions, diamonds = medians; lines = linear baseline). Right: Sensitivity to preprocessing across feature × tissue configurations (dots = strategies; bars = IQR and range).}}{6}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Combined analysis of model-family performance and preprocessing sensitivity across tasks using a normalized score (0 = dummy, 1 = perfect) for cross-metric comparison. Left: Cross-validation results grouped by model family (points = models, violins = distributions, diamonds = medians; lines = linear baseline). Right: Sensitivity to preprocessing across feature × tissue configurations (dots = strategies; bars = IQR and range).}}{6}{}\protected@file@percent }
 \newlabel{fig:model_family}{{2}{6}{}{figure.2}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Fold-level paired comparison of white vs. gray matter using normalized scores (0 = dummy, 1 = perfect). Each point shows the matched fold difference ($\Delta $ = white $-$ gray) under identical settings. Left: dataset-level tissue effects; Right: feature-level effects, both adjusted for baseline offsets. Boxplots summarize fold differences; p-values test mean effects against zero (positive = white better).}}{7}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Fold-level paired comparison of white vs. gray matter using normalized scores (0 = dummy, 1 = perfect). Each point shows the matched fold difference ($\Delta $ = white $-$ gray) under identical settings. Left: dataset-level tissue effects; Right: microstructure-level effects, both adjusted for baseline offsets. Boxplots summarize fold differences; p-values test mean effects against zero.}}{7}{}\protected@file@percent }
 \newlabel{fig:white_vs_gray}{{3}{7}{}{figure.3}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Impact of tissue type}{7}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Proportion of models improving over the non-diffusion baseline (b0), stratified by task and feature. Improvement is based on fold-level normalized differences ($\Delta $ = feature $-$ b0). Left: statistical criterion (t-test against zero, p < 0.05 and mean $\Delta $ > 0); Right: robustness criterion (median $\Delta \geq $ 0.03 and $\geq $80\% positive folds). Cells report the fraction of models meeting each criterion per target (rows) and feature (columns).}}{8}{}\protected@file@percent }
-\newlabel{fig:feature_impact}{{4}{8}{}{figure.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Impact of diffusion features}{8}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Fold-level paired comparison of white vs. gray matter using normalized scores (0 = dummy, 1 = perfect). Each point shows the matched fold difference ($\Delta $ = white $-$ gray) under identical settings. Left: dataset-level tissue effects; Right: task-level effects. Boxplots summarize fold differences; p-values test mean effects against zero.}}{8}{}\protected@file@percent }
+\newlabel{fig:white_vs_gray_v2}{{4}{8}{}{figure.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Proportion of models improving over the non-diffusion baseline (b0), stratified by task and feature. Improvement is based on fold-level normalized differences ($\Delta $ = feature $-$ b0). Left: statistical criterion (t-test against zero, p < 0.05 and mean $\Delta $ > 0); Right: robustness criterion (median $\Delta \geq $ 0.03 and $\geq $80\% positive folds). Cells report the fraction of models meeting each criterion per target (rows) and feature (columns).}}{9}{}\protected@file@percent }
+\newlabel{fig:feature_impact}{{5}{9}{}{figure.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Impact of diffusion features}{9}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {4}Conclusion}{9}{}\protected@file@percent }
 \bibstyle{splncs04}
 \bibdata{references}
@@ -73,4 +75,4 @@
 \bibcite{smith2006tract}{13}
 \bibcite{van2013wu}{14}
 \bibcite{wen2021reproducible}{15}
-\gdef \@abspage@last{11}
+\gdef \@abspage@last{12}
