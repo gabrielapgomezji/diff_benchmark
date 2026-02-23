@@ -4,7 +4,7 @@ abide_b0                |    gu,wu    |    gu,wu    | ga,gg,gu,wa,wg,wu | ga,gg,
 abide_md                |    gu,wu    |    gu,wu    | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu |    gu,wu    | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu
 abide_mk                |      -      |    gu,wu    |      -      |      -      |      -      |      -      |      -      |      -      |      -      |      -      |      -     
 abide_sh                |    gu,wu    |    gu,wu    | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu |    gu,wu    | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu
-camcan_b0               | ga,gg,wa,wg |      -      | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg
+camcan_b0               | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg
 camcan_md               | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg
 camcan_mk               | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg
 camcan_rtop             |      -      |      -      |      -      |      -      |      -      |      -      |    ga,wa    |      -      |      -      |      -      |      -     
@@ -80,7 +80,7 @@ abide_sh:
 camcan_b0:
 ----------------------------------------
   CURIA    : ga,gg,wa,wg
-  DINO     : -
+  DINO     : ga,gg,wa,wg
   DUMMY    : ga,gg,wa,wg
   FOR      : ga,gg,wa,wg
   LASSO    : ga,gg,wa,wg
@@ -229,11 +229,11 @@ LEGEND:
 STATISTICS:
   Total dataset-microstructure combinations: 14
   Total models: 11
-  Total experiments: 645
+  Total experiments: 649
 
 MODEL COVERAGE:
        CURIA:  12/ 14 combinations ( 85.7%)
-        DINO:  12/ 14 combinations ( 85.7%)
+        DINO:  13/ 14 combinations ( 92.9%)
        DUMMY:  12/ 14 combinations ( 85.7%)
          FOR:  12/ 14 combinations ( 85.7%)
        LASSO:  12/ 14 combinations ( 85.7%)

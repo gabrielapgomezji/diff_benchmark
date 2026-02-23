@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.2.18)  22 FEB 2026 20:32
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.2.18)  23 FEB 2026 13:59
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -175,92 +175,201 @@ Package: verbatim 2024-01-22 v1.5x LaTeX2e package for verbatim enhancements
 \every@verbatim=\toks22
 \verbatim@line=\toks23
 \verbatim@in@stream=\read2
-) (/data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
+) (/data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/tex/latex/xcolor/xcolor.sty
+Package: xcolor 2024/09/29 v3.02 LaTeX color extensions (UK)
+ (/data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/tex/latex/graphics-cfg/color.cfg
+File: color.cfg 2016/01/02 v1.6 sample color configuration
+)
+Package xcolor Info: Driver file: pdftex.def on input line 274.
+ (/data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/tex/latex/graphics/mathcolor.ltx)
+Package xcolor Info: Model `cmy' substituted by `cmy0' on input line 1349.
+Package xcolor Info: Model `hsb' substituted by `rgb' on input line 1353.
+Package xcolor Info: Model `RGB' extended on input line 1365.
+Package xcolor Info: Model `HTML' substituted by `rgb' on input line 1367.
+Package xcolor Info: Model `Hsb' substituted by `hsb' on input line 1368.
+Package xcolor Info: Model `tHsb' substituted by `hsb' on input line 1369.
+Package xcolor Info: Model `HSB' substituted by `hsb' on input line 1370.
+Package xcolor Info: Model `Gray' substituted by `gray' on input line 1371.
+Package xcolor Info: Model `wave' substituted by `hsb' on input line 1372.
+) (/data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/tex/generic/ulem/ulem.sty
+\UL@box=\box101
+\UL@hyphenbox=\box102
+\UL@skip=\skip53
+\UL@hook=\toks24
+\UL@height=\dimen173
+\UL@pe=\count314
+\UL@pixel=\dimen174
+\ULC@box=\box103
+Package: ulem 2019/11/18
+\ULdepth=\dimen175
+)
+/data/parietal/store3/work/ggomezji/projects/diff_benchmark/MICCAI2026-Latex-Template/main.tex:18: You can't use `\long' or `\outer' or `\protected' with `\let'.
+\@star@or@long #1->\let 
+                        \pr@tectedrel@x \relax \@ifstar {\let \l@ngrel@x \re...
+l.18 \long\newcommand
+                     {\replace}[2]{\textcolor{red}{\sout{#1}} \textcolor{blu...
+I'll pretend you didn't say \long or \outer or \protected here.
+
+/data/parietal/store3/work/ggomezji/projects/diff_benchmark/MICCAI2026-Latex-Template/main.tex:20: You can't use `\long' or `\outer' or `\protected' with `\let'.
+\@star@or@long #1->\let 
+                        \pr@tectedrel@x \relax \@ifstar {\let \l@ngrel@x \re...
+l.20 \long\newcommand
+                     {\todo}[1]{\textcolor{orange}{\textbf{[TODO: #1]}}}
+I'll pretend you didn't say \long or \outer or \protected here.
+
+(/data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
 File: l3backend-pdftex.def 2025-10-09 L3 backend support: PDF output (pdfTeX)
-\l__color_backend_stack_int=\count314
+\l__color_backend_stack_int=\count315
 ) (./main.aux)
 \openout1 = `main.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 21.
-LaTeX Font Info:    ... okay on input line 21.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 21.
-LaTeX Font Info:    ... okay on input line 21.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 21.
-LaTeX Font Info:    ... okay on input line 21.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 21.
-LaTeX Font Info:    ... okay on input line 21.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 21.
-LaTeX Font Info:    ... okay on input line 21.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 21.
-LaTeX Font Info:    ... okay on input line 21.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 21.
-LaTeX Font Info:    ... okay on input line 21.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
  (/data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
-\scratchcounter=\count315
-\scratchdimen=\dimen173
-\scratchbox=\box101
-\nofMPsegments=\count316
-\nofMParguments=\count317
-\everyMPshowfont=\toks24
-\MPscratchCnt=\count318
-\MPscratchDim=\dimen174
-\MPnumerator=\count319
-\makeMPintoPDFobject=\count320
-\everyMPtoPDFconversion=\toks25
+\scratchcounter=\count316
+\scratchdimen=\dimen176
+\scratchbox=\box104
+\nofMPsegments=\count317
+\nofMParguments=\count318
+\everyMPshowfont=\toks25
+\MPscratchCnt=\count319
+\MPscratchDim=\dimen177
+\MPnumerator=\count320
+\makeMPintoPDFobject=\count321
+\everyMPtoPDFconversion=\toks26
 ) (/data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
 Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
+ (/data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/tex/generic/infwarerr/infwarerr.sty
+Package: infwarerr 2019/12/03 v1.5 Providing info/warning/error messages (HO)
+) (/data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/tex/latex/grfext/grfext.sty
+Package: grfext 2019/12/03 v1.3 Manage graphics extensions (HO)
+ (/data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/tex/generic/kvdefinekeys/kvdefinekeys.sty
+Package: kvdefinekeys 2019-12-19 v1.6 Define keys (HO)
+)) (/data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/tex/latex/kvoptions/kvoptions.sty
+Package: kvoptions 2022-06-15 v3.15 Key value format for package options (HO)
+ (/data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/tex/generic/ltxcmds/ltxcmds.sty
+Package: ltxcmds 2023-12-04 v1.26 LaTeX kernel commands for general use (HO)
+) (/data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/tex/latex/kvsetkeys/kvsetkeys.sty
+Package: kvsetkeys 2022-10-05 v1.19 Key value parser (HO)
+)) (/data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/tex/generic/pdftexcmds/pdftexcmds.sty
+Package: pdftexcmds 2020-06-27 v0.33 Utility functions of pdfTeX for LuaTeX (HO)
+ (/data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/tex/generic/iftex/iftex.sty
+Package: iftex 2024/12/12 v1.0g TeX engine tests
+)
+Package pdftexcmds Info: \pdf@primitive is available.
+Package pdftexcmds Info: \pdf@ifprimitive is available.
+Package pdftexcmds Info: \pdfdraftmode found.
+)
 Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 485.
+Package grfext Info: Graphics extension search list:
+(grfext)             [.pdf,.png,.jpg,.mps,.jpeg,.jbig2,.jb2,.PDF,.PNG,.JPG,.JPEG,.JBIG2,.JB2,.eps]
+(grfext)             \AppendGraphicsExtensions on input line 504.
  (/data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
 File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Live
 ))
 LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <7> on input line 51.
+(Font)              <7> on input line 58.
 LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <5> on input line 51.
- (./tex/introduction.tex
-Overfull \hbox (10.06702pt too wide) in paragraph at lines 22--29
-\T1/cmr/m/n/10 these gains? Re-ported per-for-mance varies widely across stud-ies, tasks, and datasets,
- []
-
-
-Overfull \hbox (2.56885pt too wide) in paragraph at lines 39--47
-\T1/cmr/m/n/10 co-horts. Mi-crostruc-tural in-for-ma-tion is rep-re-sented through het-ero-ge-neous strate-
- []
-
-[1
+(Font)              <5> on input line 58.
+ (./tex/introduction.tex [1
 
 {/data/parietal/store4/work/ggomezji/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]) (./tex/benchmark.tex
 <scheme.pdf, id=13, 1570.86874pt x 853.1875pt>
 File: scheme.pdf Graphic file (type pdf)
 <use scheme.pdf>
-Package pdftex.def Info: scheme.pdf  used on input line 14.
+Package pdftex.def Info: scheme.pdf  used on input line 18.
 (pdftex.def)             Requested size: 347.12354pt x 188.53502pt.
+ [2]
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <9> on input line 78.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <6> on input line 78.
 
-Underfull \vbox (badness 1152) has occurred while \output is active []
 
- [2] [3 <./scheme.pdf>]
-Overfull \hbox (7.25076pt too wide) in paragraph at lines 112--124
+LaTeX Warning: Citation `Garyfallidis2014' on page 3 undefined on input line 79.
+
+
+LaTeX Warning: Citation `Smith2004' on page 3 undefined on input line 79.
+
+
+LaTeX Warning: Citation `Avants2009' on page 3 undefined on input line 80.
+
+
+LaTeX Warning: Citation `Dale1999' on page 3 undefined on input line 80.
+
+
+LaTeX Warning: Citation `Cox1996' on page 3 undefined on input line 80.
+
+
+LaTeX Warning: Citation `Veraart2016a' on page 3 undefined on input line 82.
+
+
+LaTeX Warning: Citation `Cordero-Grande2019' on page 3 undefined on input line 82.
+
+
+LaTeX Warning: Citation `Veraart2016a' on page 3 undefined on input line 85.
+
+
+LaTeX Warning: Citation `Veraart2016b' on page 3 undefined on input line 87.
+
+
+LaTeX Warning: Citation `Andersson2016' on page 3 undefined on input line 89.
+
+
+LaTeX Warning: Citation `greve2009accurate' on page 3 undefined on input line 92.
+
+[3 <./scheme.pdf>]
+
+LaTeX Warning: Citation `greve2009accurate' on page 4 undefined on input line 117.
+
+
+LaTeX Warning: Citation `mori2008stereotaxic' on page 4 undefined on input line 132.
+
+
+Overfull \hbox (7.25076pt too wide) in paragraph at lines 129--141
  \T1/cmr/m/it/10 White Mat-ter Rep-re-sen-ta-tion[] \T1/cmr/m/n/10 White mat-ter mi-crostruc-ture was rep-re-sented within
  []
 
-[4] [5]) (./tex/results.tex
-<../exp_outputs/summary/plots/folds/combined_model_vs_prep.png, id=702, 466.6233pt x 200.9106pt>
+[4]
+
+LaTeX Warning: Citation `tournier2004direct' on page 5 undefined on input line 179.
+
+
+LaTeX Warning: Citation `pasternak2009free' on page 5 undefined on input line 189.
+
+
+LaTeX Warning: Citation `hastie2009elements' on page 5 undefined on input line 206.
+
+[5]) (./tex/results.tex
+<../exp_outputs/summary/plots/folds/combined_model_vs_prep.png, id=705, 466.6233pt x 200.9106pt>
 File: ../exp_outputs/summary/plots/folds/combined_model_vs_prep.png Graphic file (type png)
 <use ../exp_outputs/summary/plots/folds/combined_model_vs_prep.png>
-Package pdftex.def Info: ../exp_outputs/summary/plots/folds/combined_model_vs_prep.png  used on input line 14.
+Package pdftex.def Info: ../exp_outputs/summary/plots/folds/combined_model_vs_prep.png  used on input line 15.
 (pdftex.def)             Requested size: 347.12354pt x 149.4655pt.
- [6] [7 <../exp_outputs/summary/plots/folds/combined_model_vs_prep.png>]
-<../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.png, id=714, 540.0978pt x 214.8828pt>
+ [6 <../exp_outputs/summary/plots/folds/combined_model_vs_prep.png>]
+<../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.png, id=711, 540.0978pt x 214.8828pt>
 File: ../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.png Graphic file (type png)
 <use ../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.png>
-Package pdftex.def Info: ../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.png  used on input line 53.
+Package pdftex.def Info: ../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.png  used on input line 58.
 (pdftex.def)             Requested size: 347.12354pt x 138.10486pt.
 
-./tex/results.tex:61: Undefined control sequence.
+./tex/results.tex:66: Undefined control sequence.
 <argument> ...pecific difference ($\Delta = \text 
                                                   {white} - \text {gray}$) u...
-l.61 ... values indicate gray matter superiority.}
+l.66 ... values indicate gray matter superiority.}
                                                   
 The control sequence at the end of the top line
 of your error message was never \def'ed. If you have
@@ -268,10 +377,10 @@ misspelled it (e.g., `\hobx'), type `I' and the correct
 spelling (e.g., `I\hbox'). Otherwise just continue,
 and I'll forget about whatever was undefined.
 
-./tex/results.tex:61: Undefined control sequence.
+./tex/results.tex:66: Undefined control sequence.
 <argument> ...ce ($\Delta = \text {white} - \text 
                                                   {gray}$) under identical d...
-l.61 ... values indicate gray matter superiority.}
+l.66 ... values indicate gray matter superiority.}
                                                   
 The control sequence at the end of the top line
 of your error message was never \def'ed. If you have
@@ -279,14 +388,10 @@ misspelled it (e.g., `\hobx'), type `I' and the correct
 spelling (e.g., `I\hbox'). Otherwise just continue,
 and I'll forget about whatever was undefined.
 
-LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <9> on input line 61.
-LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <6> on input line 61.
-./tex/results.tex:61: Undefined control sequence.
+./tex/results.tex:66: Undefined control sequence.
 <argument> ...pecific difference ($\Delta = \text 
                                                   {white} - \text {gray}$) u...
-l.61 ... values indicate gray matter superiority.}
+l.66 ... values indicate gray matter superiority.}
                                                   
 The control sequence at the end of the top line
 of your error message was never \def'ed. If you have
@@ -294,10 +399,10 @@ misspelled it (e.g., `\hobx'), type `I' and the correct
 spelling (e.g., `I\hbox'). Otherwise just continue,
 and I'll forget about whatever was undefined.
 
-./tex/results.tex:61: Undefined control sequence.
+./tex/results.tex:66: Undefined control sequence.
 <argument> ...ce ($\Delta = \text {white} - \text 
                                                   {gray}$) under identical d...
-l.61 ... values indicate gray matter superiority.}
+l.66 ... values indicate gray matter superiority.}
                                                   
 The control sequence at the end of the top line
 of your error message was never \def'ed. If you have
@@ -305,10 +410,10 @@ misspelled it (e.g., `\hobx'), type `I' and the correct
 spelling (e.g., `I\hbox'). Otherwise just continue,
 and I'll forget about whatever was undefined.
 
-./tex/results.tex:61: Undefined control sequence.
+./tex/results.tex:66: Undefined control sequence.
 <argument> ...pecific difference ($\Delta = \text 
                                                   {white} - \text {gray}$) u...
-l.61 ... values indicate gray matter superiority.}
+l.66 ... values indicate gray matter superiority.}
                                                   
 The control sequence at the end of the top line
 of your error message was never \def'ed. If you have
@@ -316,10 +421,10 @@ misspelled it (e.g., `\hobx'), type `I' and the correct
 spelling (e.g., `I\hbox'). Otherwise just continue,
 and I'll forget about whatever was undefined.
 
-./tex/results.tex:61: Undefined control sequence.
+./tex/results.tex:66: Undefined control sequence.
 <argument> ...ce ($\Delta = \text {white} - \text 
                                                   {gray}$) under identical d...
-l.61 ... values indicate gray matter superiority.}
+l.66 ... values indicate gray matter superiority.}
                                                   
 The control sequence at the end of the top line
 of your error message was never \def'ed. If you have
@@ -327,8 +432,8 @@ misspelled it (e.g., `\hobx'), type `I' and the correct
 spelling (e.g., `I\hbox'). Otherwise just continue,
 and I'll forget about whatever was undefined.
 
-./tex/results.tex:80: Undefined control sequence.
-l.80  difference $\Delta = \text
+./tex/results.tex:87: Undefined control sequence.
+l.87  difference $\Delta = \text
                                 {white} - \text{gray}$ is computed, yielding...
 The control sequence at the end of the top line
 of your error message was never \def'ed. If you have
@@ -336,8 +441,8 @@ misspelled it (e.g., `\hobx'), type `I' and the correct
 spelling (e.g., `I\hbox'). Otherwise just continue,
 and I'll forget about whatever was undefined.
 
-./tex/results.tex:80: Undefined control sequence.
-l.80  difference $\Delta = \text{white} - \text
+./tex/results.tex:87: Undefined control sequence.
+l.87  difference $\Delta = \text{white} - \text
                                                {gray}$ is computed, yielding...
 The control sequence at the end of the top line
 of your error message was never \def'ed. If you have
@@ -345,20 +450,20 @@ misspelled it (e.g., `\hobx'), type `I' and the correct
 spelling (e.g., `I\hbox'). Otherwise just continue,
 and I'll forget about whatever was undefined.
 
-[8 <../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.png>]
-Overfull \hbox (7.98785pt too wide) in paragraph at lines 95--104
+[7 <../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.png>]
+Overfull \hbox (7.98785pt too wide) in paragraph at lines 102--106
 []\T1/cmr/m/n/10 When strat-i-fied by mi-crostruc-tural rep-re-sen-ta-tion, most fea-tures do not demon-
  []
 
-<../exp_outputs/summary/plots/features/feature_benefit_heatmap.png, id=722, 522.9939pt x 176.8206pt>
+<../exp_outputs/summary/plots/features/feature_benefit_heatmap.png, id=720, 522.9939pt x 176.8206pt>
 File: ../exp_outputs/summary/plots/features/feature_benefit_heatmap.png Graphic file (type png)
 <use ../exp_outputs/summary/plots/features/feature_benefit_heatmap.png>
-Package pdftex.def Info: ../exp_outputs/summary/plots/features/feature_benefit_heatmap.png  used on input line 107.
+Package pdftex.def Info: ../exp_outputs/summary/plots/features/feature_benefit_heatmap.png  used on input line 109.
 (pdftex.def)             Requested size: 347.12354pt x 117.36296pt.
-./tex/results.tex:115: Undefined control sequence.
+./tex/results.tex:117: Undefined control sequence.
 <argument> ... normalized scores ($\Delta = \text 
                                                   {feature} - b0$). Left: st...
-l.115     to diffusion-derived features.}
+l.117     to diffusion-derived features.}
                                          
 The control sequence at the end of the top line
 of your error message was never \def'ed. If you have
@@ -366,10 +471,10 @@ misspelled it (e.g., `\hobx'), type `I' and the correct
 spelling (e.g., `I\hbox'). Otherwise just continue,
 and I'll forget about whatever was undefined.
 
-./tex/results.tex:115: Undefined control sequence.
+./tex/results.tex:117: Undefined control sequence.
 <argument> ... normalized scores ($\Delta = \text 
                                                   {feature} - b0$). Left: st...
-l.115     to diffusion-derived features.}
+l.117     to diffusion-derived features.}
                                          
 The control sequence at the end of the top line
 of your error message was never \def'ed. If you have
@@ -378,22 +483,22 @@ spelling (e.g., `I\hbox'). Otherwise just continue,
 and I'll forget about whatever was undefined.
 
 
-./tex/results.tex:115: LaTeX Error: Unicode character ≥ (U+2265)
+./tex/results.tex:117: LaTeX Error: Unicode character ≥ (U+2265)
                not set up for use with LaTeX.
 
 See the LaTeX manual or LaTeX Companion for explanation.
 Type  H <return>  for immediate help.
  ...                                              
                                                   
-l.115     to diffusion-derived features.}
+l.117     to diffusion-derived features.}
                                          
 You may provide a definition with
 \DeclareUnicodeCharacter 
 
-./tex/results.tex:115: Undefined control sequence.
+./tex/results.tex:117: Undefined control sequence.
 <argument> ... normalized scores ($\Delta = \text 
                                                   {feature} - b0$). Left: st...
-l.115     to diffusion-derived features.}
+l.117     to diffusion-derived features.}
                                          
 The control sequence at the end of the top line
 of your error message was never \def'ed. If you have
@@ -402,42 +507,42 @@ spelling (e.g., `I\hbox'). Otherwise just continue,
 and I'll forget about whatever was undefined.
 
 
-./tex/results.tex:115: LaTeX Error: Unicode character ≥ (U+2265)
+./tex/results.tex:117: LaTeX Error: Unicode character ≥ (U+2265)
                not set up for use with LaTeX.
 
 See the LaTeX manual or LaTeX Companion for explanation.
 Type  H <return>  for immediate help.
  ...                                              
                                                   
-l.115     to diffusion-derived features.}
+l.117     to diffusion-derived features.}
                                          
 You may provide a definition with
 \DeclareUnicodeCharacter 
 
-[9 <../exp_outputs/summary/plots/features/feature_benefit_heatmap.png>]) (./tex/conclusion.tex [10]
-Overfull \hbox (21.48456pt too wide) in paragraph at lines 75--80
+[8 <../exp_outputs/summary/plots/features/feature_benefit_heatmap.png>]) (./tex/conclusion.tex [9]
+Overfull \hbox (21.48456pt too wide) in paragraph at lines 78--83
 []\T1/cmr/m/n/10 Ultimately, we hope this frame-work en-cour-ages a shift from iso-lated, configuration-
  []
 
-) (./main.bbl [11]) [12] (./main.aux)
+) (./main.bbl [10]) [11] (./main.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 2157 strings out of 469005
- 34754 string characters out of 5450604
- 444756 words of memory out of 5000000
- 30850 multiletter control sequences out of 15000+600000
- 637378 words of font info for 58 fonts, out of 8000000 for 9000
+ 3328 strings out of 469005
+ 54655 string characters out of 5450604
+ 468282 words of memory out of 5000000
+ 31972 multiletter control sequences out of 15000+600000
+ 639018 words of font info for 61 fonts, out of 8000000 for 9000
  319 hyphenation exceptions out of 8191
- 57i,7n,65p,1129b,321s stack positions out of 10000i,1000n,20000p,200000b,200000s
- </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecti1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1200.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ectt0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1440.600pk></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy9.pfb>
-Output written on main.pdf (12 pages, 1396495 bytes).
+ 59i,9n,67p,1129b,325s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0600.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecti1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0700.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1200.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ectt0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1440.600pk></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy9.pfb>
+Output written on main.pdf (11 pages, 1404874 bytes).
 PDF statistics:
- 1102 PDF objects out of 1200 (max. 8388607)
- 425 compressed objects within 5 object streams
+ 1126 PDF objects out of 1200 (max. 8388607)
+ 431 compressed objects within 5 object streams
  0 named destinations out of 1000 (max. 500000)
  21 words of extra memory for PDF output out of 10000 (max. 10000000)
 

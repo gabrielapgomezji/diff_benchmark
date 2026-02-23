@@ -9,36 +9,52 @@
 \@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{}\protected@file@percent }
 \citation{van2013wu}
 \citation{shafto2014cambridge}
-\@writefile{toc}{\contentsline {section}{\numberline {2}Benchmark}{2}{}\protected@file@percent }
 \citation{di2017enhancing}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Benchmark}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Datasets}{2}{}\protected@file@percent }
+\citation{Garyfallidis2014}
+\citation{Smith2004}
+\citation{Avants2009}
+\citation{Dale1999}
+\citation{Cox1996}
+\citation{Veraart2016a,Cordero-Grande2019}
+\citation{Veraart2016a}
+\citation{Veraart2016b}
+\citation{Andersson2016}
+\citation{greve2009accurate}
 \@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Overview of the proposed diffusion MRI benchmark pipeline, illustrating the end-to-end process from preprocessing to microstructural feature extraction, predictive modeling, and evaluation.}}{3}{}\protected@file@percent }
 \newlabel{fig:benchmark_overview}{{1}{3}{}{figure.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Datasets}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Preprocessing and Feature Extraction}{3}{}\protected@file@percent }
+\citation{greve2009accurate}
 \citation{smith2006tract}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Preprocessing and Feature Extraction}{4}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{Preprocessing (Himanshu)}{4}{}\protected@file@percent }
+\citation{mori2008stereotaxic}
+\citation{basser1994mr}
+\citation{jensen2005diffusional}
 \@writefile{toc}{\contentsline {subsubsection}{Microstructural Representation}{4}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Gray Matter Representation}{4}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{White Matter Representation}{4}{}\protected@file@percent }
-\citation{basser1994mr}
-\citation{jensen2005diffusional}
+\@writefile{toc}{\contentsline {subsubsection}{Microstructural models and normalization}{4}{}\protected@file@percent }
+\citation{tournier2004direct}
+\citation{pasternak2009free}
+\citation{hastie2009elements}
 \citation{oquab2023dinov2}
 \citation{dancette2025curia}
 \citation{chen2019med3d}
-\@writefile{toc}{\contentsline {subsubsection}{Microstructural models and normalization}{5}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Prediction models}{5}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Benchmarks tasks and evaluation metrics}{6}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{Classification}{6}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{Regression}{6}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Benchmarks tasks and evaluation metrics}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Classification}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Regression}{5}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.5}Evaluation protocols}{6}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {3}Results}{6}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Combined analysis of model-family performance and preprocessing sensitivity across four tasks using a normalized score (dummy baseline = 0, perfect performance = 1), enabling comparison across heterogeneous evaluation metrics. Left: Cross-validation performance of individual runs grouped by model family. Points denote fold-averaged scores per model; violins illustrate the distribution within each family; diamonds indicate medians. Horizontal lines mark the median performance of the linear baseline for each dataset–task. Right: Sensitivity to preprocessing strategy, aggregating across models and grouping by feature × tissue configurations. Each dot corresponds to a specific preprocessing strategy; vertical bars indicate the interquartile range (IQR) and overall spread across strategies. Variability induced by preprocessing is often comparable to, or larger than, differences between model families.}}{7}{}\protected@file@percent }
-\newlabel{fig:model_family}{{2}{7}{}{figure.2}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Fold-level paired comparison of white versus gray matter performance using normalized scores (dummy baseline = 0, perfect performance = 1). Each point represents a matched fold-specific difference ($\Delta = {white} - {gray}$) under identical dataset–target–task–feature conditions. Left: dataset-level tissue effects after removing feature-specific baseline offsets. Right: feature-level tissue effects after removing dataset–task baseline offsets. Boxplots summarize the distribution of fold-level differences, and p-values are computed from configuration-level mean effects tested against zero. Positive values indicate white matter superiority; negative values indicate gray matter superiority.}}{8}{}\protected@file@percent }
-\newlabel{fig:white_vs_gray}{{3}{8}{}{figure.3}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Proportion of models exhibiting consistent performance improvement over the non-diffusion baseline (b0), stratified by dataset–task and microstructural feature. Improvement is evaluated relative to fold-level normalized scores ($\Delta = {feature} - b0$). Left: statistical criterion (one-sample t-test against zero on fold-level deltas; p < 0.05 and mean $\Delta > 0$). Right: robustness criterion (median $\Delta \ge 0.03$ and ≥ 80\% of folds positive). Each cell reports the fraction of models satisfying the corresponding criterion (numerator/total models). Rows correspond to dataset–target combinations; columns correspond to diffusion-derived features.}}{9}{}\protected@file@percent }
-\newlabel{fig:feature_impact}{{4}{9}{}{figure.4}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {4}Conclusion}{10}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Combined analysis of model-family performance and preprocessing sensitivity across four tasks using a normalized score (dummy baseline = 0, perfect performance = 1), enabling comparison across heterogeneous evaluation metrics. Left: Cross-validation performance of individual runs grouped by model family. Points denote fold-averaged scores per model; violins illustrate the distribution within each family; diamonds indicate medians. Horizontal lines mark the median performance of the linear baseline for each dataset–task. Right: Sensitivity to preprocessing strategy, aggregating across models and grouping by feature × tissue configurations. Each dot corresponds to a specific preprocessing strategy; vertical bars indicate the interquartile range (IQR) and overall spread across strategies. Variability induced by preprocessing is often comparable to, or larger than, differences between model families.}}{6}{}\protected@file@percent }
+\newlabel{fig:model_family}{{2}{6}{}{figure.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Fold-level paired comparison of white versus gray matter performance using normalized scores (dummy baseline = 0, perfect performance = 1). Each point represents a matched fold-specific difference ($\Delta = {white} - {gray}$) under identical dataset–target–task–feature conditions. Left: dataset-level tissue effects after removing feature-specific baseline offsets. Right: feature-level tissue effects after removing dataset–task baseline offsets. Boxplots summarize the distribution of fold-level differences, and p-values are computed from configuration-level mean effects tested against zero. Positive values indicate white matter superiority; negative values indicate gray matter superiority.}}{7}{}\protected@file@percent }
+\newlabel{fig:white_vs_gray}{{3}{7}{}{figure.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Impact of tissue type}{7}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Proportion of models exhibiting consistent performance improvement over the non-diffusion baseline (b0), stratified by dataset–task and microstructural feature. Improvement is evaluated relative to fold-level normalized scores ($\Delta = {feature} - b0$). Left: statistical criterion (one-sample t-test against zero on fold-level deltas; p < 0.05 and mean $\Delta > 0$). Right: robustness criterion (median $\Delta \ge 0.03$ and ≥ 80\% of folds positive). Each cell reports the fraction of models satisfying the corresponding criterion (numerator/total models). Rows correspond to dataset–target combinations; columns correspond to diffusion-derived features.}}{8}{}\protected@file@percent }
+\newlabel{fig:feature_impact}{{4}{8}{}{figure.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Impact of diffusion features}{8}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Conclusion}{9}{}\protected@file@percent }
 \bibstyle{splncs04}
 \bibdata{references}
 \bibcite{basser1994mr}{1}
@@ -56,4 +72,4 @@
 \bibcite{smith2006tract}{13}
 \bibcite{van2013wu}{14}
 \bibcite{wen2021reproducible}{15}
-\gdef \@abspage@last{12}
+\gdef \@abspage@last{11}
