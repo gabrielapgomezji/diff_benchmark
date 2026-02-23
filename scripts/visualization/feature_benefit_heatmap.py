@@ -258,6 +258,39 @@ def _collapse_across_models(flags_df: pd.DataFrame) -> pd.DataFrame:
     return agg
 
 
+def _merge_gender_rows(agg: pd.DataFrame) -> pd.DataFrame:
+    """Pool HCP–Gender and CamCAN–Gender into a single combined row.
+
+    Raw counts (n_models_pvalue, n_models_robust, n_models_total) are summed
+    across the two datasets so the annotation fractions reflect the full
+    combined model pool.  Proportions are then recomputed from the pooled counts.
+    """
+    gender_mask = agg["target_clean"] == "Gender"
+    gender_rows = agg[gender_mask].copy()
+    other_rows  = agg[~gender_mask].copy()
+
+    if gender_rows.empty:
+        return agg
+
+    pooled = (
+        gender_rows
+        .groupby("feature", dropna=False, as_index=False)
+        .agg(
+            n_models_total  =("n_models_total",  "sum"),
+            n_models_pvalue =("n_models_pvalue", "sum"),
+            n_models_robust =("n_models_robust", "sum"),
+        )
+    )
+    pooled["prop_pvalue"]     = pooled["n_models_pvalue"] / pooled["n_models_total"]
+    pooled["prop_robust"]     = pooled["n_models_robust"] / pooled["n_models_total"]
+    pooled["row_label"]       = "Gender (HCP+CamCAN)"
+    pooled["target_clean"]    = "Gender"
+    pooled["dataset"]         = "hcp+camcan"
+    pooled["prediction_task"] = "binary_classification"
+
+    return pd.concat([other_rows, pooled], ignore_index=True)
+
+
 # ---------------------------------------------------------------------------
 # Step 4: sort rows and columns
 # ---------------------------------------------------------------------------
@@ -399,6 +432,7 @@ def _plot_heatmaps(agg: pd.DataFrame, out_file: Path, n_models_total: int) -> No
 def plot_feature_benefit_heatmap(
     parquet_path: str,
     out_dir: str = "exp_outputs/summary/plots/features",
+    merge_gender: bool = False,
 ) -> Path:
     """Full pipeline: load → deltas → benefit flags → aggregate → plot."""
     apply_miccai_style()
@@ -414,6 +448,9 @@ def plot_feature_benefit_heatmap(
         raise RuntimeError("No benefit flags computed — check delta pipeline")
 
     agg = _collapse_across_models(flags_df)
+
+    if merge_gender:
+        agg = _merge_gender_rows(agg)
 
     n_models_total = int(agg["n_models_total"].max())
 
@@ -464,6 +501,14 @@ def main() -> None:
         default=TAU,
         help=f"Minimum fraction of positive-delta folds (default {TAU})",
     )
+    parser.add_argument(
+        "--merge-gender",
+        action="store_true",
+        help=(
+            "Merge HCP–Gender and CamCAN–Gender into a single row "
+            "'Gender (HCP+CamCAN)' by pooling raw model counts."
+        ),
+    )
     args = parser.parse_args()
 
     # Allow CLI overrides of thresholds
@@ -471,7 +516,11 @@ def main() -> None:
     _self.EPSILON = args.epsilon
     _self.TAU = args.tau
 
-    out_path = plot_feature_benefit_heatmap(args.input, args.outdir)
+    out_path = plot_feature_benefit_heatmap(
+        args.input,
+        args.outdir,
+        merge_gender=args.merge_gender,
+    )
     print("Saved feature benefit heatmap to", out_path)
 
 

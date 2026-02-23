@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.2.18)  23 FEB 2026 13:59
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.2.18)  23 FEB 2026 17:15
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -290,68 +290,68 @@ LaTeX Font Info:    External font `cmex10' loaded for size
 <scheme.pdf, id=13, 1570.86874pt x 853.1875pt>
 File: scheme.pdf Graphic file (type pdf)
 <use scheme.pdf>
-Package pdftex.def Info: scheme.pdf  used on input line 18.
+Package pdftex.def Info: scheme.pdf  used on input line 15.
 (pdftex.def)             Requested size: 347.12354pt x 188.53502pt.
  [2]
 LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <9> on input line 78.
+(Font)              <9> on input line 76.
 LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <6> on input line 78.
+(Font)              <6> on input line 76.
 
 
-LaTeX Warning: Citation `Garyfallidis2014' on page 3 undefined on input line 79.
+LaTeX Warning: Citation `Garyfallidis2014' on page 3 undefined on input line 77.
 
 
-LaTeX Warning: Citation `Smith2004' on page 3 undefined on input line 79.
+LaTeX Warning: Citation `Smith2004' on page 3 undefined on input line 77.
 
 
-LaTeX Warning: Citation `Avants2009' on page 3 undefined on input line 80.
+LaTeX Warning: Citation `Avants2009' on page 3 undefined on input line 78.
 
 
-LaTeX Warning: Citation `Dale1999' on page 3 undefined on input line 80.
+LaTeX Warning: Citation `Dale1999' on page 3 undefined on input line 78.
 
 
-LaTeX Warning: Citation `Cox1996' on page 3 undefined on input line 80.
+LaTeX Warning: Citation `Cox1996' on page 3 undefined on input line 78.
 
 
-LaTeX Warning: Citation `Veraart2016a' on page 3 undefined on input line 82.
+LaTeX Warning: Citation `Veraart2016a' on page 3 undefined on input line 80.
 
 
-LaTeX Warning: Citation `Cordero-Grande2019' on page 3 undefined on input line 82.
+LaTeX Warning: Citation `Cordero-Grande2019' on page 3 undefined on input line 80.
 
 
-LaTeX Warning: Citation `Veraart2016a' on page 3 undefined on input line 85.
+LaTeX Warning: Citation `Veraart2016a' on page 3 undefined on input line 83.
 
 
-LaTeX Warning: Citation `Veraart2016b' on page 3 undefined on input line 87.
+LaTeX Warning: Citation `Veraart2016b' on page 3 undefined on input line 85.
 
 
-LaTeX Warning: Citation `Andersson2016' on page 3 undefined on input line 89.
+LaTeX Warning: Citation `Andersson2016' on page 3 undefined on input line 87.
 
 
-LaTeX Warning: Citation `greve2009accurate' on page 3 undefined on input line 92.
+LaTeX Warning: Citation `greve2009accurate' on page 3 undefined on input line 90.
 
 [3 <./scheme.pdf>]
 
-LaTeX Warning: Citation `greve2009accurate' on page 4 undefined on input line 117.
+LaTeX Warning: Citation `greve2009accurate' on page 4 undefined on input line 115.
 
 
-LaTeX Warning: Citation `mori2008stereotaxic' on page 4 undefined on input line 132.
-
-
-Overfull \hbox (7.25076pt too wide) in paragraph at lines 129--141
- \T1/cmr/m/it/10 White Mat-ter Rep-re-sen-ta-tion[] \T1/cmr/m/n/10 White mat-ter mi-crostruc-ture was rep-re-sented within
+Overfull \hbox (6.12354pt too wide) in paragraph at lines 110--125
+\T1/cmr/m/n/10 cor-ti-cal sur-face re-con-structed from T1-weighted im-ages us-ing the De-sikan^^UKilliany
  []
+
+
+LaTeX Warning: Citation `mori2008stereotaxic' on page 4 undefined on input line 130.
+
+
+LaTeX Warning: Citation `tournier2004direct' on page 4 undefined on input line 177.
 
 [4]
 
-LaTeX Warning: Citation `tournier2004direct' on page 5 undefined on input line 179.
+LaTeX Warning: Citation `pasternak2009free' on page 5 undefined on input line 187.
 
 
-LaTeX Warning: Citation `pasternak2009free' on page 5 undefined on input line 189.
-
-
-LaTeX Warning: Citation `hastie2009elements' on page 5 undefined on input line 206.
+LaTeX Warning: Citation `hastie2009elements' on page 5 undefined on input line 204.
 
 [5]) (./tex/results.tex
 <../exp_outputs/summary/plots/folds/combined_model_vs_prep.png, id=705, 466.6233pt x 200.9106pt>
@@ -455,11 +455,11 @@ Overfull \hbox (7.98785pt too wide) in paragraph at lines 102--106
 []\T1/cmr/m/n/10 When strat-i-fied by mi-crostruc-tural rep-re-sen-ta-tion, most fea-tures do not demon-
  []
 
-<../exp_outputs/summary/plots/features/feature_benefit_heatmap.png, id=720, 522.9939pt x 176.8206pt>
+<../exp_outputs/summary/plots/features/feature_benefit_heatmap.png, id=720, 524.4393pt x 176.8206pt>
 File: ../exp_outputs/summary/plots/features/feature_benefit_heatmap.png Graphic file (type png)
 <use ../exp_outputs/summary/plots/features/feature_benefit_heatmap.png>
 Package pdftex.def Info: ../exp_outputs/summary/plots/features/feature_benefit_heatmap.png  used on input line 109.
-(pdftex.def)             Requested size: 347.12354pt x 117.36296pt.
+(pdftex.def)             Requested size: 347.12354pt x 117.0365pt.
 ./tex/results.tex:117: Undefined control sequence.
 <argument> ... normalized scores ($\Delta = \text 
                                                   {feature} - b0$). Left: st...
@@ -539,9 +539,9 @@ Here is how much of TeX's memory you used:
  319 hyphenation exceptions out of 8191
  59i,9n,67p,1129b,325s stack positions out of 10000i,1000n,20000p,200000b,200000s
  </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0600.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecti1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0700.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1200.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ectt0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1440.600pk></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy9.pfb>
-Output written on main.pdf (11 pages, 1404874 bytes).
+Output written on main.pdf (11 pages, 1401816 bytes).
 PDF statistics:
- 1126 PDF objects out of 1200 (max. 8388607)
+ 1124 PDF objects out of 1200 (max. 8388607)
  431 compressed objects within 5 object streams
  0 named destinations out of 1000 (max. 500000)
  21 words of extra memory for PDF output out of 10000 (max. 10000000)

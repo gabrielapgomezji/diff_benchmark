@@ -10,9 +10,6 @@ classical and deep learning models on regression and classification tasks, and s
 controlled evaluation protocol.
 We now describe the benchmark in detail whose overall structure is illustrated in Figure~\ref{fig:benchmark_overview}.
 
-
-
-
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{scheme.pdf}
@@ -67,15 +64,16 @@ This variability provides a realistic scenario for evaluating model robustness t
 % If space (unlikely):
 % * PLOTS: Demographic distribution (age histograms) | Table with demographics summary (gender classes, age range...)
 
-\subsection{Preprocessing and Feature Extraction}
-% \subsubsection{Preprocessing (Himanshu)}
+\subsection{Data Preparation}
+\subsubsection{Preprocessing}
 % \begin{itemize}
 %     \item Denoising
 %     \item Motion and eddy correction
 %     \item Spatial normalization
 %     \item Masking strategy
 % \end{itemize}
-The DWI data were preprocessed using the diffusion-preprocessing package\footnote{\url{https://github.com/man-shu/diffusion-preprocessing}} which containerizes 
+Except for the HCP dataset, which has its own preprocessing pipeline,
+the DWI data were preprocessed using the diffusion-preprocessing package\footnote{\url{https://github.com/man-shu/diffusion-preprocessing}} which containerizes 
 several other software dependencies such as dipy \cite{Garyfallidis2014}, sMRIPrep\footnote{\url{https://github.com/nipreps/smriprep}}, FSL \cite{Smith2004}, 
 ANTs \cite{Avants2009}, FreeSurfer \cite{Dale1999} and AFNI \cite{Cox1996}.
 %
@@ -93,7 +91,7 @@ function \cite{greve2009accurate} with 12 degrees of freedom and boundary-based 
 %
 The anatomical T1w image was preprocessed using sMRIPrep \url{https://github.com/nipreps/smriprep}.
 
-\subsubsection{Microstructural Representation}
+\subsubsection{Spatial normalization}
 % Explain here the different forms of input representation.
 % The word "feature representation" is ambigiuous because neural network also extract features in a data-driven way. That's why I would rather use the term like "Microstructural Representation".
 % Explain why differences between white and gray matter. Give references here about why there are differences.
@@ -107,7 +105,7 @@ The anatomical T1w image was preprocessed using sMRIPrep \url{https://github.com
 % basser1994mr}. Consequently, we employ tailored extraction strategies for each tissue type using our 
 % automated preprocessing pipeline.
 
-\paragraph{Gray Matter Representation}
+\paragraph{Gray Matter}
 % \todo{Refs}
 Gray matter microstructure was represented on the subject-specific cortical surface reconstructed from 
 T1-weighted images using the Desikan–Killiany atlas (aparc). For each subject, cortical meshes 
@@ -125,7 +123,7 @@ the atlas labels across subjects.
     % \end{itemize}
     % Explain that voxel-wise features preserve spatial resolution but increase dimensionality and risk of overfitting.
 
-\paragraph{White Matter Representation}
+\paragraph{White Matter}
 White matter microstructure was represented within a standardized tract space using the Tract-Based 
 Spatial Statistics (TBSS) framework \cite{smith2006tract}. Diffusion-derived scalar maps were nonlinearly registered to 
 standard space, projected onto the group-wise white matter skeleton to minimize partial volume effects 
@@ -159,7 +157,7 @@ strategy rather than subject-specific tractography to enforce anatomical corresp
     % Justify tract-averaged representation: Noise reduction, improved stability, lower dimensional feature space, anatomically meaningful structure
 
 
-\subsubsection{Microstructural models and normalization}
+\subsubsection{Microstructural representation}
 To capture the biological properties of brain tissue, we compute a diverse set of 
 microstructural metrics using established diffusion models. These metrics were selected to represent 
 different facets of tissue architecture, ranging from basic diffusion magnitude to complex restricted 

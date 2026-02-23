@@ -328,6 +328,7 @@ RunID                          Score   PrimaryMetric  bk.epochs  bk.learning_rat
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 medicalnet_cgramda_acd79ba5 *  0.0512  md             50         1e-05             0.0001           1                0.5                acd79ba5                 fd1d1bbaf2a0e810659daed36b2...  medicalnet_cgramda_acd79ba5    
 medicalnet_cgrasha_e3ee15fe    0.6615  |sh|           50         1e-05             0.0001           1                0.5                |e3ee15fe|               |8c05f6e2112376b905de4a61fe...  |medicalnet_cgrasha_e3ee15fe|  
+medicalnet_cgrab0a_21c32d9b    0.7143  |b0|           |100|      |0.001|           |0.01|           |8|              |0.2|              |21c32d9b|               |05a82aa8ed7d9b3a3cdad63663...  |medicalnet_cgrab0a_21c32d9b|  
 medicalnet_cgrab0a_838cdb2e    0.7507  |b0|           |100|      |0.0001|          |0.01|           |8|              |0.2|              |838cdb2e|               |4b92a5d23819753fe248806e98...  |medicalnet_cgrab0a_838cdb2e|  
 medicalnet_cgramda_259f38de    0.8084  md             |100|      |0.001|           |0.01|           |8|              |0.2|              |259f38de|               |a41e93dac988444adbe4652945...  |medicalnet_cgramda_259f38de|  
 medicalnet_cgramda_7806c24f    0.8111  md             |100|      |0.0001|          |0.01|           |8|              |0.2|              |7806c24f|               |0825bbd7a3511afbc7d044a2ab...  |medicalnet_cgramda_7806c24f|  
@@ -336,7 +337,6 @@ medicalnet_cgrasha_fe356e22    0.8376  |sh|           |100|      |0.0001|       
 medicalnet_cgramka_e758d673    nan     |mk|           50         1e-05             0.0001           1                0.5                |e758d673|               |81fd992b254c1ab274f14a3a47...  |medicalnet_cgramka_e758d673|  
 medicalnet_cgraroa_da444af9    nan     |rtop|         50         1e-05             0.0001           1                0.5                |da444af9|               |bea0ea15a125219f7187a26d9a...  |medicalnet_cgraroa_da444af9|  
 medicalnet_cgrab0a_f2832b46    nan     |b0|           50         1e-05             0.0001           1                0.5                |f2832b46|               |4720d4640534649f5b7c1f8ff2...  |medicalnet_cgrab0a_f2832b46|  
-medicalnet_cgrab0a_21c32d9b    nan     |b0|           |100|      |0.001|           |0.01|           |8|              |0.2|              |21c32d9b|               |05a82aa8ed7d9b3a3cdad63663...  |medicalnet_cgrab0a_21c32d9b|  
 
 ========================================
 
@@ -362,21 +362,21 @@ medicalnet_cwhishg_38e2be46    nan     |sh|           100        |0.001|        
 
 GROUP: model_name=medicalnet, tissue_type=white, prediction_task=regression, target=['Age']
 --------------------------------------------------------------------------------------------------------------------------------------------
-  Best Run ID: medicalnet_cwhisha_e3c6933f (Metric: r2_test_mean, Score: 0.0009)
+  Best Run ID: medicalnet_cwhimda_1ed89e04 (Metric: r2_test_mean, Score: -1.2301)
   Highlighting: Parameters different from Best Run are enclosed in |...|
-RunID                          Score   PrimaryMetric  bk.epochs  bk.learning_rate  bk.weight_decay  data.batch_size  pred_head.dropout  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                 
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-medicalnet_cwhisha_e3c6933f *  0.0009  sh             50         1e-05             0.0001           1                0.5                e3c6933f                 95a51916df76d8e563553508c6f...  medicalnet_cwhisha_e3c6933f    
-medicalnet_cwhimda_c1b3fdff    0.0028  |md|           50         1e-05             0.0001           1                0.5                |c1b3fdff|               |12a5dc4325d0e9312deb0f3632...  |medicalnet_cwhimda_c1b3fdff|  
-medicalnet_cwhimka_cd496b9c    0.1389  |mk|           50         1e-05             0.0001           1                0.5                |cd496b9c|               |c85f23d6c7c504cb53ad66d317...  |medicalnet_cwhimka_cd496b9c|  
-medicalnet_cwhimda_f95bdaf3    0.6570  |md|           |100|      |0.0001|          |0.01|           |8|              |0.2|              |f95bdaf3|               |63094ca8a64827fc4c4f15ef1d...  |medicalnet_cwhimda_f95bdaf3|  
-medicalnet_cwhib0a_04cd30b4    0.7016  |b0|           |100|      |0.001|           |0.01|           |8|              |0.2|              |04cd30b4|               |64c613641f444f0084c89a911f...  |medicalnet_cwhib0a_04cd30b4|  
-medicalnet_cwhisha_5c407b1b    0.7216  sh             |100|      |0.0001|          |0.01|           |8|              |0.2|              |5c407b1b|               |bc8e9eaa122f85b00af33d49e2...  |medicalnet_cwhisha_5c407b1b|  
-medicalnet_cwhisha_e60da611    0.7747  sh             |100|      |0.001|           |0.01|           |8|              |0.2|              |e60da611|               |67ceadd5bffe6ac5c22b2cf2fa...  |medicalnet_cwhisha_e60da611|  
-medicalnet_cwhiroa_caa809d2    nan     |rtop|         50         1e-05             0.0001           1                0.5                |caa809d2|               |2109c3cd74e3dcc9658bdc7184...  |medicalnet_cwhiroa_caa809d2|  
-medicalnet_cwhib0a_d19d4b7d    nan     |b0|           50         1e-05             0.0001           1                0.5                |d19d4b7d|               |0c82ebf549996d8e0d9dbac2b3...  |medicalnet_cwhib0a_d19d4b7d|  
-medicalnet_cwhib0a_d64da52b    nan     |b0|           |100|      |0.0001|          |0.01|           |8|              |0.2|              |d64da52b|               |f677364c217d8d77e14676d522...  |medicalnet_cwhib0a_d64da52b|  
-medicalnet_cwhimda_1ed89e04    nan     |md|           |100|      |0.001|           |0.01|           |8|              |0.2|              |1ed89e04|               |a7acac4a699ce81800ad1c9cf7...  |medicalnet_cwhimda_1ed89e04|  
+RunID                          Score    PrimaryMetric  bk.epochs  bk.learning_rate  bk.weight_decay  data.batch_size  pred_head.dropout  runtime.experiment_hash  runtime.learning_curve_id       runtime.run_id                 
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+medicalnet_cwhimda_1ed89e04 *  -1.2301  md             100        0.001             0.01             8                0.2                1ed89e04                 a7acac4a699ce81800ad1c9cf7e...  medicalnet_cwhimda_1ed89e04    
+medicalnet_cwhisha_e3c6933f    0.0009   |sh|           |50|       |1e-05|           |0.0001|         |1|              |0.5|              |e3c6933f|               |95a51916df76d8e563553508c6...  |medicalnet_cwhisha_e3c6933f|  
+medicalnet_cwhimda_c1b3fdff    0.0028   md             |50|       |1e-05|           |0.0001|         |1|              |0.5|              |c1b3fdff|               |12a5dc4325d0e9312deb0f3632...  |medicalnet_cwhimda_c1b3fdff|  
+medicalnet_cwhimka_cd496b9c    0.1389   |mk|           |50|       |1e-05|           |0.0001|         |1|              |0.5|              |cd496b9c|               |c85f23d6c7c504cb53ad66d317...  |medicalnet_cwhimka_cd496b9c|  
+medicalnet_cwhimda_f95bdaf3    0.6570   md             100        |0.0001|          0.01             8                0.2                |f95bdaf3|               |63094ca8a64827fc4c4f15ef1d...  |medicalnet_cwhimda_f95bdaf3|  
+medicalnet_cwhib0a_d64da52b    0.6839   |b0|           100        |0.0001|          0.01             8                0.2                |d64da52b|               |f677364c217d8d77e14676d522...  |medicalnet_cwhib0a_d64da52b|  
+medicalnet_cwhib0a_04cd30b4    0.7016   |b0|           100        0.001             0.01             8                0.2                |04cd30b4|               |64c613641f444f0084c89a911f...  |medicalnet_cwhib0a_04cd30b4|  
+medicalnet_cwhisha_5c407b1b    0.7216   |sh|           100        |0.0001|          0.01             8                0.2                |5c407b1b|               |bc8e9eaa122f85b00af33d49e2...  |medicalnet_cwhisha_5c407b1b|  
+medicalnet_cwhisha_e60da611    0.7747   |sh|           100        0.001             0.01             8                0.2                |e60da611|               |67ceadd5bffe6ac5c22b2cf2fa...  |medicalnet_cwhisha_e60da611|  
+medicalnet_cwhiroa_caa809d2    nan      |rtop|         |50|       |1e-05|           |0.0001|         |1|              |0.5|              |caa809d2|               |2109c3cd74e3dcc9658bdc7184...  |medicalnet_cwhiroa_caa809d2|  
+medicalnet_cwhib0a_d19d4b7d    nan      |b0|           |50|       |1e-05|           |0.0001|         |1|              |0.5|              |d19d4b7d|               |0c82ebf549996d8e0d9dbac2b3...  |medicalnet_cwhib0a_d19d4b7d|  
 
 ========================================
 

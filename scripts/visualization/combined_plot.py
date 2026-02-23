@@ -117,7 +117,8 @@ def _normalise(df: pd.DataFrame) -> pd.DataFrame:
     score_df["dataset_task"] = score_df.apply(
         lambda r: make_dataset_task_label(r["dataset"], r["target_clean"]), axis=1
     )
-    return score_df[score_df["score_norm"].notna()].copy()
+    # return score_df[score_df["score_norm"].notna()].copy()
+    return score_df[score_df["score_norm"].notna() & (score_df["score_norm"] != 0)].copy()
 
 
 def _load_left_data(parquet_path: str) -> pd.DataFrame:

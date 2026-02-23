@@ -30,8 +30,12 @@ from utils import (
 
 PLOT_TITLES = {
     "full": "White vs Gray Matter: Normalized Score Difference (All Dataset/Target/Task/Feature)",
-    "dataset": "White vs Gray Matter: Dataset Tissue Effect (Feature Baseline Removed)",
-    "feature": "White vs Gray Matter: Feature Tissue Effect (Dataset-Task Baseline Removed)",
+    "dataset":            "White vs Gray Matter: Dataset Tissue Effect (Feature Baseline Removed)",
+    "dataset_raw":        "White vs Gray Matter: Dataset Tissue Effect (Raw)",
+    "feature":            "White vs Gray Matter: Feature Tissue Effect (Dataset-Task Baseline Removed)",
+    "feature_raw":        "White vs Gray Matter: Feature Tissue Effect (Raw)",
+    "task":               "White vs Gray Matter: Task Tissue Effect (Dataset-Feature Baseline Removed)",
+    "task_raw":           "White vs Gray Matter: Task Tissue Effect (Raw)",
     "pair": "White vs Gray Matter: Aggregated Tissue Effect Comparison",
 }
 X_AXIS_LABEL = "\u0394 Normalized score (white \u2212 gray)"
@@ -40,17 +44,51 @@ RIGHT_REGION_LABEL = "White matter wins"
 POINTS_COLOR = "#4C78A8"
 MEAN_STD_COLOR = "#B22222"
 BOX_COLOR = "#D6E3F3"
-AGG_PANEL_XLABELS = ("By Dataset (feature effect removed)", "By Feature (dataset effect removed)")
+AGG_PANEL_XLABELS = {
+    "feature": ("By Dataset (feature effect removed)", "By Feature (dataset effect removed)"),
+    "task":    ("By Dataset (task effect removed)",    "By Dataset × Target (microstructure effect removed)"),
+}
 TOP_REGION_COLOR = "#D6E4F1"
 BOTTOM_REGION_COLOR = "#FAEFDB"
 TOP_REGION_LABEL = "White matter wins"
 BOTTOM_REGION_LABEL = "Gray matter wins"
 
+# Restrict to these four dataset × target combinations only.
+# Each entry is (dataset, target, task).
+LOCAL_COMBOS = [
+    ("hcp",    "Gender",   "binary_classification"),
+    ("camcan", "Gender",   "binary_classification"),
+    ("camcan", "Age",      "regression"),
+    ("abide",  "DX_GROUP", "binary_classification"),
+]
+
+# Human-readable labels for the LOCAL_COMBOS, keyed by (dataset, target).
+COMBO_DISPLAY_LABELS: dict[tuple[str, str], str] = {
+    ("hcp",    "Gender"):   "HCP – Gender",
+    ("camcan", "Gender"):   "CamCAN – Gender",
+    ("camcan", "Age"):      "CamCAN – Age",
+    ("abide",  "DX_GROUP"): "ABIDE – DX Group",
+}
+
+# Fixed display order for the task / dataset×target panel:
+# Age first, then Gender (HCP then CamCAN), then DX_GROUP.
+TASK_PANEL_ORDER: list[str] = [
+    "CamCAN – Age",
+    "HCP – Gender",
+    "CamCAN – Gender",
+    "ABIDE – DX Group",
+]
+
+
+def _dataset_target_label(dataset: str, target: str) -> str:
+    """Return the human-readable label for a (dataset, target) pair."""
+    return COMBO_DISPLAY_LABELS.get((dataset, target), format_label(f"{dataset} {target}"))
+
 
 def _load_filtered_results(parquet_path: str) -> pd.DataFrame:
     df = pd.read_parquet(parquet_path)
     df["target_clean"] = df["target"].map(clean_target)
-    df = filter_combos(df, DEFAULT_COMBOS)
+    df = filter_combos(df, LOCAL_COMBOS)
     if df.empty:
         raise RuntimeError("No rows left after filtering combos")
     return df
@@ -223,6 +261,43 @@ def _center_feature_effects(diffs: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
+def _center_task_effects(diffs: pd.DataFrame) -> pd.DataFrame:
+    """Remove dataset-feature baseline offsets to isolate task-specific tissue effects.
+
+    Procedure:
+    1. Collapse fold-level diffs to one mean effect per (dataset, target, task, feature)
+       so that fold count imbalance does not distort the baseline estimate.
+    2. Compute the dataset-feature cluster baseline: mean of those per-combination means
+       across all tasks within each (dataset, target, feature) group.
+    3. Residualize each individual fold: normalized_diff -= cluster_baseline.
+
+    Fold-level rows are preserved so individual folds appear in the plot.
+    """
+    group_cols = ["dataset", "target", "task", "feature", "metric_label"]
+    # Step 1: per-combination means for baseline estimation
+    combo_means = (
+        diffs.groupby(group_cols, as_index=False)["normalized_diff"]
+        .mean()
+    )
+
+    # Step 2: dataset-feature baseline = mean of combo means across tasks in each cluster
+    cluster_cols = ["dataset", "target", "feature"]
+    cluster_means = (
+        combo_means.groupby(cluster_cols)["normalized_diff"]
+        .mean()
+        .rename("cluster_mean")
+        .reset_index()
+    )
+
+    # Step 3: apply residual to every fold-level row
+    result = diffs.merge(cluster_means, on=cluster_cols, how="left")
+    result = result.copy()
+    result["normalized_diff"] = result["normalized_diff"] - result["cluster_mean"]
+    result = result.drop(columns=["cluster_mean"])
+
+    return result
+
+
 def _build_labels(
     diffs: pd.DataFrame,
     view: str,
@@ -260,10 +335,27 @@ def _build_labels(
             )
         return plot_df
 
+    if view == "task":
+        plot_df["label"] = plot_df.apply(
+            lambda r: _dataset_target_label(r["dataset"], r["target"]),
+            axis=1,
+        )
+        return plot_df
+
     raise ValueError(f"Unknown view: {view}")
 
 
-def _get_plot_order(plot_df: pd.DataFrame) -> list[str]:
+def _get_plot_order(
+    plot_df: pd.DataFrame,
+    fixed_order: list[str] | None = None,
+) -> list[str]:
+    if fixed_order is not None:
+        # Keep only labels that are actually present in the data, in the given order,
+        # then append any remaining labels sorted by mean (fallback).
+        present = set(plot_df["label"].unique())
+        ordered = [lbl for lbl in fixed_order if lbl in present]
+        remaining = sorted(present - set(ordered))
+        return ordered + remaining
     return (
         plot_df.groupby("label")["normalized_diff"]
         .mean()
@@ -491,11 +583,12 @@ def _plot_box_with_points(
     plot_df: pd.DataFrame,
     title: str,
     output_file: Path,
+    fixed_order: list[str] | None = None,
 ) -> None:
     if plot_df.empty:
         raise RuntimeError("No white/gray differences available for plotting")
 
-    order = _get_plot_order(plot_df)
+    order = _get_plot_order(plot_df, fixed_order)
     fig, ax = _init_plot_canvas(len(order))
     _draw_box_with_points(ax, plot_df, order, vertical=False)
 
@@ -509,16 +602,16 @@ def _plot_aggregated_pair_comparison(
     dataset_df: pd.DataFrame,
     feature_df: pd.DataFrame,
     output_file: Path,
+    second_panel: str = "task",
+    second_fixed_order: list[str] | None = None,
 ) -> None:
     if dataset_df.empty or feature_df.empty:
         raise RuntimeError("No aggregated white/gray differences available for combined plotting")
 
     dataset_order = _get_plot_order(dataset_df)
-    feature_order = _get_plot_order(feature_df)
+    feature_order = _get_plot_order(feature_df, second_fixed_order)
 
     base_w, base_h = MICCAI_DOUBLE_COLUMN_FIGSIZE
-    # The combined plot needs more height than the base figsize to accommodate
-    # a suptitle, supylabel, two sets of rotated x-tick labels, and the plot area.
     fig_h = 3.0
 
     fig, axes = plt.subplots(
@@ -569,11 +662,10 @@ def _plot_aggregated_pair_comparison(
             color="#606060",
         )
 
-    axes[0].set_xlabel(AGG_PANEL_XLABELS[0])
-    axes[1].set_xlabel(AGG_PANEL_XLABELS[1])
+    xlabel_left, xlabel_right = AGG_PANEL_XLABELS[second_panel]
+    axes[0].set_xlabel(xlabel_left)
+    axes[1].set_xlabel(xlabel_right)
 
-    # Let constrained_layout position suptitle/supylabel automatically —
-    # no hardcoded x/y offsets needed.
     fig.suptitle(PLOT_TITLES["pair"])
     fig.supylabel(X_AXIS_LABEL)
     fig.savefig(output_file, dpi=300)
@@ -585,8 +677,28 @@ def generate_white_vs_gray_plots(
     out_dir: str = "exp_outputs/summary/plots/folds",
     aggregate_tasks_dataset: bool = True,
     aggregate_tasks_feature: bool = True,
+    second_panel: str = "feature",
+    center: bool = True,
 ) -> Path:
-    """Generate all white-vs-gray plot variants in a single run."""
+    """Generate all white-vs-gray plot variants in a single run.
+
+    Parameters
+    ----------
+    second_panel : {"feature", "task"}
+        Controls what the right panel of the combined plot shows:
+        - ``"feature"`` (default): tissue effect broken down by microstructural
+          feature (dataset-task baseline removed).
+        - ``"task"``: tissue effect broken down by prediction task
+          (dataset-feature baseline removed).
+    center : bool
+        If ``True`` (default), the panel-specific baseline is subtracted from
+        each panel's diffs before plotting (residualized / centered version).
+        If ``False``, raw normalized fold differences (white − gray) are plotted
+        directly with no baseline removal.
+    """
+    if second_panel not in {"feature", "task"}:
+        raise ValueError(f"second_panel must be 'feature' or 'task', got {second_panel!r}")
+
     apply_miccai_style()
 
     out_path = Path(out_dir)
@@ -597,6 +709,56 @@ def generate_white_vs_gray_plots(
     if diffs.empty:
         raise RuntimeError("No valid white/gray differences found")
 
+    n_combos   = diffs[["dataset", "target", "task"]].drop_duplicates().shape[0]
+    n_features = diffs["feature"].nunique()
+    n_folds    = diffs["fold"].nunique()
+    centering_label = "ON (baseline-residualized)" if center else "OFF (raw normalized diffs)"
+    print(
+        "\n── Score normalization summary ─────────────────────────────────────────────\n"
+        f"  Dataset × target combos : {n_combos}  |  Features : {n_features}  |  Folds : {n_folds}\n"
+        f"  Centering (--no-centering flag) : {centering_label}\n"
+        "\n"
+        "  Raw metric → [0, 1] per fold  (_normalize_fold_val)\n"
+        "    • Binary classification (balanced accuracy): (val − 0.5) / 0.5\n"
+        "      dummy = 0 │ perfect = 1\n"
+        "    • Regression (R²):  val  (already 0 = dummy, 1 = perfect)\n"
+        "\n"
+    )
+    if center:
+        print(
+            "  LEFT panel  — 'By Dataset'  [centered]\n"
+            "    Baseline removed: mean tissue effect averaged across ALL features,\n"
+            "    so that cross-feature differences do not inflate/deflate a dataset.\n"
+            "    Residual = fold diff − mean(fold diff | same feature, all dataset×target)\n"
+            "\n"
+        )
+        if second_panel == "feature":
+            print(
+                "  RIGHT panel — 'By Feature'  [centered]\n"
+                "    Baseline removed: mean tissue effect averaged across ALL dataset×target\n"
+                "    combos, so that dataset-level differences do not inflate a feature.\n"
+                "    Residual = fold diff − mean(fold diff | same dataset×target, all features)\n"
+                "────────────────────────────────────────────────────────────────────────────\n"
+            )
+        else:
+            print(
+                "  RIGHT panel — 'By Dataset × Target'  [centered, microstructure effect removed]\n"
+                "    Baseline removed: mean tissue effect averaged across ALL microstructural\n"
+                "    features within each dataset×target combo.\n"
+                "    Residual = fold diff − mean(fold diff | same dataset×target & feature, all tasks)\n"
+                "────────────────────────────────────────────────────────────────────────────\n"
+            )
+    else:
+        print(
+            "  Both panels — raw normalized diffs  [no centering]\n"
+            "    Values shown are: (white_score − gray_score) after [0,1] rescaling per fold.\n"
+            "    No baseline is subtracted; differences across datasets/features/tasks\n"
+            "    are confounded and should be interpreted with caution.\n"
+            "────────────────────────────────────────────────────────────────────────────\n"
+        )
+
+    center_suffix = "" if center else "_raw"
+
     full_df = _build_labels(diffs, view="full", aggregate_tasks=False)
     _plot_strip_with_mean_std(
         full_df,
@@ -604,36 +766,50 @@ def generate_white_vs_gray_plots(
         output_file=out_path / "white_vs_gray_tscore.png",
     )
 
-    centered_diffs_dataset = _center_dataset_effects(diffs)
+    dataset_diffs = _center_dataset_effects(diffs) if center else diffs
     dataset_df = _build_labels(
-        centered_diffs_dataset,
+        dataset_diffs,
         view="dataset",
         aggregate_tasks=aggregate_tasks_dataset,
     )
-    dataset_suffix = "dataset" if aggregate_tasks_dataset else "dataset_task_couples"
+    dataset_key = "dataset" if center else "dataset_raw"
+    dataset_suffix = ("dataset" if aggregate_tasks_dataset else "dataset_task_couples") + center_suffix
     _plot_box_with_points(
         dataset_df,
-        title=PLOT_TITLES["dataset"],
+        title=PLOT_TITLES[dataset_key],
         output_file=out_path / f"white_vs_gray_tscore_{dataset_suffix}.png",
     )
 
-    centered_diffs = _center_feature_effects(diffs)
-    feature_df = _build_labels(
-        centered_diffs,
-        view="feature",
-        aggregate_tasks=aggregate_tasks_feature,
-    )
-    feature_suffix = "feature" if aggregate_tasks_feature else "feature_task_couples"
+    if second_panel == "feature":
+        second_diffs = _center_feature_effects(diffs) if center else diffs
+        second_df = _build_labels(
+            second_diffs,
+            view="feature",
+            aggregate_tasks=aggregate_tasks_feature,
+        )
+        second_key = "feature" if center else "feature_raw"
+        second_suffix = ("feature" if aggregate_tasks_feature else "feature_task_couples") + center_suffix
+        second_fixed_order = None
+    else:  # "task"
+        second_diffs = _center_task_effects(diffs) if center else diffs
+        second_df = _build_labels(second_diffs, view="task", aggregate_tasks=False)
+        second_key = "task" if center else "task_raw"
+        second_suffix = "task" + center_suffix
+        second_fixed_order = TASK_PANEL_ORDER
+
     _plot_box_with_points(
-        feature_df,
-        title=PLOT_TITLES["feature"],
-        output_file=out_path / f"white_vs_gray_tscore_{feature_suffix}.png",
+        second_df,
+        title=PLOT_TITLES[second_key],
+        output_file=out_path / f"white_vs_gray_tscore_{second_suffix}.png",
+        fixed_order=second_fixed_order,
     )
 
     _plot_aggregated_pair_comparison(
         dataset_df,
-        feature_df,
-        output_file=out_path / f"white_vs_gray_tscore_{dataset_suffix}_{feature_suffix}_combined.png",
+        second_df,
+        output_file=out_path / f"white_vs_gray_tscore_{dataset_suffix}_{second_suffix}_combined.png",
+        second_panel=second_panel,
+        second_fixed_order=second_fixed_order,
     )
 
     return out_path
@@ -644,6 +820,8 @@ def plot_white_vs_gray_tscore(
     out_dir: str = "exp_outputs/summary/plots/folds",
     aggregate_tasks_dataset: bool = True,
     aggregate_tasks_feature: bool = True,
+    second_panel: str = "feature",
+    center: bool = True,
 ) -> Path:
     """Backward-compatible wrapper kept for existing callers."""
     return generate_white_vs_gray_plots(
@@ -651,6 +829,8 @@ def plot_white_vs_gray_tscore(
         out_dir=out_dir,
         aggregate_tasks_dataset=aggregate_tasks_dataset,
         aggregate_tasks_feature=aggregate_tasks_feature,
+        second_panel=second_panel,
+        center=center,
     )
 
 
@@ -681,6 +861,25 @@ def main() -> None:
         action="store_true",
         help="Show feature|task couples instead of aggregating tasks in feature view",
     )
+    parser.add_argument(
+        "--second-panel",
+        choices=["feature", "task"],
+        default="feature",
+        help=(
+            "What to show in the right panel of the combined plot: "
+            "'feature' (microstructural feature tissue effect, default) or "
+            "'task' (prediction-task tissue effect)."
+        ),
+    )
+    parser.add_argument(
+        "--no-centering",
+        action="store_true",
+        help=(
+            "Disable baseline removal (centering). By default, each panel removes "
+            "its confounding factor (feature or task effect) before plotting. "
+            "Use this flag to plot raw normalized white−gray differences instead."
+        ),
+    )
     args = parser.parse_args()
 
     out_path = generate_white_vs_gray_plots(
@@ -688,6 +887,8 @@ def main() -> None:
         out_dir=args.outdir,
         aggregate_tasks_dataset=not args.dataset_task_couples,
         aggregate_tasks_feature=not args.feature_task_couples,
+        second_panel=args.second_panel,
+        center=not args.no_centering,
     )
     print("Saved white vs gray plots to", out_path)
 
