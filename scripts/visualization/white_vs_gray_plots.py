@@ -763,7 +763,7 @@ def generate_white_vs_gray_plots(
     _plot_strip_with_mean_std(
         full_df,
         title=PLOT_TITLES["full"],
-        output_file=out_path / "white_vs_gray_tscore.png",
+        output_file=out_path / "white_vs_gray_tscore.pdf",
     )
 
     dataset_diffs = _center_dataset_effects(diffs) if center else diffs
@@ -777,7 +777,7 @@ def generate_white_vs_gray_plots(
     _plot_box_with_points(
         dataset_df,
         title=PLOT_TITLES[dataset_key],
-        output_file=out_path / f"white_vs_gray_tscore_{dataset_suffix}.png",
+        output_file=out_path / f"white_vs_gray_tscore_{dataset_suffix}.pdf",
     )
 
     if second_panel == "feature":
@@ -800,14 +800,14 @@ def generate_white_vs_gray_plots(
     _plot_box_with_points(
         second_df,
         title=PLOT_TITLES[second_key],
-        output_file=out_path / f"white_vs_gray_tscore_{second_suffix}.png",
+        output_file=out_path / f"white_vs_gray_tscore_{second_suffix}.pdf",
         fixed_order=second_fixed_order,
     )
 
     _plot_aggregated_pair_comparison(
         dataset_df,
         second_df,
-        output_file=out_path / f"white_vs_gray_tscore_{dataset_suffix}_{second_suffix}_combined.png",
+        output_file=out_path / f"white_vs_gray_tscore_{dataset_suffix}_{second_suffix}_combined.pdf",
         second_panel=second_panel,
         second_fixed_order=second_fixed_order,
     )

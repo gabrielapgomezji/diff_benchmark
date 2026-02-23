@@ -79,7 +79,7 @@ def generate_strip_plots(
         plt.grid(axis="y", linestyle="--", alpha=0.4)
         plt.tight_layout()
 
-        filename = f"strip_{dataset}_{target}_{task}.png"
+        filename = f"strip_{dataset}_{target}_{task}.pdf"
         plt.savefig(out_path / filename, dpi=300)
         plt.close()
 
@@ -101,7 +101,7 @@ def generate_strip_plots(
         plt.grid(axis="y", linestyle="--", alpha=0.4)
         plt.tight_layout()
 
-        filename_box = f"box_{dataset}_{target}_{task}.png"
+        filename_box = f"box_{dataset}_{target}_{task}.pdf"
         plt.savefig(out_path / filename_box, dpi=300)
         plt.close()
 

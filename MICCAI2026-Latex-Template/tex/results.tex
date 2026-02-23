@@ -12,17 +12,10 @@ beyond non-diffusion baselines.
 
 \begin{figure}
     \centering
-    \includegraphics[width=\textwidth]{../exp_outputs/summary/plots/folds/combined_model_vs_prep.png}
-    \caption{Combined analysis of model-family performance and preprocessing sensitivity across 
-    four tasks using a normalized score (dummy baseline = 0, perfect performance = 1), enabling 
-    comparison across heterogeneous evaluation metrics. Left: Cross-validation performance of 
-    individual runs grouped by model family. Points denote fold-averaged scores per model; violins 
-    illustrate the distribution within each family; diamonds indicate medians. Horizontal lines mark 
-    the median performance of the linear baseline for each dataset–task. Right: Sensitivity to 
-    preprocessing strategy, aggregating across models and grouping by feature × tissue configurations.
-     Each dot corresponds to a specific preprocessing strategy; vertical bars indicate the 
-     interquartile range (IQR) and overall spread across strategies. Variability induced by 
-     preprocessing is often comparable to, or larger than, differences between model families.}
+    \includegraphics[width=\textwidth]{../exp_outputs/summary/plots/folds/combined_model_vs_prep.pdf}
+    \caption{Combined analysis of model-family performance and preprocessing sensitivity across four tasks using a normalized score (0 = dummy, 1 = perfect) for cross-metric comparison.
+Left: Cross-validation results grouped by model family (points = models, violins = distributions, diamonds = medians; lines = linear baseline).
+Right: Sensitivity to preprocessing across feature × tissue configurations (dots = strategies; bars = IQR and range).}
     \label{fig:model_family}
 \end{figure}
 
@@ -56,14 +49,10 @@ analyses across preprocessing settings.
 \begin{figure}
     \centering
     \includegraphics[width=\textwidth]{../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.png}
-    \caption{Fold-level paired comparison of white versus gray matter performance using normalized 
-    scores (dummy baseline = 0, perfect performance = 1). Each point represents a matched 
-    fold-specific difference ($\Delta = \text{white} - \text{gray}$) under identical 
-    dataset–target–task–feature conditions. Left: dataset-level tissue effects after removing 
-    feature-specific baseline offsets. Right: feature-level tissue effects after removing 
-    dataset–task baseline offsets. Boxplots summarize the distribution of fold-level differences, 
-    and p-values are computed from configuration-level mean effects tested against zero. Positive 
-    values indicate white matter superiority; negative values indicate gray matter superiority.}
+    \caption{Fold-level paired comparison of white vs. gray matter using normalized scores (0 = dummy, 1 = perfect).
+Each point shows the matched fold difference ($\Delta$ = white $-$ gray) under identical settings.
+Left: dataset-level tissue effects; Right: feature-level effects, both adjusted for baseline offsets.
+Boxplots summarize fold differences; p-values test mean effects against zero (positive = white better).}
     \label{fig:white_vs_gray}
 \end{figure}
 
@@ -106,15 +95,11 @@ interaction between dataset characteristics and specific microstructural represe
 
 \begin{figure}
     \centering
-    \includegraphics[width=\textwidth]{../exp_outputs/summary/plots/features/feature_benefit_heatmap.png}
-    \caption{Proportion of models exhibiting consistent performance improvement over the 
-    non-diffusion baseline (b0), stratified by dataset–task and microstructural feature. 
-    Improvement is evaluated relative to fold-level normalized scores ($\Delta = \text{feature} - b0$).
-    Left: statistical criterion (one-sample t-test against zero on fold-level deltas; p < 0.05 and 
-    mean  $\Delta > 0$). Right: robustness criterion (median $\Delta \ge 0.03$ and ≥ 80\% of folds 
-    positive). Each cell reports the fraction of models satisfying the corresponding criterion 
-    (numerator/total models). Rows correspond to dataset–target combinations; columns correspond 
-    to diffusion-derived features.}
+    \includegraphics[width=\textwidth]{../exp_outputs/summary/plots/features/feature_benefit_heatmap.pdf}
+    \caption{Proportion of models improving over the non-diffusion baseline (b0), stratified by task and feature.
+Improvement is based on fold-level normalized differences ($\Delta$ = feature $-$ b0).
+Left: statistical criterion (t-test against zero, p < 0.05 and mean $\Delta$ > 0); Right: robustness criterion (median $\Delta \geq$ 0.03 and $\geq$80\% positive folds).
+Cells report the fraction of models meeting each criterion per target (rows) and feature (columns).}
     \label{fig:feature_impact}
 \end{figure}
 

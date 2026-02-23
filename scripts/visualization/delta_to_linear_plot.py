@@ -281,7 +281,7 @@ def plot_delta_to_linear(
     run_df = _compute_normalized_run_scores(df)
     run_df = _attach_linear_reference(run_df)
 
-    _plot_delta_to_linear(run_df, out_path / "deep_vs_linear_delta.png")
+    _plot_delta_to_linear(run_df, out_path / "deep_vs_linear_delta.pdf")
     return out_path
 
 

@@ -432,7 +432,7 @@ def _plot_heatmaps(agg: pd.DataFrame, out_file: Path, n_models_total: int) -> No
 def plot_feature_benefit_heatmap(
     parquet_path: str,
     out_dir: str = "exp_outputs/summary/plots/features",
-    merge_gender: bool = False,
+    merge_gender: bool = True,
 ) -> Path:
     """Full pipeline: load → deltas → benefit flags → aggregate → plot."""
     apply_miccai_style()
@@ -463,7 +463,7 @@ def plot_feature_benefit_heatmap(
             stacklevel=2,
         )
 
-    out_file = out_path / "feature_benefit_heatmap.png"
+    out_file = out_path / "feature_benefit_heatmap.pdf"
     _plot_heatmaps(agg, out_file, n_models_total)
     return out_path
 
@@ -502,11 +502,11 @@ def main() -> None:
         help=f"Minimum fraction of positive-delta folds (default {TAU})",
     )
     parser.add_argument(
-        "--merge-gender",
+        "--no-merge-gender",
         action="store_true",
         help=(
-            "Merge HCP–Gender and CamCAN–Gender into a single row "
-            "'Gender (HCP+CamCAN)' by pooling raw model counts."
+            "Keep HCP–Gender and CamCAN–Gender as separate rows "
+            "(by default they are merged into 'Gender (HCP+CamCAN)')."
         ),
     )
     args = parser.parse_args()
@@ -519,7 +519,7 @@ def main() -> None:
     out_path = plot_feature_benefit_heatmap(
         args.input,
         args.outdir,
-        merge_gender=args.merge_gender,
+        merge_gender=not args.no_merge_gender,
     )
     print("Saved feature benefit heatmap to", out_path)
 

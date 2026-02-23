@@ -201,7 +201,7 @@ def plot_model_family_spread(
     if run_df.empty:
         raise RuntimeError("No per-run scores available after run-level aggregation")
 
-    _plot_spread(run_df, out_path / "model_family_spread.png")
+    _plot_spread(run_df, out_path / "model_family_spread.pdf")
     return out_path
 
 

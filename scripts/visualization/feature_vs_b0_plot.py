@@ -484,7 +484,7 @@ def plot_feature_vs_b0(
     delta_df = _build_paired_delta_df(fold_df)
 
     suffix = "family" if group_by_family else "individual"
-    _plot_deltas(delta_df, out_path / f"feature_vs_b0_by_model_{suffix}_delta.png", group_by_family=group_by_family)
+    _plot_deltas(delta_df, out_path / f"feature_vs_b0_by_model_{suffix}_delta.pdf", group_by_family=group_by_family)
     return out_path
 
 

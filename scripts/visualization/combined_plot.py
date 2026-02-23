@@ -369,7 +369,7 @@ def plot_combined(
         ax.grid(axis="x", visible=False)
         sns.despine(ax=ax, top=True, right=True)
 
-    fig.savefig(out_path / "combined_model_vs_prep.png", dpi=300, bbox_inches="tight")
+    fig.savefig(out_path / "combined_model_vs_prep.pdf", dpi=300, bbox_inches="tight")
     plt.close(fig)
     return out_path
 

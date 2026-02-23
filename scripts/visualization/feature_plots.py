@@ -215,7 +215,7 @@ def plot_feature_heatmap(
     plt.yticks(rotation=0) 
     
     fig.tight_layout()
-    out_file = out_path / "feature_impact_heatmap.png"
+    out_file = out_path / "feature_impact_heatmap.pdf"
     fig.savefig(out_file, dpi=300)
     plt.close(fig)
 

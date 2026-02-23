@@ -292,7 +292,7 @@ def plot_prep_sensitivity(
     prep_df = _compute_prep_scores(df)
     stats_df = _dataset_task_stats(prep_df)
 
-    output_file = out_path / "prep_sensitivity.png"
+    output_file = out_path / "prep_sensitivity.pdf"
     _plot_prep_sensitivity(prep_df, stats_df, output_file)
     return out_path
 
