@@ -19,7 +19,7 @@ learning is therefore often viewed as a powerful framework for data-driven neuro
 %     \item Problems: High variability in reported performance across studies + Limited reproducibility 
 % \end{itemize}
 
-While many report promising predictive performance, reported performance varies widely across 
+While many report promising predictive \replace{performance}{power}, reported performance varies widely across 
 studies, tasks, and datasets. Direct comparison between studies is often hard to achieve. Improvements 
 are frequently attributed to model complexity or architectural innovation, yet it remains unclear to what 
 extent these gains arise from representational choices, preprocessing variability, or evaluation 
@@ -54,12 +54,12 @@ understand the limitations of current approaches.
 % \end{itemize}
 
 
-To address these limitations, we introduce an open-source diffusion MRI benchmark that 
+To address \replace{these limitations}{this problem}, we introduce an open-source diffusion MRI benchmark that 
 enables controlled comparison across datasets, tissue types, microstructural 
 representations, and model families. The benchmark 
 explicitly quantifies performance variability across folds and configurations, isolates 
-representation and tissue-specific effects, and evaluates the incremental value of diffusion-derived 
-features beyond non-diffusion baselines. It provides the 
+representation and tissue-specific effects, and evaluates the \replace{incremental}{} value of diffusion-derived 
+features beyond non-diffusion baselines. \replace{It provides the}{We believe this provides the} 
 foundation for isolating microstructural signal from configuration-driven variability and 
 for establishing comparable evaluation standards in diffusion MRI prediction.
 
