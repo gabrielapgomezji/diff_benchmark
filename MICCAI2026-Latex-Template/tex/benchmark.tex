@@ -75,7 +75,7 @@ This variability provides a realistic scenario for evaluating model robustness t
 Except for the HCP dataset, which has its own preprocessing pipeline,
 the DWI data were preprocessed using the diffusion-preprocessing package\footnote{\url{https://github.com/man-shu/diffusion-preprocessing}} which containerizes 
 several other software dependencies such as dipy \cite{Garyfallidis2014}, sMRIPrep\footnote{\url{https://github.com/nipreps/smriprep}}, FSL \cite{Smith2004}, 
-ANTs \cite{Avants2009}, FreeSurfer \cite{Dale1999} and AFNI \cite{Cox1996}.
+ANTs \cite{Avants2009}, FreeSurfer \cite{Dale1999a} and AFNI \cite{Cox1996}.
 %
 The images were first denoised using the \emph{Marchenko-Pastur} PCA method (MPPCA) \cite{Veraart2016a,Cordero-Grande2019} implemented with
 dipy's \emph{dipy\_denoise\_mppca} function.
@@ -89,7 +89,7 @@ Next, to correct the distortions due to inhomogeneities of the magnetic field, F
 Then this denoised and distortion-corrected DWI data were registered to the anatomical T1w image using FreeSurfer's \emph{bbregister} 
 function \cite{greve2009accurate} with 12 degrees of freedom and boundary-based registration cost function.
 %
-The anatomical T1w image was preprocessed using sMRIPrep \url{https://github.com/nipreps/smriprep}.
+The anatomical T1w image was preprocessed using sMRIPrep. % \url{https://github.com/nipreps/smriprep}.
 
 \subsubsection{Spatial normalization}
 % Explain here the different forms of input representation.

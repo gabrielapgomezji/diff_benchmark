@@ -45,8 +45,8 @@ POINTS_COLOR = "#4C78A8"
 MEAN_STD_COLOR = "#B22222"
 BOX_COLOR = "#D6E3F3"
 AGG_PANEL_XLABELS = {
-    "feature": ("By Dataset (feature effect removed)", "By Feature (dataset effect removed)"),
-    "task":    ("By Dataset (task effect removed)",    "By Dataset × Target (microstructure effect removed)"),
+    "feature": ("By Dataset (microstructure effect removed)", "By Microstructure Feature (dataset effect removed)"),
+    "task":    ("By Dataset × Target (microstructure effect removed)", "By Microstructure Feature (dataset-task baseline removed)"),
 }
 TOP_REGION_COLOR = "#D6E4F1"
 BOTTOM_REGION_COLOR = "#FAEFDB"
@@ -599,17 +599,25 @@ def _plot_box_with_points(
 
 
 def _plot_aggregated_pair_comparison(
-    dataset_df: pd.DataFrame,
-    feature_df: pd.DataFrame,
+    left_df: pd.DataFrame,
+    right_df: pd.DataFrame,
     output_file: Path,
     second_panel: str = "task",
     second_fixed_order: list[str] | None = None,
 ) -> None:
-    if dataset_df.empty or feature_df.empty:
+    """Combined two-panel figure.
+
+    Parameters
+    ----------
+    left_df  : data for the LEFT panel  (dataset × target / task view)
+    right_df : data for the RIGHT panel (microstructure feature view)
+    second_fixed_order : fixed x-tick order for the left (task) panel.
+    """
+    if left_df.empty or right_df.empty:
         raise RuntimeError("No aggregated white/gray differences available for combined plotting")
 
-    dataset_order = _get_plot_order(dataset_df)
-    feature_order = _get_plot_order(feature_df, second_fixed_order)
+    left_order  = _get_plot_order(left_df, second_fixed_order)
+    right_order = _get_plot_order(right_df)
 
     base_w, base_h = MICCAI_DOUBLE_COLUMN_FIGSIZE
     fig_h = 3.0
@@ -622,15 +630,15 @@ def _plot_aggregated_pair_comparison(
         constrained_layout=True,
     )
 
-    _draw_box_with_points(axes[0], dataset_df, dataset_order, vertical=True)
-    _draw_box_with_points(axes[1], feature_df, feature_order, vertical=True)
+    _draw_box_with_points(axes[0], left_df,  left_order,  vertical=True)
+    _draw_box_with_points(axes[1], right_df, right_order, vertical=True)
 
     y_lim = 0.8
     forced_ticks = [-0.8, -0.4, 0.0, 0.4, 0.8]
 
     panel_defs = (
-        (axes[0], dataset_df, dataset_order),
-        (axes[1], feature_df, feature_order),
+        (axes[0], left_df,  left_order),
+        (axes[1], right_df, right_order),
     )
     for ax, panel_df, panel_order in panel_defs:
         ax.axhspan(0.0, y_lim, color=TOP_REGION_COLOR, alpha=0.32, zorder=0)
@@ -662,9 +670,9 @@ def _plot_aggregated_pair_comparison(
             color="#606060",
         )
 
-    xlabel_left, xlabel_right = AGG_PANEL_XLABELS[second_panel]
-    axes[0].set_xlabel(xlabel_left)
-    axes[1].set_xlabel(xlabel_right)
+    # Left = task (dataset×target), Right = microstructure feature
+    axes[0].set_xlabel("By Dataset × Target\n(microstructure effect removed)")
+    axes[1].set_xlabel("By Microstructure Feature\n(dataset-task baseline removed)")
 
     fig.suptitle(PLOT_TITLES["pair"])
     fig.supylabel(X_AXIS_LABEL)
@@ -677,7 +685,7 @@ def generate_white_vs_gray_plots(
     out_dir: str = "exp_outputs/summary/plots/folds",
     aggregate_tasks_dataset: bool = True,
     aggregate_tasks_feature: bool = True,
-    second_panel: str = "feature",
+    second_panel: str = "task",
     center: bool = True,
 ) -> Path:
     """Generate all white-vs-gray plot variants in a single run.
@@ -766,12 +774,10 @@ def generate_white_vs_gray_plots(
         output_file=out_path / "white_vs_gray_tscore.pdf",
     )
 
+    # ── Individual stand-alone plots ──────────────────────────────────────────
+    # Dataset view (feature baseline removed)
     dataset_diffs = _center_dataset_effects(diffs) if center else diffs
-    dataset_df = _build_labels(
-        dataset_diffs,
-        view="dataset",
-        aggregate_tasks=aggregate_tasks_dataset,
-    )
+    dataset_df = _build_labels(dataset_diffs, view="dataset", aggregate_tasks=aggregate_tasks_dataset)
     dataset_key = "dataset" if center else "dataset_raw"
     dataset_suffix = ("dataset" if aggregate_tasks_dataset else "dataset_task_couples") + center_suffix
     _plot_box_with_points(
@@ -780,36 +786,36 @@ def generate_white_vs_gray_plots(
         output_file=out_path / f"white_vs_gray_tscore_{dataset_suffix}.pdf",
     )
 
-    if second_panel == "feature":
-        second_diffs = _center_feature_effects(diffs) if center else diffs
-        second_df = _build_labels(
-            second_diffs,
-            view="feature",
-            aggregate_tasks=aggregate_tasks_feature,
-        )
-        second_key = "feature" if center else "feature_raw"
-        second_suffix = ("feature" if aggregate_tasks_feature else "feature_task_couples") + center_suffix
-        second_fixed_order = None
-    else:  # "task"
-        second_diffs = _center_task_effects(diffs) if center else diffs
-        second_df = _build_labels(second_diffs, view="task", aggregate_tasks=False)
-        second_key = "task" if center else "task_raw"
-        second_suffix = "task" + center_suffix
-        second_fixed_order = TASK_PANEL_ORDER
-
+    # Task view (microstructure baseline removed) — always produced
+    task_diffs = _center_task_effects(diffs) if center else diffs
+    task_df = _build_labels(task_diffs, view="task", aggregate_tasks=False)
+    task_key = "task" if center else "task_raw"
+    task_suffix = "task" + center_suffix
     _plot_box_with_points(
-        second_df,
-        title=PLOT_TITLES[second_key],
-        output_file=out_path / f"white_vs_gray_tscore_{second_suffix}.pdf",
-        fixed_order=second_fixed_order,
+        task_df,
+        title=PLOT_TITLES[task_key],
+        output_file=out_path / f"white_vs_gray_tscore_{task_suffix}.pdf",
+        fixed_order=TASK_PANEL_ORDER,
     )
 
+    # Feature (microstructure) view (dataset-task baseline removed) — always produced
+    feature_diffs = _center_feature_effects(diffs) if center else diffs
+    feature_df = _build_labels(feature_diffs, view="feature", aggregate_tasks=aggregate_tasks_feature)
+    feature_key = "feature" if center else "feature_raw"
+    feature_suffix = ("feature" if aggregate_tasks_feature else "feature_task_couples") + center_suffix
+    _plot_box_with_points(
+        feature_df,
+        title=PLOT_TITLES[feature_key],
+        output_file=out_path / f"white_vs_gray_tscore_{feature_suffix}.pdf",
+    )
+
+    # ── Combined plot: LEFT = task (dataset×target), RIGHT = microstructure feature ──
     _plot_aggregated_pair_comparison(
-        dataset_df,
-        second_df,
-        output_file=out_path / f"white_vs_gray_tscore_{dataset_suffix}_{second_suffix}_combined.pdf",
-        second_panel=second_panel,
-        second_fixed_order=second_fixed_order,
+        task_df,
+        feature_df,
+        output_file=out_path / f"white_vs_gray_tscore_{task_suffix}_{feature_suffix}_combined.pdf",
+        second_panel="task",
+        second_fixed_order=TASK_PANEL_ORDER,
     )
 
     return out_path
@@ -820,7 +826,7 @@ def plot_white_vs_gray_tscore(
     out_dir: str = "exp_outputs/summary/plots/folds",
     aggregate_tasks_dataset: bool = True,
     aggregate_tasks_feature: bool = True,
-    second_panel: str = "feature",
+    second_panel: str = "task",
     center: bool = True,
 ) -> Path:
     """Backward-compatible wrapper kept for existing callers."""
@@ -864,11 +870,11 @@ def main() -> None:
     parser.add_argument(
         "--second-panel",
         choices=["feature", "task"],
-        default="feature",
+        default="task",
         help=(
             "What to show in the right panel of the combined plot: "
-            "'feature' (microstructural feature tissue effect, default) or "
-            "'task' (prediction-task tissue effect)."
+            "'task' (dataset×target tissue effect, default) or "
+            "'feature' (microstructure feature tissue effect)."
         ),
     )
     parser.add_argument(

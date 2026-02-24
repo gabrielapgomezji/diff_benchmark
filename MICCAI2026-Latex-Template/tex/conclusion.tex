@@ -1,21 +1,14 @@
-% \begin{itemize}
-%     \item Introduced standardized dMRI benchmark for age prediction in healthy individuals using three large datasets (HCP, CamCAN, ABIDE) 
-%     \item Compared feature representations (MD, SH, MK, RTOP) and models (dummy classifier, linear, pca\_linear, forest, pca\_forest, svm, pca\_svm)
-%     \item Provided reproducible end{-}to{-}end framework and enables fair model comparison. Reduces methodological heterogeneity
-%     \item A step toward methodological unification/code availability
-% \end{itemize}
-
 % \todo{Need to be less assertive and more precise in the conclusion, and also talk about future work.}
-\todo{Improve + Future work}
 
-We introduced a standardized diffusion MRI benchmark for demographics prediction in  
+We introduced a diffusion MRI benchmark for demographics prediction in  
 individuals across three datasets: Human Connectome Project, Cambridge Centre for 
 Ageing and Neuroscience, and Autism Brain Imaging Data Exchange. Within a unified experimental framework, 
 we systematically compared multiple microstructural representations (b0, MD, SH, MK) and model families 
 spanning from linear to deep learning 
 models. By controlling preprocessing, model selection, and evaluation procedures, the benchmark enables 
-fair comparison across configurations and substantially reduces methodological heterogeneity that 
-currently limits reproducibility in diffusion MRI prediction studies.
+comparison across configurations and reduces methodological heterogeneity simplifying more transparent 
+and reproducible comparisons in diffusion MRI prediction studies. 
+
 % Across datasets, we observe that 
 % representational and tissue-level choices can influence performance as strongly as model complexity, 
 % and that fold-level variability frequently rivals mean performance differences. These findings suggest 
@@ -24,73 +17,41 @@ currently limits reproducibility in diffusion MRI prediction studies.
 % framework, this work represents a step toward methodological unification and transparent benchmarking 
 % in microstructure-based prediction.
 
-Our results reveal that predictive performance in diffusion MRI is highly configuration-dependent. 
-Increased model complexity does not reliably translate into superior performance: well-regularized 
-linear models frequently match or outperform more sophisticated alternatives. More importantly, 
-variability across folds, tissue compartments, and feature representations often rivals mean 
-performance differences. Tissue preference is dataset-specific (e.g., white matter predominance in HCP, 
-gray matter predominance in CamCAN, no clear advantage in ABIDE), and most microstructural features 
+Our results suggest that predictive performance in diffusion MRI is highly configuration-dependent. 
+In several settings, regularized linear models performed similarly to more complex approaches. More importantly, 
+variability across folds, tissue types, and microstructural representations was often comparable to, or larger than, mean 
+performance differences. Tissue type preferences were task-specific %(e.g., gray matter predominance in autism classification, 
+%white matter predominance in age prediction, no clear advantage in gender prediction)
+, and most microstructural features 
 do not exhibit universal superiority. Diffusion-derived metrics provide measurable gains only in tasks 
 closely aligned with microstructural variation, whereas for proxy tasks, non-diffusion signal can be 
 equally informative.
+% These observations align with previous work showing that reported improvements can depend heavily on experimental choices and cohort characteristics.
 
-Collectively, these findings challenge the assumption that diffusion features or complex models 
-inherently yield robust improvements. Instead, they indicate that many reported gains may reflect 
-sensitivity to specific configurations rather than stable, generalizable signal extraction. By 
-explicitly decomposing performance into configuration-specific effects and variability components, 
-this benchmark reframes diffusion MRI prediction as a problem of stability, representational validity, 
-and controlled comparison.
+This benchmark should not be interpreted as a definitive comparison of models or features, but rather as a controlled reference point. 
+The included datasets, although widely used, remain moderate in size for modern machine learning, especially for deep learning 
+approaches that typically require larger cohorts or fine-tuning. In addition, the current analysis focuses on within-dataset 
+evaluation. The ability of models and representations to generalize across cohorts, scanners, and acquisition protocols remains an open question.
+This aspect was intentionally left outside the scope of the present work in order to maintain a clear focus on controlled within-dataset evaluation.
 
-% Our findings challenge several implicit assumptions in the field. First, model complexity alone does not 
-% guarantee superior performance: well-regularized linear models remain competitive with more sophisticated 
-% approaches. Second, and more critically, variability across folds, feature representations, and tissue 
-% compartments often rivals or exceeds average performance differences. This suggests that many reported 
-% improvements in diffusion MRI prediction may reflect configuration sensitivity rather than robust signal 
-% extraction. By explicitly quantifying variance and standardizing evaluation, this benchmark reframes 
-% diffusion MRI prediction not as a competition of models, but as a problem of methodological stability and 
-% representational validity. We view this work as a step toward community-wide benchmarking practices and 
-% transparent, comparable reporting standards.
+% This work deliberately prioritizes controlled within-dataset evaluation to establish internal 
+% robustness under standardized conditions. Future extensions should assess cross-cohort transferability, 
+% broader prediction targets, and alternative preprocessing strategies to determine whether observed 
+% variability is amplified or mitigated under distributional shift.
 
-% \subsection{Limitations/Further steps}
-% \begin{itemize}
-%     \item No multi-site harmonization (explicitly as scope limitation). Would training in one dataset and predicting in another dataset have the same effect as predicting in different folds of the same dataset? Are the predictions very far?
-%     \item Limited tasks / ranges in prediction (e.g. HCP age prediction)
-%     \item Limited preprocessing / including other preprocessing parameters or corrections
-% \end{itemize}
+% Ultimately, we hope this framework encourages a shift from isolated, configuration-specific reporting 
+% toward reproducible, variance-aware analysis, and transparent methodological reporting in diffusion MRI. 
+% Establishing shared benchmarks and 
+% open implementations is a necessary step toward methodological unification and more reliable 
+% neuroimaging-based prediction.
 
-% This benchmark deliberately prioritizes controlled within-dataset evaluation. We did not incorporate 
-% multi-site harmonization or cross-dataset training, as our goal was to first establish internal 
-% robustness under standardized conditions. An important next step is to determine whether variability 
-% observed across folds within a dataset is smaller than—or comparable to—the shift observed when training 
-% on one cohort and evaluating on another. Such analyses will be essential for assessing true 
-% generalizability.
+Several directions for future work follow naturally from these limitations. First, expanding the benchmark to include additional 
+and larger datasets would improve statistical power and allow stronger conclusions, particularly for deep learning methods. Second, 
+incorporating more clinically focused datasets with well-defined diagnostic outcomes could help clarify the clinical relevance of 
+diffusion-derived features. Third, harmonization strategies across scanners and sites should be systematically evaluated, as variability 
+in acquisition and preprocessing may substantially influence predictive performance. Finally, cross-cohort validation and domain adaptation 
+experiments would help determine whether observed effects are stable under distributional shift.
 
-% In addition, we focused primarily on gender prediction within limited demographic ranges and fixed 
-% preprocessing pipelines to reduce confounding variability. Broader prediction targets, alternative 
-% preprocessing strategies, and systematic harmonization analyses may reveal additional sensitivities. 
-% Extending the benchmark along these axes will further clarify which methodological choices meaningfully 
-% affect downstream inference.
-This work deliberately prioritizes controlled within-dataset evaluation to establish internal 
-robustness under standardized conditions. Future extensions should assess cross-cohort transferability, 
-broader prediction targets, and alternative preprocessing strategies to determine whether observed 
-variability is amplified or mitigated under distributional shift.
-
-Ultimately, we hope this framework encourages a shift from isolated, configuration-specific reporting 
-toward reproducible, variance-aware analysis, and transparent methodological reporting in diffusion MRI. 
-Establishing shared benchmarks and 
-open implementations is a necessary step toward methodological unification and more reliable 
-neuroimaging-based prediction.
-
-
-% This study has several limitations. First, we deliberately did not include multi-site harmonization or 
-% cross-dataset training in order to isolate within-dataset robustness and not draw attention of the main 
-% message. Whether models trained on one dataset generalize to another—and how this compares to variability 
-% across folds within a single dataset—remains an important open question. Second, the benchmark focuses 
-% primarily on classification predictions and a limited range of tasks and demographic distributions; 
-% broader predictive targets may reveal different representational sensitivities. Third, we fixed 
-% preprocessing choices to ensure comparability, but alternative preprocessing strategies, correction 
-% schemes, or advanced harmonization techniques could further influence predictive performance.
-
-% Future extensions of this benchmark will expand task diversity, explore cross-dataset generalization, 
-% and systematically evaluate preprocessing variability. We hope this framework provides a foundation for 
-% more stable, comparable, and transparent methodological development in diffusion MRI–based prediction.
+Overall, we hope this benchmark contributes to ongoing efforts in the field toward more structured, reproducible, and variance-aware 
+evaluation of diffusion MRI prediction models. By providing an open and controlled framework, this work aims to complement prior studies 
+and support future investigations that build on shared standards.

@@ -3,6 +3,16 @@
 \providecommand{\urlprefix}{URL }
 \providecommand{\doi}[1]{https://doi.org/#1}
 
+\bibitem{Andersson2016}
+Andersson, J.L.R., Sotiropoulos, S.N.: An integrated approach to correction for
+  off-resonance effects and subject movement in diffusion {{MR}} imaging.
+  NeuroImage  \textbf{125},  1063--1078 (Jan 2016).
+  \doi{10.1016/j.neuroimage.2015.10.019}
+
+\bibitem{Avants2009}
+Avants, B.B., Tustison, N., Johnson, H.: Advanced {{Normalization Tools}}
+  ({{ANTS}})  \textbf{2}(365),  1--35 (2009)
+
 \bibitem{basser1994mr}
 Basser, P.J., Mattiello, J., LeBihan, D.: Mr diffusion tensor spectroscopy and
   imaging. Biophysical journal  \textbf{66}(1),  259--267 (1994)
@@ -15,6 +25,22 @@ Chen, J., Bayanagari, V.L., Chung, S., Wang, Y., Lui, Y.W.: Deep learning with
 \bibitem{chen2019med3d}
 Chen, S., Ma, K., Zheng, Y.: Med3d: Transfer learning for 3d medical image
   analysis. arXiv preprint arXiv:1904.00625  (2019)
+
+\bibitem{Cordero-Grande2019}
+{Cordero-Grande}, L., Christiaens, D., Hutter, J., Price, A.N., Hajnal, J.V.:
+  Complex diffusion-weighted image estimation via matrix recovery under general
+  noise models. NeuroImage  \textbf{200},  391--404 (Oct 2019).
+  \doi{10.1016/j.neuroimage.2019.06.039}
+
+\bibitem{Cox1996}
+Cox, R.W.: {{AFNI}}: {{Software}} for {{Analysis}} and {{Visualization}} of
+  {{Functional Magnetic Resonance Neuroimages}}. Computers and Biomedical
+  Research  \textbf{29}(3),  162--173 (Jun 1996). \doi{10.1006/cbmr.1996.0014}
+
+\bibitem{Dale1999a}
+Dale, A.M., Fischl, B., Sereno, M.I.: Cortical {{Surface-Based Analysis}}:
+  {{I}}. {{Segmentation}} and {{Surface Reconstruction}}. NeuroImage
+  \textbf{9}(2),  179--194 (Feb 1999). \doi{10.1006/nimg.1998.0395}
 
 \bibitem{dancette2025curia}
 Dancette, C., Khlaut, J., Saporta, A., Philippe, H., Ferreres, E., Callard, B.,
@@ -35,6 +61,21 @@ Egle, M., Hilal, S., Tuladhar, A.M., Pirpamer, L., Hofer, E., Duering, M.,
   Journal of Neurology, Neurosurgery \& Psychiatry  \textbf{93}(1),  14--23
   (2022)
 
+\bibitem{Garyfallidis2014}
+Garyfallidis, E., Brett, M., Amirbekian, B., Rokem, A., Van Der~Walt, S.,
+  Descoteaux, M., Nimmo-Smith, I.: Dipy, a library for the analysis of
+  diffusion {MRI} data. Frontiers in Neuroinformatics  \textbf{8} (Feb 2014).
+  \doi{10.3389/fninf.2014.00008},
+  \url{https://www.frontiersin.org/journals/neuroinformatics/articles/10.3389/fninf.2014.00008/full}
+
+\bibitem{greve2009accurate}
+Greve, D.N., Fischl, B.: Accurate and robust brain image alignment using
+  boundary-based registration. Neuroimage  \textbf{48}(1),  63--72 (2009)
+
+\bibitem{hastie2009elements}
+Hastie, T., Tibshirani, R., Friedman, J., et~al.: The elements of statistical
+  learning (2009)
+
 \bibitem{he2022model}
 He, H., Zhang, F., Pieper, S., Makris, N., Rathi, Y., Wells, W., O’Donnell,
   L.J.: Model and predict age and sex in healthy subjects using brain white
@@ -54,6 +95,12 @@ Kotikalapudi, R., Kincses, B., Gallitto, G., Englert, R., Hofffschlag, K., Li,
   weighted mri-based brain-behavior models. Communications Biology
   \textbf{8}(1), ~1512 (2025)
 
+\bibitem{mori2008stereotaxic}
+Mori, S., Oishi, K., Jiang, H., Jiang, L., Li, X., Akhter, K., Hua, K., Faria,
+  A.V., Mahmood, A., Woods, R., et~al.: Stereotaxic white matter atlas based on
+  diffusion tensor imaging in an icbm template. Neuroimage  \textbf{40}(2),
+  570--582 (2008)
+
 \bibitem{novikov2019quantifying}
 Novikov, D.S., Fieremans, E., Jespersen, S.N., Kiselev, V.G.: Quantifying brain
   microstructure with diffusion mri: Theory and parameter estimation. NMR in
@@ -64,6 +111,12 @@ Oquab, M., Darcet, T., Moutakanni, T., Vo, H., Szafraniec, M., Khalidov, V.,
   Fernandez, P., Haziza, D., Massa, F., El-Nouby, A., et~al.: Dinov2: Learning
   robust visual features without supervision. arXiv preprint arXiv:2304.07193
   (2023)
+
+\bibitem{pasternak2009free}
+Pasternak, O., Sochen, N., Gur, Y., Intrator, N., Assaf, Y.: Free water
+  elimination and mapping from diffusion mri. Magnetic Resonance in Medicine:
+  An Official Journal of the International Society for Magnetic Resonance in
+  Medicine  \textbf{62}(3),  717--730 (2009)
 
 \bibitem{shafto2014cambridge}
 Shafto, M.A., Tyler, L.K., Dixon, M., Taylor, J.R., Rowe, J.B., Cusack, R.,
@@ -78,10 +131,34 @@ Smith, S.M., Jenkinson, M., Johansen-Berg, H., Rueckert, D., Nichols, T.E.,
   et~al.: Tract-based spatial statistics: voxelwise analysis of multi-subject
   diffusion data. Neuroimage  \textbf{31}(4),  1487--1505 (2006)
 
+\bibitem{Smith2004}
+Smith, S.M., Jenkinson, M., Woolrich, M.W., Beckmann, C.F., Behrens, T.E.J.,
+  {Johansen-Berg}, H., Bannister, P.R., De~Luca, M., Drobnjak, I., Flitney,
+  D.E., Niazy, R.K., Saunders, J., Vickers, J., Zhang, Y., De~Stefano, N.,
+  Brady, J.M., Matthews, P.M.: Advances in functional and structural {{MR}}
+  image analysis and implementation as {{FSL}}. NeuroImage  \textbf{23},
+  S208--S219 (Jan 2004). \doi{10.1016/j.neuroimage.2004.07.051}
+
+\bibitem{tournier2004direct}
+Tournier, J.D., Calamante, F., Gadian, D.G., Connelly, A.: Direct estimation of
+  the fiber orientation density function from diffusion-weighted mri data using
+  spherical deconvolution. Neuroimage  \textbf{23}(3),  1176--1185 (2004)
+
 \bibitem{van2013wu}
 Van~Essen, D.C., Smith, S.M., Barch, D.M., Behrens, T.E., Yacoub, E., Ugurbil,
   K., Consortium, W.M.H., et~al.: The wu-minn human connectome project: an
   overview. Neuroimage  \textbf{80},  62--79 (2013)
+
+\bibitem{Veraart2016b}
+Veraart, J., Fieremans, E., Jelescu, I.O., Knoll, F., Novikov, D.S.: Gibbs
+  ringing in diffusion {{MRI}}. Magnetic Resonance in Medicine  \textbf{76}(1),
+   301--314 (2016). \doi{10.1002/mrm.25866}
+
+\bibitem{Veraart2016a}
+Veraart, J., Novikov, D.S., Christiaens, D., {Ades-aron}, B., Sijbers, J.,
+  Fieremans, E.: Denoising of diffusion {{MRI}} using random matrix theory.
+  NeuroImage  \textbf{142},  394--406 (Nov 2016).
+  \doi{10.1016/j.neuroimage.2016.08.016}
 
 \bibitem{wen2021reproducible}
 Wen, J., Samper-Gonz{\'a}lez, J., Bottani, S., Routier, A., Burgos, N.,
