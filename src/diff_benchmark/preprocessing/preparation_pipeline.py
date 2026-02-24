@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Iterable
 
 import bids
 import nibabel as nib
@@ -21,9 +21,8 @@ from diff_benchmark.preprocessing.utils_brain_feature_extraction import (
 from diff_benchmark.utils.job_manager import run_jobs
 from diff_benchmark.utils.logger import setup_logger
 
-from typing import Iterable
-
 logger = setup_logger(__name__)
+
 
 @dataclass(frozen=True)
 class DiffusionInputs:
@@ -147,7 +146,9 @@ class BrainDataPreparationPipeline(ABC):
         self.metric = dataset_config.metric_to_compute
         self.scale = dataset_config.scale
         self.surface_space = dataset_config.surface_space
-        self.schaefer_resampled = resample_schaefer_onto_fs_lr(self.scale, target_space=self.surface_space)
+        self.schaefer_resampled = resample_schaefer_onto_fs_lr(
+            self.scale, target_space=self.surface_space
+        )
         self.big_delta = dataset_config.big_delta
         self.small_delta = dataset_config.small_delta
         self.big_delta_per_bvalue = dataset_config.big_delta_per_bvalue
@@ -162,8 +163,8 @@ class BrainDataPreparationPipeline(ABC):
         if "bids" in self.data_reading:
             # Check for generic cache file in the results directory
             if not self.results_dir.exists():
-                 self.results_dir.mkdir(parents=True, exist_ok=True)
-            
+                self.results_dir.mkdir(parents=True, exist_ok=True)
+
             # --- Detect uni vs multicenter automatically ---
             if (self.base_dir / "sub-").exists() or any(
                 p.name.startswith("sub-") for p in self.base_dir.iterdir()
@@ -174,26 +175,26 @@ class BrainDataPreparationPipeline(ABC):
 
             self.layouts = []
             for i, center in enumerate(center_dirs):
-                # If multiple centers, append index to db name to avoid conflicts if needed, 
-                # or use center name. Here assuming dataset_config.name is unique enough 
+                # If multiple centers, append index to db name to avoid conflicts if needed,
+                # or use center name. Here assuming dataset_config.name is unique enough
                 # or we just use one db if it handles multiple roots (BIDSLayout usually takes one root).
                 # But here we are creating multiple BIDSLayouts.
-                
+
                 if len(center_dirs) > 1:
                     db_name = f"bids_layout_{self.dataset_config.name}_{center.name}.db"
                 else:
                     db_name = f"bids_layout_{self.dataset_config.name}.db"
-                
+
                 database_path = self.results_dir / db_name
-                
+
                 logger.info(f"Using BIDS layout database: {database_path}")
-                
+
                 self.layouts.append(
                     bids.BIDSLayout(
                         str(center),
                         derivatives=center / "derivatives",
                         validate=False,
-                        database_path=database_path
+                        database_path=database_path,
                     )
                 )
 
@@ -334,13 +335,18 @@ class BrainDataPreparationPipeline(ABC):
                 missing_or_empty.append(f"{name} (empty)")
 
         if missing_or_empty:
-            logger.warning(f"[WARNING] Missing or empty files for subject {subject_id}: " + ", ".join(missing_or_empty))
+            logger.warning(
+                f"[WARNING] Missing or empty files for subject {subject_id}: "
+                + ", ".join(missing_or_empty)
+            )
             return False
 
         return True
 
     @abstractmethod
-    def verify_subject_files(self, subject_id: str, metric: str, tissue_type: str) -> bool:
+    def verify_subject_files(
+        self, subject_id: str, metric: str, tissue_type: str
+    ) -> bool:
         """
         Verifies the existence and validity of subject files for a given subject ID and metric.
         Args:
@@ -411,7 +417,9 @@ class BrainDataPreparationPipeline(ABC):
                 elif self.tissue_type == "white":
                     selected_labels = None
 
-            ctx_mask, vent_mask = create_masks(aparc_resampled, labels, selected_labels, tissue_type=self.tissue_type)
+            ctx_mask, vent_mask = create_masks(
+                aparc_resampled, labels, selected_labels, tissue_type=self.tissue_type
+            )
 
             compute_save_and_project_metric(
                 metric=self.metric,
@@ -426,8 +434,8 @@ class BrainDataPreparationPipeline(ABC):
                 surfaces=surfaces,
                 derivatives_dir=derivatives_dir,
                 subject_id=subject_id,
-                layouts=getattr(self, 'layouts', None),
-                target_space=getattr(self, 'surface_space', 'fslr_32k'),
+                layouts=getattr(self, "layouts", None),
+                target_space=getattr(self, "surface_space", "fslr_32k"),
                 data_reading=self.data_reading,
                 tissue_type=self.tissue_type,
             )
@@ -450,29 +458,29 @@ class BrainDataPreparationPipeline(ABC):
         specific analysis logic. Currently, it is a placeholder and does not
         perform any operations.
         """
-    
+
     def verify_resampling(self, subject_id: str) -> bool:
         """
         Check if data has been properly resampled to template space.
-        
+
         Default implementation returns True (no resampling needed).
         Override in subclasses that need resampling (e.g., DefaultPipeline for BIDS data).
-        
+
         Args:
             subject_id (str): The unique identifier for the subject.
-        
+
         Returns:
             bool: True if data is properly resampled or doesn't need resampling, False otherwise.
         """
         return True
-    
+
     def resample_data(self, subject_id: str):
         """
         Resample data from native space to template space if needed.
-        
+
         Default implementation does nothing (no resampling needed).
         Override in subclasses that need resampling (e.g., DefaultPipeline for BIDS data).
-        
+
         Args:
             subject_id (str): The unique identifier for the subject.
         """
@@ -497,7 +505,7 @@ class BrainDataPreparationPipeline(ABC):
         """
         Processes a single subject by checking for required files,
         computing microstructure if necessary, and ensuring data is properly resampled.
-        
+
         Args:
             subject_id (str): The unique identifier for the subject to be processed.
             recompute (bool): Whether to recompute microstructure even if files exist.
@@ -508,42 +516,67 @@ class BrainDataPreparationPipeline(ABC):
 
         # Track if we computed/recomputed microstructure
         computed_microstructure = False
-        if self.verify_subject_files(subject_id, self.metric, self.tissue_type) and recompute:
-            logger.info(f"[{subject_id}] Recomputing microstructure for {self.tissue_type} matter.")
-            print(f"[{subject_id}] Recomputing microstructure for {self.tissue_type} matter.")
+        if (
+            self.verify_subject_files(subject_id, self.metric, self.tissue_type)
+            and recompute
+        ):
+            logger.info(
+                f"[{subject_id}] Recomputing microstructure for {self.tissue_type} matter."
+            )
+            print(
+                f"[{subject_id}] Recomputing microstructure for {self.tissue_type} matter."
+            )
             self.compute_microstructure(subject_id)
             computed_microstructure = True
         elif not self.verify_subject_files(subject_id, self.metric, self.tissue_type):
-            logger.info(f"[{subject_id}] Computing microstructure for {self.tissue_type} matter.")
-            print(f"[{subject_id}] Computing microstructure for {self.tissue_type} matter.")
+            logger.info(
+                f"[{subject_id}] Computing microstructure for {self.tissue_type} matter."
+            )
+            print(
+                f"[{subject_id}] Computing microstructure for {self.tissue_type} matter."
+            )
             self.compute_microstructure(subject_id)
             computed_microstructure = True
         else:
-            logger.info(f"[{subject_id}] Microstructure files for {self.tissue_type} matter already present.")
-            print(f"[{subject_id}] Microstructure files for {self.tissue_type} matter already present.")
-        
+            logger.info(
+                f"[{subject_id}] Microstructure files for {self.tissue_type} matter already present."
+            )
+            print(
+                f"[{subject_id}] Microstructure files for {self.tissue_type} matter already present."
+            )
+
         # Handle resampling - works for all pipelines (polymorphic behavior)
         if computed_microstructure:
             # Just computed/recomputed - data should already be resampled by project_to_surface
             # But verify it worked correctly
             if not self.verify_resampling(subject_id):
-                logger.warning(f"[{subject_id}] Data was just computed but resampling check failed, attempting resampling")
-                print(f"[{subject_id}] Data was just computed but resampling check failed, attempting resampling")
+                logger.warning(
+                    f"[{subject_id}] Data was just computed but resampling check failed, attempting resampling"
+                )
+                print(
+                    f"[{subject_id}] Data was just computed but resampling check failed, attempting resampling"
+                )
                 self.resample_data(subject_id)
             else:
-                logger.debug(f"[{subject_id}] Data properly resampled during computation")
+                logger.debug(
+                    f"[{subject_id}] Data properly resampled during computation"
+                )
                 print(f"[{subject_id}] Data properly resampled during computation")
         else:
             # Files exist but weren't just computed - check if resampling was done
             if not self.verify_resampling(subject_id):
-                logger.info(f"[{subject_id}] Existing data needs resampling, resampling now")
+                logger.info(
+                    f"[{subject_id}] Existing data needs resampling, resampling now"
+                )
                 print(f"[{subject_id}] Existing data needs resampling, resampling now")
                 self.resample_data(subject_id)
             else:
                 logger.debug(f"[{subject_id}] Existing data already properly resampled")
                 print(f"[{subject_id}] Existing data already properly resampled")
 
-    def run_pipeline(self, cluster_conf: Dict, slurm_cfg: Dict, recompute: bool = False) -> pd.DataFrame:
+    def run_pipeline(
+        self, cluster_conf: Dict, slurm_cfg: Dict, recompute: bool = False
+    ) -> pd.DataFrame:
         """
         Main orchestration: ensures all required files exist before running analysis.
         Args:
@@ -618,7 +651,9 @@ class BrainDataPreparationPipeline(ABC):
         Returns:
             pd.DataFrame: DataFrame containing the results after running the analysis.
         """
-        logger.info("All data should be preprocessed already. Getting microstructure files...")
+        logger.info(
+            "All data should be preprocessed already. Getting microstructure files..."
+        )
         self.run_analysis()
         print("Computing df...")
         df = self.export_to_csv()
@@ -633,20 +668,14 @@ COLUMN_ALIASES = {
         "sub_id",
         "sub",
     },
-    "Age": {
-        "age",
-        "age_in_yrs",
-        "age_in_years",
-        "age_years",
-        "ageyrs",
-        "age_at_scan "
-    },
+    "Age": {"age", "age_in_yrs", "age_in_years", "age_years", "ageyrs", "age_at_scan "},
     "Gender": {
         "gender",
         "sex",
         "gender_text",
     },
 }
+
 
 class DemographicsPreparationPipeline:
     """
@@ -674,7 +703,9 @@ class DemographicsPreparationPipeline:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-    def preprocess(self, target_columns: list[str], binarize: bool = True) -> pd.DataFrame:
+    def preprocess(
+        self, target_columns: list[str], binarize: bool = True
+    ) -> pd.DataFrame:
         """
         Entry point used by the benchmark.
         Args:
@@ -687,7 +718,9 @@ class DemographicsPreparationPipeline:
         if any("hcp" in str(p).lower() for p in self.paths):
             age_cols = [c for c in df.columns if c.lower() == "age"]
             if age_cols:
-                logger.info("HCP detected in demographics paths; dropping columns: %s", age_cols)
+                logger.info(
+                    "HCP detected in demographics paths; dropping columns: %s", age_cols
+                )
                 df = df.drop(columns=age_cols)
 
         df = self._filter(df, target_columns)
@@ -698,29 +731,33 @@ class DemographicsPreparationPipeline:
         df = df.dropna()
         return df
 
-    def get_full_demographics(self, available_subjects: list[str] | None = None) -> pd.DataFrame:
+    def get_full_demographics(
+        self, available_subjects: list[str] | None = None
+    ) -> pd.DataFrame:
         """
         Load full demographics DataFrame without filtering columns.
         Only filters by available subjects if provided.
-        
+
         Args:
             available_subjects: Optional list of subject IDs to filter by (e.g., subjects with brain data)
-        
+
         Returns:
             Full demographics DataFrame with all columns, optionally filtered by subjects
         """
         df = self._load_all()
-        
+
         # Handle HCP age column issue
         if any("hcp" in str(p).lower() for p in self.paths):
             age_cols = [c for c in df.columns if c.lower() == "age"]
             if age_cols:
-                logger.info("HCP detected in demographics paths; dropping columns: %s", age_cols)
+                logger.info(
+                    "HCP detected in demographics paths; dropping columns: %s", age_cols
+                )
                 df = df.drop(columns=age_cols)
-        
+
         # Normalize subject IDs
         df = self._normalize_subject_ids(df)
-        
+
         # Normalize column names using aliases (but keep all columns)
         df = df.rename(
             columns={
@@ -730,15 +767,15 @@ class DemographicsPreparationPipeline:
                 if c.lower() in aliases
             }
         )
-        
+
         # Convert categorical to numeric (especially Gender)
         df = self._categorical_to_numeric(df)
-        
+
         # Filter by available subjects if provided
         if available_subjects is not None:
             available_subjects_str = [str(s) for s in available_subjects]
             df = df[df["Subject"].astype(str).isin(available_subjects_str)]
-        
+
         return df
 
     # ------------------------------------------------------------------
@@ -947,59 +984,66 @@ class DemographicsPreparationPipeline:
                 mapping = {v0: 0, v1: 1}
                 logger.info(f"Binarizing column '{col}': {mapping}")
                 df[col] = df[col].map(mapping)
-        
+
         return df
+
 
 class CachedBIDSFile:
     """Wrapper for a file in CachedBIDSLayout."""
+
     def __init__(self, row):
         self._row = row
-        self.path = str(row['path'])
+        self.path = str(row["path"])
         self.filename = Path(self.path).name
-        
+
     def get_entities(self):
         # Return dict of entities, excluding 'path' and internal pandas cols
-        return {k: v for k, v in self._row.items() 
-                if k != 'path' and pd.notna(v) and not str(k).startswith('Unnamed')}
-    
+        return {
+            k: v
+            for k, v in self._row.items()
+            if k != "path" and pd.notna(v) and not str(k).startswith("Unnamed")
+        }
+
     def __repr__(self):
         return f"<CachedBIDSFile filename='{self.filename}'>"
 
+
 class CachedBIDSLayout:
     """A BIDSLayout-like interface backed by a DataFrame for faster loading."""
+
     def __init__(self, df):
         self.df = df
         # Ensure subject is string if it exists
-        if 'subject' in self.df.columns:
-            self.df['subject'] = self.df['subject'].astype(str)
-            
+        if "subject" in self.df.columns:
+            self.df["subject"] = self.df["subject"].astype(str)
+
     def get_subjects(self):
-        if 'subject' not in self.df.columns:
+        if "subject" not in self.df.columns:
             return []
-        return sorted(self.df['subject'].dropna().unique().tolist())
-        
-    def get(self, return_type='object', **kwargs):
+        return sorted(self.df["subject"].dropna().unique().tolist())
+
+    def get(self, return_type="object", **kwargs):
         # Start with all rows
         mask = np.ones(len(self.df), dtype=bool)
-        
+
         for k, v in kwargs.items():
-            if k in ['return_type', 'scope', 'regex_search']:
+            if k in ["return_type", "scope", "regex_search"]:
                 continue
-            
+
             # Helper for extension normalization
-            if k == 'extension':
-                if 'extension' in self.df.columns:
-                    col_vals = self.df['extension'].astype(str)
-                    
+            if k == "extension":
+                if "extension" in self.df.columns:
+                    col_vals = self.df["extension"].astype(str)
+
                     if isinstance(v, list):
-                        v_no_dot = [x.lstrip('.') for x in v]
-                        v_with_dot = ['.' + x.lstrip('.') for x in v]
-                        mask &= (col_vals.isin(v_no_dot) | col_vals.isin(v_with_dot))
+                        v_no_dot = [x.lstrip(".") for x in v]
+                        v_with_dot = ["." + x.lstrip(".") for x in v]
+                        mask &= col_vals.isin(v_no_dot) | col_vals.isin(v_with_dot)
                     else:
                         v_str = str(v)
-                        v_no_dot = v_str.lstrip('.')
-                        v_with_dot = '.' + v_no_dot
-                        mask &= ((col_vals == v_no_dot) | (col_vals == v_with_dot))
+                        v_no_dot = v_str.lstrip(".")
+                        v_with_dot = "." + v_no_dot
+                        mask &= (col_vals == v_no_dot) | (col_vals == v_with_dot)
                 continue
 
             # Standard filtering
@@ -1011,32 +1055,32 @@ class CachedBIDSLayout:
                     if isinstance(v, list):
                         mask &= col_vals.isin(v)
                     else:
-                        mask &= (col_vals == v)
-        
+                        mask &= col_vals == v
+
         filtered = self.df[mask]
-        
+
         # Sort by path to be deterministic
-        if 'path' in filtered.columns:
-            filtered = filtered.sort_values('path')
-            
-        if return_type in ['file', 'files', 'filename', 'filenames']:
-            return filtered['path'].tolist()
-        
+        if "path" in filtered.columns:
+            filtered = filtered.sort_values("path")
+
+        if return_type in ["file", "files", "filename", "filenames"]:
+            return filtered["path"].tolist()
+
         return [CachedBIDSFile(row) for _, row in filtered.iterrows()]
-    
+
     def to_df(self):
         return self.df
-    
+
     def get_file(self, filename):
         """Mock get_file to return something with a .path attribute if found."""
         # This is strictly used for 'participants.tsv' in prepare_data.py
         # Check if filename is in df (might not be if it's top level tsv and not in layout?)
         # Standard BIDSLayout includes participants.tsv in the index if it's there.
-        
+
         # We try to match by filename (ignoring path structure)
         # BIDS files are indexed by path, so we can check if any path ends with filename
-        if 'path' in self.df.columns:
-            matches = self.df[self.df['path'].astype(str).str.endswith(filename)]
+        if "path" in self.df.columns:
+            matches = self.df[self.df["path"].astype(str).str.endswith(filename)]
             if not matches.empty:
                 # Return the first match wrapped
                 return CachedBIDSFile(matches.iloc[0])

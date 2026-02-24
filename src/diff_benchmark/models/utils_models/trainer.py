@@ -1,31 +1,37 @@
+import copy
 from abc import ABC, abstractmethod
+from collections import deque
 from typing import Any, Callable
 
 import numpy as np
 import pytorch_lightning as pl
 import torch
-from torchvision import transforms
 from sklearn.base import BaseEstimator
-from torch import nn
-from torch.utils.data import DataLoader, random_split
-from tqdm import tqdm
-from diff_benchmark.utils.scores import compute_metrics
-from diff_benchmark.utils.logger import TrainerLogRecord, TorchDebugLogger, LightningDebugLogger, tqdm_if_enabled, LightningPrintLogger
-from collections import deque
-from diff_benchmark.utils.logger import setup_logger
 from sklearn.model_selection import train_test_split
-from torch.utils.data import Subset
-import copy
+from torch import nn
+from torch.utils.data import DataLoader, Subset
+from torchvision import transforms
+from tqdm import tqdm
+
+from diff_benchmark.utils.logger import (
+    LightningDebugLogger,
+    LightningPrintLogger,
+    TorchDebugLogger,
+    TrainerLogRecord,
+    setup_logger,
+    tqdm_if_enabled,
+)
+from diff_benchmark.utils.scores import compute_metrics
 
 
 def configure_cached_dataset_augmentation(dataset, mode: str = "random"):
     """
     Configure augmentation mode for cached feature datasets.
-    
+
     Args:
         dataset: Dataset or Subset wrapping a CachedFeatureDataset
         mode: "random" for training (consistent per subject), "fixed" for val/test (no augmentation)
-    
+
     This function handles both direct CachedFeatureDataset and Subset wrappers.
     """
     # Unwrap Subset to get the actual dataset
@@ -35,9 +41,9 @@ def configure_cached_dataset_augmentation(dataset, mode: str = "random"):
             actual_dataset = dataset.dataset.dataset
         else:
             actual_dataset = dataset.dataset
-    
+
     # Check if it's a CachedFeatureDataset
-    if hasattr(actual_dataset, 'set_augmentation_indices'):
+    if hasattr(actual_dataset, "set_augmentation_indices"):
         actual_dataset.set_augmentation_indices(mode=mode)
         return True
     return False
@@ -58,6 +64,7 @@ val_transforms = transforms.Compose(
     ]
 )
 
+
 class BaseTrainer(ABC):
     """
     Backend-agnostic trainer interface.
@@ -68,7 +75,9 @@ class BaseTrainer(ABC):
     def __init__(self, model: nn.Module):
         self.model = model
         self.fold_idx: int | None = None  # add fold placeholder
-        self.target_mean = 0.0 # default values; will be set properly during training if needed
+        self.target_mean = (
+            0.0  # default values; will be set properly during training if needed
+        )
         self.target_std = 1.0
 
     @property
@@ -84,7 +93,7 @@ class BaseTrainer(ABC):
     def predict(self, dataloader):
         """Run inference and return predictions."""
         raise NotImplementedError
-    
+
     def set_fold(self, fold_idx: int):
         """Set the current fold for logging/tracking purposes."""
         self.fold_idx = fold_idx
@@ -198,7 +207,7 @@ class SklearnTrainer(BaseTrainer):
         features, targets = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
         return features_reshaped, targets.flatten()
-    
+
     def set_fold(self, fold_idx: int):
         super().set_fold(fold_idx)
 
@@ -227,11 +236,11 @@ class SklearnTrainer(BaseTrainer):
 def split_loader(dataloader, collate_fn: Callable | None, val_ratio=0.2, seed=42):
     """
     Split a PyTorch DataLoader into training and validation subsets.
-    
+
     For cached feature datasets, automatically configures augmentation:
     - Training: randomly selects one augmentation per subject (consistent across epochs)
     - Validation: uses only non-transformed features (augmentation_idx=0)
-    
+
     This function takes an existing DataLoader and splits its underlying dataset
     into training and validation sets based on a specified ratio. It creates new
     DataLoaders with the same configuration as the input DataLoader while preserving
@@ -269,7 +278,7 @@ def split_loader(dataloader, collate_fn: Callable | None, val_ratio=0.2, seed=42
 
     train_ds = Subset(dataset, train_idx)
     val_ds = Subset(dataset_val, val_idx)
-    
+
     # Configure augmentation for cached datasets
     # Training: random augmentation per subject (consistent across epochs)
     is_cached_train = configure_cached_dataset_augmentation(train_ds, mode="random")
@@ -280,7 +289,7 @@ def split_loader(dataloader, collate_fn: Callable | None, val_ratio=0.2, seed=42
 
     # the same aug_indices from the same CahedFeaturesDataset is set to fixed
     # so train_ds will use the fixed mode as well
-    
+
     if is_cached_train or is_cached_val:
         print("✓ Detected cached feature dataset")
         if is_cached_train:
@@ -293,7 +302,11 @@ def split_loader(dataloader, collate_fn: Callable | None, val_ratio=0.2, seed=42
         batch_size=dataloader.batch_size,
         shuffle=True,
         num_workers=dataloader.num_workers,
-        collate_fn=dataloader.collate_fn if collate_fn is None else lambda batch: collate_fn(batch, transform=train_transforms),
+        collate_fn=(
+            dataloader.collate_fn
+            if collate_fn is None
+            else lambda batch: collate_fn(batch, transform=train_transforms)
+        ),
     )
 
     val_loader = DataLoader(
@@ -301,7 +314,11 @@ def split_loader(dataloader, collate_fn: Callable | None, val_ratio=0.2, seed=42
         batch_size=dataloader.batch_size,
         shuffle=False,
         num_workers=dataloader.num_workers,
-        collate_fn=dataloader.collate_fn if collate_fn is None else lambda batch: collate_fn(batch, transform=val_transforms),
+        collate_fn=(
+            dataloader.collate_fn
+            if collate_fn is None
+            else lambda batch: collate_fn(batch, transform=val_transforms)
+        ),
     )
 
     return train_loader, val_loader
@@ -333,19 +350,14 @@ class TorchTrainer(BaseTrainer):
         self.val_ratio = val_ratio
         self.seed = seed
 
-        # self.optimizer = torch.optim.AdamW(
-        #     self.model.parameters(),
-        #     lr=learning_rate,
-        #     weight_decay=weight_decay,
-        # )
         self.lr = learning_rate
         self.weight_decay = weight_decay
         self.optimizer = torch.optim.Adam(
             self.model.parameters(),
-            lr=learning_rate,   # default to 1e-5
+            lr=learning_rate,
             weight_decay=weight_decay,
         )
-        
+
         self.scheduler = torch.optim.lr_scheduler.ExponentialLR(
             self.optimizer,
             gamma=0.95,  # multiply LR by 0.95 every epoch
@@ -358,7 +370,7 @@ class TorchTrainer(BaseTrainer):
         )
         self.prediction_task = prediction_task
         self.run_id = kwargs["run_id"] if "run_id" in kwargs else "default_run"
-        
+
         self.log = setup_logger(__name__)
         self.logger = TorchDebugLogger(
             enabled=kwargs.get("debug", False),
@@ -369,10 +381,15 @@ class TorchTrainer(BaseTrainer):
 
     def set_fold(self, fold_idx: int):
         super().set_fold(fold_idx)
-            
+
     def fit(self, dataloader):
-        train_loader, val_loader = split_loader(dataloader, collate_fn=self.model.collate_fn, val_ratio=self.val_ratio, seed=self.seed)
-        
+        train_loader, val_loader = split_loader(
+            dataloader,
+            collate_fn=self.model.collate_fn,
+            val_ratio=self.val_ratio,
+            seed=self.seed,
+        )
+
         print(f"Learning rate: {self.lr}, weight decay: {self.weight_decay}")
 
         if self.prediction_task != "binary_classification":
@@ -383,12 +400,14 @@ class TorchTrainer(BaseTrainer):
             all_targets = torch.cat(targets).float()
             self.target_mean = all_targets.mean().item()
             self.target_std = all_targets.std().item() + 1e-8
-            self.log.info(f"Whitening targets: mean={self.target_mean:.4f}, std={self.target_std:.4f}")
+            self.log.info(
+                f"Whitening targets: mean={self.target_mean:.4f}, std={self.target_std:.4f}"
+            )
 
         show_progress = not self.logger.enabled or self.logger.enabled
-        
-        self.log.info(f"Starting training for {self.epochs} epochs...") 
-        
+
+        self.log.info(f"Starting training for {self.epochs} epochs...")
+
         for epoch in range(self.epochs):
             self.model.train()
             train_loss = 0.0
@@ -439,17 +458,21 @@ class TorchTrainer(BaseTrainer):
                     epoch=epoch,
                     batch=batch_idx,
                     loss=loss.item(),
-                    fold= self.fold_idx if self.fold_idx is not None else -1,
+                    fold=self.fold_idx if self.fold_idx is not None else -1,
                 )
                 if self.logger.enabled:
                     train_preds_unnorm = preds.detach().cpu()
                     train_targets_unnorm = y.detach().cpu()
                     if self.prediction_task != "binary_classification":
-                        train_preds_unnorm = train_preds_unnorm * self.target_std + self.target_mean
-                        train_targets_unnorm = train_targets_unnorm * self.target_std + self.target_mean
+                        train_preds_unnorm = (
+                            train_preds_unnorm * self.target_std + self.target_mean
+                        )
+                        train_targets_unnorm = (
+                            train_targets_unnorm * self.target_std + self.target_mean
+                        )
                     train_preds.append(train_preds_unnorm)
                     train_targets.append(train_targets_unnorm)
-    
+
             metrics = None
             if self.logger.enabled:
                 preds = torch.cat(train_preds)
@@ -459,13 +482,13 @@ class TorchTrainer(BaseTrainer):
                     y_pred=preds.numpy(),
                     prediction_task=self.prediction_task,
                 )
-            
+
             self.logger.log_epoch(
                 split="train",
                 epoch=epoch,
                 loss=train_loss / len(train_loader),
                 metrics=metrics,
-                fold= self.fold_idx if self.fold_idx is not None else -1,
+                fold=self.fold_idx if self.fold_idx is not None else -1,
             )
             val_loss = self._validate(val_loader, epoch)
             self.scheduler.step()
@@ -475,7 +498,7 @@ class TorchTrainer(BaseTrainer):
                 f"train_loss={train_loss / len(train_loader):.4f} | "
                 f"val_loss={val_loss:.4f} | "
             )
-        
+
         self.logger.flush(trainer=self)
 
     def _validate(self, val_loader, epoch):
@@ -501,13 +524,17 @@ class TorchTrainer(BaseTrainer):
                     preds = preds.squeeze(1)
                 loss = self.criterion(preds, y)
                 val_loss += loss.item()
-                
+
                 if self.logger.enabled:
                     train_preds_unnorm = preds.cpu()
                     train_targets_unnorm = y.cpu()
                     if self.prediction_task != "binary_classification":
-                        train_preds_unnorm = train_preds_unnorm * self.target_std + self.target_mean
-                        train_targets_unnorm = train_targets_unnorm * self.target_std + self.target_mean
+                        train_preds_unnorm = (
+                            train_preds_unnorm * self.target_std + self.target_mean
+                        )
+                        train_targets_unnorm = (
+                            train_targets_unnorm * self.target_std + self.target_mean
+                        )
                     all_preds.append(train_preds_unnorm)
                     all_targets.append(train_targets_unnorm)
 
@@ -517,17 +544,25 @@ class TorchTrainer(BaseTrainer):
             preds = torch.cat(all_preds)
             preds = self.logger.finalize_preds(preds, self.prediction_task)
             metrics = compute_metrics(
-                        y_true=torch.cat(all_targets).numpy(),
-                        y_pred=preds.numpy(),
-                        prediction_task=self.prediction_task,
-                    )
-        print(f"Validation accuracy: {metrics['accuracy']:.4f}" if metrics and "accuracy" in metrics else f"Validation mae: {metrics['mae']:.4f}" if metrics and "mae" in metrics else "")   
+                y_true=torch.cat(all_targets).numpy(),
+                y_pred=preds.numpy(),
+                prediction_task=self.prediction_task,
+            )
+        print(
+            f"Validation accuracy: {metrics['accuracy']:.4f}"
+            if metrics and "accuracy" in metrics
+            else (
+                f"Validation mae: {metrics['mae']:.4f}"
+                if metrics and "mae" in metrics
+                else ""
+            )
+        )
         self.logger.log_epoch(
             split="val",
             epoch=epoch,
             loss=val_loss,
             metrics=metrics,
-            fold= self.fold_idx if self.fold_idx is not None else -1,
+            fold=self.fold_idx if self.fold_idx is not None else -1,
         )
         return val_loss
 
@@ -536,7 +571,7 @@ class TorchTrainer(BaseTrainer):
         outputs = []
 
         collate_fn = self.model.collate_fn
-        
+
         # Configure cached dataset to use non-transformed features for prediction
         configure_cached_dataset_augmentation(dataloader.dataset, mode="fixed")
 
@@ -545,14 +580,18 @@ class TorchTrainer(BaseTrainer):
             batch_size=dataloader.batch_size,
             shuffle=False,
             num_workers=dataloader.num_workers,
-            collate_fn=dataloader.collate_fn if collate_fn is None else lambda batch: collate_fn(batch, transform=val_transforms),
+            collate_fn=(
+                dataloader.collate_fn
+                if collate_fn is None
+                else lambda batch: collate_fn(batch, transform=val_transforms)
+            ),
             pin_memory=False,
         )
 
         with torch.no_grad():
             for batch in predict_dataloader:
                 x, *_ = batch
-                
+
                 x = x.to(self.device)
                 preds = self.model(x)
                 if self.prediction_task == "binary_classification":
@@ -620,7 +659,7 @@ class _LightningModuleAdapter(pl.LightningModule):
             preds = preds.squeeze(1)
 
         loss = self.criterion(preds, y)
-        
+
         self.log(
             "train_loss",
             loss,
@@ -642,7 +681,7 @@ class _LightningModuleAdapter(pl.LightningModule):
             preds = preds.squeeze(1)
 
         loss = self.criterion(preds, y)
-        
+
         self.log(
             "val_loss",
             loss,
@@ -663,14 +702,9 @@ class _LightningModuleAdapter(pl.LightningModule):
         return preds
 
     def configure_optimizers(self):
-        # return torch.optim.AdamW(
-        #     self.parameters(),
-        #     lr=self.learning_rate,
-        #     weight_decay=self.weight_decay,
-        # )
         return torch.optim.Adam(
             self.parameters(),
-            lr=self.learning_rate,   # default to 1e-5
+            lr=self.learning_rate,
             weight_decay=self.weight_decay,
         )
 
@@ -700,7 +734,7 @@ class LightningTrainer(BaseTrainer):
         self,
         model: nn.Module,
         *,
-        prediction_task, 
+        prediction_task,
         trainer_kwargs: dict,
         learning_rate: float = 1e-4,
         weight_decay: float = 1e-4,
@@ -725,7 +759,7 @@ class LightningTrainer(BaseTrainer):
         # trainer_kwargs.setdefault("callbacks", []).append(print_cb)
         trainer_kwargs = dict(trainer_kwargs)
         trainer_kwargs.setdefault("callbacks", []).append(print_cb)
-        
+
         debug = kwargs.get("debug", False)
         debug_dir = f"exp_outputs/experiments/exp_{self.run_id}/debug/"
         if debug:
@@ -739,7 +773,6 @@ class LightningTrainer(BaseTrainer):
             # trainer_kwargs.setdefault("callbacks", []).append(debug_cb)
             trainer_kwargs = dict(trainer_kwargs)
             trainer_kwargs.setdefault("callbacks", []).append(debug_cb)
-        # trainer_kwargs = {k: v for k, v in trainer_kwargs.items() if k in pl.Trainer.__init__.__code__.co_varnames} 
 
         self.trainer = pl.Trainer(**trainer_kwargs)
         self.val_ratio = val_ratio
@@ -749,20 +782,24 @@ class LightningTrainer(BaseTrainer):
         super().set_fold(fold_idx)
 
         self.trainer.fold_idx = fold_idx
-                
+
     def fit(self, dataloader):
-        train_loader, val_loader = split_loader(dataloader, val_ratio=self.val_ratio, seed=self.seed)
-        
+        train_loader, val_loader = split_loader(
+            dataloader, val_ratio=self.val_ratio, seed=self.seed
+        )
+
         if self.lightning_model.prediction_task != "binary_classification":
             targets = []
             for batch in train_loader:
                 _, y, *_ = batch
                 targets.append(y)
             all_targets = torch.cat(targets).float()
-            
+
             self.lightning_model.target_mean.fill_(all_targets.mean())
             self.lightning_model.target_std.fill_(all_targets.std() + 1e-8)
-            print(f"Whitening targets: mean={self.lightning_model.target_mean.item():.4f}, std={self.lightning_model.target_std.item():.4f}")
+            print(
+                f"Whitening targets: mean={self.lightning_model.target_mean.item():.4f}, std={self.lightning_model.target_std.item():.4f}"
+            )
 
         # self.trainer.fit(self.model, train_loader, val_loader)
         self.trainer.fit(self.lightning_model, train_loader, val_loader)
@@ -770,12 +807,16 @@ class LightningTrainer(BaseTrainer):
     def predict(self, dataloader):
         # Configure cached dataset to use non-transformed features for prediction
         configure_cached_dataset_augmentation(dataloader.dataset, mode="fixed")
-        
-        # preds = self.trainer.predict(self.model, dataloader)
-        preds = self.trainer.predict(dataloaders=x_only_loader(dataloader), model=self.lightning_model)
+
+        preds = self.trainer.predict(
+            dataloaders=x_only_loader(dataloader), model=self.lightning_model
+        )
         preds = torch.cat([p.cpu() for p in preds])
-        
+
         if self.lightning_model.prediction_task != "binary_classification":
-             preds = preds * self.lightning_model.target_std.cpu() + self.lightning_model.target_mean.cpu()
+            preds = (
+                preds * self.lightning_model.target_std.cpu()
+                + self.lightning_model.target_mean.cpu()
+            )
 
         return preds.numpy()

@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
+
 from diff_benchmark.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -88,7 +89,9 @@ class CustomDataset(Dataset):
                     final_features = torch.stack(slices, dim=0)  # (D,1,H,W)
                     final_features = final_features.permute(1, 0, 2, 3)  # (C=1,D,H,W)
             except (OSError, FileNotFoundError) as e:
-                logger.warning(f"[Warning] Dropping subject {Path(self.features[idx])}: {e}")
+                logger.warning(
+                    f"[Warning] Dropping subject {Path(self.features[idx])}: {e}"
+                )
                 return None
 
         return final_features, self.targets[idx], self.gender[idx]
@@ -108,7 +111,7 @@ class CustomDataset(Dataset):
         else:
             self.mode = "paths"
         return self.mode
-    
+
     @property
     def subject_ids(self) -> list:
         """List of subject IDs aligned with dataset indices."""

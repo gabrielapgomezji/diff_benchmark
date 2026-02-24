@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.2.18)  24 FEB 2026 09:41
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.2.18)  24 FEB 2026 19:23
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -341,37 +341,40 @@ a shorter form with \titlerunning prior to \maketitle
 <scheme.pdf, id=13, 1570.86874pt x 853.1875pt>
 File: scheme.pdf Graphic file (type pdf)
 <use scheme.pdf>
-Package pdftex.def Info: scheme.pdf  used on input line 15.
+Package pdftex.def Info: scheme.pdf  used on input line 7.
 (pdftex.def)             Requested size: 347.12354pt x 188.53502pt.
- [2] [3 <./scheme.pdf>]
-Overfull \hbox (6.12354pt too wide) in paragraph at lines 110--125
-\T1/cmr/m/n/10 cor-ti-cal sur-face re-con-structed from T1-weighted im-ages us-ing the De-sikan^^UKilliany
- []
+ [2]
 
-[4] [5]) (./tex/results.tex
+LaTeX Warning: Citation `esteban2019fmriprep' on page 3 undefined on input line 81.
+
+[3 <./scheme.pdf>] [4]) (./tex/results.tex [5]
 <../exp_outputs/summary/plots/folds/combined_model_vs_prep.pdf, id=805, 466.72932pt x 200.74521pt>
 File: ../exp_outputs/summary/plots/folds/combined_model_vs_prep.pdf Graphic file (type pdf)
 <use ../exp_outputs/summary/plots/folds/combined_model_vs_prep.pdf>
 Package pdftex.def Info: ../exp_outputs/summary/plots/folds/combined_model_vs_prep.pdf  used on input line 15.
 (pdftex.def)             Requested size: 347.12354pt x 149.30264pt.
  [6 <../exp_outputs/summary/plots/folds/combined_model_vs_prep.pdf>]
-<../exp_outputs/summary/plots/folds/white_vs_gray_tscore_task_feature_combined.pdf, id=824, 540.33821pt x 215.12321pt>
-File: ../exp_outputs/summary/plots/folds/white_vs_gray_tscore_task_feature_combined.pdf Graphic file (type pdf)
-<use ../exp_outputs/summary/plots/folds/white_vs_gray_tscore_task_feature_combined.pdf>
-Package pdftex.def Info: ../exp_outputs/summary/plots/folds/white_vs_gray_tscore_task_feature_combined.pdf  used on input line 84.
+<../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.pdf, id=824, 540.33821pt x 215.12321pt>
+File: ../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.pdf Graphic file (type pdf)
+<use ../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.pdf>
+Package pdftex.def Info: ../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.pdf  used on input line 84.
 (pdftex.def)             Requested size: 347.12354pt x 138.20358pt.
- [7 <../exp_outputs/summary/plots/folds/white_vs_gray_tscore_task_feature_combined.pdf>]
-<../exp_outputs/summary/plots/features/feature_benefit_heatmap.pdf, id=855, 524.55887pt x 177.04pt>
+
+Overfull \hbox (7.98785pt too wide) in paragraph at lines 110--113
+[]\T1/cmr/m/n/10 When strat-i-fied by mi-crostruc-tural rep-re-sen-ta-tion, most fea-tures do not demon-
+ []
+
+<../exp_outputs/summary/plots/features/feature_benefit_heatmap.pdf, id=825, 524.55887pt x 177.04pt>
 File: ../exp_outputs/summary/plots/features/feature_benefit_heatmap.pdf Graphic file (type pdf)
 <use ../exp_outputs/summary/plots/features/feature_benefit_heatmap.pdf>
-Package pdftex.def Info: ../exp_outputs/summary/plots/features/feature_benefit_heatmap.pdf  used on input line 152.
+Package pdftex.def Info: ../exp_outputs/summary/plots/features/feature_benefit_heatmap.pdf  used on input line 116.
 (pdftex.def)             Requested size: 347.12354pt x 117.16011pt.
- [8 <../exp_outputs/summary/plots/features/feature_benefit_heatmap.pdf>]) (./tex/conclusion.tex
+[7 <../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.pdf>]) (./tex/conclusion.tex [8 <../exp_outputs/summary/plots/features/feature_benefit_heatmap.pdf>]
 Overfull \hbox (12.45532pt too wide) in paragraph at lines 48--54
 \T1/cmr/m/n/10 well-defined di-ag-nos-tic out-comes could help clar-ify the clin-i-cal rel-e-vance of diffusion-
  []
 
-[9]) [10] (./main.bbl
+) [9] (./main.bbl
 Underfull \hbox (badness 7740) in paragraph at lines 30--34
 []\T1/cmr/m/n/9 Cordero-Grande, L., Chris-ti-aens, D., Hut-ter, J., Price, A.N., Ha-j-nal,
  []
@@ -411,7 +414,7 @@ Overfull \hbox (46.69437pt too wide) in paragraph at lines 65--70
 \T1/cmr/m/n/9 https://www.frontiersin.org/journals/neuroinformatics/articles/10.3389/fninf.2014.00008/full 
  []
 
-[11]
+[10]
 Underfull \hbox (badness 1009) in paragraph at lines 135--141
 \T1/cmr/m/n/9 Ni-azy, R.K., Saun-ders, J., Vick-ers, J., Zhang, Y., De Ste-fano, N., Brady,
  []
@@ -421,25 +424,25 @@ Underfull \hbox (badness 1565) in paragraph at lines 135--141
 \T1/cmr/m/n/9 y-sis and im-ple-men-ta-tion as FSL. Neu-roIm-age \T1/cmr/bx/n/9 23\T1/cmr/m/n/9 , S208--S219 (Jan 2004).
  []
 
-) [12] (./main.aux)
+) [11] (./main.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 4054 strings out of 469005
- 64331 string characters out of 5450604
+ 4053 strings out of 469005
+ 64334 string characters out of 5450604
  480011 words of memory out of 5000000
- 32679 multiletter control sequences out of 15000+600000
- 640690 words of font info for 66 fonts, out of 8000000 for 9000
+ 32678 multiletter control sequences out of 15000+600000
+ 640668 words of font info for 66 fonts, out of 8000000 for 9000
  319 hyphenation exceptions out of 8191
- 59i,9n,67p,678b,339s stack positions out of 10000i,1000n,20000p,200000b,200000s
- </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0600.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecti1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0700.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1200.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ectt0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1440.600pk></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy9.pfb>
-Output written on main.pdf (12 pages, 1497349 bytes).
+ 59i,9n,67p,678b,341s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0600.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecti1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0700.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ectt1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1200.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ectt0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1440.600pk></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy9.pfb>
+Output written on main.pdf (11 pages, 1499371 bytes).
 PDF statistics:
- 1286 PDF objects out of 1440 (max. 8388607)
- 504 compressed objects within 6 object streams
+ 1296 PDF objects out of 1440 (max. 8388607)
+ 502 compressed objects within 6 object streams
  0 named destinations out of 1000 (max. 500000)
  21 words of extra memory for PDF output out of 10000 (max. 10000000)
 

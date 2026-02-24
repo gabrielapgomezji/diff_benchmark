@@ -81,7 +81,7 @@ analyses across preprocessing settings.
 %%%%%%%%%%%%%%%%
 \begin{figure}
     \centering
-    \includegraphics[width=\textwidth]{../exp_outputs/summary/plots/folds/white_vs_gray_tscore_task_feature_combined.pdf}
+    \includegraphics[width=\textwidth]{../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.pdf}
     \caption{Fold-level paired comparison of white vs. gray matter using normalized scores (0 = dummy, 1 = perfect).
 Each point shows the matched fold difference ($\Delta$ = white $-$ gray) under identical settings.
 Left: tissue effects by dataset $\times$ target (microstructure baseline removed); Right: tissue effects by microstructure feature (dataset-task baseline removed).
@@ -93,59 +93,23 @@ We next quantify the impact of tissue type by comparing the performance of model
 identical 
 dataset–target–task–feature
 configurations. For each fold, performance is normalized relative to a dummy baseline and the
- difference $\Delta = \text{white} - \text{gray}$ is computed, giving a matched, 
- configuration-specific tissue effect. To disentangle tissue influence from dataset and 
+ difference $\Delta = \text{white} - \text{gray}$ is computed. To disentangle tissue influence from dataset and 
  representation biases, we residualize the effects in two complementary ways: (i) removing 
  feature-specific baselines to isolate dataset-dependent tissue effects, and (ii) removing 
  dataset–task baselines to isolate feature-dependent tissue effects. Statistical inference is 
  performed on configuration-level mean effects to account for fold dependence, testing whether the 
  tissue difference distribution deviates from zero.
 
-As shown in Figure \ref{fig:white_vs_gray}, tissue effects are strongly dataset- and task-dependent.
-When stratified by dataset~$\times$~target, gender classification in both HCP and CamCAN shows 
-distributions centered near zero, indicating no systematic predominance of either tissue compartment 
-for this task. In contrast, age prediction in CamCAN shows a slight tendency toward white-matter 
-superiority, with a positive shift in the fold-difference distribution suggesting that white-matter 
-microstructure carries marginally more age-relevant information. Diagnostic classification 
-(DX\_GROUP) in ABIDE shows the opposite pattern, with gray matter producing consistently higher 
-performance, pointing to a gray-matter advantage for this clinical task.
-
-When stratified by microstructural representation, most features do not show a 
-consistent tissue preference, suggesting that the tissue effect is driven primarily by the 
-task and dataset context rather than the choice of diffusion metric. Collectively, these findings 
-demonstrate that tissue preference is neither universal nor negligible, but instead emerges from the 
-interaction between dataset characteristics, prediction target, and microstructural representation.
-%%%%%%%%%%%%%%%%
-% \vspace{4pt}
-%     \hrule
-%   \vspace{4pt}
-% \begin{figure}
-%     \centering
-%     \includegraphics[width=\textwidth]{../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_raw_task_raw_combined.pdf}
-%     \caption{Fold-level paired comparison of white vs. gray matter using normalized scores (0 = dummy, 1 = perfect).
-% Each point shows the matched fold difference ($\Delta$ = white $-$ gray) under identical settings.
-% Left: dataset-level tissue effects; Right: task-level effects.
-% Boxplots summarize fold differences; p-values test mean effects against zero.}
-%     \label{fig:white_vs_gray_v2}
-% \end{figure}
-% We next quantify the impact of tissue type by comparing the performance of models with white and gray matter under identical 
-% dataset–target–task–feature
-% configurations. For each fold, performance is normalized relative to a dummy baseline and the
-%  difference $\Delta = \text{white} - \text{gray}$ is computed, yielding a matched, 
-%  configuration-specific tissue effect. Statistical inference is 
-%  performed on configuration-level mean effects to account for fold dependence, testing whether the 
-%  tissue difference distribution deviates from zero.
-
-% As shown in Figure \ref{fig:white_vs_gray_v2}, gray matter has a stronger dependent. 
-
-% When stratified by task representation, features like age and gender for Camcan
-% and the DX\_GROUP task show a higher performance in gray matter.
-% Collectively, these findings demonstrate 
-% that gray matter performance is considerably higher for predictive tasks.
-% \vspace{4pt}
-%     \hrule
-% \vspace{4pt}
-%%%%%%%%%%%%%%%%%%%%%%%%
+As shown in Figure \ref{fig:white_vs_gray}, tissue effects are strongly dataset-dependent. 
+In HCP, we observe a systematic predominance of white matter over gray matter, with positive 
+effect distributions indicating consistent white-matter superiority across configurations. In 
+contrast, CamCAN exhibits the opposite pattern, with gray matter showing a stable advantage. 
+For ABIDE, the distribution of differences is centered around zero, suggesting no clear 
+predominance of either compartment.
+ 
+When stratified by microstructural representation, most features do not demonstrate a
+consistent tissue preference. Overall, these results indicate that tissue effects are 
+primarily dataset-dependent rather than driven by a specific microstructural representation. 
 
 \begin{figure}
     \centering

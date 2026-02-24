@@ -19,6 +19,14 @@ learning is therefore often viewed as a powerful framework for data-driven neuro
 %     \item Problems: High variability in reported performance across studies + Limited reproducibility 
 % \end{itemize}
 
+Comparing predictive models across diffusion MRI studies remains challenging.
+Preprocessing pipelines differ substantially, microstructural information is represented in multiple ways (e.g., voxel-wise maps, 
+ROI summaries, or learned embeddings), and evaluation protocols vary in data splits, cross-validation schemes, and hyperparameter selection.
+As a result, reported performance differences may reflect methodological inconsistencies rather than genuine modeling improvements.
+Limited code and configuration sharing further restrict reproducibility.
+Together, these factors make it difficult to determine which approaches generalize reliably and provide meaningful insights.
+
+
 While many report promising predictive performance, reported performance varies widely across 
 studies, tasks, and datasets. Direct comparison between studies is often hard to achieve. Improvements 
 are frequently attributed to model complexity or architectural innovation, yet it remains unclear to what 

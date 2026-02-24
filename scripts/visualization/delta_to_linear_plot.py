@@ -12,8 +12,6 @@ from matplotlib.lines import Line2D
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
-from config import MICCAI_DOUBLE_COLUMN_FIGSIZE, apply_miccai_style
 from utils import (
     MODEL_DISPLAY_ORDER,
     MODEL_FAMILY_ORDER,
@@ -24,11 +22,13 @@ from utils import (
     filter_combos,
     format_label,
     make_dataset_task_label,
-    normalize_score,
     map_model_display_group,
     map_model_family,
+    normalize_score,
     ordered_dataset_task_labels_from_combos,
 )
+
+from config import MICCAI_DOUBLE_COLUMN_FIGSIZE, apply_miccai_style
 
 DELTA_COMBOS = [
     ("hcp", "Gender", "binary_classification"),
@@ -73,7 +73,9 @@ def _load_scope(parquet_path: str) -> pd.DataFrame:
 
 def _compute_normalized_run_scores(df: pd.DataFrame) -> pd.DataFrame:
     parts: list[pd.DataFrame] = []
-    for (_, _, task), group in df.groupby(["dataset", "target_clean", "prediction_task"], dropna=False):
+    for (_, _, task), group in df.groupby(
+        ["dataset", "target_clean", "prediction_task"], dropna=False
+    ):
         fold_prefix, _metric_label = choose_spread_metric(group, task)
         part = add_score_raw_from_prefix(group, fold_prefix)
         part = part[part["score_raw"].notna()].copy()
@@ -107,7 +109,11 @@ def _attach_linear_reference(run_df: pd.DataFrame) -> pd.DataFrame:
         .groupby("dataset_task", dropna=False)["score_norm_run"]
         .median()
     )
-    missing = [label for label in run_df["dataset_task"].unique().tolist() if label not in linear_ref.index]
+    missing = [
+        label
+        for label in run_df["dataset_task"].unique().tolist()
+        if label not in linear_ref.index
+    ]
     if missing:
         missing_fmt = ", ".join(sorted(missing))
         warnings.warn(
@@ -118,14 +124,18 @@ def _attach_linear_reference(run_df: pd.DataFrame) -> pd.DataFrame:
     kept_labels = set(linear_ref.index.tolist())
     run_df = run_df[run_df["dataset_task"].isin(kept_labels)].copy()
     if run_df.empty:
-        raise RuntimeError("No dataset-task left after dropping groups without Linear runs")
+        raise RuntimeError(
+            "No dataset-task left after dropping groups without Linear runs"
+        )
 
     run_df["linear_ref"] = run_df["dataset_task"].map(linear_ref)
     return run_df
 
 
 def _plot_delta_to_linear(run_df: pd.DataFrame, output_file: Path) -> None:
-    order = ordered_dataset_task_labels_from_combos(run_df["dataset_task"].unique().tolist(), DELTA_COMBOS)
+    order = ordered_dataset_task_labels_from_combos(
+        run_df["dataset_task"].unique().tolist(), DELTA_COMBOS
+    )
     if not order:
         raise RuntimeError("No dataset-task labels available for plotting")
 
@@ -171,7 +181,11 @@ def _plot_delta_to_linear(run_df: pd.DataFrame, output_file: Path) -> None:
             continue
         color = FAMILY_COLORS[family]
         for task_label, x_center in task_to_x.items():
-            vals = sub.loc[sub["dataset_task"] == task_label, "score_norm_run"].dropna().to_numpy(dtype=float)
+            vals = (
+                sub.loc[sub["dataset_task"] == task_label, "score_norm_run"]
+                .dropna()
+                .to_numpy(dtype=float)
+            )
             if len(vals) == 0:
                 continue
             x_pos = x_center + family_offsets[family]
@@ -286,7 +300,9 @@ def plot_delta_to_linear(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Plot delta-to-linear effect sizes by dataset-task")
+    parser = argparse.ArgumentParser(
+        description="Plot delta-to-linear effect sizes by dataset-task"
+    )
     parser.add_argument(
         "--input",
         default="exp_outputs/summary/comprehensive_results.parquet",

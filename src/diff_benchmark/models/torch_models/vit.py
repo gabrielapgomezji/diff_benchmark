@@ -1,7 +1,9 @@
+from pathlib import Path
+
 import torch
 import torch.nn as nn
-from pathlib import Path
 from transformers import AutoImageProcessor, AutoModel
+
 from diff_benchmark.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -10,7 +12,7 @@ logger = setup_logger(__name__)
 class GoogleViTBackbone(nn.Module):
     """
     Google ViT backbone adapted for 3D volumes via slice-wise processing.
-    
+
     Note: Expects input data normalized with mean=0.5, std=0.5 (from cache).
     This will be unnormalized back to [0, 1] before passing to HuggingFace processor.
     """
@@ -28,15 +30,21 @@ class GoogleViTBackbone(nn.Module):
 
         self.slice_axis = slice_axis
         self.pooling = pooling
-        model_dir = Path(__file__).parent.parent.parent.parent.parent / "pretrain" / model_name
+        model_dir = (
+            Path(__file__).parent.parent.parent.parent.parent / "pretrain" / model_name
+        )
         if model_dir.exists():
             source = str(model_dir)
             local_only = True
         else:
-            print(f"Pretrained model directory {model_dir} does not exist. Using model name {model_name} from HuggingFace Hub if possible.")
+            print(
+                f"Pretrained model directory {model_dir} does not exist. Using model name {model_name} from HuggingFace Hub if possible."
+            )
             source = model_name
             local_only = False
-        self.processor = AutoImageProcessor.from_pretrained(source, local_files_only=local_only)
+        self.processor = AutoImageProcessor.from_pretrained(
+            source, local_files_only=local_only
+        )
         self.backbone = AutoModel.from_pretrained(source, local_files_only=local_only)
 
         self.embedding_dim = self.backbone.config.hidden_size
@@ -79,7 +87,7 @@ class GoogleViTBackbone(nn.Module):
             slices = x.permute(0, 2, 1, 3)
         else:
             slices = x.permute(0, 3, 1, 2)
-        
+
         num_slices = slices.shape[1]
 
         # (B*S, H, W)

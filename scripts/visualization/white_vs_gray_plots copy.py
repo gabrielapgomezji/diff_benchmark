@@ -17,6 +17,8 @@ from config import (
 )
 from utils import (
     DEFAULT_COMBOS,
+    LINEAR_MODELS,
+    RANDOM_FOREST_MODELS,
     calculate_paired_ttest,
     choose_spread_metric,
     clean_target,
@@ -27,6 +29,8 @@ from utils import (
     is_dummy_model,
     select_best_runs,
 )
+
+CLASSICAL_MODELS = LINEAR_MODELS | RANDOM_FOREST_MODELS
 
 PLOT_TITLES = {
     "full": "White vs Gray Matter: Normalized Score Difference (All Dataset/Target/Task/Feature)",
@@ -103,6 +107,7 @@ def _collect_pairwise_effects(df: pd.DataFrame) -> pd.DataFrame:
             continue
 
         best = best[~best["model_name"].apply(is_dummy_model)]
+        best = best[best["model_name"].isin(CLASSICAL_MODELS)]
         if best.empty:
             continue
 
@@ -446,6 +451,59 @@ def _cluster_mean_ttest_pvalue(
     return float(res.pvalue)
 
 
+def _cluster_mean_effect_size(
+    values: np.ndarray,
+    cluster_ids: np.ndarray,
+) -> float:
+    """
+    Compute paired Cohen's d using one mean effect per independent cluster.
+    """
+    values = np.asarray(values, dtype=float)
+    cluster_ids = np.asarray(cluster_ids)
+
+    valid_mask = np.isfinite(values)
+    values = values[valid_mask]
+    cluster_ids = cluster_ids[valid_mask]
+    if values.size == 0:
+        return float("nan")
+
+    cluster_means = (
+        pd.DataFrame({"cluster_id": cluster_ids, "value": values})
+        .groupby("cluster_id", sort=False)["value"]
+        .mean()
+        .to_numpy(dtype=float)
+    )
+
+    n_clusters = cluster_means.size
+    if n_clusters < 2:
+        return float("nan")
+
+    mean_effect = np.mean(cluster_means)
+    std_effect = np.std(cluster_means, ddof=1)
+
+    if std_effect == 0:
+        return float("nan")
+
+    return float(mean_effect / std_effect)
+
+
+def _compute_aggregated_label_effect_sizes(plot_df: pd.DataFrame, order: list[str]) -> pd.Series:
+    effect_sizes: dict[str, float] = {}
+    for label in order:
+        label_rows = plot_df[plot_df["label"] == label]
+        cluster_ids = label_rows[["dataset", "target", "task", "feature"]].astype(str).agg(
+            "|".join,
+            axis=1,
+        )
+
+        effect_sizes[label] = _cluster_mean_effect_size(
+            label_rows["normalized_diff"].to_numpy(dtype=float),
+            cluster_ids.to_numpy(),
+        )
+
+    return pd.Series(effect_sizes).reindex(order)
+
+
 def _compute_aggregated_label_pvalues(plot_df: pd.DataFrame, order: list[str]) -> pd.Series:
     pvals: dict[str, float] = {}
     for label in order:
@@ -461,25 +519,32 @@ def _compute_aggregated_label_pvalues(plot_df: pd.DataFrame, order: list[str]) -
     return pd.Series(pvals).reindex(order)
 
 
-def _annotate_panel_p_values(
+def _annotate_panel_statistics(
     ax: plt.Axes,
     plot_df: pd.DataFrame,
     order: list[str],
     y_lim: float,
 ) -> None:
     pvals = _compute_aggregated_label_pvalues(plot_df, order)
+    effects = _compute_aggregated_label_effect_sizes(plot_df, order)
+
     ymax = plot_df.groupby("label")["normalized_diff"].max().reindex(order)
     y_padding = 0.06 * y_lim
     y_cap = 0.86 * y_lim
 
     for xpos, label in enumerate(order):
         p_value = pvals.get(label, np.nan)
+        d_value = effects.get(label, np.nan)
+
         box_top = ymax.get(label, np.nan)
         y_text = y_cap if not np.isfinite(box_top) else min(float(box_top) + y_padding, y_cap)
+
+        stat_label = f"p={p_value:.4f}\nd={d_value:.2f}"
+
         ax.text(
             xpos,
             y_text,
-            _format_p_value_label(float(p_value)),
+            stat_label,
             ha="center",
             va="bottom",
             fontsize=7,
@@ -547,7 +612,7 @@ def _plot_aggregated_pair_comparison(
         ax.set_yticks(forced_ticks)
         ax.set_ylabel("")
         ax.tick_params(axis="x", rotation=35)
-        _annotate_panel_p_values(ax, panel_df, panel_order, y_lim)
+        _annotate_panel_statistics(ax, panel_df, panel_order, y_lim)
         ax.text(
             0.5,
             y_lim * 0.93,

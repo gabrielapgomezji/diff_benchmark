@@ -1,10 +1,11 @@
 from functools import partial
+from pathlib import Path
 from typing import Any, Callable
 
-from pathlib import Path
 import torch
 import torch.nn.functional as F
 from torch import nn
+
 from diff_benchmark.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -17,19 +18,19 @@ def standardize_batch_volumes(
 ) -> list[torch.Tensor]:
     """
     Standardizes a batch of 3D volumes to have consistent orientation and size.
-    
+
     This function performs two main operations:
     1. Reorients volumes to a consistent (D, H, W) format where H and W are the slice dimensions
     2. Resizes all volumes to have the same depth using trilinear interpolation
-    
+
     Args:
         volumes (list[torch.Tensor]): List of 3D tensors with potentially different shapes and orientations.
         target_depth (int, optional): Target depth for all volumes. If None, uses the median depth.
         slice_size (int, optional): Expected size of the slice dimensions (H, W). Defaults to 256.
-    
+
     Returns:
         list[torch.Tensor]: List of standardized volumes, all with shape (target_depth, slice_size, slice_size).
-    
+
     Example:
         >>> volumes = [torch.randn(170, 256, 256), torch.randn(256, 256, 180), torch.randn(128, 256, 256)]
         >>> standardized = standardize_batch_volumes(volumes)
@@ -37,30 +38,32 @@ def standardize_batch_volumes(
     """
     if not volumes:
         return volumes
-    
+
     # Step 1: Detect slice dimensions and reorient all volumes
     reoriented_volumes = []
-    
+
     for volume in volumes:
         if volume.ndim != 3:
             raise ValueError(f"Expected 3D volume, got shape {volume.shape}")
-        
+
         # Identify which dimensions correspond to the slice size
         dims = list(volume.shape)
         slice_dims_idx = [i for i, d in enumerate(dims) if d == slice_size]
-        
+
         if len(slice_dims_idx) == 2:
             # Found two dimensions matching slice_size - these are H and W
             # The remaining dimension is depth
             depth_idx = [i for i in range(3) if i not in slice_dims_idx][0]
-            
+
             # Reorder to (depth, H, W)
             # Create permutation that moves depth to position 0
             perm = [depth_idx] + slice_dims_idx
             volume = volume.permute(*perm)
         elif len(slice_dims_idx) == 3:
             # All dimensions are the same size, assume it's already in correct format
-            logger.warning(f"Volume has uniform dimensions {volume.shape}, assuming (D, H, W) format")
+            logger.warning(
+                f"Volume has uniform dimensions {volume.shape}, assuming (D, H, W) format"
+            )
         elif len(slice_dims_idx) == 0:
             # No dimensions match slice_size, try to infer the format
             # Assume the smallest dimension is depth (common in medical imaging)
@@ -78,38 +81,38 @@ def standardize_batch_volumes(
                 f"Ambiguous volume orientation: shape {volume.shape} has only one dimension "
                 f"matching slice_size {slice_size}"
             )
-        
+
         reoriented_volumes.append(volume)
-    
+
     # Step 2: Determine target depth
     if target_depth is None:
         depths = [vol.shape[0] for vol in reoriented_volumes]
         target_depth = int(torch.tensor(depths).float().median().item())
         logger.info(f"Using median depth {target_depth} from batch depths: {depths}")
-    
+
     # Step 3: Resize all volumes to target depth using trilinear interpolation
     standardized_volumes = []
-    
+
     for volume in reoriented_volumes:
         current_depth, height, width = volume.shape
-        
+
         if current_depth != target_depth or height != slice_size or width != slice_size:
             # Add batch and channel dimensions: (D, H, W) -> (1, 1, D, H, W)
             volume_5d = volume.unsqueeze(0).unsqueeze(0)
-            
+
             # Resize using trilinear interpolation
             volume_resized = F.interpolate(
                 volume_5d,
                 size=(target_depth, slice_size, slice_size),
-                mode='trilinear',
-                align_corners=False
+                mode="trilinear",
+                align_corners=False,
             )
-            
+
             # Remove batch and channel dims: (1, 1, D, H, W) -> (D, H, W)
             volume = volume_resized.squeeze(0).squeeze(0)
-        
+
         standardized_volumes.append(volume)
-    
+
     return standardized_volumes
 
 
@@ -542,11 +545,12 @@ class MedicalNet(ResNet):
             no_cuda=no_cuda,
         )
         pretrain_path = (
-                Path(__file__).parent.parent.parent.parent.parent
-                / "pretrain"
-                / pretrain_path / f"resnet_{depth}.pth"
-            )
-        
+            Path(__file__).parent.parent.parent.parent.parent
+            / "pretrain"
+            / pretrain_path
+            / f"resnet_{depth}.pth"
+        )
+
         if pretrained:
             if pretrain_path is None:
                 raise ValueError("pretrained=True but no pretrain_path provided")
@@ -582,9 +586,9 @@ class MedicalNet(ResNet):
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Collates a batch of data with optional augmentation and normalization.
-        
+
         Handles variable-sized volumes by standardizing orientations and depths.
-        
+
         Args:
             batch (list of tuples): Each element is (x, y, g).
             transform (callable, optional): Transformation function to apply to x.
@@ -593,11 +597,11 @@ class MedicalNet(ResNet):
         """
         mean = 0.5
         std = 0.5
-        
+
         xs, ys, gs = zip(*batch)
         # Standardize volumes to consistent orientation and size
         # xs = standardize_batch_volumes(list(xs), target_depth=None, slice_size=256)
-        
+
         # Apply transforms after standardization
         if transform:
             # Only apply transforms if input is an image (3D volume)
@@ -616,7 +620,7 @@ class MedicalNet(ResNet):
         else:
             # Stack features: (B, F)
             xs = torch.stack(xs)
-        
+
         ys = torch.stack(ys)
         gs = torch.stack(gs)
 

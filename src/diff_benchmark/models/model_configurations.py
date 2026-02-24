@@ -1,6 +1,3 @@
-import hashlib
-import json
-
 from omegaconf import OmegaConf
 from torch import nn
 
@@ -15,43 +12,21 @@ from diff_benchmark.models.sklearn_models.dummy import (
     DummyRegressorModel,
 )
 from diff_benchmark.models.sklearn_models.logistic_regression import (
+    LassoModel,
     LinearModel,
     PCALinearModel,
-    LassoModel,
 )
 from diff_benchmark.models.torch_models.cnn import ResNet3SliceMultihead
-from diff_benchmark.models.torch_models.medicalnet import MedicalNet
-from diff_benchmark.models.torch_models.dinov2 import DinoViTBackbone
-from diff_benchmark.models.torch_models.vit import GoogleViTBackbone
 from diff_benchmark.models.torch_models.curia import CuriaBackbone
+from diff_benchmark.models.torch_models.dinov2 import DinoViTBackbone
+from diff_benchmark.models.torch_models.medicalnet import MedicalNet
+from diff_benchmark.models.torch_models.vit import GoogleViTBackbone
 from diff_benchmark.models.utils_models.prediction_head import build_prediction_head
 from diff_benchmark.models.utils_models.trainer import (
     LightningTrainer,
     SklearnTrainer,
     TorchTrainer,
 )
-
-
-def make_run_id(name: str, params: dict) -> str:
-    """
-    Generates a unique run identifier based on the provided name and parameters.
-    Parameters:
-        name (str): The name associated with the run.
-        params (dict): A dictionary of parameters that will be used to generate the run ID.
-    Returns:
-        str: A unique run ID formatted as 'name_hash', where 'hash' is the first 8 characters
-             of the MD5 hash of the sorted parameters.
-    """
-
-    # Sort params to keep consistency
-    try:
-        params_str = json.dumps(params, sort_keys=True)
-    except TypeError:
-        # fallback: convert everything to string
-        params_str = repr(params)
-    # Hash to avoid overly long filenames
-    run_hash = hashlib.md5(params_str.encode()).hexdigest()[:8]
-    return f"{name}_{run_hash}"
 
 
 class TaskModel(nn.Module):
@@ -70,7 +45,7 @@ class TaskModel(nn.Module):
         super().__init__()
         self.backbone = backbone
         self.head = head
-        
+
         if hasattr(backbone, "mean"):
             self.mean = backbone.mean
         if hasattr(backbone, "std"):
@@ -105,17 +80,21 @@ class TaskModel(nn.Module):
 
 def create_model(
     model_name: str,
-    model_kwargs: dict = {},
-    pred_head: dict = {},
+    model_kwargs: dict | None = None,
+    pred_head: dict | None = None,
 ):
     """Creates a model instance based on the specified type.
     Args:
-        model (str): The type of model to create (e.g., "torch", "lightning").
-        model_kwargs (dict): Additional keyword arguments for the model.
-
+        model_name (str): The type of model to create (e.g., "forest", "2dcnn", "vit").
+        model_kwargs (dict | None): Additional keyword arguments forwarded to the model constructor.
+        pred_head (dict | None): Prediction head configuration (prediction_task, num_classes, etc.).
     Returns:
-        nn.Module: Configured model instance for the specified type.
+        nn.Module | SklearnModel: Configured model instance.
+    Raises:
+        ValueError: If model_name is not recognised.
     """
+    model_kwargs = model_kwargs or {}
+    pred_head = pred_head or {}
     if model_name == "dummy_classifier":
         backbone = DummyClassifierModel(**model_kwargs)
         return backbone
@@ -125,37 +104,37 @@ def create_model(
         return backbone
 
     if model_name == "linear":
-        model_kwargs["prediction_task"]=pred_head["prediction_task"]
+        model_kwargs["prediction_task"] = pred_head["prediction_task"]
         backbone = LinearModel(**model_kwargs)
         return backbone
 
     if model_name == "pca_linear":
-        model_kwargs["prediction_task"]=pred_head["prediction_task"]
+        model_kwargs["prediction_task"] = pred_head["prediction_task"]
         backbone = PCALinearModel(**model_kwargs)
         return backbone
 
     if model_name == "forest":
-        model_kwargs["prediction_task"]=pred_head["prediction_task"]
+        model_kwargs["prediction_task"] = pred_head["prediction_task"]
         backbone = RandomForestModel(**model_kwargs)
         return backbone
-    
+
     if model_name == "svm":
-        model_kwargs["prediction_task"]=pred_head["prediction_task"]
+        model_kwargs["prediction_task"] = pred_head["prediction_task"]
         backbone = SVMModel(**model_kwargs)
         return backbone
-    
+
     if model_name == "pca_forest":
-        model_kwargs["prediction_task"]=pred_head["prediction_task"]
+        model_kwargs["prediction_task"] = pred_head["prediction_task"]
         backbone = PCARandomForestModel(**model_kwargs)
         return backbone
 
     if model_name == "pca_svm":
-        model_kwargs["prediction_task"]=pred_head["prediction_task"]
+        model_kwargs["prediction_task"] = pred_head["prediction_task"]
         backbone = PCASVMModel(**model_kwargs)
         return backbone
-    
+
     if model_name == "lasso":
-        model_kwargs["prediction_task"]=pred_head["prediction_task"]
+        model_kwargs["prediction_task"] = pred_head["prediction_task"]
         backbone = LassoModel(**model_kwargs)
         return backbone
 
@@ -181,7 +160,7 @@ def create_model(
             **pred_head,
         )
         return TaskModel(backbone, head)
-    
+
     if model_name == "vit":
         backbone = GoogleViTBackbone(**model_kwargs)
         head = build_prediction_head(
@@ -189,7 +168,7 @@ def create_model(
             **pred_head,
         )
         return TaskModel(backbone, head)
-    
+
     if model_name == "curia":
         backbone = CuriaBackbone(**model_kwargs)
         head = build_prediction_head(
@@ -198,8 +177,7 @@ def create_model(
         )
         return TaskModel(backbone, head)
 
-    else:
-        raise ValueError(f"Unknown model type: {model_name}")
+    raise ValueError(f"Unknown model type: {model_name}")
 
 
 def create_backend_trainer(
@@ -244,19 +222,22 @@ def create_backend_trainer(
 
 def create_trainer(
     model_name: str,
-    model_kwargs: dict = {},
-    pred_head: dict = {},
-    backend_kwargs: dict = {},
+    model_kwargs: dict | None = None,
+    pred_head: dict | None = None,
+    backend_kwargs: dict | None = None,
 ):
     """Creates a Trainer for a specific model and backend.
     Args:
         model_name (str): The type of model to create (e.g., "2dcnn", "medicalnet").
-        model_kwargs (dict): Additional keyword arguments for the model.
-        backend (str): The backend type (e.g., "torch", "lightning").
-        backend_kwargs (dict): Additional keyword arguments for the backend trainer.
+        model_kwargs (dict | None): Additional keyword arguments for the model.
+        pred_head (dict | None): Prediction head configuration.
+        backend_kwargs (dict | None): Additional keyword arguments for the backend trainer.
     Returns:
-        Trainer: Configured Trainer instance for the specified model and backend.
+        BaseTrainer: Configured Trainer instance for the specified model and backend.
     """
+    model_kwargs = model_kwargs or {}
+    pred_head = pred_head or {}
+    backend_kwargs = backend_kwargs or {}
     model = create_model(model_name, model_kwargs, pred_head)
     backend_kwargs["prediction_task"] = pred_head["prediction_task"]
     trainer = create_backend_trainer(model, backend_kwargs)
@@ -265,23 +246,18 @@ def create_trainer(
 
 def get_model(name: str, config: dict) -> object:
     """
-    Get a machine learning model instance based on the specified name and configuration.
+    Assemble and return a trainer for the named model using a resolved config dict.
+
+    Pulls backend, data-partition, and random-state settings out of the config,
+    injects them into the backend kwargs, then delegates to :func:`create_trainer`.
+
     Parameters:
-        name (str): The name of the model to retrieve. Supported names include:
-                    - "cca": Canonical Correlation Regressor
-                    - "dummy_classifier": Dummy Classifier
-                    - "mlp_classifier": Multi-Layer Perceptron Classifier
-                    - "logistic_regression": PCA Logistic Regression Model
-        config (dict): A dictionary containing configuration parameters for the model.
-                       The required keys depend on the model name:
-                       - For "cca": "n_components"
-                       - For "mlp_classifier": "input_dim", "hidden_layers", "output_dim",
-                         "learning_rate", "dropout_rate", "epochs"
-                       - For "logistic_regression": "n_components"
+        name (str): Model name, e.g. ``"linear"``, ``"forest"``, ``"2dcnn"``.
+        config (dict): Fully-resolved config dictionary produced by OmegaConf.
     Returns:
-        An instance of the specified model.
+        BaseTrainer: Configured trainer wrapping the model.
     Raises:
-        ValueError: If the provided model name is not recognized.
+        ValueError: If *name* is not a recognised model identifier.
     """
 
     name = name.lower()
@@ -290,7 +266,7 @@ def get_model(name: str, config: dict) -> object:
     config["backend"]["seed"] = config["random_state"]
     return create_trainer(
         model_name=name,
-        model_kwargs={**config["model"]["backbone"]},
+        model_kwargs={**config["model"]["backbone"], "random_state": config["random_state"]},
         pred_head={**config["pred_head"]},
         backend_kwargs={**config["backend"]},
     )

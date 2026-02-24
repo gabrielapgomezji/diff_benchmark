@@ -1,5 +1,5 @@
-import os
 import json
+import os
 from pathlib import Path
 from xml import etree
 
@@ -8,13 +8,14 @@ import nilearn as ni
 import numpy as np
 import pandas as pd
 from dipy.core.gradients import gradient_table
-from dipy.reconst import dti, dki
+from dipy.reconst import dki, dti
 from dipy.reconst.mapmri import MapmriModel
 from nilearn import image as nimage
 from nilearn import maskers
 from scipy import ndimage
 from scipy.spatial import cKDTree
 from templateflow import api as tflow
+
 from diff_benchmark.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -60,7 +61,9 @@ def read_label_file() -> dict:
     return label_dict
 
 
-def extract_selected_labels(nifti_path: Path, labels_dict: dict | None = None, tissue_type: str = "gray") -> dict:
+def extract_selected_labels(
+    nifti_path: Path, labels_dict: dict | None = None, tissue_type: str = "gray"
+) -> dict:
     """Extract selected labels from a NIfTI file's header extensions.
     Args:
         nifti_path (Path): Path to the NIfTI file.
@@ -78,18 +81,23 @@ def extract_selected_labels(nifti_path: Path, labels_dict: dict | None = None, t
         }
         if tissue_type == "gray":
             return {
-                k: v for k, v in labels.items() if k.startswith("ctx") or "ventricle" in k
+                k: v
+                for k, v in labels.items()
+                if k.startswith("ctx") or "ventricle" in k
             }
         elif tissue_type == "white":
             return {
-                k: v for k, v in labels_dict.items()
-                if any([
-                    ("white" in k and "matter" in k),
-                    ("cerebral-white-matter" in k),
-                    ("wm-" in k),
-                    ("ventricle" in k),
-                    (v in [2, 41])
-                ])
+                k: v
+                for k, v in labels_dict.items()
+                if any(
+                    [
+                        ("white" in k and "matter" in k),
+                        ("cerebral-white-matter" in k),
+                        ("wm-" in k),
+                        ("ventricle" in k),
+                        (v in [2, 41]),
+                    ]
+                )
             }
     except Exception as e:
         logger.warning(f"Error extracting labels from given file: {e}")
@@ -123,7 +131,9 @@ def create_masks(
         # Original gray matter logic
         if selected_labels is not None:
             tissue_mask = nimage.math_img(
-                " + ".join(f"(x == {labels[k]})" for k in selected_labels if k in labels),
+                " + ".join(
+                    f"(x == {labels[k]})" for k in selected_labels if k in labels
+                ),
                 x=parcellation_img,
             )
         else:
@@ -131,39 +141,44 @@ def create_masks(
                 " + ".join(f"(x == {v})" for k, v in labels.items() if "ctx" in k),
                 x=parcellation_img,
             )
-    
+
     elif tissue_type == "white":
         # White matter mask (Left-Cerebral-White-Matter: 2, Right-Cerebral-White-Matter: 41)
         # tissue_mask = nimage.math_img(
-        #     " + ".join(f"(x == {v})" for k, v in labels.items() 
+        #     " + ".join(f"(x == {v})" for k, v in labels.items()
         #               if "white" in k.lower() and "matter" in k.lower()),
         #     x=parcellation_img,
         # )
         wm_matches = [
-            (k, v) for k, v in labels.items()
-            if any([
-                ("white" in k.lower() and "matter" in k.lower()),
-                ("cerebral-white-matter" in k.lower()),
-                ("wm" in k.lower() and "cerebral" in k.lower()),
-                (v in [2, 41])  # Standard FreeSurfer left/right cerebral WM IDs
-            ])
+            (k, v)
+            for k, v in labels.items()
+            if any(
+                [
+                    ("white" in k.lower() and "matter" in k.lower()),
+                    ("cerebral-white-matter" in k.lower()),
+                    ("wm" in k.lower() and "cerebral" in k.lower()),
+                    (v in [2, 41]),  # Standard FreeSurfer left/right cerebral WM IDs
+                ]
+            )
         ]
         wm_expr = " + ".join(f"(x == {v})" for k, v in wm_matches)
         tissue_mask = nimage.math_img(wm_expr, x=parcellation_img)
-    
+
     # elif tissue_type == "both":
     #     # Combined gray + white matter
     #     ctx_expr = " + ".join(f"(x == {v})" for k, v in labels.items() if "ctx" in k)
-    #     wm_expr = " + ".join(f"(x == {v})" for k, v in labels.items() 
+    #     wm_expr = " + ".join(f"(x == {v})" for k, v in labels.items()
     #                         if "white" in k.lower() and "matter" in k.lower())
     #     tissue_mask = nimage.math_img(
     #         f"({ctx_expr}) + ({wm_expr})",
     #         x=parcellation_img,
     #     )
-    
+
     else:
-        raise ValueError(f"Unknown tissue_type: {tissue_type}. Must be 'gray', 'white', or 'both'")
-    
+        raise ValueError(
+            f"Unknown tissue_type: {tissue_type}. Must be 'gray', 'white', or 'both'"
+        )
+
     # Ventricle mask (unchanged)
     vent_mask_raw = nimage.math_img(
         " + ".join(f"(x == {v})" for k, v in labels.items() if "vent" in k),
@@ -172,7 +187,7 @@ def create_masks(
     vent_mask = nimage.new_img_like(
         parcellation_img, ndimage.binary_erosion(nimage.get_data(vent_mask_raw))
     )
-    
+
     return tissue_mask, vent_mask
 
 
@@ -283,7 +298,8 @@ def compute_rtop_NEW(
     # --------------------------------------------------
     if delta_per_bvalue is not None:
         preferred_bvals = [
-            b for b, d in delta_per_bvalue.items()
+            b
+            for b, d in delta_per_bvalue.items()
             if np.isclose(d, big_delta * 1000, atol=1)
         ]
         bvals_mask = np.isin(bvals, [0] + preferred_bvals)
@@ -326,10 +342,10 @@ def compute_rtop_NEW(
     # --------------------------------------------------
     map_model = MapmriModel(
         gtab,
-        radial_order=4,                 # more stable than 6
+        radial_order=4,  # more stable than 6
         laplacian_regularization=True,
-        laplacian_weighting=0.05,       # less aggressive
-        positivity_constraint=True,     # critical for RTOP
+        laplacian_weighting=0.05,  # less aggressive
+        positivity_constraint=True,  # critical for RTOP
     )
 
     rtop = map_model.fit(dwi_data.T).rtop()
@@ -467,7 +483,7 @@ def compute_mk(
         else:
             # Do not filter
             bvals_mask = np.ones_like(bvals, dtype=bool)
-            
+
     else:
         bvals_mask = np.ones_like(bvals, dtype=bool)
 
@@ -501,8 +517,10 @@ def compute_mk(
     return masker.inverse_transform(mk.T)
 
 
-from dipy.reconst.shm import sf_to_sh, sh_to_rh
 from dipy.core.sphere import Sphere
+from dipy.reconst.shm import sf_to_sh, sh_to_rh
+
+
 def compute_sh(
     dwi_nib: nib.nifti1.Nifti1Image,
     mask_img: nib.nifti1.Nifti1Image,
@@ -544,39 +562,39 @@ def compute_sh(
     dwi_dirs = gtab.bvecs[gtab.bvals > 0]
     dwi_signal = dwi_data[gtab.bvals > 0, :]  # Exclude b0 from signal
     b0_data = dwi_data[0, :]
-    
+
     # Normalize signal by b0
     dwi_normalized = dwi_signal / (b0_data + 1e-6)
     # Create Sphere object from gradient directions
     # Convert Cartesian (x,y,z) to spherical (theta, phi)
     sphere = Sphere(xyz=dwi_dirs)
-    
+
     # Fit SH to the SIGNAL (not ODF)
     # This uses sf_to_sh which fits SH to signal values at gradient directions
     sh_coeffs = sf_to_sh(
         dwi_normalized.T,  # (n_voxels, n_gradients)
         sphere,  # Use Sphere object, not raw bvecs
         sh_order=sh_order,
-        basis_type='descoteaux07'
+        basis_type="descoteaux07",
     )
-    
+
     # Compute power (L2 norm) - represents signal complexity/anisotropy
     scalar = np.linalg.norm(sh_coeffs, axis=1)
     scalar = np.nan_to_num(scalar)
-    
+
     # Normalization with ventricles (questionable, but kept for consistency)
     # if normalization_mask_img is not None:
     #     norm_masker = maskers.NiftiMasker(normalization_mask_img)
     #     norm_masker.fit(b0)
     #     dwi_norm = norm_masker.transform(dwi_nib)
-        
+
     #     if delta_per_bvalue is not None:
     #         dwi_norm = dwi_norm[bvals_mask, :]
-        
+
     #     dwi_norm_signal = dwi_norm[gtab.bvals > 0, :]
     #     b0_norm = dwi_norm[0, :]
     #     dwi_norm_normalized = dwi_norm_signal / (b0_norm + 1e-6)
-        
+
     #     sh_norm = sf_to_sh(
     #         dwi_norm_normalized.T,
     #         sphere,
@@ -584,57 +602,60 @@ def compute_sh(
     #         basis_type='descoteaux07'
     #     )
     #     scalar_norm = np.linalg.norm(sh_norm, axis=1)
-        
+
     #     scalar = scalar / (scalar_norm.mean() + 1e-6)
-    
+
     scalar = scalar.clip(0, np.percentile(scalar[~np.isnan(scalar)], 99))
     return masker.inverse_transform(scalar)
 
+
 import requests
+
 
 def download_fsl_skeleton(output_dir: Path = None) -> Path:
     """
     Download FSL's FMRIB58 FA skeleton if not available locally.
-    
+
     Args:
         output_dir: Where to save the skeleton. Defaults to aux_materials/
-    
+
     Returns:
         Path to the downloaded skeleton file
     """
     if output_dir is None:
         output_dir = Path(__file__).parent.parent.parent.parent / "aux_materials"
-    
+
     output_dir.mkdir(parents=True, exist_ok=True)
     skeleton_file = output_dir / "FMRIB58_FA-skeleton_1mm.nii.gz"
-    
+
     if skeleton_file.exists():
         logger.info(f"Skeleton already exists at {skeleton_file}")
         return skeleton_file
-    
+
     # Try TemplateFlow first (most reliable)
     try:
         logger.info("Downloading white matter skeleton from TemplateFlow...")
-        
+
         # Option 1: MNI152 skeleton (closest to FMRIB58)
         skeleton_path = tflow.get(
-            'MNI152NLin2009cAsym',
+            "MNI152NLin2009cAsym",
             resolution=1,
-            desc='brain',
-            suffix='probseg',
-            extension='nii.gz'
+            desc="brain",
+            suffix="probseg",
+            extension="nii.gz",
         )
-        
+
         # Copy to our aux_materials directory
         import shutil
+
         shutil.copy(skeleton_path, skeleton_file)
-        
+
         logger.info(f"Downloaded skeleton from TemplateFlow to {skeleton_file}")
         return skeleton_file
-    
+
     except Exception as e:
         logger.warning(f"TemplateFlow download failed: {e}")
-    
+
     # Final fallback: print manual instructions
     raise FileNotFoundError(
         f"\n{'='*80}\n"
@@ -648,15 +669,16 @@ def download_fsl_skeleton(output_dir: Path = None) -> Path:
         f"Then place the file at: {skeleton_file}\n"
         f"{'='*80}\n"
     )
-    
+
+
 def get_jhu_tract_names() -> list[str]:
     """
     Return the standard JHU ICBM-DTI-81 white matter tract names.
-    
+
     These correspond to label IDs 1-48 in the JHU-ICBM-labels-1mm.nii.gz atlas.
     Source: FSL JHU atlas documentation
     https://git.fmrib.ox.ac.uk/fsl/data_atlases/-/blob/FinalFive/JHU-labels.xml
-    
+
     Returns:
         list[str]: 48 tract names in order (label 1-48)
     """
@@ -710,14 +732,15 @@ def get_jhu_tract_names() -> list[str]:
         "Tapetum R",
         "Tapetum L",
     ]
-    
+
+
 def load_tbss_skeleton(
     skeleton_path: Path | None = None,
     template: str = "fmrib",
 ) -> tuple:
     """
     Load standard TBSS skeleton and tract atlas.
-    
+
     Args:
         skeleton_path: Path to existing skeleton file. If None, will try to find/download.
         template (str): Which skeleton template to use:
@@ -727,26 +750,26 @@ def load_tbss_skeleton(
             - "jhu": JHU ICBM-DTI-81 (48 tracts, most common)
             - "jhu-labels": JHU white matter tractography atlas (20 tracts)
             - "aal": AAL atlas white matter regions
-    
+
     Returns:
         tuple: (skeleton_mask, tract_labels, tract_names)
     """
     from nilearn import datasets
-    
+
     # Step 1: Load or download skeleton
     if skeleton_path is None:
         # Check FSL installation first
         fsl_dir = Path(__file__).parent.parent.parent.parent / "aux_materials"
         skeleton_path = fsl_dir / "FMRIB58_FA-skeleton_1mm.nii.gz"
-        
+
         if not skeleton_path.exists():
             # Download to aux_materials
             logger.warning("FSL skeleton not found locally, downloading...")
             skeleton_path = download_fsl_skeleton()
-    
+
     skeleton_mask = nib.load(skeleton_path)
     logger.info(f"Loaded TBSS skeleton from {skeleton_path}")
-    
+
     # Step 2: Load white matter atlas
     # JHU ICBM-DTI-81 atlas (48 tracts)
     jhu_labels_file = fsl_dir / "JHU-ICBM-labels-1mm.nii.gz"
@@ -755,62 +778,63 @@ def load_tbss_skeleton(
     # tract_labels_img = nib.load(jhu_data['maps'])
     tract_names = get_jhu_tract_names()
     logger.info(f"Loaded JHU ICBM-DTI-81 atlas with {len(tract_names)} tracts")
-    
+
     # Step 3: Resample atlas to skeleton space
     tract_labels_resampled = nimage.resample_to_img(
-        tract_labels_img, 
-        skeleton_mask, 
-        interpolation='nearest'
+        tract_labels_img, skeleton_mask, interpolation="nearest"
     )
-    
+
     # Step 4: Mask tract labels to only skeleton voxels
     skeleton_data = skeleton_mask.get_fdata() > 0.2  # Threshold for skeleton
     tract_data = tract_labels_resampled.get_fdata()
     tract_labels_on_skeleton = tract_data * skeleton_data
-    
+
     # Convert to NIfTI image
     tract_labels_skeleton_img = nimage.new_img_like(
-        skeleton_mask,
-        tract_labels_on_skeleton
+        skeleton_mask, tract_labels_on_skeleton
     )
-    
+
     return skeleton_mask, tract_labels_skeleton_img, tract_names
+
 
 def classify_tract_hemisphere(tract_name: str) -> str:
     """
     Classify JHU tract as left ('L'), right ('R'), or midline ('M').
-    
+
     Args:
         tract_name: Name from JHU atlas (e.g., "Anterior thalamic radiation L")
-    
+
     Returns:
         str: 'L', 'R', or 'M'
     """
     tract_lower = tract_name.lower()
-    
+
     # Explicit hemisphere indicators
-    if tract_lower.endswith(' l') or 'left' in tract_lower:
-        return 'L'
-    elif tract_lower.endswith(' r') or 'right' in tract_lower:
-        return 'R'
-    
+    if tract_lower.endswith(" l") or "left" in tract_lower:
+        return "L"
+    elif tract_lower.endswith(" r") or "right" in tract_lower:
+        return "R"
+
     # Midline structures
     midline_keywords = [
-        'corpus callosum',
-        'genu of corpus callosum',
-        'body of corpus callosum',
-        'splenium of corpus callosum',
-        'fornix',
-        'middle cerebellar peduncle',
+        "corpus callosum",
+        "genu of corpus callosum",
+        "body of corpus callosum",
+        "splenium of corpus callosum",
+        "fornix",
+        "middle cerebellar peduncle",
     ]
-    
+
     if any(keyword in tract_lower for keyword in midline_keywords):
-        return 'M'
-    
+        return "M"
+
     # Default: treat as midline if unclear
-    logger.warning(f"Could not classify hemisphere for tract: {tract_name}, treating as midline")
-    return 'M'
-        
+    logger.warning(
+        f"Could not classify hemisphere for tract: {tract_name}, treating as midline"
+    )
+    return "M"
+
+
 def project_to_skeleton(
     metric_img: nib.nifti1.Nifti1Image,
     output_dir: Path,
@@ -820,7 +844,7 @@ def project_to_skeleton(
     """
     Project volumetric metric onto TBSS skeleton and extract tract-level scalars.
     Saves hemisphere-split .scalar.gii files matching gray matter format.
-    
+
     Args:
         metric_img: Subject's metric (RTOP, MD, etc.) in subject's native space
         skeleton_mask: Standard TBSS skeleton (in MNI space)
@@ -833,35 +857,33 @@ def project_to_skeleton(
         save_skeleton_image: If True, save full skeleton NIfTI
         save_as_gifti: If True, save tract scalars as .scalar.gii
         split_hemispheres: If True, split by L/R/M hemispheres
-    
+
     Returns:
         tuple: (skeleton_img, tract_scalars_all)
     """
     logger.info(f"[{subject_id}] Projecting {metric_name} onto TBSS skeleton")
     skeleton_mask, tract_labels_skeleton_img, tract_names = load_tbss_skeleton()
-    
+
     # Step 1: Resample metric from subject space to MNI/skeleton space
     logger.info(f"[{subject_id}] Transforming skeleton from MNI to subject space")
-        
+
     # Resample skeleton mask to subject's metric space
     skeleton_mask_subject = nimage.resample_to_img(
-        skeleton_mask,
-        metric_img,
-        interpolation='linear'  # For mask values
+        skeleton_mask, metric_img, interpolation="linear"  # For mask values
     )
-    
+
     # Resample tract labels to subject's metric space
     tract_labels_subject = nimage.resample_to_img(
         tract_labels_skeleton_img,
         metric_img,
-        interpolation='nearest'  # IMPORTANT: nearest for labels!
+        interpolation="nearest",  # IMPORTANT: nearest for labels!
     )
-    
+
     # Use subject-space data directly
     metric_data = metric_img.get_fdata()
     skeleton_data = skeleton_mask_subject.get_fdata() > 0.2
     tract_data = tract_labels_subject.get_fdata()
-    
+
     # Step 2: Apply skeleton mask
     metric_on_skeleton = metric_data * skeleton_data
 
@@ -871,28 +893,28 @@ def project_to_skeleton(
     left_names = []
     right_names = []
     midline_names = []
-    
+
     for tract_id, tract_name in enumerate(tract_names, start=1):
         tract_mask = (tract_data == tract_id) & skeleton_data
-        
+
         if tract_mask.sum() > 0:
             value = np.nanmean(metric_on_skeleton[tract_mask])
         else:
             value = np.nan
-        
+
         # Classify by hemisphere
         hemi = classify_tract_hemisphere(tract_name)
-        
-        if hemi == 'L':
+
+        if hemi == "L":
             left_scalars.append(value)
             left_names.append(tract_name)
-        elif hemi == 'R':
+        elif hemi == "R":
             right_scalars.append(value)
             right_names.append(tract_name)
         else:  # 'M'
             midline_scalars.append(value)
             midline_names.append(tract_name)
-    
+
     # Convert to numpy arrays
     left_scalars = np.array(left_scalars, dtype=np.float32)
     right_scalars = np.array(right_scalars, dtype=np.float32)
@@ -907,10 +929,15 @@ def project_to_skeleton(
                 intent="NIFTI_INTENT_DIMLESS",
             )
         )
-        left_file = output_dir / f"sub-{subject_id}_hemi-L_param-{metric_name}_tissue-white.scalar.gii"
+        left_file = (
+            output_dir
+            / f"sub-{subject_id}_hemi-L_param-{metric_name}_tissue-white.scalar.gii"
+        )
         nib.save(left_gii, left_file)
-        logger.info(f"[{subject_id}] Saved {len(left_scalars)} LEFT WM tracts to {left_file}")
-    
+        logger.info(
+            f"[{subject_id}] Saved {len(left_scalars)} LEFT WM tracts to {left_file}"
+        )
+
     # Right hemisphere
     if len(right_scalars) > 0:
         right_gii = nib.gifti.gifti.GiftiImage()
@@ -920,10 +947,15 @@ def project_to_skeleton(
                 intent="NIFTI_INTENT_DIMLESS",
             )
         )
-        right_file = output_dir / f"sub-{subject_id}_hemi-R_param-{metric_name}_tissue-white.scalar.gii"
+        right_file = (
+            output_dir
+            / f"sub-{subject_id}_hemi-R_param-{metric_name}_tissue-white.scalar.gii"
+        )
         nib.save(right_gii, right_file)
-        logger.info(f"[{subject_id}] Saved {len(right_scalars)} RIGHT WM tracts to {right_file}")
-    
+        logger.info(
+            f"[{subject_id}] Saved {len(right_scalars)} RIGHT WM tracts to {right_file}"
+        )
+
     # Midline tracts
     if len(midline_scalars) > 0:
         midline_gii = nib.gifti.gifti.GiftiImage()
@@ -933,16 +965,22 @@ def project_to_skeleton(
                 intent="NIFTI_INTENT_DIMLESS",
             )
         )
-        midline_file = output_dir / f"sub-{subject_id}_hemi-M_param-{metric_name}_tissue-white.scalar.gii"
+        midline_file = (
+            output_dir
+            / f"sub-{subject_id}_hemi-M_param-{metric_name}_tissue-white.scalar.gii"
+        )
         nib.save(midline_gii, midline_file)
-        logger.info(f"[{subject_id}] Saved {len(midline_scalars)} MIDLINE WM tracts to {midline_file}")
+        logger.info(
+            f"[{subject_id}] Saved {len(midline_scalars)} MIDLINE WM tracts to {midline_file}"
+        )
 
     # Concatenate all for return
     tract_scalars_all = np.concatenate([left_scalars, right_scalars, midline_scalars])
 
     # skeleton_img = nimage.new_img_like(metric_img, metric_on_skeleton)
-    
+
     return None
+
 
 def extract_wm_tract_subset(
     left_tracts: np.ndarray,
@@ -953,62 +991,62 @@ def extract_wm_tract_subset(
 ) -> np.ndarray:
     """
     Extract a subset of white matter tracts by name pattern.
-    
+
     This function allows regional analysis of white matter by selecting specific
     tract groups (e.g., all "corona radiata", all "internal capsule", etc.).
-    
+
     Args:
         left_tracts (np.ndarray): Values for left hemisphere tracts
-        right_tracts (np.ndarray): Values for right hemisphere tracts  
+        right_tracts (np.ndarray): Values for right hemisphere tracts
         midline_tracts (np.ndarray): Values for midline tracts
         tract_names (list[str] | None): Full JHU tract names. If None, loads default.
         target_tracts (list[str] | None): List of tract name substrings to include.
             Examples: ["corona radiata", "internal capsule", "corticospinal"]
             If None, returns all tracts.
-    
+
     Returns:
         np.ndarray: Concatenated values for selected tracts only
     """
     if tract_names is None:
         tract_names = get_jhu_tract_names()
-    
+
     # Create tract indices by hemisphere
     left_indices = []
     right_indices = []
     midline_indices = []
-    
+
     for i, name in enumerate(tract_names):
         hemi = classify_tract_hemisphere(name)
-        if hemi == 'L':
+        if hemi == "L":
             left_indices.append(len(left_indices))
-        elif hemi == 'R':
+        elif hemi == "R":
             right_indices.append(len(right_indices))
         else:
             midline_indices.append(len(midline_indices))
-    
+
     # If no target specified, return all
     if target_tracts is None:
         return np.concatenate([left_tracts, right_tracts, midline_tracts])
-    
+
     # Filter by target tract names
     selected_left = []
     selected_right = []
     selected_midline = []
-    
+
     left_counter = 0
     right_counter = 0
     midline_counter = 0
-    
+
     for i, name in enumerate(tract_names):
         # Check if any target substring matches this tract
         matches = any(target.lower() in name.lower() for target in target_tracts)
-        
+
         if matches:
             hemi = classify_tract_hemisphere(name)
-            if hemi == 'L':
+            if hemi == "L":
                 selected_left.append(left_tracts[left_counter])
                 left_counter += 1
-            elif hemi == 'R':
+            elif hemi == "R":
                 selected_right.append(right_tracts[right_counter])
                 right_counter += 1
             else:
@@ -1017,13 +1055,13 @@ def extract_wm_tract_subset(
         else:
             # Still need to increment counters
             hemi = classify_tract_hemisphere(name)
-            if hemi == 'L':
+            if hemi == "L":
                 left_counter += 1
-            elif hemi == 'R':
+            elif hemi == "R":
                 right_counter += 1
             else:
                 midline_counter += 1
-    
+
     # Concatenate selected tracts
     all_selected = []
     if selected_left:
@@ -1032,13 +1070,14 @@ def extract_wm_tract_subset(
         all_selected.append(np.array(selected_right))
     if selected_midline:
         all_selected.append(np.array(selected_midline))
-    
+
     if not all_selected:
         logger.warning(f"No tracts matched target patterns: {target_tracts}")
         return np.array([])
-    
+
     return np.concatenate(all_selected)
-       
+
+
 def project_to_surface(
     micr_img: nib.nifti1.Nifti1Image,
     ctx_mask: nib.nifti1.Nifti1Image,
@@ -1054,7 +1093,7 @@ def project_to_surface(
     """
     Project image onto surface meshes and save as GIFTI files.
     For BIDS datasets, automatically resamples from native space to template space.
-    
+
     Args:
         micr_img (nib.Nifti1Image): NIfTI image with microstructure values.
         ctx_mask (nib.Nifti1Image): Context mask NIfTI image.
@@ -1071,7 +1110,7 @@ def project_to_surface(
     """
     if tissue_type == "white":
         logger.info(f"[{subject_id}] Skipping surface projection for white matter")
-        
+
         # Project white matter onto skeleton
         logger.info(f"[{subject_id}] Projecting white matter to skeleton")
         project_to_skeleton(
@@ -1081,11 +1120,11 @@ def project_to_surface(
             micr_metric,
         )
         return None
-    
+
     # First, project to surfaces (native space for BIDS, template space for HCP)
     left_data = None
     right_data = None
-    
+
     for h in ("L", "R"):
         insula_surf = ni.surface.vol_to_surf(
             micr_img,
@@ -1094,16 +1133,18 @@ def project_to_surface(
             inner_mesh=surfaces[f"{h}.white"],
             depth=[0.1, 0.5, 0.9],
         )
-        
+
         if h == "L":
             left_data = insula_surf
         else:
             right_data = insula_surf
-    
+
     # For BIDS datasets, resample from native space to template space
     if "bids" in data_reading and layouts is not None:
         try:
-            logger.info(f"[{subject_id}] Resampling surface data from native to {target_space} space")
+            logger.info(
+                f"[{subject_id}] Resampling surface data from native to {target_space} space"
+            )
             left_data, right_data = resample_subject_to_template(
                 subject_id=subject_id,
                 left_data=left_data,
@@ -1112,8 +1153,10 @@ def project_to_surface(
                 target_space=target_space,
             )
         except Exception as e:
-            logger.warning(f"[{subject_id}] Resampling failed, saving native space data: {e}")
-    
+            logger.warning(
+                f"[{subject_id}] Resampling failed, saving native space data: {e}"
+            )
+
     # Save the data (resampled for BIDS, native/template for HCP)
     for h, data in [("L", left_data), ("R", right_data)]:
         img = nib.gifti.gifti.GiftiImage()
@@ -1125,9 +1168,10 @@ def project_to_surface(
         )
         nib.save(
             img,
-            output_dir / f"sub-{subject_id}_hemi-{h}_param-{micr_metric}_tissue-{tissue_type}.scalar.gii",
+            output_dir
+            / f"sub-{subject_id}_hemi-{h}_param-{micr_metric}_tissue-{tissue_type}.scalar.gii",
         )
-    
+
     # Return None for gray matter (no additional image to save)
     return None
 
@@ -1141,14 +1185,14 @@ def resample_subject_to_template(
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Resample subject's native surface data to a template space using sphere mapping.
-    
+
     Args:
         subject_id (str): Subject identifier
         left_data (np.ndarray): Data on left hemisphere in subject's native space
         right_data (np.ndarray): Data on right hemisphere in subject's native space
         layouts (list): List of BIDS layouts to search for subject data
         target_space (str): Target template space ("fslr_32k" or "fsaverage")
-    
+
     Returns:
         tuple[np.ndarray, np.ndarray]: Resampled left and right hemisphere data
     """
@@ -1158,30 +1202,30 @@ def resample_subject_to_template(
         if subject_id in lay.get_subjects():
             layout = lay
             break
-    
+
     if layout is None:
         raise ValueError(f"Subject {subject_id} not found in any layout")
-    
+
     resampled_data = {}
-    
+
     for hemi, data in [("L", left_data), ("R", right_data)]:
         # Get subject's native sphere
         subject_sphere_files = layout.get(
             subject=subject_id,
-            suffix='sphere',
+            suffix="sphere",
             hemi=hemi,
             extension=".surf.gii",
-            space='fsLR',
-            return_type='files'
+            space="fsLR",
+            return_type="files",
         )
-        
+
         if not subject_sphere_files:
             raise FileNotFoundError(
                 f"No sphere surface found for subject {subject_id}, hemisphere {hemi}"
             )
-        
+
         subject_sphere = nib.load(subject_sphere_files[0])
-        
+
         # Get template sphere based on target_space
         if target_space == "fslr_32k":
             template_sphere_fn = tflow.get(
@@ -1193,23 +1237,25 @@ def resample_subject_to_template(
             )
         else:
             raise ValueError(f"Unknown target_space: {target_space}")
-        
+
         template_sphere = nib.load(template_sphere_fn)
-        
+
         # Build KD-trees for nearest-neighbor mapping
         kdtree_subject = cKDTree(subject_sphere.darrays[0].data)
         kdtree_template = cKDTree(template_sphere.darrays[0].data)
-        
+
         # Find nearest neighbors from subject to template
         subject_to_template = kdtree_subject.query(template_sphere.darrays[0].data, k=1)
-        
+
         # Resample data: for each template vertex, use nearest subject vertex
         resampled_data[hemi] = data[subject_to_template[1]]
-    
+
     return resampled_data["L"], resampled_data["R"]
 
 
-def resample_schaefer_onto_fs_lr(scale: int = 1000, target_space: str = "fslr_32k") -> dict:
+def resample_schaefer_onto_fs_lr(
+    scale: int = 1000, target_space: str = "fslr_32k"
+) -> dict:
     """Resample Schaefer 2018 parcellation onto fsLR or fsaverage space.
     Args:
         scale (int): Scale of Schaefer parcellation (e.g., 1000 for 1000 parcels).
@@ -1258,14 +1304,26 @@ def resample_schaefer_onto_fs_lr(scale: int = 1000, target_space: str = "fslr_32
 
     # If target is fsaverage, return the atlas directly without resampling
     if target_space == "fsaverage":
-        fslr_left_sulc = nib.load(
-            tflow.get("fsaverage", hemi="L", density="164k", suffix="sulc", desc=None)
-        ).darrays[0].data
-        
-        fslr_right_sulc = nib.load(
-            tflow.get("fsaverage", hemi="R", density="164k", suffix="sulc", desc=None)
-        ).darrays[0].data
-        
+        fslr_left_sulc = (
+            nib.load(
+                tflow.get(
+                    "fsaverage", hemi="L", density="164k", suffix="sulc", desc=None
+                )
+            )
+            .darrays[0]
+            .data
+        )
+
+        fslr_right_sulc = (
+            nib.load(
+                tflow.get(
+                    "fsaverage", hemi="R", density="164k", suffix="sulc", desc=None
+                )
+            )
+            .darrays[0]
+            .data
+        )
+
         return {
             "left.data": fsaverage_left_schaefer.darrays[0].data,
             "left.labels": labels_left,
@@ -1346,6 +1404,7 @@ def resample_schaefer_onto_fs_lr(scale: int = 1000, target_space: str = "fslr_32
         "right.labels": labels_right,
         "right.sulc": fslr_right_sulc,
     }
+
 
 def average_per_parcel(
     hem_left: np.ndarray, hem_right: np.ndarray, schaefer_resampled: dict
@@ -1542,9 +1601,13 @@ def compute_b0(
 
         if vent_mean > 1e-6:
             mean_b0 = mean_b0 / vent_mean
-            logger.info(f"compute_b0: ventricular normalisation applied (vent_mean={vent_mean:.4f})")
+            logger.info(
+                f"compute_b0: ventricular normalisation applied (vent_mean={vent_mean:.4f})"
+            )
         else:
-            logger.warning("compute_b0: skipping ventricular normalisation (vent_mean ~ 0)")
+            logger.warning(
+                "compute_b0: skipping ventricular normalisation (vent_mean ~ 0)"
+            )
     else:
         logger.warning(
             "compute_b0: no ventricular mask provided, returning un-normalised b0 signal."
@@ -1591,10 +1654,10 @@ def compute_save_and_project_metric(
     """
     Computes a specified diffusion metric, saves the resulting image to disk,
     and projects the metric onto cortical surfaces.
-    
-    For BIDS datasets, automatically resamples surface data from native space 
+
+    For BIDS datasets, automatically resamples surface data from native space
     to template space during projection.
-    
+
     Parameters:
         metric (str): The name of the diffusion metric to compute. Must be a key in `METRIC_COMPUTERS`.
         dwi_nib (nib.nifti1.Nifti1Image): The diffusion-weighted imaging (DWI) data as a NIfTI image.
@@ -1618,7 +1681,7 @@ def compute_save_and_project_metric(
     Notes:
         - The computed metric image is saved to the `derivatives_dir` with a filename
           formatted as `sub-{subject_id}_param-{metric}_dwimap.nii.gz`.
-        - For BIDS datasets, the metric is projected to surfaces in native space, 
+        - For BIDS datasets, the metric is projected to surfaces in native space,
           then automatically resampled to template space before saving.
         - For HCP datasets, no resampling is needed (data already in template space).
     """
@@ -1638,7 +1701,10 @@ def compute_save_and_project_metric(
         big_delta_per_bvalue,
     )
 
-    out_file = derivatives_dir / f"sub-{subject_id}_param-{metric}_tissue-{tissue_type}_dwimap.nii.gz"
+    out_file = (
+        derivatives_dir
+        / f"sub-{subject_id}_param-{metric}_tissue-{tissue_type}_dwimap.nii.gz"
+    )
     nib.save(metric_img, out_file)
     logger.info(f"[{subject_id}] Saved raw {metric} image to {out_file}")
 

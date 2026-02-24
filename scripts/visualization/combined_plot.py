@@ -8,6 +8,7 @@ Single publication-quality figure combining:
 Both panels share the same y-axis (normalized score, dummy=0 / perfect=1)
 and the same dataset-task x-order.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -23,8 +24,6 @@ from matplotlib.lines import Line2D
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
-from config import MICCAI_DOUBLE_COLUMN_FIGSIZE, apply_miccai_style
 from utils import (
     MODEL_DISPLAY_ORDER,
     MODEL_FAMILY_ORDER,
@@ -41,6 +40,8 @@ from utils import (
     ordered_dataset_task_labels_from_combos,
 )
 
+from config import MICCAI_DOUBLE_COLUMN_FIGSIZE, apply_miccai_style
+
 # ── Shared scope ──────────────────────────────────────────────────────────────
 COMBOS = [
     ("hcp", "Gender", "binary_classification"),
@@ -52,40 +53,41 @@ FEATURES = {"md", "mk", "sh", "b0"}
 TISSUES = {"white", "gray"}
 
 # ── Shared visual constants ───────────────────────────────────────────────────
-GROUP_SPACING_LEFT  = 1.6   # wider: 5 model families per group
-GROUP_SPACING_RIGHT = 1.2   # narrower: one bar stack per group
+GROUP_SPACING_LEFT = 1.6  # wider: 5 model families per group
+GROUP_SPACING_RIGHT = 1.2  # narrower: one bar stack per group
 
 FAMILY_COLORS = {
-    "Linear":      "#4C78A8",
+    "Linear": "#4C78A8",
     "RandomForest": "#59A14F",
-    "medicalnet":  "#E15759",
-    "dinov2":      "#F28E2B",
-    "curia":       "#B07AA1",
+    "medicalnet": "#E15759",
+    "dinov2": "#F28E2B",
+    "curia": "#B07AA1",
 }
 FAMILY_LABELS = {
-    "Linear":      "Linear",
+    "Linear": "Linear",
     "RandomForest": "Random\nForest",
-    "medicalnet":  "MedicalNet",
-    "dinov2":      "DINOv2",
-    "curia":       "Curia",
+    "medicalnet": "MedicalNet",
+    "dinov2": "DINOv2",
+    "curia": "Curia",
 }
 FAMILY_OFFSETS = {
-    "Linear":      -0.40,
+    "Linear": -0.40,
     "RandomForest": -0.20,
-    "medicalnet":   0.0,
-    "dinov2":       0.20,
-    "curia":        0.40,
+    "medicalnet": 0.0,
+    "dinov2": 0.20,
+    "curia": 0.40,
 }
 
 RANGE_LINE_COLOR = "#333333"
-IQR_COLOR        = "#111111"
-ANNOT_COLOR      = "#555555"
-DOT_COLOR        = "#444444"
+IQR_COLOR = "#111111"
+ANNOT_COLOR = "#555555"
+DOT_COLOR = "#444444"
 
 Y_LABEL = "Score (min-max,\ndummy = 0 to perfect = 1)"
 
 
 # ── Data pipelines ────────────────────────────────────────────────────────────
+
 
 def _base_df(parquet_path: str) -> pd.DataFrame:
     df = pd.read_parquet(parquet_path)
@@ -118,7 +120,9 @@ def _normalise(df: pd.DataFrame) -> pd.DataFrame:
         lambda r: make_dataset_task_label(r["dataset"], r["target_clean"]), axis=1
     )
     # return score_df[score_df["score_norm"].notna()].copy()
-    return score_df[score_df["score_norm"].notna() & (score_df["score_norm"] != 0)].copy()
+    return score_df[
+        score_df["score_norm"].notna() & (score_df["score_norm"] != 0)
+    ].copy()
 
 
 def _load_left_data(parquet_path: str) -> pd.DataFrame:
@@ -141,7 +145,9 @@ def _load_left_data(parquet_path: str) -> pd.DataFrame:
     )
     missing = [l for l in run_df["dataset_task"].unique() if l not in linear_ref.index]
     if missing:
-        warnings.warn(f"Dropping dataset-task without Linear rows: {', '.join(sorted(missing))}")
+        warnings.warn(
+            f"Dropping dataset-task without Linear rows: {', '.join(sorted(missing))}"
+        )
     run_df = run_df[run_df["dataset_task"].isin(linear_ref.index)].copy()
     run_df["linear_ref"] = run_df["dataset_task"].map(linear_ref)
     return run_df
@@ -166,20 +172,23 @@ def _load_right_data(parquet_path: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     for label, grp in prep_df.groupby("dataset_task", dropna=False):
         s = grp["prep_score"].dropna()
         mn, mx = float(s.min()), float(s.max())
-        stats_rows.append({
-            "dataset_task": label,
-            "prep_min": mn,
-            "prep_max": mx,
-            "prep_q1": float(s.quantile(0.25)),
-            "prep_q3": float(s.quantile(0.75)),
-            "prep_range": mx - mn,
-            "n_preps": len(s),
-        })
+        stats_rows.append(
+            {
+                "dataset_task": label,
+                "prep_min": mn,
+                "prep_max": mx,
+                "prep_q1": float(s.quantile(0.25)),
+                "prep_q3": float(s.quantile(0.75)),
+                "prep_range": mx - mn,
+                "n_preps": len(s),
+            }
+        )
     stats_df = pd.DataFrame(stats_rows)
     return prep_df, stats_df
 
 
 # ── Panel drawers ─────────────────────────────────────────────────────────────
+
 
 def _draw_left(ax: plt.Axes, run_df: pd.DataFrame, order: list[str]) -> None:
     """Delta-to-linear panel: violins + scatter per model family."""
@@ -199,8 +208,12 @@ def _draw_left(ax: plt.Axes, run_df: pd.DataFrame, order: list[str]) -> None:
         ax.scatter(
             x_base + FAMILY_OFFSETS[family] + jitter,
             sub["score_norm_run"].to_numpy(dtype=float),
-            s=22, c=FAMILY_COLORS[family], alpha=alpha,
-            edgecolors="white", linewidths=0.35, zorder=3,
+            s=22,
+            c=FAMILY_COLORS[family],
+            alpha=alpha,
+            edgecolors="white",
+            linewidths=0.35,
+            zorder=3,
         )
 
     # Violin + median diamond
@@ -210,14 +223,22 @@ def _draw_left(ax: plt.Axes, run_df: pd.DataFrame, order: list[str]) -> None:
             continue
         color = FAMILY_COLORS[family]
         for task_label, x_center in task_to_x.items():
-            vals = sub.loc[sub["dataset_task"] == task_label, "score_norm_run"].dropna().to_numpy(dtype=float)
+            vals = (
+                sub.loc[sub["dataset_task"] == task_label, "score_norm_run"]
+                .dropna()
+                .to_numpy(dtype=float)
+            )
             if len(vals) == 0:
                 continue
             x_pos = x_center + FAMILY_OFFSETS[family]
             if len(vals) >= 3:
                 parts = ax.violinplot(
-                    vals, positions=[x_pos], widths=0.22,
-                    showmeans=False, showmedians=False, showextrema=False,
+                    vals,
+                    positions=[x_pos],
+                    widths=0.22,
+                    showmeans=False,
+                    showmedians=False,
+                    showextrema=False,
                 )
                 for pc in parts["bodies"]:
                     pc.set_facecolor(color)
@@ -226,9 +247,14 @@ def _draw_left(ax: plt.Axes, run_df: pd.DataFrame, order: list[str]) -> None:
                     pc.set_linewidth(0.5)
                     pc.set_zorder(4)
             ax.scatter(
-                [x_pos], [float(np.median(vals))],
-                marker="D", s=16, color=color,
-                edgecolors="black", linewidths=0.35, zorder=5,
+                [x_pos],
+                [float(np.median(vals))],
+                marker="D",
+                s=16,
+                color=color,
+                edgecolors="black",
+                linewidths=0.35,
+                zorder=5,
             )
 
     # Linear reference hline
@@ -238,8 +264,12 @@ def _draw_left(ax: plt.Axes, run_df: pd.DataFrame, order: list[str]) -> None:
             continue
         ax.hlines(
             y=float(ref_vals.iloc[0]),
-            xmin=x_center - 0.53, xmax=x_center + 0.53,
-            colors="#1f1f1f", linewidth=1.15, alpha=0.9, zorder=2,
+            xmin=x_center - 0.53,
+            xmax=x_center + 0.53,
+            colors="#1f1f1f",
+            linewidth=1.15,
+            alpha=0.9,
+            zorder=2,
         )
 
     ax.set_xlim(-0.65, (len(order) - 1) * GROUP_SPACING_LEFT + 0.65)
@@ -249,10 +279,15 @@ def _draw_left(ax: plt.Axes, run_df: pd.DataFrame, order: list[str]) -> None:
 
     legend_handles = [
         Line2D(
-            [0], [0], marker="o", linestyle="",
+            [0],
+            [0],
+            marker="o",
+            linestyle="",
             markerfacecolor=FAMILY_COLORS[f],
-            markeredgecolor="white", markeredgewidth=0.4,
-            markersize=6, alpha=0.35 if f == "Linear" else 0.9,
+            markeredgecolor="white",
+            markeredgewidth=0.4,
+            markersize=6,
+            alpha=0.35 if f == "Linear" else 0.9,
             label=FAMILY_LABELS[f],
         )
         for f in MODEL_DISPLAY_ORDER
@@ -288,15 +323,28 @@ def _draw_right(
         row = row.iloc[0]
 
         # IQR bar
-        ax.vlines(x_center, row["prep_q1"], row["prep_q3"],
-                  colors=IQR_COLOR, linewidth=5.0, alpha=0.30, zorder=3)
+        ax.vlines(
+            x_center,
+            row["prep_q1"],
+            row["prep_q3"],
+            colors=IQR_COLOR,
+            linewidth=5.0,
+            alpha=0.30,
+            zorder=3,
+        )
 
         # Median marker
         med = prep_df.loc[prep_df["dataset_task"] == task_label, "prep_score"].median()
         ax.scatter(
-            [x_center], [med],
-            marker="D", s=18, color=IQR_COLOR, alpha=0.85,
-            edgecolors="white", linewidths=0.4, zorder=4,
+            [x_center],
+            [med],
+            marker="D",
+            s=18,
+            color=IQR_COLOR,
+            alpha=0.85,
+            edgecolors="white",
+            linewidths=0.4,
+            zorder=4,
         )
 
     # Dots
@@ -305,8 +353,12 @@ def _draw_right(
     ax.scatter(
         x_base + jitter,
         prep_df["prep_score"].to_numpy(dtype=float),
-        s=24, c=DOT_COLOR, alpha=0.55,
-        edgecolors="white", linewidths=0.3, zorder=5,
+        s=24,
+        c=DOT_COLOR,
+        alpha=0.55,
+        edgecolors="white",
+        linewidths=0.3,
+        zorder=5,
     )
 
     ax.set_xlim(-0.55, (len(order) - 1) * GROUP_SPACING_RIGHT + 0.55)
@@ -315,9 +367,18 @@ def _draw_right(
     ax.set_title("Preprocessing sensitivity")
 
     iqr_h = Line2D([0], [0], color=IQR_COLOR, linewidth=4, alpha=0.30, label="IQR")
-    med_h = Line2D([0], [0], marker="D", linestyle="",
-                   markerfacecolor=IQR_COLOR, markeredgecolor="white",
-                   markeredgewidth=0.4, markersize=5, alpha=0.85, label="Median")
+    med_h = Line2D(
+        [0],
+        [0],
+        marker="D",
+        linestyle="",
+        markerfacecolor=IQR_COLOR,
+        markeredgecolor="white",
+        markeredgewidth=0.4,
+        markersize=5,
+        alpha=0.85,
+        label="Median",
+    )
     ax.legend(
         handles=[iqr_h, med_h],
         loc="upper right",
@@ -331,6 +392,7 @@ def _draw_right(
 
 # ── Combined figure ───────────────────────────────────────────────────────────
 
+
 def plot_combined(
     parquet_path: str,
     out_dir: str = "exp_outputs/summary/plots/folds",
@@ -343,7 +405,9 @@ def plot_combined(
     prep_df, stats_df = _load_right_data(parquet_path)
 
     # Determine shared x-order from the union of present dataset-tasks
-    all_labels = set(run_df["dataset_task"].unique()) | set(prep_df["dataset_task"].unique())
+    all_labels = set(run_df["dataset_task"].unique()) | set(
+        prep_df["dataset_task"].unique()
+    )
     order = ordered_dataset_task_labels_from_combos(list(all_labels), COMBOS)
     if not order:
         raise RuntimeError("No dataset-task labels for combined plot")
@@ -351,7 +415,7 @@ def plot_combined(
     # Figure: two panels, 2:1 width ratio, shared y-axis
     fig = plt.figure(figsize=MICCAI_DOUBLE_COLUMN_FIGSIZE)
     gs = gridspec.GridSpec(1, 2, width_ratios=[2, 1], wspace=0.08)
-    ax_left  = fig.add_subplot(gs[0])
+    ax_left = fig.add_subplot(gs[0])
     ax_right = fig.add_subplot(gs[1], sharey=ax_left)
 
     _draw_left(ax_left, run_df, order)
@@ -379,6 +443,7 @@ def plot_combined(
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(

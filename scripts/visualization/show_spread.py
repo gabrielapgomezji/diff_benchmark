@@ -10,8 +10,6 @@ from matplotlib.patches import Patch
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
-from config import MICCAI_DOUBLE_COLUMN_FIGSIZE, apply_miccai_style
 from utils import (
     MODEL_DISPLAY_ORDER,
     add_score_raw_from_prefix,
@@ -20,10 +18,12 @@ from utils import (
     clean_target,
     filter_combos,
     format_label,
-    minmax_normalize_with_baseline,
     map_model_display_group,
     map_model_family,
+    minmax_normalize_with_baseline,
 )
+
+from config import MICCAI_DOUBLE_COLUMN_FIGSIZE, apply_miccai_style
 
 SPREAD_COMBOS = [
     ("hcp", "Gender", "binary_classification"),
@@ -61,7 +61,9 @@ def _load_spread_scope(parquet_path: str) -> pd.DataFrame:
 
 def _compute_normalized_scores(df: pd.DataFrame) -> pd.DataFrame:
     parts: list[pd.DataFrame] = []
-    for (_, _, task), group in df.groupby(["dataset", "target_clean", "prediction_task"], dropna=False):
+    for (_, _, task), group in df.groupby(
+        ["dataset", "target_clean", "prediction_task"], dropna=False
+    ):
         fold_prefix, metric_label = choose_spread_metric(group, task)
         part = add_score_raw_from_prefix(group, fold_prefix)
         part = part[part["score_raw"].notna()].copy()
@@ -152,9 +154,16 @@ def _plot_spread(run_df: pd.DataFrame, output_file: Path) -> None:
         ax=ax,
     )
 
-    ordered_labels = [name for name in MODEL_DISPLAY_ORDER if name in run_df["model_display"].unique()]
+    ordered_labels = [
+        name for name in MODEL_DISPLAY_ORDER if name in run_df["model_display"].unique()
+    ]
     legend_handles = [
-        Patch(facecolor=FAMILY_PALETTE[name], edgecolor="#333333", linewidth=0.8, alpha=0.55)
+        Patch(
+            facecolor=FAMILY_PALETTE[name],
+            edgecolor="#333333",
+            linewidth=0.8,
+            alpha=0.55,
+        )
         for name in ordered_labels
     ]
     ax.legend(
@@ -206,7 +215,9 @@ def plot_model_family_spread(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Plot performance spread by dataset-task and model family")
+    parser = argparse.ArgumentParser(
+        description="Plot performance spread by dataset-task and model family"
+    )
     parser.add_argument(
         "--input",
         default="exp_outputs/summary/comprehensive_results.parquet",

@@ -3,14 +3,12 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+import matplotlib
 import numpy as np
 import pandas as pd
-import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
-from config import apply_miccai_style
 from utils import (
     DEFAULT_COMBOS,
     build_strip_data,
@@ -19,6 +17,8 @@ from utils import (
     filter_combos,
     format_label,
 )
+
+from config import apply_miccai_style
 
 
 def generate_strip_plots(
@@ -37,9 +37,13 @@ def generate_strip_plots(
     if df.empty:
         raise RuntimeError("No rows left after filtering combos")
 
-    for (dataset, target, task), group in df.groupby(["dataset", "target_clean", "prediction_task"]):
+    for (dataset, target, task), group in df.groupby(
+        ["dataset", "target_clean", "prediction_task"]
+    ):
         fold_prefix, metric_label, higher_is_better = choose_fold_metric(group, task)
-        strip_df = build_strip_data(group, task, fold_prefix, higher_is_better, best_run)
+        strip_df = build_strip_data(
+            group, task, fold_prefix, higher_is_better, best_run
+        )
         if strip_df.empty:
             continue
 
@@ -70,7 +74,9 @@ def generate_strip_plots(
             )
 
         pretty_labels = [format_label(l) for l in labels]
-        plt.xticks(np.arange(len(labels)), pretty_labels, rotation=45, ha="right", fontsize=8)
+        plt.xticks(
+            np.arange(len(labels)), pretty_labels, rotation=45, ha="right", fontsize=8
+        )
         plt.ylabel(metric_label)
         if metric_label == "R2":
             plt.ylim(0, 1)
@@ -109,8 +115,12 @@ def generate_strip_plots(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate strip plots per dataset/task combination")
-    parser.add_argument("--input", default="comprehensive_results.parquet", help="Input parquet file")
+    parser = argparse.ArgumentParser(
+        description="Generate strip plots per dataset/task combination"
+    )
+    parser.add_argument(
+        "--input", default="comprehensive_results.parquet", help="Input parquet file"
+    )
     parser.add_argument(
         "--outdir",
         default="analysis_results/visualization_demo/plots/folds",

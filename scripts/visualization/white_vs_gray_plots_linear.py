@@ -17,6 +17,8 @@ from config import (
 )
 from utils import (
     DEFAULT_COMBOS,
+    LINEAR_MODELS,
+    RANDOM_FOREST_MODELS,
     calculate_paired_ttest,
     choose_spread_metric,
     clean_target,
@@ -27,6 +29,8 @@ from utils import (
     is_dummy_model,
     select_best_runs,
 )
+
+CLASSICAL_MODELS = LINEAR_MODELS | RANDOM_FOREST_MODELS
 
 PLOT_TITLES = {
     "full": "White vs Gray Matter: Normalized Score Difference (All Dataset/Target/Task/Feature)",
@@ -40,7 +44,7 @@ RIGHT_REGION_LABEL = "White matter wins"
 POINTS_COLOR = "#4C78A8"
 MEAN_STD_COLOR = "#B22222"
 BOX_COLOR = "#D6E3F3"
-AGG_PANEL_XLABELS = ("By Dataset (feature effect removed)", "By Feature (dataset effect removed)")
+AGG_PANEL_XLABELS = ("By Dataset (Microstructure feature effect removed)", "By Microstructure feature (dataset effect removed)")
 TOP_REGION_COLOR = "#D6E4F1"
 BOTTOM_REGION_COLOR = "#FAEFDB"
 TOP_REGION_LABEL = "White matter wins"
@@ -103,6 +107,7 @@ def _collect_pairwise_effects(df: pd.DataFrame) -> pd.DataFrame:
             continue
 
         best = best[~best["model_name"].apply(is_dummy_model)]
+        best = best[best["model_name"].isin(CLASSICAL_MODELS)]
         if best.empty:
             continue
 
@@ -668,7 +673,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--outdir",
-        default="exp_outputs/summary/plots/test",
+        default="exp_outputs/summary/plots/folds",
         help="Output directory",
     )
     parser.add_argument(

@@ -1,9 +1,10 @@
-from pathlib import Path
-from omegaconf import DictConfig, OmegaConf
 import logging
+from pathlib import Path
 
-from diff_benchmark.utils.job_manager import run_jobs
+from omegaconf import DictConfig, OmegaConf
+
 from diff_benchmark.cli.run import run_single_model
+from diff_benchmark.utils.job_manager import run_jobs
 
 
 class Benchmark:

@@ -1,9 +1,9 @@
-from datetime import datetime
-import json
 import hashlib
-from omegaconf import OmegaConf
+import json
+from datetime import datetime
 from pathlib import Path
 
+from omegaconf import OmegaConf
 
 TARGET_ABBR = {
     "gender": "g",
@@ -33,15 +33,7 @@ DATASET_ABBR = {
     "wand": "w",
 }
 
-EXCLUDE_KEYS = {
-    "runtime",
-    "hydra",
-    "cluster",
-    "slurm",
-    "paths",
-    "choices",
-    "analysis"
-}
+EXCLUDE_KEYS = {"runtime", "hydra", "cluster", "slurm", "paths", "choices", "analysis"}
 
 # def config_fingerprint(cfg) -> str:
 #     cfg_dict = OmegaConf.to_container(cfg, resolve=True)
@@ -60,20 +52,17 @@ EXCLUDE_KEYS = {
 #     serialized = json.dumps(clean_cfg, sort_keys=True)
 #     return hashlib.sha1(serialized.encode()).hexdigest()
 
+
 def config_fingerprint(cfg, exclude_extra: set | None = None) -> str:
     cfg_dict = OmegaConf.to_container(cfg, resolve=True)
-    
+
     exclude = EXCLUDE_KEYS
     if exclude_extra:
         exclude = EXCLUDE_KEYS.union(exclude_extra)
 
     def strip_keys(d):
         if isinstance(d, dict):
-            return {
-                k: strip_keys(v)
-                for k, v in d.items()
-                if k not in exclude
-            }
+            return {k: strip_keys(v) for k, v in d.items() if k not in exclude}
         elif isinstance(d, list):
             return [strip_keys(x) for x in d]
         return d
@@ -82,6 +71,7 @@ def config_fingerprint(cfg, exclude_extra: set | None = None) -> str:
     serialized = json.dumps(clean_cfg, sort_keys=True)
     return hashlib.sha1(serialized.encode()).hexdigest()
 
+
 def get_learning_curve_id(cfg) -> str:
     """
     Generates a unique ID for grouping experiments into a learning curve.
@@ -89,14 +79,16 @@ def get_learning_curve_id(cfg) -> str:
     """
     return config_fingerprint(cfg, exclude_extra={"train_size"})
 
+
 def abbr(value: str, table: dict, fallback_len=3):
     """
     Convert a name to a short, collision-safe abbreviation.
     """
-    key = value.lower() 
+    key = value.lower()
     if key in table:
         return table[key]
     return value.lower()[:fallback_len]
+
 
 def build_readable_prefix(cfg):
     model = cfg.model.name.lower()
@@ -107,6 +99,8 @@ def build_readable_prefix(cfg):
     target = abbr(cfg.target.target_column[0], TARGET_ABBR)
 
     return f"{model}_{dataset}{tissue}{micro}{target}"
+
+
 def make_run_id(cfg, force=False):
     """
     Returns:
