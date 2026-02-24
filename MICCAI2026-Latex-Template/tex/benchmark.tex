@@ -1,7 +1,3 @@
-In this work, we introduce a standardized benchmark that unifies preprocessing and feature extraction, evaluates both 
-classical and deep learning models on regression and classification tasks over a rigorous evaluation protocol on multiple
-public datasets. The overall structure is illustrated in Figure~\ref{fig:benchmark_overview}.
-
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{scheme.pdf}
@@ -10,17 +6,11 @@ public datasets. The overall structure is illustrated in Figure~\ref{fig:benchma
     evaluation.}
     \label{fig:benchmark_overview}
 \end{figure}
+In this work, we introduce a standardized benchmark that unifies preprocessing and feature extraction, evaluates both 
+classical and deep learning models on regression and classification tasks over a rigorous evaluation protocol on multiple
+public datasets. The overall structure is illustrated in Figure~\ref{fig:benchmark_overview}.
 
 \subsection{Datasets}
-    
-% \begin{itemize}
-%     \item Introduction sentence about why you picked these datasets
-%     \item Introduce Number of subjects
-%     \item Age range / demographics
-%     \item Scanner details
-%     \item Acquisition protocol or summary table with acquisition parameters
-%     \item Prediction targets (classification/regression)
-% \end{itemize}
 To ensure reproducibility, we evaluate our benchmark on three publicly available datasets 
 covering both healthy and clinical populations.
 \textbf{HCP}: The Human Connectome Project (HCP) Young Adult dataset \cite{van2013wu} targets gender and age. It includes 
@@ -57,25 +47,9 @@ This variability provides a realistic scenario for evaluating model robustness t
 % * PLOTS: Demographic distribution (age histograms) | Table with demographics summary (gender classes, age range...)
 
 \subsection{Data Preparation}
+% \todo{One subsection for preprocessing and another for data prepraration}
+\todo{Remove himanshu's repo, and put it inside your code for anonymization + no need to use emph below, stick to standard font.}
 \subsubsection{Preprocessing}
-% Except for the HCP dataset, which is already preprocessed,
-% the DWI data were preprocessed using the diffusion-preprocessing package\footnote{\url{https://github.com/man-shu/diffusion-preprocessing}} which containerizes 
-% several other software dependencies such as dipy \cite{Garyfallidis2014}, sMRIPrep\footnote{\url{https://github.com/nipreps/smriprep}}, FSL \cite{Smith2004}, 
-% ANTs \cite{Avants2009}, FreeSurfer \cite{Dale1999a} and AFNI \cite{Cox1996}.
-% %
-% The images were first denoised using the \emph{Marchenko-Pastur} PCA method (MPPCA) \cite{Veraart2016a,Cordero-Grande2019} implemented with
-% dipy's \emph{dipy\_denoise\_mppca} function.
-% %
-% This denoising procedure identifies the principal components corresponding to noise and then removes them from the DWI data \cite{Veraart2016a}.
-% %
-% After MPPCA denoising, Gibbs ringing artifacts \cite{Veraart2016b} were also removed using dipy's \emph{dipy\_gibbs\_ringing} function.
-% %
-% Next, to correct the distortions due to inhomogeneities of the magnetic field, FSL's eddy correction \cite{Andersson2016} was used.
-% %
-% Then this denoised and distortion-corrected DWI data were registered to the anatomical T1w image using FreeSurfer's \emph{bbregister} 
-% function \cite{greve2009accurate} with 12 degrees of freedom and boundary-based registration cost function.
-% %
-% The anatomical T1w image was preprocessed using sMRIPrep.
 Except for HCP, which is already preprocessed,
  DWI data are preprocessed using the \texttt{diffusion-preprocessing} package\footnote{\url{https://github.com/man-shu/diffusion-preprocessing}} which containerizes  
  various tools such as \texttt{dipy} \cite{Garyfallidis2014}, \texttt{sMRIPrep}~\cite{esteban2019fmriprep}%\footnote{\url{https://github.com/nipreps/smriprep}}
@@ -119,8 +93,6 @@ aspects of tissue architecture, ranging from overall diffusion magnitude to more
     % convention, \texttt{sf\_to\_sh} in DiPy~\shortcite{garyfallidis2014dipy}). The scalar is the 
     % $\ell_2$ norm $\|\mathbf{c}\|_2$, capturing angular complexity without any compartment model.
 \end{itemize}
-% To mitigate scanner-specific scaling effects and harmonize data across multi-site cohorts 
-% (e.g., ABIDE II), 
 To mitigate free-water effects and scanner-dependent intensity scaling \cite{pasternak2009free}, we apply ventricular 
 normalization: for each subject and each microstructural representation, voxel-wise diffusion measures are divided by 
 the mean value extracted from cerebrospinal fluid within the ventricles. Finally, extreme values are clipped at the 
@@ -131,7 +103,7 @@ the mean value extracted from cerebrospinal fluid within the ventricles. Finally
 To enable anatomically consistent comparisons across subjects and datasets while respecting tissue-specific geometry, 
 we adopt distinct spatial normalization strategies for gray and white matter. 
 
-\paragraph{Gray Matter}
+\paragraph{Gray Matter.}
 % \todo{Refs}
 Gray matter microstructure is represented on the subject-specific cortical surface reconstructed from T1w images using FreeSurfer. 
 Cortical meshes (white and pial surfaces) are generated using the  Desikan–Killiany atlas. Diffusion scalar maps are computed in the native 
@@ -178,13 +150,13 @@ interpretable feature set that is particularly robust in multi-site settings.
 Our benchmark includes a wide 
 range of predictive models, including linear and non-linear models, classical machine learning pipelines, 
 and pre-trained foundation models within a unified evaluation framework.
-Specifically, linear models (e.g., logistic regression, Lasso), Random Forests, and Support Vector Machines 
+Specifically, linear models (e.g., logistic regression, Lasso), Random Forests \todo{Add the quote for random forests (rf paper from 2000 something)}, and Support Vector Machines 
 (SVM) \cite{hastie2009elements}. Given the high dimensionality of the microstructural representations, we 
 additionally assess these models combined with Principal Component Analysis (PCA) for 
 dimensionality reduction. 
 
 We further benchmark several vision-based deep architecture. DINOv2 \cite{oquab2023dinov2} and Curia \cite{dancette2025curia}, are used as 
-frozen feature extractors with prediction heads trained on top. In contrast, the 3D convolutional architecture MedicalNet \cite{chen2019med3d} is 
+frozen feature extractors with prediction heads trained on top. In contrast, the pretrained 3D convolutional architecture MedicalNet \cite{chen2019med3d} is 
 fine-tuned on our diffusion datasets to adapt to domain-specific microstructural patterns. 
 % The applied prediction head is an MLP with two hidden layers (512 and 128 units) and ReLU 
 % activations, trained using the Adam optimizer with a learning rate of 1e-4 and early stopping based on validation 
@@ -196,7 +168,7 @@ fine-tuned on our diffusion datasets to adapt to domain-specific microstructural
 %     \item Unified hyperparameter search strategy (e.g., grid search or random search with cross-validation on the training set)
 % \end{itemize}
 
-\subsection{Benchmarks tasks and evaluation metrics}
+\subsection{Benchmarks tasks and evaluation protocol}
 % Task selection rationale: Clinical relevance, data availability, and established benchmarks in the literature.
 The prediction tasks covers both classification and regression and were selected
 based on clinical relevance, data availability, and existing literature.
