@@ -1,0 +1,65 @@
+% \textbf{First paragraph:}
+% \begin{itemize}
+%     \item Context: Diffusion MRI provides quantitative microstructural biomarkers
+%     \item Increasing use of ML for prediction (age, diagnosis, cognition, etc.)
+%     \item Lack of standardized benchmark
+% \end{itemize}
+Diffusion magnetic resonance imaging (dMRI) enables the in vivo representation of tissue 
+microstructure and provides biologically meaningful biomarkers sensitive to axonal organization, 
+myelination, and tissue complexity \cite{novikov2019quantifying}. Leveraging these microstructural 
+descriptors for predictive modeling has become increasingly common, with applications spanning 
+demographic estimation \cite{chen2024deep,he2022model}, clinical diagnosis 
+\cite{egle2022prediction,wen2021reproducible}, and cognitive characterization 
+\cite{kotikalapudi2025replicability}. The combination of diffusion-derived features and machine 
+learning is therefore often viewed as a powerful framework for data-driven neurobiological inference.
+
+% \noindent \textbf{Second paragraph: literature review:}
+% \begin{itemize}
+%     \item  Literature review of techniques: Variability of the proposed approach (ML-based, deep-learning based etc)
+%     \item Problems: High variability in reported performance across studies + Limited reproducibility 
+% \end{itemize}
+
+While many report promising predictive performance, reported performance varies widely across 
+studies, tasks, and datasets. Direct comparison between studies is often hard to achieve. Improvements 
+are frequently attributed to model complexity or architectural innovation, yet it remains unclear to what 
+extent these gains arise from representational choices, preprocessing variability, or evaluation 
+design. As the number of dMRI–based prediction studies grows, the absence of a standardized and reproducible evaluation framework has become a critical 
+bottleneck.
+Without controlled evaluation across datasets, preprocessing pipelines, and model families, it is difficult to assess methodological progress and 
+understand the limitations of current approaches.
+
+
+
+
+% \noindent \textbf{Third paragraph: reasons for these problems}
+% \begin{itemize}
+%     \item Reason 1: Heterogeneous preprocessing pipelines
+%     \item Reason 2: Inconsistent feature representations (voxel-wise vs ROI-based), not analysis cross microstructure features
+%     \item Reason 3: Evaluation protocols not directly comparable + results on different datasets
+%     \item Reason 4: Missing code
+%     \item Our solution: "To address these challenges, we propose: 1) an open-source and standardized benchmark; 2) of various machine learning techniques in dMRI; 3) on several tasks (classification, regression) 4) encompassing N datasets 
+% \end{itemize}
+
+
+% \noindent \textbf{Fourth paragraph: your contributions}
+% \begin{itemize}
+%     \item Standardized preprocessing pipeline for diffusion MRI
+%     \item Implemented various representation of the microstructural input data
+%     \item Unified feature extraction strategy
+%     \item Controlled evaluation protocol (train/test splits)
+%     \item Comparison of multiple feature representations
+%     \item Integration of both classical and DL predictors
+%     \item Public release of code and benchmark configuration
+%     \item End-to-end analysis
+% \end{itemize}
+
+
+To address these limitations, we introduce an open-source diffusion MRI benchmark that 
+enables controlled comparison across datasets, tissue types, microstructural 
+representations, and model families. The benchmark 
+explicitly quantifies performance variability across folds and configurations, isolates 
+representation and tissue-specific effects, and evaluates the incremental value of diffusion-derived 
+features beyond non-diffusion baselines. It provides the 
+foundation for isolating microstructural signal from configuration-driven variability and 
+for establishing comparable evaluation standards in diffusion MRI prediction.
+

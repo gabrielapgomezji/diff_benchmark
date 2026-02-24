@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable, List, Tuple
+from typing import Iterable, List, Sequence, Tuple
 import re
 
 import numpy as np
@@ -270,3 +270,199 @@ def build_strip_data(
                 rows.append({"label": label, "fold": fold_idx, "value": float(val)})
 
     return pd.DataFrame(rows)
+
+
+MODEL_FAMILY_ORDER = ["Linear", "RandomForest", "DeepEmbedding+LinearHead"]
+MODEL_DISPLAY_ORDER = ["Linear", "RandomForest", "medicalnet", "dinov2", "curia"]
+
+LINEAR_MODELS = {"linear", "pca_linear", "lasso", "svm", "pca_svm"}
+RANDOM_FOREST_MODELS = {"forest", "pca_forest", "random_forest", "randomforest", "rf"}
+DEEP_EMBED_MODELS = {"medicalnet", "dinov2", "curia"}
+
+
+def map_model_family(model_name: str) -> str | None:
+    name = str(model_name).strip().lower()
+    if not name or name.startswith("dummy"):
+        return None
+    if name in LINEAR_MODELS:
+        return "Linear"
+    if name in RANDOM_FOREST_MODELS:
+        return "RandomForest"
+    if name in DEEP_EMBED_MODELS:
+        return "DeepEmbedding+LinearHead"
+    return None
+
+
+def map_model_display_group(model_name: str) -> str | None:
+    name = str(model_name).strip().lower()
+    family = map_model_family(name)
+    if family is None:
+        return None
+    if family == "DeepEmbedding+LinearHead":
+        if name in DEEP_EMBED_MODELS:
+            return name
+        return None
+    return family
+
+
+def _has_metric_values(df: pd.DataFrame, fold_prefix: str) -> bool:
+    fold_cols = fold_columns(df, fold_prefix)
+    if fold_cols and df[fold_cols].notna().any(axis=None):
+        return True
+    mean_col = fold_prefix.replace("_fold", "_mean")
+    return mean_col in df.columns and df[mean_col].notna().any()
+
+
+def choose_spread_metric(group: pd.DataFrame, prediction_task: str) -> Tuple[str, str]:
+    if prediction_task == "binary_classification":
+        if _has_metric_values(group, "accuracy_weighted_test_fold"):
+            return "accuracy_weighted_test_fold", "Balanced Accuracy"
+        if _has_metric_values(group, "accuracy_test_fold"):
+            return "accuracy_test_fold", "Accuracy"
+        raise RuntimeError("Classification rows do not contain accuracy metrics")
+    if prediction_task == "regression":
+        if _has_metric_values(group, "r2_test_fold"):
+            return "r2_test_fold", "R2"
+        raise RuntimeError(
+            "Regression rows do not contain R2 metrics. "
+            "Provide an R2-like score on a 0-1 scale before normalization."
+        )
+    raise ValueError(f"Unsupported prediction task: {prediction_task}")
+
+
+def add_score_raw_from_prefix(df: pd.DataFrame, fold_prefix: str) -> pd.DataFrame:
+    out = df.copy()
+    fold_cols = fold_columns(out, fold_prefix)
+    if fold_cols:
+        out["score_raw"] = out[fold_cols].mean(axis=1, skipna=True)
+        return out
+
+    mean_col = fold_prefix.replace("_fold", "_mean")
+    if mean_col not in out.columns:
+        raise RuntimeError(f"Missing metric columns for prefix '{fold_prefix}'")
+    out["score_raw"] = out[mean_col]
+    return out
+
+
+def normalize_score(row: pd.Series) -> float:
+    score_raw = row.get("score_raw")
+    if pd.isna(score_raw):
+        return np.nan
+
+    prediction_task = str(row.get("prediction_task", ""))
+    if prediction_task == "binary_classification":
+        n_classes = row.get("n_classes", np.nan)
+        if pd.notna(n_classes) and int(n_classes) != 2:
+            raise ValueError(
+                "Multiclass classification detected; provide a `dummy_score` column."
+            )
+        dummy = float(row.get("dummy_score", 0.5))
+        perfect = 1.0
+    elif prediction_task == "regression":
+        dummy = 0.0
+        perfect = 1.0
+    else:
+        raise ValueError(f"Unsupported prediction task for normalization: {prediction_task}")
+
+    score_norm = (float(score_raw) - dummy) / (perfect - dummy)
+    return float(np.clip(score_norm, 0.0, 1.0))
+
+
+def minmax_normalize_with_baseline(
+    df: pd.DataFrame,
+    score_col: str = "score_raw",
+    group_cols: Sequence[str] = ("dataset", "target_clean", "prediction_task"),
+) -> pd.DataFrame:
+    out = df.copy()
+    if score_col not in out.columns:
+        raise ValueError(f"Missing score column '{score_col}' for min-max normalization")
+
+    def _baseline(row: pd.Series) -> float:
+        task = str(row.get("prediction_task", ""))
+        if task == "binary_classification":
+            n_classes = row.get("n_classes", np.nan)
+            if pd.notna(n_classes) and int(n_classes) != 2:
+                raise ValueError(
+                    "Multiclass classification detected; provide a `dummy_score` column."
+                )
+            return 0.5
+        if task == "regression":
+            # These spread plots use R2 for regression, where dummy baseline is 0.
+            return 0.0
+        raise ValueError(f"Unsupported prediction task for normalization: {task}")
+
+    out["_baseline"] = out.apply(_baseline, axis=1)
+    out["_group_max"] = out.groupby(list(group_cols), dropna=False)[score_col].transform("max")
+    denom = out["_group_max"] - out["_baseline"]
+
+    out["score_norm"] = 0.0
+    valid = denom > 0
+    out.loc[valid, "score_norm"] = (
+        (out.loc[valid, score_col] - out.loc[valid, "_baseline"]) / denom.loc[valid]
+    )
+    out["score_norm"] = out["score_norm"].clip(0.0, 1.0)
+    out = out.drop(columns=["_baseline", "_group_max"])
+    return out
+
+
+def aggregate_run_scores(
+    df: pd.DataFrame,
+    score_col: str = "score_norm",
+) -> pd.DataFrame:
+    if score_col not in df.columns:
+        raise ValueError(f"Missing score column '{score_col}' for run aggregation")
+
+    base_cols = [
+        "dataset",
+        "target_clean",
+        "prediction_task",
+        "model_family",
+        "model_name",
+        "primary_metric",
+        "tissue_type",
+    ]
+    base_cols = [col for col in base_cols if col in df.columns]
+
+    identity_cols = [
+        col
+        for col in [
+            "run_id",
+            "config.runtime.run_id",
+            "seed",
+            "split",
+            "config.runtime.learning_curve_id",
+        ]
+        if col in df.columns
+    ]
+    has_fold_rows = "fold" in df.columns and df["fold"].notna().any()
+
+    # If we have no fold/seed/split/run identifiers, every row is a run by default.
+    if not identity_cols and not has_fold_rows:
+        out = df.copy()
+        out["score_norm_run"] = out[score_col].astype(float)
+        return out
+
+    group_cols = base_cols + identity_cols
+    run_df = (
+        df.groupby(group_cols, dropna=False, as_index=False)[score_col]
+        .mean()
+        .rename(columns={score_col: "score_norm_run"})
+    )
+    return run_df
+
+
+def make_dataset_task_label(dataset: str, target_clean: str) -> str:
+    return f"{dataset}::{target_clean}"
+
+
+def ordered_dataset_task_labels_from_combos(
+    present_labels: Sequence[str],
+    combos: Sequence[Tuple[str, str, str]],
+) -> List[str]:
+    seen = set(present_labels)
+    ordered: List[str] = []
+    for dataset, target, _task in combos:
+        label = make_dataset_task_label(dataset, target)
+        if label in seen:
+            ordered.append(label)
+    return ordered

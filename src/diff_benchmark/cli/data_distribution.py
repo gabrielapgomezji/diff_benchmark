@@ -393,6 +393,7 @@ def main(cfg: DictConfig) -> None:
 
     Computes data distribution information and generates plots for configured datasets.
     """
+    breakpoint()
     print("=" * 80)
     print("RUNNING DATA DISTRIBUTION ANALYSIS")
     print("=" * 80)
@@ -416,7 +417,7 @@ def main(cfg: DictConfig) -> None:
     output_root.mkdir(parents=True, exist_ok=True)
     subjects_cache_path = output_root / 'available_subjects.json'
     demographics_parquet_path = output_root / 'full_demographics.parquet'
-    breakpoint()
+
     # Check if we can load demographics from parquet (fast path)
     if demographics_parquet_path.exists() and not cfg.runtime.get('force', False):
         print("\nLoading demographics from cached parquet file...")
@@ -468,7 +469,6 @@ def main(cfg: DictConfig) -> None:
                 from diff_benchmark.data.prepare_data import DatasetPreparation
                 temp_preparator = DatasetPreparation(cfg=cfg, source_dataset=dataset_selected)
                 cog_file = temp_preparator._extract_participants_files_from_layouts(brain_preparator.layouts)
-            
             # Save available_subjects for future reuse
             with open(subjects_cache_path, 'w') as f:
                 json.dump(available_subjects, f, indent=2)

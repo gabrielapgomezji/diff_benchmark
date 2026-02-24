@@ -13,6 +13,7 @@ from matplotlib.colors import ListedColormap
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from config import apply_miccai_style
 from utils import (
     DEFAULT_COMBOS,
     choose_fold_metric,
@@ -124,6 +125,7 @@ def plot_feature_heatmap(
     parquet_path: str,
     out_dir: str = "analysis_results/visualization_demo/plots/features",
 ) -> Path:
+    apply_miccai_style()
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
@@ -213,7 +215,7 @@ def plot_feature_heatmap(
     plt.yticks(rotation=0) 
     
     fig.tight_layout()
-    out_file = out_path / "feature_impact_heatmap.png"
+    out_file = out_path / "feature_impact_heatmap.pdf"
     fig.savefig(out_file, dpi=300)
     plt.close(fig)
 

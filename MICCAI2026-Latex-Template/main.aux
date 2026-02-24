@@ -1,0 +1,90 @@
+\relax 
+\citation{novikov2019quantifying}
+\citation{chen2024deep,he2022model}
+\citation{egle2022prediction,wen2021reproducible}
+\citation{kotikalapudi2025replicability}
+\@writefile{toc}{\contentsline {title}{How predictive is diffusion MRI microstructure? A reproducible benchmark across datasets, features and models}{1}{}\protected@file@percent }
+\@writefile{toc}{\authcount {1}}
+\@writefile{toc}{\contentsline {author}{Anonymized Authors}{1}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{}\protected@file@percent }
+\citation{van2013wu}
+\citation{shafto2014cambridge}
+\citation{di2017enhancing}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Benchmark}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Datasets}{2}{}\protected@file@percent }
+\citation{Garyfallidis2014}
+\citation{Smith2004}
+\citation{Avants2009}
+\citation{Dale1999a}
+\citation{Cox1996}
+\citation{Veraart2016a,Cordero-Grande2019}
+\citation{Veraart2016a}
+\citation{Veraart2016b}
+\citation{Andersson2016}
+\citation{greve2009accurate}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Overview of the proposed diffusion MRI benchmark pipeline, illustrating the end-to-end process from preprocessing to microstructural feature extraction, predictive modeling, and evaluation.}}{3}{}\protected@file@percent }
+\newlabel{fig:benchmark_overview}{{1}{3}{}{figure.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Data Preparation}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Preprocessing}{3}{}\protected@file@percent }
+\citation{greve2009accurate}
+\citation{smith2006tract}
+\citation{mori2008stereotaxic}
+\citation{basser1994mr}
+\citation{jensen2005diffusional}
+\@writefile{toc}{\contentsline {subsubsection}{Spatial normalization}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Gray Matter}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{White Matter}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Microstructural representation}{4}{}\protected@file@percent }
+\citation{tournier2004direct}
+\citation{pasternak2009free}
+\citation{hastie2009elements}
+\citation{oquab2023dinov2}
+\citation{dancette2025curia}
+\citation{chen2019med3d}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Prediction models}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Benchmarks tasks and evaluation metrics}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Classification}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Regression}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}Evaluation protocols}{6}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Results}{6}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Combined analysis of model-family performance and preprocessing sensitivity across tasks using a normalized score (0 = dummy, 1 = perfect) for cross-metric comparison. Left: Cross-validation results grouped by model family (points = models, violins = distributions, diamonds = medians; lines = linear baseline). Right: Sensitivity to preprocessing across feature × tissue configurations (dots = strategies; bars = IQR and range).}}{6}{}\protected@file@percent }
+\newlabel{fig:model_family}{{2}{6}{}{figure.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Impact of tissue type}{7}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Fold-level paired comparison of white vs. gray matter using normalized scores (0 = dummy, 1 = perfect). Each point shows the matched fold difference ($\Delta $ = white $-$ gray) under identical settings. Left: tissue effects by dataset $\times $ target (microstructure baseline removed); Right: tissue effects by microstructure feature (dataset-task baseline removed). Boxplots summarize fold differences; p-values test mean effects against zero.}}{7}{}\protected@file@percent }
+\newlabel{fig:white_vs_gray}{{3}{7}{}{figure.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Proportion of models improving over the non-diffusion baseline (b0), stratified by task and feature. Improvement is based on fold-level normalized differences ($\Delta $ = feature $-$ b0). Left: statistical criterion (t-test against zero, p < 0.05 and mean $\Delta $ > 0); Right: robustness criterion (median $\Delta \geq $ 0.03 and $\geq $80\% positive folds). Cells report the fraction of models meeting each criterion per target (rows) and feature (columns).}}{8}{}\protected@file@percent }
+\newlabel{fig:feature_impact}{{4}{8}{}{figure.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Impact of diffusion features}{8}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Conclusion}{9}{}\protected@file@percent }
+\bibstyle{splncs04}
+\bibdata{references}
+\bibcite{Andersson2016}{1}
+\bibcite{Avants2009}{2}
+\bibcite{basser1994mr}{3}
+\bibcite{chen2024deep}{4}
+\bibcite{chen2019med3d}{5}
+\bibcite{Cordero-Grande2019}{6}
+\bibcite{Cox1996}{7}
+\bibcite{Dale1999a}{8}
+\bibcite{dancette2025curia}{9}
+\bibcite{di2017enhancing}{10}
+\bibcite{egle2022prediction}{11}
+\bibcite{Garyfallidis2014}{12}
+\bibcite{greve2009accurate}{13}
+\bibcite{hastie2009elements}{14}
+\bibcite{he2022model}{15}
+\bibcite{jensen2005diffusional}{16}
+\bibcite{kotikalapudi2025replicability}{17}
+\bibcite{mori2008stereotaxic}{18}
+\bibcite{novikov2019quantifying}{19}
+\bibcite{oquab2023dinov2}{20}
+\bibcite{pasternak2009free}{21}
+\bibcite{shafto2014cambridge}{22}
+\bibcite{smith2006tract}{23}
+\bibcite{Smith2004}{24}
+\bibcite{tournier2004direct}{25}
+\bibcite{van2013wu}{26}
+\bibcite{Veraart2016b}{27}
+\bibcite{Veraart2016a}{28}
+\bibcite{wen2021reproducible}{29}
+\gdef \@abspage@last{12}

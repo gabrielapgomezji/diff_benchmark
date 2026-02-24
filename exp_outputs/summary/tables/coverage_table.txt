@@ -1,10 +1,10 @@
 Dataset_Microstructure  |    CURIA    |    DINO     |    DUMMY    |     FOR     |    LASSO    |     LIN     |    MNET     |    PCA_F    |    PCA_L    |    PCA_S    |     SVM    
 ===================================================================================================================================================================
-abide_b0                |      -      |      -      | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu |      -      | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu
-abide_md                |      -      |    gu,wu    | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu |      -      | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu
+abide_b0                |    gu,wu    |    gu,wu    | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu |    gu,wu    | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu
+abide_md                |    gu,wu    |    gu,wu    | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu |    gu,wu    | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu
 abide_mk                |      -      |    gu,wu    |      -      |      -      |      -      |      -      |      -      |      -      |      -      |      -      |      -     
-abide_sh                |      -      |    gu,wu    | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu |      -      | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu
-camcan_b0               |      -      |      -      | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg |    ga,wa    | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg
+abide_sh                |    gu,wu    |    gu,wu    | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu |    gu,wu    | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu
+camcan_b0               | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg
 camcan_md               | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg
 camcan_mk               | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg
 camcan_rtop             |      -      |      -      |      -      |      -      |      -      |      -      |    ga,wa    |      -      |      -      |      -      |      -     
@@ -23,13 +23,13 @@ TRANSPOSED VIEW (for easier reading)
 
 abide_b0:
 ----------------------------------------
-  CURIA    : -
-  DINO     : -
+  CURIA    : gu,wu
+  DINO     : gu,wu
   DUMMY    : ga,gg,gu,wa,wg,wu
   FOR      : ga,gg,gu,wa,wg,wu
   LASSO    : ga,gg,gu,wa,wg,wu
   LIN      : ga,gg,gu,wa,wg,wu
-  MNET     : -
+  MNET     : gu,wu
   PCA_F    : ga,gg,gu,wa,wg,wu
   PCA_L    : ga,gg,gu,wa,wg,wu
   PCA_S    : ga,gg,gu,wa,wg,wu
@@ -37,13 +37,13 @@ abide_b0:
 
 abide_md:
 ----------------------------------------
-  CURIA    : -
+  CURIA    : gu,wu
   DINO     : gu,wu
   DUMMY    : ga,gg,gu,wa,wg,wu
   FOR      : ga,gg,gu,wa,wg,wu
   LASSO    : ga,gg,gu,wa,wg,wu
   LIN      : ga,gg,gu,wa,wg,wu
-  MNET     : -
+  MNET     : gu,wu
   PCA_F    : ga,gg,gu,wa,wg,wu
   PCA_L    : ga,gg,gu,wa,wg,wu
   PCA_S    : ga,gg,gu,wa,wg,wu
@@ -65,13 +65,13 @@ abide_mk:
 
 abide_sh:
 ----------------------------------------
-  CURIA    : -
+  CURIA    : gu,wu
   DINO     : gu,wu
   DUMMY    : ga,gg,gu,wa,wg,wu
   FOR      : ga,gg,gu,wa,wg,wu
   LASSO    : ga,gg,gu,wa,wg,wu
   LIN      : ga,gg,gu,wa,wg,wu
-  MNET     : -
+  MNET     : gu,wu
   PCA_F    : ga,gg,gu,wa,wg,wu
   PCA_L    : ga,gg,gu,wa,wg,wu
   PCA_S    : ga,gg,gu,wa,wg,wu
@@ -79,13 +79,13 @@ abide_sh:
 
 camcan_b0:
 ----------------------------------------
-  CURIA    : -
-  DINO     : -
+  CURIA    : ga,gg,wa,wg
+  DINO     : ga,gg,wa,wg
   DUMMY    : ga,gg,wa,wg
   FOR      : ga,gg,wa,wg
   LASSO    : ga,gg,wa,wg
   LIN      : ga,gg,wa,wg
-  MNET     : ga,wa
+  MNET     : ga,gg,wa,wg
   PCA_F    : ga,gg,wa,wg
   PCA_L    : ga,gg,wa,wg
   PCA_S    : ga,gg,wa,wg
@@ -229,16 +229,16 @@ LEGEND:
 STATISTICS:
   Total dataset-microstructure combinations: 14
   Total models: 11
-  Total experiments: 537
+  Total experiments: 649
 
 MODEL COVERAGE:
-       CURIA:   8/ 14 combinations ( 57.1%)
-        DINO:  11/ 14 combinations ( 78.6%)
+       CURIA:  12/ 14 combinations ( 85.7%)
+        DINO:  13/ 14 combinations ( 92.9%)
        DUMMY:  12/ 14 combinations ( 85.7%)
          FOR:  12/ 14 combinations ( 85.7%)
        LASSO:  12/ 14 combinations ( 85.7%)
          LIN:  12/ 14 combinations ( 85.7%)
-        MNET:  10/ 14 combinations ( 71.4%)
+        MNET:  13/ 14 combinations ( 92.9%)
        PCA_F:  12/ 14 combinations ( 85.7%)
        PCA_L:  12/ 14 combinations ( 85.7%)
        PCA_S:  12/ 14 combinations ( 85.7%)
