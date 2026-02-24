@@ -45,11 +45,9 @@ This variability provides a realistic scenario for evaluating model robustness t
 
 % If space (unlikely):
 % * PLOTS: Demographic distribution (age histograms) | Table with demographics summary (gender classes, age range...)
-
-\subsection{Data Preparation}
 % \todo{One subsection for preprocessing and another for data prepraration}
 \todo{Remove himanshu's repo, and put it inside your code for anonymization + no need to use emph below, stick to standard font.}
-\subsubsection{Preprocessing}
+\subsection{Preprocessing}
 Except for HCP, which is already preprocessed,
  DWI data are preprocessed using the \texttt{diffusion-preprocessing} package\footnote{\url{https://github.com/man-shu/diffusion-preprocessing}} which containerizes  
  various tools such as \texttt{dipy} \cite{Garyfallidis2014}, \texttt{sMRIPrep}~\cite{esteban2019fmriprep}%\footnote{\url{https://github.com/nipreps/smriprep}}
@@ -67,6 +65,7 @@ Next, to correct the distortions due to inhomogeneities of the magnetic field, \
 %
 Finally, this denoised and distortion-corrected DWI data are registered to the anatomical T1w image, which was preprocessed using \texttt{sMRIPrep}, using \texttt{FreeSurfer}'s \emph{bbregister} \cite{greve2009accurate} with 12 degrees of freedom and boundary-based registration cost function.
 
+\subsection{Data Preparation}
 \subsubsection{Microstructural representation}
 To characterize the biological properties of brain tissue, we compute a diverse set of 
 microstructural measures using established diffusion models. These measures capture complementary 
@@ -150,7 +149,7 @@ interpretable feature set that is particularly robust in multi-site settings.
 Our benchmark includes a wide 
 range of predictive models, including linear and non-linear models, classical machine learning pipelines, 
 and pre-trained foundation models within a unified evaluation framework.
-Specifically, linear models (e.g., logistic regression, Lasso), Random Forests \todo{Add the quote for random forests (rf paper from 2000 something)}, and Support Vector Machines 
+Specifically, linear models (e.g., logistic regression, Lasso), Random Forests \cite{breiman2001random}, and Support Vector Machines 
 (SVM) \cite{hastie2009elements}. Given the high dimensionality of the microstructural representations, we 
 additionally assess these models combined with Principal Component Analysis (PCA) for 
 dimensionality reduction. 
