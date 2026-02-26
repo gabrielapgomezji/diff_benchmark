@@ -26,10 +26,10 @@ from utils import (
 )
 
 COMBOS = [
-    ("hcp", "Gender", "binary_classification"),
+    ("hcp", "Sex", "binary_classification"),
     ("hcp", "Age", "regression"),
+    ("camcan", "Sex", "binary_classification"),
     ("camcan", "Age", "regression"),
-    ("camcan", "Gender", "binary_classification"),
     ("abide", "DX_GROUP", "binary_classification"),
 ]
 

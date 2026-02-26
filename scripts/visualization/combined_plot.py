@@ -44,8 +44,8 @@ from config import MICCAI_DOUBLE_COLUMN_FIGSIZE, apply_miccai_style
 
 # ── Shared scope ──────────────────────────────────────────────────────────────
 COMBOS = [
-    ("hcp", "Gender", "binary_classification"),
-    ("camcan", "Gender", "binary_classification"),
+    ("hcp", "Sex", "binary_classification"),
+    ("camcan", "Sex", "binary_classification"),
     ("camcan", "Age", "regression"),
     ("abide", "DX_GROUP", "binary_classification"),
 ]

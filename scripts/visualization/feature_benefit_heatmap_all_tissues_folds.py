@@ -39,8 +39,8 @@ from utils import (
 # ---------------------------------------------------------------------------
 
 FEATURE_DELTA_COMBOS = [
-    ("hcp", "Gender", "binary_classification"),
-    ("camcan", "Gender", "binary_classification"),
+    ("hcp", "Sex", "binary_classification"),
+    ("camcan", "Sex", "binary_classification"),
     ("camcan", "Age", "regression"),
     ("abide", "DX_GROUP", "binary_classification"),
 ]
@@ -230,6 +230,20 @@ def _per_model_robust_stats(delta_df: pd.DataFrame) -> pd.DataFrame:
 # Step 3: collapse across models
 # ---------------------------------------------------------------------------
 
+def _format_dataset_task_label(dataset: str, target: str) -> str:
+    """
+    Returns canonical label:
+        dataset::target
+        dataset1|dataset2::target
+    Always lowercase.
+    """
+    if dataset is None or target is None:
+        return ""
+
+    dataset = str(dataset).lower().replace("+", "|")
+    target = str(target).lower()
+
+    return f"{dataset}::{target}"
 
 def _collapse_across_models(per_model: pd.DataFrame) -> pd.DataFrame:
     agg = per_model.groupby(
@@ -242,12 +256,16 @@ def _collapse_across_models(per_model: pd.DataFrame) -> pd.DataFrame:
     )
 
     agg["prop_robust"] = agg["n_models_robust"] / agg["n_models_total"]
-    agg["row_label"] = agg["dataset"].str.upper() + " – " + agg["target_clean"]
+    # agg["row_label"] = agg["dataset"].str.upper() + " – " + agg["target_clean"]
+    agg["row_label"] = agg.apply(
+        lambda r: _format_dataset_task_label(r["dataset"], r["target_clean"]),
+        axis=1,
+    )
     return agg
 
 
 def _merge_gender_rows(agg: pd.DataFrame) -> pd.DataFrame:
-    gender_mask = agg["target_clean"] == "Gender"
+    gender_mask = agg["target_clean"].str.lower() == "sex"
     gender_rows = agg[gender_mask].copy()
     other_rows = agg[~gender_mask].copy()
     if gender_rows.empty:
@@ -260,9 +278,14 @@ def _merge_gender_rows(agg: pd.DataFrame) -> pd.DataFrame:
         n_models_robust=("n_models_robust", "sum"),
     )
     pooled["prop_robust"] = pooled["n_models_robust"] / pooled["n_models_total"]
-    pooled["row_label"] = "Gender (HCP+CamCAN)"
-    pooled["target_clean"] = "Gender"
-    pooled["dataset"] = "hcp+camcan"
+    pooled["target_clean"] = "sex"
+    pooled["dataset"] = "hcp|camcan"
+    pooled["prediction_task"] = "binary_classification"
+
+    pooled["row_label"] = pooled.apply(
+        lambda r: _format_dataset_task_label(r["dataset"], r["target_clean"]),
+        axis=1,
+    )
     pooled["prediction_task"] = "binary_classification"
     return pd.concat([other_rows, pooled], ignore_index=True)
 

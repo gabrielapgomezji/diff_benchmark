@@ -31,7 +31,7 @@ def clean_target(value: str | None) -> str | None:
     s = s.replace("Age_in_Yrs", "Age")
     s = s.replace("dx_group", "DX_GROUP")
     s = s.replace("DX_GROUP", "DX_GROUP")
-    s = s.replace("Gender", "Gender")
+    s = s.replace("Gender", "Sex")
     return s
 
 

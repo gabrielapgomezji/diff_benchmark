@@ -120,14 +120,6 @@ While this approach sacrifices voxel-level granularity compared to the cortical 
 % in lower dimensionality compared to the vertex-wise cortical representation, it provides stable, 
 % reproducible white matter features aligned to homologous bundles across datasets.
 
-    % \begin{itemize}
-    %     \item Tract-based aggregation
-    %     \item Mean values per tract (~48 features)
-    %     \item Reduced dimensionality
-    %     \item Anatomical interpretability
-    % \end{itemize}
-    % Justify tract-averaged representation: Noise reduction, improved stability, lower dimensional feature space, anatomically meaningful structure
-
 \subsection{Prediction and validation}
 BenchDiff includes a broad range of predictive models previously used in dMRI studies \cite{wen2021reproducible,cardenas2025autism}, from classical machine learning pipelines to foundation models. 
 Classical models (Ridge, Lasso, Random Forests, and SVM), implemented in \texttt{scikit-learn}, can be combined with PCA for dimensionality reduction~\cite{menon2020microstructural}.
@@ -145,16 +137,6 @@ Details are fully available in the codebase.
 % %\cite{hastie2009elements} 
 % Given the high dimensionality of the microstructural representations, we additionally assess these models combined with Principal Component Analysis (PCA) for dimensionality reduction as done in ~\cite{} 
 
-% We further benchmark deep architectures. DINOv2 \cite{oquab2023dinov2} and Curia \cite{dancette2025curia}, are used as frozen feature extractors with prediction heads trained on top. Additionally, the pretrained 3D convolutional architecture MedicalNet \cite{chen2019med3d,chen2024deep} is fine-tuned on our diffusion datasets to adapt to domain-specific microstructural patterns. 
-% The applied prediction head is an MLP with two hidden layers (512 and 128 units) and ReLU 
-% activations, trained using the Adam optimizer with a learning rate of 1e-4 and early stopping based on validation 
-% performance.
-% \begin{itemize}
-%     \item Dummy baseline (e.g., majority class for classification, mean predictor for regression)
-%     \item Classical ML pipeline: Linear models (e.g., logistic regression, linear regression), Random Forests, Support Vector Machines (SVM) + their PCA versions
-%     \item Deep Learning models (e.g., dinov2, medicalnet)
-%     \item Unified hyperparameter search strategy (e.g., grid search or random search with cross-validation on the training set)
-% \end{itemize}
 
 % Task selection rationale: Clinical relevance, data availability, and established benchmarks in the literature.
 The prediction tasks covers classification and regression and were selected based on data availability and existing literature. 
@@ -164,11 +146,6 @@ Typically Developing) using ABIDE II \cite{cardenas2025autism}, and sex predicti
 cohorts \cite{chen2024deep,dibaji2024sex}. Performance is reported using balanced accuracy, which accounts for class imbalance. 
 \textbf{Regression.} Brain age prediction \cite{chen2020generalization,de2018age,hwang2021prediction} was used as a regression task on the healthy Cam-CAN cohort.
 Performance is quantified with $R^2$ and mean absolute error (MAE). 
-
-% \begin{itemize}
-%     \item Task description: Age prediction (brain age estimation)
-%     \item Evaluation Metrics: R², MAE
-% \end{itemize}
 
 We adopt a stratified 5-fold cross-validation scheme for all tasks.
 For classification, stratification ensures class balance across folds. For regression, splits are stratified by sex. 
@@ -188,60 +165,3 @@ Data are organized according to the BIDS standard~\cite{gorgolewski2016brain}.
 The framework supports parallel execution for data preparation and training with SLURM, and caches intermediate results to ensure efficient and reproducible experimentation.
 % To ensure reproducibility and fair comparisons across models and datasets, the benchmark implementation is modular, fully configurable pipeline.  All components are controlled via \texttt{Hydra} \cite{Yadan2019Hydra}, enabling systematic experiment management for data preparation, model training, and analysis.
 % The data structure follows the BIDS standard \cite{gorgolewski2016brain}, ensuring consistent data organization and facilitating multi-site analyses, with site identity available as a covariate. The framework provides command-line entry points and supports parallel execution via \texttt{joblib} or SLURM. Intermediate outputs as microstructural features, deep learning embeddings, and per-fold scores, are cached to disk, avoiding redundant computation across iterative runs.
-
-
-% The pipeline is fully configurable via \texttt{Hydra} \cite{Yadan2019Hydra} and includes 
-% CLI entry points for data preparation, model training, and analysis, requiring no source code modification. 
-% It adheres to the BIDS standard \cite{gorgolewski2016brain}, supporting multi-site datasets 
-% with site identity available as a covariate. Parallelism is handled for data preparation and training
-% with \texttt{joblib} or SLURM. Intermediate outputs as 
-% microstructural features, deep learning embeddings, and per-fold scores, are cached to disk, 
-% avoiding redundant computation across iterative runs.
-
-% \begin{itemize}
-%     \item Data Splitting Strategy (Fixed train/test splits)
-%     \item Cross-validation within training set. Stratification
-%     \item No information leakage
-%     \item Mean ± std across folds
-%     \item Statistical comparison tests (e.g., paired t-tests, Wilcoxon signed-rank tests) to assess significance of performance differences between models
-% \end{itemize}
-
-%%%%%%%%%%%
-% \subsection{Prediction}
-% \begin{itemize}
-%     \item Feature normalization
-%         \begin{itemize}
-%             \item Binary targets (encoded 0/1), Continuous targets (standardized during training)
-%             \item Standardization fitted on training set only
-%             \item Applied to validation/test sets 
-%             \item Inverse transform for regression outputs (for visualization)
-%         \end{itemize}
-%     \item Task definitions and labels and reasons for task selection
-%         \begin{itemize}
-%             \item Classification: Binary diagnosis prediction (e.g., ASD vs. TD)
-%             \item Regression: Age prediction (brain age estimation)
-%             \item Task selection rationale: Clinical relevance, data availability, and established benchmarks in the literature
-%         \end{itemize}
-%     \item Evaluation Metrics
-%         \begin{itemize}
-%             \item Classification: Accuracy, AUC, F1-score
-%             \item Regression: R², MAE
-%             \item Mean ± std across folds
-%             \item Statistical comparison tests (e.g., paired t-tests, Wilcoxon signed-rank tests) to assess significance of performance differences between models
-%         \end{itemize}
-%     \item Models Used
-%         \begin{itemize}
-%             \item Dummy baseline (e.g., majority class for classification, mean predictor for regression)
-%             \item Classical ML pipeline: Linear models (e.g., logistic regression, linear regression), Random Forests, Support Vector Machines (SVM) + their PCA versions
-%             \item Deep Learning models (e.g., dinov2, medicalnet)
-%             \item Unified hyperparameter search strategy (e.g., grid search or random search with cross-validation on the training set)
-%         \end{itemize}
-% \end{itemize}
-
-% \subsection{Validation, Evaluation and Visualizations}
-% \begin{itemize}
-%     \item Data Splitting Strategy (Fixed train/test splits)
-%     \item Cross-validation within training set. Stratification
-%     \item No information leakage
-%     \item Explanation of plots and statistics
-% \end{itemize}
