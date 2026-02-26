@@ -1,7 +1,7 @@
-import hydra
-from omegaconf import DictConfig
 from pathlib import Path
-from omegaconf import OmegaConf
+
+import hydra
+from omegaconf import DictConfig, OmegaConf
 
 from diff_benchmark.preprocessing.brain_feature_extraction import DefaultPipeline
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
@@ -21,7 +21,7 @@ def main(cfg: DictConfig) -> None:
     """
     # Optional: basic logging
     print("Running feature extraction")
-    
+
     dataset_cfg = OmegaConf.to_container(cfg.dataset, resolve=True)
     cluster_cfg = cfg.cluster.paths[dataset_cfg["name"]]
 
@@ -32,10 +32,12 @@ def main(cfg: DictConfig) -> None:
     )
 
     pipeline = DefaultPipeline(dataset_selected)
-    # subject_id = "101915" #HCP #"29006" #abide #"CC721707" #CamCAN #"76884"  # wand # 
+    # subject_id = "101915" #HCP #"29006" #abide #"CC721707" #CamCAN #"76884"  # wand #
     # pipeline.compute_microstructure(subject_id)
     # breakpoint()
-    pipeline.run_pipeline(recompute=True, cluster_conf=cfg.cluster.conf, slurm_cfg=cfg.cluster.slurm_cfg)
+    pipeline.run_pipeline(
+        recompute=True, cluster_conf=cfg.cluster.conf, slurm_cfg=cfg.cluster.slurm_cfg
+    )
 
 
 if __name__ == "__main__":

@@ -1,13 +1,14 @@
 from pathlib import Path
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, roc_curve, auc
-
+from sklearn.metrics import auc, confusion_matrix, roc_curve
 
 # ---------------------------------------------------------------------
 # IO utilities
 # ---------------------------------------------------------------------
+
 
 def load_predictions_and_targets(
     predictions_path: Path,
@@ -16,7 +17,7 @@ def load_predictions_and_targets(
 ):
     df_pred = pd.read_parquet(predictions_path)
     df_tgt = pd.read_parquet(targets_path)
-    
+
     df_pred = df_pred[df_pred["run_id"] == run_id]
 
     df = df_pred.merge(
@@ -37,11 +38,7 @@ def load_metrics(metrics_path: Path, run_id: str) -> pd.DataFrame:
 
 def get_prediction_task(metrics_df, run_id):
     # breakpoint()
-    return (
-        metrics_df
-        .loc[metrics_df["run_id"] == run_id, "prediction_task"]
-        .iloc[0]
-    )
+    return metrics_df.loc[metrics_df["run_id"] == run_id, "prediction_task"].iloc[0]
 
 
 def infer_classification_type(df: pd.DataFrame) -> str:
@@ -55,6 +52,7 @@ def infer_classification_type(df: pd.DataFrame) -> str:
 # ---------------------------------------------------------------------
 # Regression plots
 # ---------------------------------------------------------------------
+
 
 def plot_true_vs_pred_regression(df, run_id, model, output_dir):
     fig, ax = plt.subplots(figsize=(6, 6))
@@ -72,7 +70,7 @@ def plot_true_vs_pred_regression(df, run_id, model, output_dir):
     ax.set_title(f"{model} – True vs Predicted")
     ax.legend()
     ax.grid(True)
-    
+
     # Set axis limits
     # ax.set_xlim(0, 100)
     # ax.set_ylim(0, 100)
@@ -80,7 +78,9 @@ def plot_true_vs_pred_regression(df, run_id, model, output_dir):
     ax.set_ylim(df["true"].min(), df["true"].max())
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_dir / "regression_true_vs_pred.png", dpi=150, bbox_inches="tight")
+    fig.savefig(
+        output_dir / "regression_true_vs_pred.png", dpi=150, bbox_inches="tight"
+    )
     plt.close(fig)
 
 
@@ -106,6 +106,7 @@ def plot_residuals_regression(df, run_id, model, output_dir):
 # ---------------------------------------------------------------------
 # Classification plots
 # ---------------------------------------------------------------------
+
 
 def plot_confusion_matrix(cm, classes, title, output_path):
     fig, ax = plt.subplots(figsize=(5, 5))
@@ -175,10 +176,10 @@ def plot_binary_roc(df, model, output_dir):
         d = df[df["split"] == split]
         if d.empty:
             continue
-            
+
         y_true = d["true"].astype(int)
         y_score = d["pred"].astype(float)
-        
+
         # Skip if only one class in this split (ROC undefined)
         if len(np.unique(y_true)) < 2:
             continue
@@ -204,7 +205,7 @@ def plot_binary_roc(df, model, output_dir):
 
     fig.savefig(output_dir / "roc_curve.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
-    
+
 
 def plot_metrics_summary(metrics_df, model, output_dir):
     """
@@ -215,7 +216,8 @@ def plot_metrics_summary(metrics_df, model, output_dir):
     n_metrics = len(metrics)
 
     fig, axes = plt.subplots(
-        n_metrics, 1,
+        n_metrics,
+        1,
         figsize=(6, 3 * n_metrics),
         sharex=True,
     )
@@ -261,6 +263,7 @@ def plot_metrics_summary(metrics_df, model, output_dir):
 # Main entry point
 # ---------------------------------------------------------------------
 
+
 def plot_run(
     run_id: str,
     metrics_dir: Path,
@@ -280,7 +283,7 @@ def plot_run(
         metrics_df,
         run_id,
     )
-    
+
     output_dir = output_root / run_id
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -294,7 +297,7 @@ def plot_run(
 
         if clf_type == "binary":
             plot_binary_roc(df, model, output_dir)
-    
+
     plot_metrics_summary(metrics_df, model, output_dir)
 
 
@@ -307,9 +310,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--run_id", required=True)
-    parser.add_argument(
-        "--results_dir", default="./data/results", type=str
-    )
+    parser.add_argument("--results_dir", default="./data/results", type=str)
     parser.add_argument(
         "--metrics_dir", default="./data/results/parquet/analysis_results", type=str
     )

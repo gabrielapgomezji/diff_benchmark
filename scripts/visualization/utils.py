@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from typing import Iterable, List, Sequence, Tuple
 import re
+from typing import Iterable, List, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
-
 
 DEFAULT_COMBOS = [
     ("hcp", "Gender", "binary_classification"),
@@ -32,7 +31,7 @@ def clean_target(value: str | None) -> str | None:
     s = s.replace("Age_in_Yrs", "Age")
     s = s.replace("dx_group", "DX_GROUP")
     s = s.replace("DX_GROUP", "DX_GROUP")
-    s = s.replace("Gender", "Gender")
+    s = s.replace("Gender", "Sex")
     return s
 
 
@@ -43,7 +42,9 @@ def format_label(text: str) -> str:
     return s
 
 
-def filter_combos(df: pd.DataFrame, combos: Iterable[Tuple[str, str, str]]) -> pd.DataFrame:
+def filter_combos(
+    df: pd.DataFrame, combos: Iterable[Tuple[str, str, str]]
+) -> pd.DataFrame:
     combos = list(combos)
     if not combos:
         return df
@@ -57,7 +58,9 @@ def filter_combos(df: pd.DataFrame, combos: Iterable[Tuple[str, str, str]]) -> p
     return df[mask].copy()
 
 
-def choose_fold_metric(group: pd.DataFrame, prediction_task: str) -> Tuple[str, str, bool]:
+def choose_fold_metric(
+    group: pd.DataFrame, prediction_task: str
+) -> Tuple[str, str, bool]:
     if prediction_task == "binary_classification":
         if any(col.startswith("accuracy_weighted_test_fold") for col in group.columns):
             return "accuracy_weighted_test_fold", "Balanced Accuracy", True
@@ -128,7 +131,7 @@ def select_best_runs(
     # We used to split dummy models here, but technically a dummy model is just a model.
     # The caller can filter dummies if they want.
     # However, existing logic (strip_plots) might rely on this, but it seems to just take 'selected'
-    # Actually the logic below "If not dummy.empty ... concat" seems to try to pick ONLY the best dummy? 
+    # Actually the logic below "If not dummy.empty ... concat" seems to try to pick ONLY the best dummy?
     # But groupby already does that per model_name. "dummy" is a model_name prefix.
     # If we have "dummy_mean" and "dummy_median", they are different models.
     # The previous code logic:
@@ -150,15 +153,17 @@ def select_best_runs(
     return selected
 
 
-def get_display_label(dataset: str, target: str, task: str, metric_label: str = None) -> str:
+def get_display_label(
+    dataset: str, target: str, task: str, metric_label: str = None
+) -> str:
     # We want to format as "Dataset - Target"
     # User Request: "reduce the dataset -task description: no need to display whether it's a binary classificaiton or a regression. For instance camcan- Age is enough"
     # But later: "on the y axis replace the task name by the metric used (for regression show "R^2", for binary classification show "Acc")"
-    
+
     # So we want: "Dataset - Target (Metric)"
-    
+
     base = format_label(f"{dataset}|{target}")
-    
+
     # Check metric
     metric_short = ""
     if metric_label:
@@ -170,19 +175,19 @@ def get_display_label(dataset: str, target: str, task: str, metric_label: str = 
             metric_short = "MAE"
         elif "RMSE" in metric_label:
             metric_short = "RMSE"
-    
+
     # Fallback if metric_label not provided but task is known?
     if not metric_short and task:
         if "classification" in task:
             metric_short = "Acc"
         elif "regression" in task:
-            metric_short = "R²" # Default assumption? Or MAE? 
+            metric_short = "R²"  # Default assumption? Or MAE?
             # In choose_fold_metric we see MAE is default for regression unless R2 exists.
             # But user explicitly asked for "R^2" for regression in the prompt example.
-            
+
     if metric_short:
         return f"{base} ({metric_short})"
-    
+
     return base
 
 
@@ -191,10 +196,11 @@ def calculate_paired_ttest(
     vals_other: np.ndarray,
 ) -> float:
     from scipy.stats import ttest_rel
+
     # Ensure they are valid
     if len(vals_main) != len(vals_other):
         return 1.0
-    
+
     # ttest_rel
     res = ttest_rel(vals_main, vals_other)
     if np.isnan(res.pvalue):
@@ -217,17 +223,17 @@ def calculate_paired_stats(
 
     # Calculate difference
     diffs = vals_a - vals_b
-    
+
     # Adjust sign so positive always means A is better (if that is the intent)
     # Actually, usually "Diff" means A - B.
     # If Higher is Better: A=0.9, B=0.8 => A is better. Diff = 0.1 (Pos). Correct.
-    # If Lower is Better (MAE): A=2, B=5 => A is better. Diff = -3 (Neg). 
+    # If Lower is Better (MAE): A=2, B=5 => A is better. Diff = -3 (Neg).
     # To make "Positive t-score" mean "A is better", we must invert diffs if lower is better.
     if not higher_is_better:
         diffs = -diffs
 
     mean_diff = float(np.mean(diffs))
-    std_diff = float(np.std(diffs, ddof=1)) # Sample std dev
+    std_diff = float(np.std(diffs, ddof=1))  # Sample std dev
 
     if std_diff == 0:
         # Avoid division by zero
@@ -235,15 +241,14 @@ def calculate_paired_stats(
             return 0.0, 0.0, 0.0, np.zeros_like(diffs)
         # If mean != 0 but std == 0, it is a constant difference.
         # T-score is infinite. Return a large number or 0?
-        # For visualization purposes, let's return 0 to avoid breaking plots, 
+        # For visualization purposes, let's return 0 to avoid breaking plots,
         # or handle it upstream.
         return 0.0, mean_diff, 0.0, np.zeros_like(diffs)
 
     t_score = mean_diff / std_diff
     normalized_diffs = diffs / std_diff
-    
-    return t_score, mean_diff, std_diff, normalized_diffs
 
+    return t_score, mean_diff, std_diff, normalized_diffs
 
 
 def build_strip_data(
@@ -362,7 +367,9 @@ def normalize_score(row: pd.Series) -> float:
         dummy = 0.0
         perfect = 1.0
     else:
-        raise ValueError(f"Unsupported prediction task for normalization: {prediction_task}")
+        raise ValueError(
+            f"Unsupported prediction task for normalization: {prediction_task}"
+        )
 
     score_norm = (float(score_raw) - dummy) / (perfect - dummy)
     return float(np.clip(score_norm, 0.0, 1.0))
@@ -375,7 +382,9 @@ def minmax_normalize_with_baseline(
 ) -> pd.DataFrame:
     out = df.copy()
     if score_col not in out.columns:
-        raise ValueError(f"Missing score column '{score_col}' for min-max normalization")
+        raise ValueError(
+            f"Missing score column '{score_col}' for min-max normalization"
+        )
 
     def _baseline(row: pd.Series) -> float:
         task = str(row.get("prediction_task", ""))
@@ -392,14 +401,16 @@ def minmax_normalize_with_baseline(
         raise ValueError(f"Unsupported prediction task for normalization: {task}")
 
     out["_baseline"] = out.apply(_baseline, axis=1)
-    out["_group_max"] = out.groupby(list(group_cols), dropna=False)[score_col].transform("max")
+    out["_group_max"] = out.groupby(list(group_cols), dropna=False)[
+        score_col
+    ].transform("max")
     denom = out["_group_max"] - out["_baseline"]
 
     out["score_norm"] = 0.0
     valid = denom > 0
     out.loc[valid, "score_norm"] = (
-        (out.loc[valid, score_col] - out.loc[valid, "_baseline"]) / denom.loc[valid]
-    )
+        out.loc[valid, score_col] - out.loc[valid, "_baseline"]
+    ) / denom.loc[valid]
     out["score_norm"] = out["score_norm"].clip(0.0, 1.0)
     out = out.drop(columns=["_baseline", "_group_max"])
     return out

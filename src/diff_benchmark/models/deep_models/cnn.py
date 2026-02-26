@@ -1,7 +1,8 @@
+from typing import Callable
+
 import torch
 from torch import nn
 from torchvision import models
-from typing import Callable
 
 
 class ResNet18Backbone(nn.Module):

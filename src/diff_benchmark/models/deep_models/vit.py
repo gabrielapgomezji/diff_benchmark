@@ -1,17 +1,18 @@
+from pathlib import Path
+
 import torch
 import torch.nn as nn
 from transformers import AutoImageProcessor, AutoModel
+
 from diff_benchmark.utils.logger import setup_logger
-from pathlib import Path
 
 logger = setup_logger(__name__)
 
 
-class DinoViTBackbone(nn.Module):
+class GoogleViTBackbone(nn.Module):
     """
-    Hugging Face DINO Vision Transformer backbone adapted for 3D volumes
-    via slice-wise processing.
-    
+    Google ViT backbone adapted for 3D volumes via slice-wise processing.
+
     Note: Expects input data normalized with mean=0.5, std=0.5 (from cache).
     This will be unnormalized back to [0, 1] before passing to HuggingFace processor.
     """
@@ -20,25 +21,31 @@ class DinoViTBackbone(nn.Module):
 
     def __init__(
         self,
-        model_name: str = "facebook/dinov2-base",
+        model_name: str = "google/vit-base-patch16-224",
         freeze_backbone: bool = False,
-        slice_axis: int = 0,  # axial slices
+        slice_axis: int = 0,
         pooling: str = "mean",  # mean | max | cls
     ):
         super().__init__()
+
         self.slice_axis = slice_axis
         self.pooling = pooling
-        model_dir = Path(__file__).parent.parent.parent.parent.parent / "pretrain" / model_name
+        model_dir = (
+            Path(__file__).parent.parent.parent.parent.parent / "pretrain" / model_name
+        )
         if model_dir.exists():
             source = str(model_dir)
             local_only = True
         else:
-            print(f"Pretrained model directory {model_dir} does not exist. Using model name {model_name} from HuggingFace Hub if possible.")
+            print(
+                f"Pretrained model directory {model_dir} does not exist. Using model name {model_name} from HuggingFace Hub if possible."
+            )
             source = model_name
             local_only = False
-        self.processor = AutoImageProcessor.from_pretrained(source, local_files_only=local_only)
+        self.processor = AutoImageProcessor.from_pretrained(
+            source, local_files_only=local_only
+        )
         self.backbone = AutoModel.from_pretrained(source, local_files_only=local_only)
-
 
         self.embedding_dim = self.backbone.config.hidden_size
 
@@ -47,7 +54,7 @@ class DinoViTBackbone(nn.Module):
                 p.requires_grad = False
 
         logger.info(
-            f"Loaded DINO backbone {model_name} "
+            f"Loaded Google ViT backbone {model_name} "
             f"(embedding_dim={self.embedding_dim})"
         )
 
@@ -66,15 +73,16 @@ class DinoViTBackbone(nn.Module):
         # Unnormalize: convert from cache normalization [-1, 1] back to [0, 1]
         # x_original = x_normalized * std + mean = x * 0.5 + 0.5
         x = x * 0.5 + 0.5
-        
+
         # Handle both (B, D, H, W) and (B, 1, D, H, W) formats
         if x.ndim == 5 and x.shape[1] == 1:
             x = x.squeeze(1)  # (B, D, H, W)
-        
+
         B, D, H, W = x.shape
-        # Reorder slices depending on axis
+
+        # Slice selection
         if self.slice_axis == 0:
-            slices = x  # (B, D, H, W)
+            slices = x
         elif self.slice_axis == 1:
             slices = x.permute(0, 2, 1, 3)
         else:
@@ -82,10 +90,10 @@ class DinoViTBackbone(nn.Module):
 
         num_slices = slices.shape[1]
 
-        # Flatten slices into batch
+        # (B*S, H, W)
         slices = slices.reshape(B * num_slices, H, W)
 
-        # Convert grayscale → 3 channels
+        # Grayscale → RGB
         slices = slices.unsqueeze(1).repeat(1, 3, 1, 1)
 
         inputs = self.processor(
@@ -93,7 +101,6 @@ class DinoViTBackbone(nn.Module):
             return_tensors="pt",
             do_rescale=False,
         )
-
         inputs = {k: v.to(x.device) for k, v in inputs.items()}
 
         with torch.no_grad():
@@ -105,7 +112,6 @@ class DinoViTBackbone(nn.Module):
         else:
             slice_embeds = tokens.mean(dim=1)
 
-        # (B, S, C)
         slice_embeds = slice_embeds.view(B, num_slices, -1)
 
         if self.pooling == "max":

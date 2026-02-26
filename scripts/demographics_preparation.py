@@ -8,7 +8,9 @@ from diff_benchmark.preprocessing.brain_feature_extraction import (
     DefaultPipeline,
 )
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
-from diff_benchmark.preprocessing.preparation_pipeline import DemographicsPreparationPipeline
+from diff_benchmark.preprocessing.preparation_pipeline import (
+    DemographicsPreparationPipeline,
+)
 
 general_config_path = Path(__file__).parent.parent / "config/configuration_general.yaml"
 with open(general_config_path, "r", encoding="utf-8") as f:

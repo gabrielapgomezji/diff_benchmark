@@ -4,45 +4,45 @@ The top-level auxiliary file: main.aux
 The style file: splncs04.bst
 Database file #1: references.bib
 Warning--empty journal in Avants2009
-You've used 29 entries,
+You've used 41 entries,
             2850 wiz_defined-function locations,
-            790 strings with 12505 characters,
-and the built_in function-call counts, 22090 in all, are:
-= -- 1713
-> -- 1038
-< -- 48
-+ -- 425
-- -- 392
-* -- 1614
-:= -- 2850
-add.period$ -- 37
-call.type$ -- 29
-change.case$ -- 275
+            855 strings with 15829 characters,
+and the built_in function-call counts, 32271 in all, are:
+= -- 2520
+> -- 1507
+< -- 74
++ -- 617
+- -- 570
+* -- 2326
+:= -- 4100
+add.period$ -- 42
+call.type$ -- 41
+change.case$ -- 398
 chr.to.int$ -- 0
-cite$ -- 30
-duplicate$ -- 1829
-empty$ -- 1660
-format.name$ -- 420
-if$ -- 4643
+cite$ -- 42
+duplicate$ -- 2672
+empty$ -- 2402
+format.name$ -- 610
+if$ -- 6826
 int.to.chr$ -- 0
-int.to.str$ -- 29
-missing$ -- 416
-newline$ -- 93
-num.names$ -- 58
-pop$ -- 711
+int.to.str$ -- 41
+missing$ -- 605
+newline$ -- 129
+num.names$ -- 82
+pop$ -- 1031
 preamble$ -- 1
-purify$ -- 244
+purify$ -- 355
 quote$ -- 0
-skip$ -- 528
+skip$ -- 828
 stack$ -- 0
-substring$ -- 1133
-swap$ -- 1219
-text.length$ -- 48
+substring$ -- 1712
+swap$ -- 1823
+text.length$ -- 74
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 116
+type$ -- 164
 warning$ -- 1
-while$ -- 154
-width$ -- 31
-write$ -- 305
+while$ -- 224
+width$ -- 43
+write$ -- 411
 (There was 1 warning)

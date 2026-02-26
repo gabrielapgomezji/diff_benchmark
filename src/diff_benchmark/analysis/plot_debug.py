@@ -1,6 +1,6 @@
 from pathlib import Path
-import pandas as pd
 
+import pandas as pd
 
 SPLIT_STYLE = {
     "train": {"color": "tab:blue"},
@@ -30,21 +30,23 @@ METRIC_LINESTYLE = {
 #     df = df[df["batch"].isna()].copy()
 #     return df
 
+
 def load_debug_logs(file_path: Path) -> pd.DataFrame:
     df = pd.read_parquet(file_path)
     df = df[df["batch"].isna()].copy()  # keep only epoch-level rows
-    
+
     # Extract fold from filename
     fold_str = file_path.stem.split("_")[-1]
     if fold_str.startswith("fold"):
         df["fold"] = int(fold_str.replace("fold", ""))
     else:
         df["fold"] = None
-    
+
     return df
 
 
 import matplotlib.pyplot as plt
+
 
 def plot_metric(ax, df, metric, title):
     for split in ["train", "val"]:
@@ -57,7 +59,7 @@ def plot_metric(ax, df, metric, title):
             d[metric],
             label=split,
             color=SPLIT_STYLE[split]["color"],
-            linestyle="-",   # always solid for single-metric plots
+            linestyle="-",  # always solid for single-metric plots
         )
 
     ax.set_title(title)
@@ -98,16 +100,16 @@ def plot_two_metrics(
     ax.legend()
 
 
-
 def plot_classification_debug(df, run_id, output_dir):
     fig, axes = plt.subplots(
-        2, 2,
+        2,
+        2,
         figsize=(12, 8),
         gridspec_kw={"hspace": 0.4, "wspace": 0.25},
     )
 
     plot_metric(axes[0, 0], df, "loss", "Loss")
-    
+
     if "weighted_accuracy" in df.columns and df["weighted_accuracy"].notna().any():
         plot_metric(axes[0, 1], df, "weighted_accuracy", "Weighted Accuracy")
     else:
@@ -125,13 +127,16 @@ def plot_classification_debug(df, run_id, output_dir):
 
     fig.suptitle(f"{run_id} – Classification debug", fontsize=14)
     output_dir.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_dir / f"debug_training_{run_id}.png", dpi=150, bbox_inches="tight")
+    fig.savefig(
+        output_dir / f"debug_training_{run_id}.png", dpi=150, bbox_inches="tight"
+    )
     plt.close(fig)
 
 
 def plot_regression_debug(df, run_id, output_dir):
     fig, axes = plt.subplots(
-        2, 2,
+        2,
+        2,
         figsize=(12, 8),
         gridspec_kw={"hspace": 0.4, "wspace": 0.25},
     )
@@ -151,7 +156,9 @@ def plot_regression_debug(df, run_id, output_dir):
 
     fig.suptitle(f"{run_id} – Regression debug", fontsize=14)
     output_dir.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_dir / f"debug_training_{run_id}.png", dpi=150, bbox_inches="tight")
+    fig.savefig(
+        output_dir / f"debug_training_{run_id}.png", dpi=150, bbox_inches="tight"
+    )
     plt.close(fig)
 
 
@@ -162,7 +169,13 @@ def infer_prediction_task(df: pd.DataFrame) -> str:
     # epoch_df = df[df["batch"].isna()]
     epoch_df = df
 
-    classification_metrics = {"accuracy", "weighted_accuracy", "precision", "recall", "f1"}
+    classification_metrics = {
+        "accuracy",
+        "weighted_accuracy",
+        "precision",
+        "recall",
+        "f1",
+    }
     regression_metrics = {"mse", "mape", "r2", "explained_variance"}
 
     present_metrics = {
@@ -177,9 +190,7 @@ def infer_prediction_task(df: pd.DataFrame) -> str:
     if present_metrics & regression_metrics:
         return "regression"
 
-    raise ValueError(
-        f"Could not infer prediction task from metrics: {present_metrics}"
-    )
+    raise ValueError(f"Could not infer prediction task from metrics: {present_metrics}")
 
 
 def plot_debug_run(
@@ -193,7 +204,7 @@ def plot_debug_run(
 
     if not all_files:
         raise FileNotFoundError(f"No debug logs found for run_id={run_id}")
-    
+
     df_list = [load_debug_logs(f) for f in all_files]
     df = pd.concat(df_list, ignore_index=True)
 
@@ -215,6 +226,7 @@ def plot_debug_run(
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(
         description="Plot debug training logs for a given run."
     )
@@ -238,12 +250,12 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     # Example usage
-    run_id = args.run_id 
+    run_id = args.run_id
     debug_dir = Path(args.debug_dir)
     results_dir = Path(args.results_dir)
-    
+
     plot_debug_run(
-        run_id=run_id, #2dcnn_a5942b19
+        run_id=run_id,  # 2dcnn_a5942b19
         debug_dir=debug_dir,
         output_root=results_dir / "plots",
     )

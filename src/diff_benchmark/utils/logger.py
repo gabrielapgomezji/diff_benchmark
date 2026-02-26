@@ -1,21 +1,14 @@
-import os
-import pandas as pd
-import torch
-import pytorch_lightning as pl
-
-from typing import Optional, Dict, List
-import os
-import pandas as pd
-import torch
-
-from dataclasses import dataclass
-from typing import Dict, Optional, Literal
-
 import logging
+import os
 import sys
-from typing import Optional
+from dataclasses import dataclass
+from typing import Dict, List, Literal, Optional
 
+import pandas as pd
+import pytorch_lightning as pl
+import torch
 from tqdm import tqdm
+
 
 def tqdm_if_enabled(iterable, *, desc=None, total=None, enabled=True):
     return tqdm(
@@ -25,6 +18,7 @@ def tqdm_if_enabled(iterable, *, desc=None, total=None, enabled=True):
         leave=False,
         disable=not enabled or not sys.stdout.isatty(),
     )
+
 
 @dataclass
 class TrainerLogRecord:
@@ -50,6 +44,7 @@ class TrainerLogRecord:
         if self.metrics:
             base.update(self.metrics)
         return base
+
 
 class TorchDebugLogger:
     def __init__(
@@ -141,11 +136,10 @@ class TorchDebugLogger:
             suffix = f"_fold{fold_idx}"
         else:
             suffix = ""
-        
-        
+
         run_dir = os.path.join(self.output_dir, self.run_id)
-        os.makedirs(run_dir, exist_ok=True) 
-    
+        os.makedirs(run_dir, exist_ok=True)
+
         path = os.path.join(
             self.output_dir, f"torch_debug_{self.run_id}{suffix}.parquet"
         )
@@ -182,9 +176,7 @@ class LightningDebugLogger(pl.Callback):
 
     # ---------- TRAIN ----------
 
-    def on_train_batch_end(
-        self, trainer, pl_module, outputs, batch, batch_idx
-    ):
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         if not self.enabled:
             return
 
@@ -208,7 +200,7 @@ class LightningDebugLogger(pl.Callback):
             return
 
         self._flush_epoch(
-            trainer=trainer, 
+            trainer=trainer,
             split="train",
             epoch=trainer.current_epoch,
             losses=self._train_losses,
@@ -250,7 +242,7 @@ class LightningDebugLogger(pl.Callback):
             return
 
         self._flush_epoch(
-            trainer=trainer, 
+            trainer=trainer,
             split="val",
             epoch=trainer.current_epoch,
             losses=self._val_losses,
@@ -267,8 +259,9 @@ class LightningDebugLogger(pl.Callback):
 
     def _flush_epoch(self, *, split, epoch, losses, preds, targets, fold=None):
         import numpy as np
+
         from diff_benchmark.utils.scores import compute_metrics
-        
+
         preds = torch.cat(preds).numpy()
         targets = torch.cat(targets).numpy()
 
@@ -299,7 +292,11 @@ class LightningDebugLogger(pl.Callback):
 
         os.makedirs(os.path.join(self.debug_dir, self.run_id), exist_ok=True)
         df = pd.DataFrame(r.to_dict() for r in self.records)
-        df.to_parquet(os.path.join(self.debug_dir, f"{self.run_id}/lightning_debug_{self.run_id}.parquet"))
+        df.to_parquet(
+            os.path.join(
+                self.debug_dir, f"{self.run_id}/lightning_debug_{self.run_id}.parquet"
+            )
+        )
 
 
 class LightningPrintLogger(pl.Callback):
@@ -331,9 +328,7 @@ class LightningPrintLogger(pl.Callback):
 #   Print Logger
 # ------------------
 
-LOG_FORMAT = (
-    "%(levelname)s - %(asctime)s - %(name)s - %(message)s"
-)
+LOG_FORMAT = "%(levelname)s - %(asctime)s - %(name)s - %(message)s"
 
 DATE_FORMAT = "%H:%M:%S"
 
@@ -382,4 +377,3 @@ def configure_logging(level=logging.DEBUG):
         sh = logging.StreamHandler(sys.stdout)
         sh.setFormatter(formatter)
         root.addHandler(sh)
-    

@@ -1,11 +1,11 @@
 import argparse
 import copy
+import logging
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-import logging
 from diff_benchmark.analysis.save_results import (
     is_cached,
     save_model_results,
@@ -14,20 +14,18 @@ from diff_benchmark.analysis.true_vs_pred import plot_true_vs_pred
 from diff_benchmark.data.prepare_data import DatasetPreparation
 from diff_benchmark.models.model_configurations import get_model, make_run_id
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
-from diff_benchmark.utils.parquet_helper import ParquetSaver, metrics_to_rows
 from diff_benchmark.utils.config_loader import load_configs
 from diff_benchmark.utils.job_manager import run_jobs
+from diff_benchmark.utils.logger import configure_logging, setup_logger
+from diff_benchmark.utils.parquet_helper import ParquetSaver, metrics_to_rows
 from diff_benchmark.utils.scores import compute_metrics
-from diff_benchmark.utils.summary_saver import update_summary, compute_summary_stats
-from diff_benchmark.utils.logger import setup_logger, configure_logging
+from diff_benchmark.utils.summary_saver import compute_summary_stats, update_summary
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "--methods", nargs="+", type=str, default=["2dcnn_torch"], help="Method to use"
 )
-parser.add_argument(
-    "--cluster", default="margaret", type=str, help="Cluster to use"
-)
+parser.add_argument("--cluster", default="margaret", type=str, help="Cluster to use")
 args = parser.parse_args()
 
 general_config, model_config = load_configs(args)
@@ -45,38 +43,43 @@ def run_single_model(model_name, model_config, general_config, results_path):
     local_config["run_id"] = run_id
     local_config["backbone"]["prediction_task"] = config["prediction_task"]
     local_config["backend"]["prediction_task"] = config["prediction_task"]
-            
+
     datasets_by_name = {
         d["name"]: d for d in general_config["datasets"]["datasets_list"]
     }
     dataset_selected = datasets_by_name[local_config["dataset"]]
     dataset_selected = DatasetConfig(
-                **dataset_selected,
-                metric_to_compute=general_config["datasets"]["metric_to_compute"],
-                scale=general_config["datasets"]["scale"],
-                region=general_config["data_preparation"]["region"],
-            )
+        **dataset_selected,
+        metric_to_compute=general_config["datasets"]["metric_to_compute"],
+        scale=general_config["datasets"]["scale"],
+        region=general_config["data_preparation"]["region"],
+    )
     torch_dataset_preparator = DatasetPreparation(
         model_name=model_name,
         model_config=local_config,
         general_config=general_config,
         source_dataset=dataset_selected,
     )
-    
+
     dataset, preprocessed = torch_dataset_preparator.pipeline()
 
     targets_path = Path(results_path) / "parquet" / "data" / "targets.parquet"
     targets_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     target_name = config["target_columns"][0]
     rows = [
-        {"dataset": dataset_selected.name, "sample_id": sid, "target": target_name, "value": float(v)}
+        {
+            "dataset": dataset_selected.name,
+            "sample_id": sid,
+            "target": target_name,
+            "value": float(v),
+        }
         for sid, v in zip(dataset.subject_ids, dataset.targets.numpy())
     ]
     saver = ParquetSaver(
         path=targets_path,
         key_columns=["dataset", "sample_id", "target"],
-        columns=["dataset", "sample_id", "target", "value"]
+        columns=["dataset", "sample_id", "target", "value"],
     )
     saver.add_rows(rows)
     saver.save()
@@ -123,14 +126,23 @@ def run_single_model(model_name, model_config, general_config, results_path):
     save_model_results(
         summary, Path(results_path) / "analysis_results" / f"{run_id}_partial.json"
     )
-    
+
     predictions_path = Path(results_path) / "parquet" / "data" / "predictions.parquet"
     key_cols = ["run_id", "model", "dataset", "fold", "split", "sample_id", "target"]
-    pred_saver = ParquetSaver(predictions_path, key_columns=key_cols,
-                            columns=[
-                                "run_id", "model", "dataset", "fold", "split",
-                                "sample_id", "target", "prediction"
-                            ])
+    pred_saver = ParquetSaver(
+        predictions_path,
+        key_columns=key_cols,
+        columns=[
+            "run_id",
+            "model",
+            "dataset",
+            "fold",
+            "split",
+            "sample_id",
+            "target",
+            "prediction",
+        ],
+    )
 
     for fold_idx, (train_idx, test_idx) in enumerate(indices):
         try:
@@ -160,12 +172,16 @@ def run_single_model(model_name, model_config, general_config, results_path):
             plot_true_vs_pred(
                 y_train, train_pred, fold_idx=fold_idx, run_id=run_id, type="train"
             )
-            train_score = compute_metrics(y_train, train_pred, prediction_task=local_config["backbone"]["prediction_task"])
+            train_score = compute_metrics(
+                y_train,
+                train_pred,
+                prediction_task=local_config["backbone"]["prediction_task"],
+            )
 
             train_scores.append(train_score)
             train_preds.append(train_pred.tolist())
             train_targets.append(y_train.tolist())
-            
+
             train_subject_ids = np.asarray(dataset.subject_ids)[train_idx]
             train_rows = [
                 {
@@ -181,13 +197,19 @@ def run_single_model(model_name, model_config, general_config, results_path):
                 for sid, pred in zip(train_subject_ids, train_pred)
             ]
             pred_saver.add_rows(train_rows)
-            
+
             test_pred = model.predict(test_loader)
             plot_true_vs_pred(
                 y_test, test_pred, fold_idx=fold_idx, run_id=run_id, type="test"
             )
-            test_score = compute_metrics(y_test, test_pred, prediction_task=local_config["backbone"]["prediction_task"])
-            logger.debug(f"Fold {fold_idx} - Train score: {train_score}, Test score: {test_score}")
+            test_score = compute_metrics(
+                y_test,
+                test_pred,
+                prediction_task=local_config["backbone"]["prediction_task"],
+            )
+            logger.debug(
+                f"Fold {fold_idx} - Train score: {train_score}, Test score: {test_score}"
+            )
 
             test_scores.append(test_score)
             test_preds.append(test_pred.tolist())
@@ -210,8 +232,20 @@ def run_single_model(model_name, model_config, general_config, results_path):
             pred_saver.add_rows(test_rows)
             pred_saver.save()
 
-            primary_metric = {"binary_classification": "accuracy", "regression": "mse"}[local_config["backbone"]["prediction_task"]]
-            summary = update_summary(summary, fold_idx, train_score, test_score, y_train, train_pred, y_test, test_pred, primary_metric)
+            primary_metric = {"binary_classification": "accuracy", "regression": "mse"}[
+                local_config["backbone"]["prediction_task"]
+            ]
+            summary = update_summary(
+                summary,
+                fold_idx,
+                train_score,
+                test_score,
+                y_train,
+                train_pred,
+                y_test,
+                test_pred,
+                primary_metric,
+            )
 
             metrics_rows.extend(
                 metrics_to_rows(
@@ -224,7 +258,7 @@ def run_single_model(model_name, model_config, general_config, results_path):
                     split="train",
                 )
             )
-            
+
             metrics_rows.extend(
                 metrics_to_rows(
                     test_score,
@@ -248,15 +282,24 @@ def run_single_model(model_name, model_config, general_config, results_path):
                 Path(results_path) / "analysis_results" / f"{run_id}_crashed.json",
             )
             raise
-    
-    metrics_path = Path(results_path) / "parquet" / "analysis_results" / f"metrics_{run_id}.parquet"
+
+    metrics_path = (
+        Path(results_path)
+        / "parquet"
+        / "analysis_results"
+        / f"metrics_{run_id}.parquet"
+    )
     metrics_path.parent.mkdir(parents=True, exist_ok=True)
 
     df = pd.DataFrame(metrics_rows)
     df.to_parquet(metrics_path, index=False)
 
-    summary["results"]["train_average_score"], summary["results"]["train_std_score"] = compute_summary_stats(train_scores, primary_metric)
-    summary["results"]["test_average_score"], summary["results"]["test_std_score"] = compute_summary_stats(test_scores, primary_metric)
+    summary["results"]["train_average_score"], summary["results"]["train_std_score"] = (
+        compute_summary_stats(train_scores, primary_metric)
+    )
+    summary["results"]["test_average_score"], summary["results"]["test_std_score"] = (
+        compute_summary_stats(test_scores, primary_metric)
+    )
 
     save_model_results(summary, Path(results_path) / "analysis_results")
     return model_name, run_id
@@ -287,7 +330,7 @@ logger.info("Starting diff_benchmark")
 # 1. Group the models by backend (deep learning vs sklearn)
 # 2. Get from the slurm config yaml the required ressources for each backend
 # 3. Start the jobs in parallel by backend groups, setting the slurm config accordingly + get submitit jobs
-# 4. Await the jobs and collect the results 
+# 4. Await the jobs and collect the results
 slurm_cfg = general_config["slurm_cfg"][args.cluster]
 
 results = run_jobs(
@@ -301,19 +344,20 @@ results = run_jobs(
         }
         for model in models_to_run
     ],
-    parallel_type="slurm", #None, #
+    parallel_type="slurm",  # None, #
     slurm_cfg=slurm_cfg,
     # slurm_cfg={
     #     "slurm_partition": "parietal,normal,gpu",
     #     "tasks_per_node": 1,           # == --ntasks=1 (on 1 node)
     #     "slurm_gpus_per_task": 1,            # == --gpus-per-task=1 (recommended here)
-    #     "slurm_cpus_per_gpu": 10, 
+    #     "slurm_cpus_per_gpu": 10,
     #     "timeout_min": 900,
     # },
     n_jobs=50,
 )
 
 import warnings
+
 for result in results:
     if not result.ok:
         warnings.warn(f"Job failed:\n{result.traceback}")
@@ -344,5 +388,3 @@ if new_dfs:
         df_out = df_new
 
     df_out.to_parquet(global_path, index=False)
-
-

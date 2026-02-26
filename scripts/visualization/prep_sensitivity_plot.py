@@ -8,6 +8,7 @@ Visual argument:
   "Preprocessing choice can move a model's score by 0.10–0.30+, even on
    identical data.  Benchmark comparisons must account for this."
 """
+
 from __future__ import annotations
 
 import argparse
@@ -22,8 +23,6 @@ from matplotlib.lines import Line2D
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
-from config import apply_miccai_style
 from utils import (
     add_score_raw_from_prefix,
     choose_spread_metric,
@@ -36,6 +35,8 @@ from utils import (
     ordered_dataset_task_labels_from_combos,
 )
 
+from config import apply_miccai_style
+
 # ── Scope ────────────────────────────────────────────────────────────────────
 PREP_COMBOS = [
     ("hcp", "Gender", "binary_classification"),
@@ -47,17 +48,18 @@ PREP_FEATURES = {"md", "mk", "sh", "b0"}
 PREP_TISSUES = {"white", "gray"}
 
 # ── Visual constants ──────────────────────────────────────────────────────────
-RANGE_LINE_COLOR  = "#333333"
-IQR_COLOR         = "#111111"
-ANNOT_COLOR       = "#444444"
-DOT_COLOR         = "#444444"
+RANGE_LINE_COLOR = "#333333"
+IQR_COLOR = "#111111"
+ANNOT_COLOR = "#444444"
+DOT_COLOR = "#444444"
 
-PLOT_TITLE    = "Sensitivity to preprocessing across dataset-task conditions"
+PLOT_TITLE = "Sensitivity to preprocessing across dataset-task conditions"
 PLOT_SUBTITLE = "Each dot = one preprocessing condition"
-Y_LABEL       = "Normalized score (0 = dummy, 1 = perfect)"
+Y_LABEL = "Normalized score (0 = dummy, 1 = perfect)"
 
 
 # ── Data loading & normalisation ─────────────────────────────────────────────
+
 
 def _load_scope(parquet_path: str) -> pd.DataFrame:
     df = pd.read_parquet(parquet_path)
@@ -115,6 +117,7 @@ def _compute_prep_scores(df: pd.DataFrame) -> pd.DataFrame:
 
 # ── Statistics per dataset-task ───────────────────────────────────────────────
 
+
 def _dataset_task_stats(prep_df: pd.DataFrame) -> pd.DataFrame:
     rows = []
     for task_label, grp in prep_df.groupby("dataset_task", dropna=False):
@@ -136,6 +139,7 @@ def _dataset_task_stats(prep_df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ── Plotting ──────────────────────────────────────────────────────────────────
+
 
 def _plot_prep_sensitivity(
     prep_df: pd.DataFrame,
@@ -205,7 +209,6 @@ def _plot_prep_sensitivity(
             f"Δ{row['prep_range']:.2f}  (n={int(row['n_preps'])})",
             ha="center",
             va="bottom",
-
             color=ANNOT_COLOR,
             zorder=6,
         )
@@ -245,19 +248,31 @@ def _plot_prep_sensitivity(
 
     # ── Legend ────────────────────────────────────────────────────────────────
     range_handle = Line2D(
-        [0], [0],
-        color=RANGE_LINE_COLOR, linewidth=1.0, alpha=0.55, label="Full range",
+        [0],
+        [0],
+        color=RANGE_LINE_COLOR,
+        linewidth=1.0,
+        alpha=0.55,
+        label="Full range",
     )
     iqr_handle = Line2D(
-        [0], [0],
-        color=IQR_COLOR, linewidth=5.0, alpha=0.30,
+        [0],
+        [0],
+        color=IQR_COLOR,
+        linewidth=5.0,
+        alpha=0.30,
         label="IQR",
     )
     dot_handle = Line2D(
-        [0], [0],
-        marker="o", linestyle="",
-        markerfacecolor=DOT_COLOR, markeredgecolor="white",
-        markeredgewidth=0.3, markersize=5, alpha=0.55,
+        [0],
+        [0],
+        marker="o",
+        linestyle="",
+        markerfacecolor=DOT_COLOR,
+        markeredgecolor="white",
+        markeredgewidth=0.3,
+        markersize=5,
+        alpha=0.55,
         label="Preprocessing condition",
     )
     ax.legend(
@@ -280,6 +295,7 @@ def _plot_prep_sensitivity(
 
 # ── Public entry point ────────────────────────────────────────────────────────
 
+
 def plot_prep_sensitivity(
     parquet_path: str,
     out_dir: str = "exp_outputs/summary/plots/folds",
@@ -298,6 +314,7 @@ def plot_prep_sensitivity(
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(

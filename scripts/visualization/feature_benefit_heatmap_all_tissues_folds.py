@@ -1,15 +1,13 @@
 """
-feature_benefit_heatmap.py
-==========================
+feature_benefit_heatmap_all_tissues_folds.py
+============================================
 
-Heatmap answering: "For each dataset-task and feature, how many models exhibit
-a consistent improvement vs b0?"
+Heatmap answering: "For each dataset-task and feature, how many models improve
+over b0 under a robustness criterion, shown separately for gray and white matter?"
 
 Two side-by-side panels:
-  Left  — p-value method  (one-sample t-test on cluster means, p < 0.05 & mean > 0)
-  Right — robustness rule (median Δ ≥ epsilon AND frac_positive ≥ tau)
-
-See docstring of `plot_feature_benefit_heatmap` for full pipeline description.
+  Left  — gray matter robustness
+  Right — white matter robustness
 """
 
 from __future__ import annotations
@@ -21,11 +19,12 @@ from pathlib import Path
 import matplotlib
 import numpy as np
 import pandas as pd
-from scipy.stats import false_discovery_control, ttest_1samp
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns
+
+from config import MICCAI_DOUBLE_COLUMN_FIGSIZE, MICCAI_MPL_PARAMS, apply_miccai_style
 from utils import (
     choose_spread_metric,
     clean_target,
@@ -35,15 +34,13 @@ from utils import (
     normalize_score,
 )
 
-from config import MICCAI_DOUBLE_COLUMN_FIGSIZE, apply_miccai_style
-
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
 FEATURE_DELTA_COMBOS = [
-    ("hcp", "Gender", "binary_classification"),
-    ("camcan", "Gender", "binary_classification"),
+    ("hcp", "Sex", "binary_classification"),
+    ("camcan", "Sex", "binary_classification"),
     ("camcan", "Age", "regression"),
     ("abide", "DX_GROUP", "binary_classification"),
 ]
@@ -51,25 +48,16 @@ FEATURE_DELTA_TISSUES = {"white", "gray"}
 FEATURE_PREFERRED_ORDER = ["md", "mk", "sh"]
 FEATURE_EXCLUDE = {"rtop"}
 
-# Robustness-rule thresholds
-EPSILON: float = 0.03  # minimum median delta to count as benefit
-TAU: float = 0.80  # minimum fraction of positive-delta folds
-
-PVALUE_THRESHOLD: float = 0.05
+EPSILON: float = 0.05
+TAU: float = 0.80
 
 HEATMAP_CMAP = "Blues"
 
-TITLE_MAIN = (
-    "Proportion of models consistently improving over b0, per feature and dataset-task"
-)
-TITLE_LEFT = "Statistical criterion\n(t-test, p<0.05 & mean\u0394>0)"
-TITLE_RIGHT = "Practical criterion\n(med.\u0394\u2265{EPSILON}, \u2265{TAU:.0%} folds positive)".format(
-    EPSILON=EPSILON, TAU=TAU
-)
+TITLE_MAIN = "Model benefit over b0 per feature and dataset-task by tissue"
 
 
 # ---------------------------------------------------------------------------
-# Step 0: data loading (individual models, no family grouping)
+# Step 0: data loading
 # ---------------------------------------------------------------------------
 
 
@@ -79,7 +67,7 @@ def _load_scope(parquet_path: str) -> pd.DataFrame:
     df = filter_combos(df, FEATURE_DELTA_COMBOS)
     df = df[df["tissue_type"].isin(FEATURE_DELTA_TISSUES)].copy()
     df["model_family"] = df["model_name"].map(map_model_family)
-    df = df[df["model_family"].notna()].copy()  # drop dummies
+    df = df[df["model_family"].notna()].copy()
     if df.empty:
         raise RuntimeError("No rows after scope filters")
     return df
@@ -127,6 +115,13 @@ def _extract_fold_scores(df: pd.DataFrame) -> pd.DataFrame:
     return fold_df[fold_df["score_norm"].notna()].copy()
 
 
+def _ordered_features(features: list[str]) -> list[str]:
+    seen = set(features)
+    ordered = [f for f in FEATURE_PREFERRED_ORDER if f in seen]
+    ordered.extend(sorted(f for f in features if f not in ordered))
+    return ordered
+
+
 def _build_delta_df(fold_df: pd.DataFrame) -> pd.DataFrame:
     key_cols = [
         "dataset",
@@ -160,9 +155,7 @@ def _build_delta_df(fold_df: pd.DataFrame) -> pd.DataFrame:
         .copy()
     )
     if "b0" not in wide.columns:
-        raise RuntimeError(
-            "Feature 'b0' missing after pivot — cannot build paired deltas"
-        )
+        raise RuntimeError("Feature 'b0' missing after pivot")
 
     wide = wide[wide["b0"].notna()].copy()
     feature_cols = [
@@ -182,26 +175,27 @@ def _build_delta_df(fold_df: pd.DataFrame) -> pd.DataFrame:
     )
     delta_df = delta_df[delta_df["feature_score"].notna()].copy()
     delta_df["delta"] = delta_df["feature_score"] - delta_df["b0"]
-    return delta_df[base_cols + ["feature", "delta"]].copy()
-
-
-def _ordered_features(features: list[str]) -> list[str]:
-    seen = set(features)
-    ordered = [f for f in FEATURE_PREFERRED_ORDER if f in seen]
-    ordered.extend(sorted(f for f in features if f not in ordered))
-    return ordered
+    return delta_df[
+        [
+            "dataset",
+            "target_clean",
+            "prediction_task",
+            "tissue_type",
+            "model_name",
+            "fold_index",
+            "feature",
+            "delta",
+        ]
+    ].copy()
 
 
 # ---------------------------------------------------------------------------
-# Step 2: benefit flags per (dataset-task, tissue, model, feature)
+# Step 2: per-model robustness flags within each tissue (across folds)
 # ---------------------------------------------------------------------------
 
 
-def _benefit_flags(delta_df: pd.DataFrame) -> pd.DataFrame:
-    """Return one row per (dataset, target_clean, prediction_task, tissue_type,
-    model_name, feature) with columns benefit_pvalue and benefit_robust."""
+def _per_model_robust_stats(delta_df: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict] = []
-
     group_cols = [
         "dataset",
         "target_clean",
@@ -216,30 +210,18 @@ def _benefit_flags(delta_df: pd.DataFrame) -> pd.DataFrame:
         if deltas.size == 0:
             continue
 
-        # --- raw p-value (thresholding deferred until after FDR correction) ---
-        raw_pvalue = float("nan")
-        if deltas.size >= 2:
-            res = ttest_1samp(deltas, popmean=0.0, nan_policy="omit")
-            if np.isfinite(res.pvalue):
-                raw_pvalue = float(res.pvalue)
-
-        # --- robustness rule (no correction needed) ---
         median_delta = float(np.median(deltas))
         frac_positive = float(np.mean(deltas > 0))
-        benefit_robust = int(median_delta >= EPSILON and frac_positive >= TAU)
 
         row = dict(zip(group_cols, keys))
-        row["n_folds"] = int(deltas.size)
-        row["mean_delta"] = float(deltas.mean())
+        row["n_obs"] = int(deltas.size)
         row["median_delta"] = median_delta
         row["frac_positive"] = frac_positive
-        row["raw_pvalue"] = raw_pvalue   # BH correction applied in _collapse_across_models
-        row["benefit_pvalue"] = 0        # filled after FDR correction
-        row["benefit_robust"] = benefit_robust
+        row["benefit_robust"] = int(median_delta >= EPSILON and frac_positive >= TAU)
         rows.append(row)
 
     if not rows:
-        return pd.DataFrame(rows)
+        return pd.DataFrame()
 
     return pd.DataFrame(rows)
 
@@ -248,146 +230,98 @@ def _benefit_flags(delta_df: pd.DataFrame) -> pd.DataFrame:
 # Step 3: collapse across models
 # ---------------------------------------------------------------------------
 
-
-def _collapse_across_models(flags_df: pd.DataFrame) -> pd.DataFrame:
-    """Aggregate benefit flags across models for each (dataset-task, feature).
-
-    Tissue types are collapsed first (most significant p across tissues per model),
-    then BH FDR correction is applied across the ~(n_dataset_tasks × n_models × n_features)
-    per-model cells that directly feed into the heatmap — a much smaller correction
-    pool than the raw ~360 (tissue × model × feature × dataset) tests.
-    A model is then counted as benefiting if its BH-adjusted p < threshold and mean Δ > 0.
+def _format_dataset_task_label(dataset: str, target: str) -> str:
     """
-    # Per model: take most significant p-value and max robust benefit across tissues
-    per_model = flags_df.groupby(
-        ["dataset", "target_clean", "prediction_task", "model_name", "feature"],
-        dropna=False,
-        as_index=False,
-    ).agg(
-        mean_delta=("mean_delta", "mean"),
-        raw_pvalue=("raw_pvalue", "min"),    # most significant p across tissues
-        benefit_robust=("benefit_robust", "max"),
-    )
+    Returns canonical label:
+        dataset::target
+        dataset1|dataset2::target
+    Always lowercase.
+    """
+    if dataset is None or target is None:
+        return ""
 
-    # --- Apply BH across the per-model × feature × dataset-task cells ---
-    finite_mask = per_model["raw_pvalue"].notna() & np.isfinite(per_model["raw_pvalue"])
-    per_model["adjusted_pvalue"] = float("nan")
-    if finite_mask.any():
-        adjusted = false_discovery_control(
-            per_model.loc[finite_mask, "raw_pvalue"].to_numpy(dtype=float),
-            method="bh",
-        )
-        per_model.loc[finite_mask, "adjusted_pvalue"] = adjusted
+    dataset = str(dataset).lower().replace("+", "|")
+    target = str(target).lower()
 
-    per_model["benefit_pvalue"] = (
-        (per_model["adjusted_pvalue"] < PVALUE_THRESHOLD) & (per_model["mean_delta"] > 0)
-    ).astype(int)
+    return f"{dataset}::{target}"
 
-    per_model = per_model.drop(columns=["raw_pvalue", "adjusted_pvalue", "mean_delta"])
-
+def _collapse_across_models(per_model: pd.DataFrame) -> pd.DataFrame:
     agg = per_model.groupby(
-        ["dataset", "target_clean", "prediction_task", "feature"],
+        ["dataset", "target_clean", "prediction_task", "tissue_type", "feature"],
         dropna=False,
         as_index=False,
     ).agg(
         n_models_total=("model_name", "nunique"),
-        n_models_pvalue=("benefit_pvalue", "sum"),
         n_models_robust=("benefit_robust", "sum"),
     )
 
-    agg["prop_pvalue"] = agg["n_models_pvalue"] / agg["n_models_total"]
     agg["prop_robust"] = agg["n_models_robust"] / agg["n_models_total"]
-    agg["row_label"] = agg["dataset"].str.upper() + " – " + agg["target_clean"]
+    # agg["row_label"] = agg["dataset"].str.upper() + " – " + agg["target_clean"]
+    agg["row_label"] = agg.apply(
+        lambda r: _format_dataset_task_label(r["dataset"], r["target_clean"]),
+        axis=1,
+    )
     return agg
 
 
 def _merge_gender_rows(agg: pd.DataFrame) -> pd.DataFrame:
-    """Pool HCP–Gender and CamCAN–Gender into a single combined row.
-
-    Raw counts (n_models_pvalue, n_models_robust, n_models_total) are summed
-    across the two datasets so the annotation fractions reflect the full
-    combined model pool.  Proportions are then recomputed from the pooled counts.
-    """
-    gender_mask = agg["target_clean"] == "Gender"
+    gender_mask = agg["target_clean"].str.lower() == "sex"
     gender_rows = agg[gender_mask].copy()
     other_rows = agg[~gender_mask].copy()
-
     if gender_rows.empty:
         return agg
 
-    pooled = gender_rows.groupby("feature", dropna=False, as_index=False).agg(
+    pooled = gender_rows.groupby(
+        ["tissue_type", "feature"], dropna=False, as_index=False
+    ).agg(
         n_models_total=("n_models_total", "sum"),
-        n_models_pvalue=("n_models_pvalue", "sum"),
         n_models_robust=("n_models_robust", "sum"),
     )
-    pooled["prop_pvalue"] = pooled["n_models_pvalue"] / pooled["n_models_total"]
     pooled["prop_robust"] = pooled["n_models_robust"] / pooled["n_models_total"]
-    pooled["row_label"] = "Gender (HCP+CamCAN)"
-    pooled["target_clean"] = "Gender"
-    pooled["dataset"] = "hcp+camcan"
+    pooled["target_clean"] = "sex"
+    pooled["dataset"] = "hcp|camcan"
     pooled["prediction_task"] = "binary_classification"
 
+    pooled["row_label"] = pooled.apply(
+        lambda r: _format_dataset_task_label(r["dataset"], r["target_clean"]),
+        axis=1,
+    )
+    pooled["prediction_task"] = "binary_classification"
     return pd.concat([other_rows, pooled], ignore_index=True)
 
 
 # ---------------------------------------------------------------------------
-# Step 4: sort rows and columns
+# Step 4: ordering and annotations
 # ---------------------------------------------------------------------------
 
 
 def _sort_heatmap(agg: pd.DataFrame) -> tuple[list[str], list[str]]:
-    # Row order: descending total robust signal
     row_strength = (
         agg.groupby("row_label")["prop_robust"].sum().sort_values(ascending=True)
     )
-    row_order = row_strength.index.tolist()  # weakest first → bottom = strongest
+    row_order = row_strength.index.tolist()
 
-    # Column order: descending total robust signal
     col_strength = (
         agg.groupby("feature")["prop_robust"].sum().sort_values(ascending=False)
     )
     col_order = _ordered_features(col_strength.index.tolist())
-
     return row_order, col_order
 
 
-# ---------------------------------------------------------------------------
-# Step 5: visualisation
-# ---------------------------------------------------------------------------
-
-
 def _pivot_for_heatmap(
-    agg: pd.DataFrame, value_col: str, row_order: list[str], col_order: list[str]
+    agg: pd.DataFrame, row_order: list[str], col_order: list[str]
 ) -> pd.DataFrame:
     pivot = agg.pivot_table(
-        index="row_label", columns="feature", values=value_col, aggfunc="mean"
+        index="row_label", columns="feature", values="prop_robust", aggfunc="mean"
     )
-    pivot = pivot.reindex(index=row_order, columns=col_order)
-    return pivot
+    return pivot.reindex(index=row_order, columns=col_order)
 
 
 def _annot_fraction(
-    agg: pd.DataFrame, row_order: list[str], col_order: list[str]
+    agg: pd.DataFrame,
+    row_order: list[str],
+    col_order: list[str],
 ) -> pd.DataFrame:
-    """Build annotation matrix showing the percentage of models benefiting (p-value criterion)."""
-    num = agg.pivot_table(
-        index="row_label", columns="feature", values="n_models_pvalue", aggfunc="sum"
-    )
-    den = agg.pivot_table(
-        index="row_label", columns="feature", values="n_models_total", aggfunc="max"
-    )
-    num = num.reindex(index=row_order, columns=col_order)
-    den = den.reindex(index=row_order, columns=col_order)
-    pct = (num / den * 100).round(0).astype("Int64")
-    annot = pct.astype(str) + "%"
-    annot = annot.where(num.notna(), other="")
-    return annot
-
-
-def _annot_fraction_robust(
-    agg: pd.DataFrame, row_order: list[str], col_order: list[str]
-) -> pd.DataFrame:
-    """Build annotation matrix showing the percentage of models benefiting (robustness criterion)."""
     num = agg.pivot_table(
         index="row_label", columns="feature", values="n_models_robust", aggfunc="sum"
     )
@@ -398,8 +332,12 @@ def _annot_fraction_robust(
     den = den.reindex(index=row_order, columns=col_order)
     pct = (num / den * 100).round(0).astype("Int64")
     annot = pct.astype(str) + "%"
-    annot = annot.where(num.notna(), other="")
-    return annot
+    return annot.where(num.notna(), other="")
+
+
+# ---------------------------------------------------------------------------
+# Step 5: plotting
+# ---------------------------------------------------------------------------
 
 
 def _draw_heatmap(
@@ -410,14 +348,6 @@ def _draw_heatmap(
     show_yticklabels: bool,
     show_cbar: bool,
 ) -> None:
-    import matplotlib as mpl
-
-    fs_base = mpl.rcParams["font.size"]  # 9
-    fs_title = mpl.rcParams["axes.titlesize"]  # 10
-    fs_label = mpl.rcParams["axes.labelsize"]  # 9
-    fs_tick = mpl.rcParams["xtick.labelsize"]  # 8
-
-    # Gray for missing cells; "N/A" annotation
     cmap = plt.get_cmap(HEATMAP_CMAP).copy()
     cmap.set_bad(color="#b0b0b0")
     annot_values = annot.copy()
@@ -440,75 +370,99 @@ def _draw_heatmap(
             if show_cbar
             else {}
         ),
-        annot_kws={"size": fs_base},
+        annot_kws={"size": MICCAI_MPL_PARAMS["font.size"]},
     )
-    ax.set_title(title, pad=2, fontsize=fs_title)
-    ax.set_xlabel("", labelpad=4)
-    ax.set_ylabel("", labelpad=4)
-    ax.tick_params(axis="x", rotation=30, labelsize=fs_tick)
+    ax.set_title(title, pad=2, fontsize=MICCAI_MPL_PARAMS["axes.titlesize"])
+    ax.set_xlabel("")
+    ax.set_ylabel("")
+    ax.tick_params(axis="x", rotation=30, labelsize=MICCAI_MPL_PARAMS["xtick.labelsize"])
     if show_yticklabels:
-        ax.tick_params(axis="y", rotation=0, labelsize=fs_tick)
+        ax.tick_params(axis="y", rotation=0, labelsize=MICCAI_MPL_PARAMS["ytick.labelsize"])
     else:
         ax.set_yticklabels([])
         ax.tick_params(axis="y", left=False)
     if show_cbar and ax.collections:
         cbar = ax.collections[0].colorbar
         if cbar is not None:
-            cbar.ax.tick_params(labelsize=fs_tick)
-            cbar.set_label("Prop. models benefiting", fontsize=fs_label)
+            cbar.set_label("Prop. models benefiting", fontsize=MICCAI_MPL_PARAMS["axes.labelsize"])
+            cbar.ax.tick_params(labelsize=MICCAI_MPL_PARAMS["xtick.labelsize"])
 
 
-def _plot_heatmaps(agg: pd.DataFrame, out_file: Path, n_models_total: int) -> None:
-    import matplotlib as mpl
+def _robust_panel_title(tissue: str) -> str:
+    tissue_name = "Gray matter" if tissue == "gray" else "White matter"
+    return (
+        f"{tissue_name} robustness\n"
+        f"(med.\u0394\u2265{EPSILON:g}, \u2265{TAU:.0%} positive)"
+    )
 
-    fs_title = mpl.rcParams["figure.titlesize"]  # 10
 
+def _plot_heatmaps(agg: pd.DataFrame, out_file: Path) -> None:
     row_order, col_order = _sort_heatmap(agg)
 
-    pivot_pvalue = _pivot_for_heatmap(agg, "prop_pvalue", row_order, col_order)
-    pivot_robust = _pivot_for_heatmap(agg, "prop_robust", row_order, col_order)
+    gray = agg[agg["tissue_type"] == "gray"].copy()
+    white = agg[agg["tissue_type"] == "white"].copy()
 
-    annot_pvalue = _annot_fraction(agg, row_order, col_order)
-    annot_robust = _annot_fraction_robust(agg, row_order, col_order)
+    pivot_gray = _pivot_for_heatmap(gray, row_order, col_order)
+    pivot_white = _pivot_for_heatmap(white, row_order, col_order)
+    annot_gray = _annot_fraction(gray, row_order, col_order)
+    annot_white = _annot_fraction(white, row_order, col_order)
 
-    # Enforce publication target size from config (double-column layout).
-    fig, axes = plt.subplots(1, 2, figsize=MICCAI_DOUBLE_COLUMN_FIGSIZE)
+    fig = plt.figure(figsize=MICCAI_DOUBLE_COLUMN_FIGSIZE)
+    gs = fig.add_gridspec(1, 3, width_ratios=[1.0, 1.0, 0.06], wspace=0.22)
+    ax_gray = fig.add_subplot(gs[0, 0])
+    ax_white = fig.add_subplot(gs[0, 1])
+    cax = fig.add_subplot(gs[0, 2])
 
     _draw_heatmap(
-        axes[0],
-        pivot_pvalue,
-        annot_pvalue,
-        title=TITLE_LEFT,
+        ax_gray,
+        pivot_gray,
+        annot_gray,
+        title=_robust_panel_title("gray"),
         show_yticklabels=True,
         show_cbar=False,
     )
     _draw_heatmap(
-        axes[1],
-        pivot_robust,
-        annot_robust,
-        title=TITLE_RIGHT,
+        ax_white,
+        pivot_white,
+        annot_white,
+        title=_robust_panel_title("white"),
         show_yticklabels=False,
-        show_cbar=True,
+        show_cbar=False,
     )
 
-    fig.suptitle(TITLE_MAIN, y=1.01, fontsize=fs_title, fontweight="bold")
+    if ax_white.collections:
+        mappable = ax_white.collections[0]
+        cbar = fig.colorbar(mappable, cax=cax, format="%.1f")
+        cbar.set_label("Prop. models benefiting", fontsize=MICCAI_MPL_PARAMS["axes.labelsize"])
+        cbar.ax.tick_params(labelsize=MICCAI_MPL_PARAMS["xtick.labelsize"])
+    else:
+        cax.axis("off")
 
-    fig.tight_layout()
-    fig.savefig(out_file, dpi=300, bbox_inches="tight")
+    # fig.subplots_adjust(left=0.09, right=0.97, bottom=0.16, top=0.76, wspace=0.22)
+    fig.suptitle(TITLE_MAIN, y=0.99, fontsize=MICCAI_MPL_PARAMS["figure.titlesize"] + 1, fontweight="bold")
+    
+    # fig.tight_layout(rect=[0, 0, 1, 0.9])
+    
+    # Manually adjust margins to ensure content fits within figsize without bbox_inches='tight'
+    # Adjust top to leave space for title (previously 0.76 might be too low)
+    # Adjust bottom to leave space for rotated x-tick labels
+    fig.subplots_adjust(left=0.08, right=0.95, bottom=0.25, top=0.80, wspace=0.3)
+    
+    # Save with specific DPI and no bbox_inches to enforce exact figsize
+    fig.savefig(out_file, dpi=MICCAI_MPL_PARAMS["savefig.dpi"], bbox_inches=None)
     plt.close(fig)
 
 
 # ---------------------------------------------------------------------------
-# Public entry point
+# Public entry point + CLI
 # ---------------------------------------------------------------------------
 
 
-def plot_feature_benefit_heatmap(
+def plot_feature_benefit_heatmap_robust_by_tissue(
     parquet_path: str,
     out_dir: str = "exp_outputs/summary/plots/features",
     merge_gender: bool = True,
 ) -> Path:
-    """Full pipeline: load → deltas → benefit flags → aggregate → plot."""
     apply_miccai_style()
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
@@ -517,18 +471,14 @@ def plot_feature_benefit_heatmap(
     fold_df = _extract_fold_scores(df)
     delta_df = _build_delta_df(fold_df)
 
-    flags_df = _benefit_flags(delta_df)
-    if flags_df.empty:
-        raise RuntimeError("No benefit flags computed — check delta pipeline")
+    per_model = _per_model_robust_stats(delta_df)
+    if per_model.empty:
+        raise RuntimeError("No per-model statistics computed")
 
-    agg = _collapse_across_models(flags_df)
-
+    agg = _collapse_across_models(per_model)
     if merge_gender:
         agg = _merge_gender_rows(agg)
 
-    n_models_total = int(agg["n_models_total"].max())
-
-    # Sanity: warn if n_models_total varies
     model_count_range = agg["n_models_total"].agg(["min", "max"])
     if model_count_range["max"] - model_count_range["min"] > 2:
         warnings.warn(
@@ -537,21 +487,28 @@ def plot_feature_benefit_heatmap(
             stacklevel=2,
         )
 
-    out_file = out_path / "feature_benefit_heatmap.pdf"
-    _plot_heatmaps(agg, out_file, n_models_total)
-    return out_path
+    out_file = out_path / "feature_benefit_heatmap_robust_by_tissue.pdf"
+    _plot_heatmaps(agg, out_file)
+    return out_file
 
 
-# ---------------------------------------------------------------------------
-# CLI
-# ---------------------------------------------------------------------------
+def plot_feature_benefit_heatmap_all_tissues_folds(
+    parquet_path: str,
+    out_dir: str = "exp_outputs/summary/plots/features",
+    merge_gender: bool = True,
+) -> Path:
+    return plot_feature_benefit_heatmap_robust_by_tissue(
+        parquet_path=parquet_path,
+        out_dir=out_dir,
+        merge_gender=merge_gender,
+    )
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Heatmap: for each dataset-task × feature, proportion of models "
-            "that consistently improve over b0."
+            "Two-panel robustness heatmap by tissue type "
+            "(gray matter left, white matter right)."
         )
     )
     parser.add_argument(
@@ -574,30 +531,26 @@ def main() -> None:
         "--tau",
         type=float,
         default=TAU,
-        help=f"Minimum fraction of positive-delta folds (default {TAU})",
+        help=f"Minimum fraction of positive deltas for robustness rule (default {TAU})",
     )
     parser.add_argument(
         "--no-merge-gender",
         action="store_true",
-        help=(
-            "Keep HCP–Gender and CamCAN–Gender as separate rows "
-            "(by default they are merged into 'Gender (HCP+CamCAN)')."
-        ),
+        help="Keep HCP–Gender and CamCAN–Gender as separate rows.",
     )
     args = parser.parse_args()
 
-    # Allow CLI overrides of thresholds
-    import feature_benefit_heatmap as _self
+    import feature_benefit_heatmap_all_tissues_folds as _self
 
     _self.EPSILON = args.epsilon
     _self.TAU = args.tau
 
-    out_path = plot_feature_benefit_heatmap(
-        args.input,
-        args.outdir,
+    out_file = plot_feature_benefit_heatmap_robust_by_tissue(
+        parquet_path=args.input,
+        out_dir=args.outdir,
         merge_gender=not args.no_merge_gender,
     )
-    print("Saved feature benefit heatmap to", out_path)
+    print("Saved feature benefit heatmap to", out_file)
 
 
 if __name__ == "__main__":

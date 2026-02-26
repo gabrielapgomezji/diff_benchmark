@@ -1,18 +1,16 @@
+import numpy as np
 from sklearn.metrics import (
     accuracy_score,
-    confusion_matrix,
     explained_variance_score,
     f1_score,
-    mean_absolute_percentage_error,
     mean_absolute_error,
-    root_mean_squared_error,
+    mean_absolute_percentage_error,
     precision_score,
     r2_score,
     recall_score,
+    root_mean_squared_error,
 )
-from sklearn.feature_selection import r_regression
 from sklearn.utils.class_weight import compute_sample_weight
-import numpy as np
 
 __all__ = ["compute_metrics"]
 
@@ -32,7 +30,7 @@ def compute_metrics(
         average (str): Averaging method for multi-class classification.
         zero_division (str): Handling of zero division cases.
     """
-    sample_weight = compute_sample_weight('balanced', y_true)
+    sample_weight = compute_sample_weight("balanced", y_true)
     if prediction_task == "binary_classification":
         return {
             "accuracy": accuracy_score(y_true, y_pred),
@@ -48,7 +46,6 @@ def compute_metrics(
             "f1": f1_score(
                 y_true, y_pred, average=average, zero_division=zero_division
             ),
-            # "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
         }
 
     if prediction_task == "regression":

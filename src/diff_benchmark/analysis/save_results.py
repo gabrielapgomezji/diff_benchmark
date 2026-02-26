@@ -4,8 +4,11 @@ from pathlib import Path
 
 import numpy as np
 from filelock import FileLock
+
 from diff_benchmark.utils.logger import setup_logger
+
 logger = setup_logger(__name__)
+
 
 def is_cached(
     run_id: str, output_dir: Path, results_filename="all_results.json"
@@ -29,6 +32,7 @@ def is_cached(
         result.get("pipeline", {}).get("run_id") == run_id for result in all_results
     )
 
+
 def make_json_serializable(obj):
     """Recursively convert an object to a JSON-serializable version."""
     if isinstance(obj, dict):
@@ -40,7 +44,6 @@ def make_json_serializable(obj):
     else:
         # Replace any other object with a string indicating its type
         return f"<non-serializable: {obj.__class__.__name__}>"
-
 
 
 def save_model_results(
@@ -73,7 +76,11 @@ def save_model_results(
                     history = json.load(f)
                 # summary["history"] = history
                 folds[last_fold_name]["history"] = [
-                    {k: float(v) for k, v in step.items() if isinstance(v, (int, float))}
+                    {
+                        k: float(v)
+                        for k, v in step.items()
+                        if isinstance(v, (int, float))
+                    }
                     for step in history
                 ]
                 os.remove(log_file)  # cleanup
