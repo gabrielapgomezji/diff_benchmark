@@ -1,6 +1,7 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -12,23 +13,15 @@ def plot_metrics_summary(
     df = pd.read_parquet(metrics_path)
 
     # aggregate across folds
-    df_agg = (
-        df.groupby(
-            ["model_name", "prediction_task", "metric", "split"],
-            as_index=False
-        )["value"]
-        .agg(mean="mean", std="std")
-    )
+    df_agg = df.groupby(
+        ["model_name", "prediction_task", "metric", "split"], as_index=False
+    )["value"].agg(mean="mean", std="std")
 
-    df_wide = (
-        df_agg
-        .pivot(
-            index=["model_name", "prediction_task", "metric"],
-            columns="split",
-            values=["mean", "std"]
-        )
-        .reset_index()
-    )
+    df_wide = df_agg.pivot(
+        index=["model_name", "prediction_task", "metric"],
+        columns="split",
+        values=["mean", "std"],
+    ).reset_index()
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -51,10 +44,7 @@ def plot_metrics_summary(
                 continue
 
             # dot size = avg std between train & test
-            size = (
-                d["std"]["train"].fillna(0)
-                + d["std"]["test"].fillna(0)
-            ) / 2
+            size = (d["std"]["train"].fillna(0) + d["std"]["test"].fillna(0)) / 2
 
             fig.add_trace(
                 go.Scatter(
@@ -88,7 +78,6 @@ def plot_metrics_summary(
                 col=col_idx,
             )
 
-
             # diagonal y=x
             min_v = min(
                 d["mean"]["train"].min(),
@@ -120,9 +109,7 @@ def plot_metrics_summary(
             height=500,
         )
 
-        fig.write_html(
-            output_dir / f"metrics_summary_{task}.html"
-        )
+        fig.write_html(output_dir / f"metrics_summary_{task}.html")
 
 
 if __name__ == "__main__":

@@ -1,42 +1,17 @@
 
-Comparing predictive models across diffusion MRI studies remains challenging.
-Preprocessing pipelines differ substantially, microstructural information is represented in multiple ways (e.g., voxel-wise maps, 
-ROI summaries, or learned embeddings), and evaluation protocols vary in data splits, cross-validation schemes, and hyperparameter selection.
-As a result, reported performance differences may reflect methodological inconsistencies rather than genuine modeling improvements.
-Limited code and configuration sharing further restrict reproducibility.
-Together, these factors make it difficult to determine which approaches generalize reliably and provide meaningful insights.
-To address these issues, we introduce a standardized benchmark that unifies preprocessing and feature extraction, evaluates both 
-classical and deep learning models on regression and classification tasks, and spans multiple public datasets under a 
-controlled evaluation protocol.
-We now describe the benchmark in detail whose overall structure is illustrated in Figure~\ref{fig:benchmark_overview}.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=\textwidth]{scheme.pdf}
-    \caption{Overview of the proposed diffusion MRI benchmark pipeline, illustrating the end-to-end 
-    process from preprocessing to microstructural feature extraction, predictive modeling, and 
-    evaluation.}
-    \label{fig:benchmark_overview}
-\end{figure}
+In this work, we introduce \textbf{DiffBench} a standardized benchmark that unifies preprocessing and feature extraction, evaluates both 
+classical and deep learning models on regression and classification tasks over a rigorous evaluation protocol on multiple
+public datasets. The overall structure is illustrated in Figure~\ref{fig:benchmark_overview}.
 
 \subsection{Datasets}
-    
-% \begin{itemize}
-%     \item Introduction sentence about why you picked these datasets
-%     \item Introduce Number of subjects
-%     \item Age range / demographics
-%     \item Scanner details
-%     \item Acquisition protocol or summary table with acquisition parameters
-%     \item Prediction targets (classification/regression)
-% \end{itemize}
-To ensure reproducibility, we evaluate our benchmark on three publicly available datasets 
+To ensure reproducibility, DiffBench leverages three publicly available datasets 
 covering both healthy and clinical populations.
-\textbf{HCP}: The Human Connectome Project (HCP) Young Adult dataset \cite{van2013wu} targets gender and age. It includes 
+\textbf{HCP}: The Human Connectome Project (HCP) Young Adult dataset \cite{van2013wu} targets sex and age. It includes 
 1,036 healthy subjects after filtering (474 males, 562 females; ages 22-37).
 HCP data were acquired on a customized Siemens 3T Connectome scanner using a multi-shell Spin-Echo EPI sequence 
 (TR/TE = 5520/89.5 ms, 1.25 mm isotropic, multiband factor 3; $b$-values = 1000, 2000, 3000 s/mm$^2$, 90 directions/shell).
 \textbf{Cam-CAN}: The Cambridge Centre for Ageing and Neuroscience (Cam-CAN) dataset \cite{shafto2014cambridge} targets 
-gender and age. It includes 629 healthy subjects (316 males, 313 females; ages 18-88), scanned on a Siemens 3T TIM Trio using 
+sex and age. It includes 629 healthy subjects (316 males, 313 females; ages 18-88), scanned on a Siemens 3T TIM Trio using 
 a 2D twice-refocused SE EPI sequence (TR/TE = 9100/104 ms, 2.0 mm isotropic; $b$-values = 1000, 2000 s/mm$^2$, 30 directions each).
 \textbf{ABIDE II}: The Autism Brain Imaging Data Exchange II (ABIDE II) dataset \cite{di2017enhancing} targets Autism Spectrum 
 Disorder (ASD) diagnosis.
@@ -63,79 +38,76 @@ This variability provides a realistic scenario for evaluating model robustness t
 
 % If space (unlikely):
 % * PLOTS: Demographic distribution (age histograms) | Table with demographics summary (gender classes, age range...)
+% \todo{One subsection for preprocessing and another for data prepraration}
+% \todo{Remove himanshu's repo, and put it inside your code for anonymization + no need to use emph below, stick to standard font.}
+\subsection{DiffBench Preprocessing}
+Except for HCP, which is already preprocessed, dMRI data are preprocessed using the \texttt{anonymized} package\footnote{anonymized link} which containerises  
+ various tools such as \texttt{dipy}~\cite{Garyfallidis2014}, \texttt{sMRIPrep}~\cite{esteban2019fmriprep}%\footnote{\url{https://github.com/nipreps/smriprep}}
+ , \texttt{FSL}~\cite{Smith2004}, 
+\texttt{ANTs}~\cite{Avants2009}, \texttt{FreeSurfer}~\cite{Dale1999a} and \texttt{AFNI}~\cite{Cox1996}.
+%
+The images are first denoised with the Marchenko-Pastur PCA (MPPCA) method \cite{Veraart2016a,Cordero-Grande2019} implemented in
+\texttt{dipy}.
+%
+This denoising procedure identifies the principal components corresponding to noise and then removes them from the dMRI data \cite{Veraart2016a}.
+%
+After MPPCA denoising, Gibbs ringing artifacts \cite{Veraart2016b} are also removed with \texttt{dipy}.
+%
+Next, we correct the distortions due to inhomogeneities of the magnetic field with \texttt{FSL}'s eddy correction \cite{Andersson2016}.
+%
+Finally, this denoised and distortion-corrected dMRI data are registered to the anatomical T1w image preprocessed with \texttt{sMRIPrep}, using \texttt{FreeSurfer}'s \emph{bbregister} \cite{greve2009accurate} with 12 degrees of freedom and boundary-based registration cost function.
 
 \subsection{Data Preparation}
-\subsubsection{Preprocessing}
-% \begin{itemize}
-%     \item Denoising
-%     \item Motion and eddy correction
-%     \item Spatial normalization
-%     \item Masking strategy
-% \end{itemize}
-Except for the HCP dataset, which has its own preprocessing pipeline,
-the DWI data were preprocessed using the diffusion-preprocessing package\footnote{\url{https://github.com/man-shu/diffusion-preprocessing}} which containerizes 
-several other software dependencies such as dipy \cite{Garyfallidis2014}, sMRIPrep\footnote{\url{https://github.com/nipreps/smriprep}}, FSL \cite{Smith2004}, 
-ANTs \cite{Avants2009}, FreeSurfer \cite{Dale1999a} and AFNI \cite{Cox1996}.
-%
-The images were first denoised using the \emph{Marchenko-Pastur} PCA method (MPPCA) \cite{Veraart2016a,Cordero-Grande2019} implemented with
-dipy's \emph{dipy\_denoise\_mppca} function.
-%
-This denoising procedure identifies the principal components corresponding to noise and then removes them from the DWI data \cite{Veraart2016a}.
-%
-After MPPCA denoising, Gibbs ringing artifacts \cite{Veraart2016b} were also removed using dipy's \emph{dipy\_gibbs\_ringing} function.
-%
-Next, to correct the distortions due to inhomogeneities of the magnetic field, FSL's eddy correction \cite{Andersson2016} was used.
-%
-Then this denoised and distortion-corrected DWI data were registered to the anatomical T1w image using FreeSurfer's \emph{bbregister} 
-function \cite{greve2009accurate} with 12 degrees of freedom and boundary-based registration cost function.
-%
-The anatomical T1w image was preprocessed using sMRIPrep. % \url{https://github.com/nipreps/smriprep}.
+\noindent \textbf{Microstructural representation}
+To characterize the diffusion signal, various microstructural measures from established diffusion models are implemented in DiffBench.
+These measures capture complementary aspects of tissue architecture and have been widely used in previous studies \cite{hwang2021prediction,he2022model,chen2023deep,cardenas2025autism}, ranging from diffusion magnitude to more complex descriptors:
+\begin{itemize}
+    \item \textbf{Baseline ($b=0$):} The averaged non-diffusion-weighted (T2w) signal is included as a 
+    reference to disentangle diffusion-driven predictive effects from underlying structural 
+    T2 contrast.   
+    \item \textbf{Mean Diffusivity (MD):} MD is computed via Diffusion Tensor Imaging (DTI) \cite{basser1994mr}, and reflects 
+    the overall magnitude of water diffusion.
+    \item \textbf{Mean Kurtosis (MK):} Mk is derived from Diffusion Kurtosis Imaging (DKI) \cite{jensen2005diffusional}, quantifies deviations from Gaussian 
+    diffusion and acts as a proxy for microstructural heterogeneity and tissue complexity.
+    % \item \textbf{Return-To-Origin Probability (RTOP):} Estimated using a Laplacian-regularized Mean 
+    % Apparent Propagator (MAP-MRI) model. RTOP reflects the probability of water molecules remaining in 
+    % their initial position, serving as a strong indicator of cellular restriction and density.
+    \item \textbf{Spherical Harmonics (SH) Power:} SH is a model-free representation obtained by computing the 
+    L2 norm of the SH coefficients \cite{tournier2004direct} fitted 
+    to the diffusion signal (up to order 6). This representation especially captures signal anisotropy without 
+    assuming a specific compartmental model.
+    % \item \textbf{Spherical Harmonics (SH) Power:} A model-free metric computed by least-squares 
+    % projection of the b0-normalized signal $S(\mathbf{g})/S_0$ onto a real, symmetric SH basis 
+    % ($\ell_{\max}{=}6$, 28 coefficients; Descoteaux~\textit{et al.}~\shortcite{descoteaux2007regularized} 
+    % convention, \texttt{sf\_to\_sh} in DiPy~\shortcite{garyfallidis2014dipy}). The scalar is the 
+    % $\ell_2$ norm $\|\mathbf{c}\|_2$, capturing angular complexity without any compartment model.
+\end{itemize}
+To mitigate free-water effects and scanner-dependent intensity scaling \cite{pasternak2009free}, we apply ventricular 
+normalization: for each subject and each microstructural representation, voxel-wise diffusion measures are divided by 
+the mean value extracted from cerebrospinal fluid within the ventricles. Finally, extreme values are clipped at the 
+99th percentile to ensure numerical stability during model training. \\
 
-\subsubsection{Spatial normalization}
-% Explain here the different forms of input representation.
-% The word "feature representation" is ambigiuous because neural network also extract features in a data-driven way. That's why I would rather use the term like "Microstructural Representation".
-% Explain why differences between white and gray matter. Give references here about why there are differences.
-% %%%%%%%%%%%%%%
-% To capture the distinct properties of the brain, we extract specific inputs for gray and 
-% white matter. We use the term ``microstructural representation'' rather than ``feature representation'' 
-% to clearly distinguish our explicitly computed biological metrics from the latent features learned 
-% data-drivenly by neural networks. Gray and white matter exhibit fundamentally different diffusion 
-% profiles due to their distinct cellular architectures—gray matter being rich in cell bodies and 
-% dendrites, while white matter consists primarily of myelinated axonal tracts \cite{jones2010diffusion, 
-% basser1994mr}. Consequently, we employ tailored extraction strategies for each tissue type using our 
-% automated preprocessing pipeline.
 
-\paragraph{Gray Matter}
+\noindent \textbf{Spatial normalization}
+We apply distinct spatial normalization strategies for gray and white matter to enable anatomically consistent comparisons across subjects and datasets while respecting tissue-specific geometry.
+
+\textit{Gray Matter.}
 % \todo{Refs}
-Gray matter microstructure was represented on the subject-specific cortical surface reconstructed from 
-T1-weighted images using the Desikan–Killiany atlas (aparc). For each subject, cortical meshes 
-(white/pial surfaces) were generated and diffusion-derived scalar maps
-were computed in native diffusion space and rigidly aligned to the anatomical space. Voxelwise 
-diffusion measures were then projected onto the individual cortical surface using ribbon-constrained 
-sampling, preserving vertex-wise resolution (~64k vertices per hemisphere) \cite{greve2009accurate}. This subject-specific 
-surface representation was chosen to respect cortical geometry, reduce partial-volume effects, and 
-maintain high spatial specificity while enabling anatomically consistent regional correspondence via 
-the atlas labels across subjects.
-    % \begin{itemize}
-    %     \item Voxel-wise features
-    %     \item High-dimensional representation (~64k features)
-    %     \item Mask-based extraction
-    % \end{itemize}
-    % Explain that voxel-wise features preserve spatial resolution but increase dimensionality and risk of overfitting.
+Gray matter microstructure is represented on the cortical surface reconstructed from T1w images with FreeSurfer. 
+Cortical meshes (white and pial surfaces) are parcellated with the Desikan–Killiany atlas \cite{desikan2006automated}.
+Diffusion scalar maps are computed in the native diffusion space and rigidly aligned to the anatomical image.
+Voxelwise diffusion measures are then projected onto the individual cortical surface with ribbon-constrained sampling, preserving vertex-wise resolution ($\sim64$k vertices per hemisphere) \cite{greve2009accurate}. 
+This surface-based strategy respects cortical geometry, reduces partial-volume effect, maintains  high spatial specificity and enables consistent spatial normalization across subjects.
 
-\paragraph{White Matter}
-White matter microstructure was represented within a standardized tract space using the Tract-Based 
-Spatial Statistics (TBSS) framework \cite{smith2006tract}. Diffusion-derived scalar maps were nonlinearly registered to 
-standard space, projected onto the group-wise white matter skeleton to minimize partial volume effects 
-and residual misalignment, and summarized using the JHU White-Matter Tractography Atlas \cite{mori2008stereotaxic}. Mean 
-microstructural values were extracted from 48 major bundles defined in the atlas, yielding a compact 
-tract-level representation per metric. We intentionally adopted this skeleton-based, atlas-constrained 
-strategy rather than subject-specific tractography to enforce anatomical correspondence across subjects,
- reduce variability introduced by tracking parameters, and enhance robustness in a multi-dataset 
- benchmarking setting. Although this representation sacrifices voxel-level granularity relative to the 
- cortical surface analysis, it provides reproducible, homologous bundle definitions across datasets and
-  mitigates registration and tract delineation inconsistencies—thereby strengthening cross-cohort 
-  comparability and methodological stability.
+
+\textit{White Matter.}
+White matter microstructure is represented with Tract-Based Spatial Statistics (TBSS) \cite{smith2006tract}.
+Diffusion scalar maps are nonlinearly registered to standard space and projected onto a group-wise white matter skeleton, which captures the core of major fiber bundles and minimizes 
+residual misalignment and partial-volume effects.
+Then, we summarize microstructural valuse by extracting the mean for 48 major tracts from the JHU White-Matter Tractography Atlas \cite{mori2008stereotaxic}.
+This normalization enforces anatomical correspondence across subjects and reduces variability associated with subject-specific tractography.
+While this approach sacrifices voxel-level granularity compared to the cortical surface representation, it provides a compact, reproducible, and anatomically interpretable feature set that is robust in multi-site settings.
+
 
 
 % White matter microstructure was summarized within a common tract space using a predefined tract 
@@ -148,156 +120,48 @@ strategy rather than subject-specific tractography to enforce anatomical corresp
 % in lower dimensionality compared to the vertex-wise cortical representation, it provides stable, 
 % reproducible white matter features aligned to homologous bundles across datasets.
 
-    % \begin{itemize}
-    %     \item Tract-based aggregation
-    %     \item Mean values per tract (~48 features)
-    %     \item Reduced dimensionality
-    %     \item Anatomical interpretability
-    % \end{itemize}
-    % Justify tract-averaged representation: Noise reduction, improved stability, lower dimensional feature space, anatomically meaningful structure
+\subsection{Prediction and validation}
+BenchDiff includes a broad range of predictive models previously used in dMRI studies \cite{wen2021reproducible,cardenas2025autism}, from classical machine learning pipelines to foundation models. 
+Classical models (Ridge, Lasso, Random Forests, and SVM), implemented in \texttt{scikit-learn}, can be combined with PCA for dimensionality reduction~\cite{menon2020microstructural}.
+Recent foundation models, DINOv2 \cite{oquab2023dinov2} and Curia \cite{dancette2025curia}, implemented in \texttt{PyTorch}, are used as frozen feature extractors with task-specific prediction heads trained on top.
+These models operate on 2D slices extracted along the x-axis.
+In contrast, MedicalNet \cite{chen2019med3d} is applied to full 3D diffusion volumes, initialized from pretrained weights and fine-tuned end-to-end.
+Deep models are trained using AdamW, with exponential learning-rate scheduling, dropout, and weight decay.
+Hyperparameters are selected via cross-validation.
+Details are fully available in the codebase.
+
+% BenchDiff includes a wide range of predictive models for dMRI, from classical machine learning pipelines to foundation models.
+% Specifically, machine learning methods used in previous studies \cite{menon2020microstructural,wen2021reproducible} were implemented: linear models (e.g., logistic regression, Lasso), Random Forests,
+% %\cite{breiman2001random}
+% and Support Vector Machines (SVM).
+% %\cite{hastie2009elements} 
+% Given the high dimensionality of the microstructural representations, we additionally assess these models combined with Principal Component Analysis (PCA) for dimensionality reduction as done in ~\cite{} 
 
 
-\subsubsection{Microstructural representation}
-To capture the biological properties of brain tissue, we compute a diverse set of 
-microstructural metrics using established diffusion models. These metrics were selected to represent 
-different facets of tissue architecture, ranging from basic diffusion magnitude to complex restricted 
-environments:
-\begin{itemize}
-    \item \textbf{Baseline ($b=0$):} The averaged T2-weighted non-diffusion signal is included as a 
-    baseline to disentangle purely diffusion-driven predictive power from underlying structural T2 
-    contrast.
-    \item \textbf{Mean Diffusivity (MD):} Computed via Diffusion Tensor Imaging (DTI) \cite{basser1994mr}, representing 
-    the overall magnitude of water diffusion.
-    \item \textbf{Mean Kurtosis (MK):} Derived from Diffusion Kurtosis Imaging (DKI) \cite{jensen2005diffusional}, capturing the 
-    non-Gaussianity of diffusion as a proxy for microstructural heterogeneity and tissue complexity.
-    % \item \textbf{Return-To-Origin Probability (RTOP):} Estimated using a Laplacian-regularized Mean 
-    % Apparent Propagator (MAP-MRI) model. RTOP reflects the probability of water molecules remaining in 
-    % their initial position, serving as a strong indicator of cellular restriction and density.
-    \item \textbf{Spherical Harmonics (SH) Power:} A model-free representation obtained by computing the 
-    L2 norm of the SH coefficients \cite{tournier2004direct} (up to order 6) directly from the diffusion signal, capturing signal 
-    complexity and anisotropy without assuming a specific tissue compartment model.
-    % \item \textbf{Spherical Harmonics (SH) Power:} A model-free metric computed by least-squares 
-    % projection of the b0-normalized signal $S(\mathbf{g})/S_0$ onto a real, symmetric SH basis 
-    % ($\ell_{\max}{=}6$, 28 coefficients; Descoteaux~\textit{et al.}~\shortcite{descoteaux2007regularized} 
-    % convention, \texttt{sf\_to\_sh} in DiPy~\shortcite{garyfallidis2014dipy}). The scalar is the 
-    % $\ell_2$ norm $\|\mathbf{c}\|_2$, capturing angular complexity without any compartment model.
-\end{itemize}
-% To mitigate scanner-specific scaling effects and harmonize data across multi-site cohorts 
-% (e.g., ABIDE II), 
-We apply a ventricular normalization strategy to avoid the effect of free water in the signal \cite{pasternak2009free}. For each subject, 
-voxel-wise diffusion metrics are divided by the mean metric value extracted from the cerebrospinal 
-fluid (ventricles). Finally, extreme pathological values are clipped at the 99th percentile to ensure 
-numerical stability during model training.
-
-    % \begin{itemize}
-    %     \item Binary targets (encoded 0/1), Continuous targets (standardized during training)
-    %     \item Standardization fitted on training set only
-    %     \item Applied to validation/test sets 
-    %     \item Inverse transform for regression outputs (for visualization)
-    % \end{itemize}
-
-\subsection{Prediction models}
-Our benchmark includes a wide 
-spectrum of predictive models, ranging from linear baselines to advanced deep 
-learning architectures. We first compare linear models 
-(e.g., logistic regression, Lasso), Random Forests, and Support Vector Machines 
-(SVM) \cite{hastie2009elements}. Given the high dimensionality of the microstructural representations, we 
-also evaluate these models coupled with Principal Component Analysis (PCA) for 
-feature reduction. 
-
-We also benchmark several vision architectures. We leverage 
-pre-trained models, specifically DINOv2 \cite{oquab2023dinov2} and Curia \cite{dancette2025curia}, utilizing them as 
-frozen feature extractors where representations are computed offline prior to 
-training the prediction head. In contrast, the smaller 3D architecture MedicalNet \cite{chen2019med3d} is 
-fine-tuned on our diffusion datasets to adapt to the specific 
-microstructural domains. 
-% The applied prediction head is an MLP with two hidden layers (512 and 128 units) and ReLU 
-% activations, trained using the Adam optimizer with a learning rate of 1e-4 and early stopping based on validation 
-% performance.
-% \begin{itemize}
-%     \item Dummy baseline (e.g., majority class for classification, mean predictor for regression)
-%     \item Classical ML pipeline: Linear models (e.g., logistic regression, linear regression), Random Forests, Support Vector Machines (SVM) + their PCA versions
-%     \item Deep Learning models (e.g., dinov2, medicalnet)
-%     \item Unified hyperparameter search strategy (e.g., grid search or random search with cross-validation on the training set)
-% \end{itemize}
-
-\subsection{Benchmarks tasks and evaluation metrics}
 % Task selection rationale: Clinical relevance, data availability, and established benchmarks in the literature.
-The selection of prediction tasks in our benchmark is driven by clinical relevance, data availability, 
-and the need to align with established benchmarks in the neuroimaging literature. We evaluate models 
-across two primary paradigms:
+The prediction tasks covers classification and regression and were selected based on data availability and existing literature. 
+\textbf{Classification.} 
+BenchDiff includes binary classification tasks, such as Autism Spectrum Disorder (ASD) diagnosis (ASD vs. 
+Typically Developing) using ABIDE II \cite{cardenas2025autism}, and sex prediction in the HCP and Cam-CAN 
+cohorts \cite{chen2024deep,dibaji2024sex}. Performance is reported using balanced accuracy, which accounts for class imbalance. 
+\textbf{Regression.} Brain age prediction \cite{chen2020generalization,de2018age,hwang2021prediction} was used as a regression task on the healthy Cam-CAN cohort.
+Performance is quantified with $R^2$ and mean absolute error (MAE). 
 
-\subsubsection{Classification} 
-For binary classification, we focus on tasks such as Autism Spectrum Disorder (ASD) diagnosis (ASD vs. 
-Typically Developing) using the ABIDE II dataset, as well as gender prediction in the HCP and Cam-CAN 
-cohorts. We report performance using balanced accuracy, taking into account class imbalances.
+We adopt a stratified 5-fold cross-validation scheme for all tasks.
+For classification, stratification ensures class balance across folds. For regression, splits are stratified by sex. 
+Random seeds are fixed to guarantee reproducibility. 
+
+% To ensure rigorous model evaluation, we employ a stratified 5-fold cross-validation strategy for all tasks.
+% Gender stratification maintains balanced target distributions across folds. To guarantee reproducibility, seeds are fixed.
+% %Data splits are fixed through seed initialization to guarantee full reproducibility. 
+% %Strict separation between training and test data is enforced at every stage. 
+% To prevent data leakage, all data-driven operations (e.g., feature scaling, PCA, and hyperparameter tuning) are fitted exclusively on the training sets and applied to the held-out test set.
 
 
-% \begin{itemize}
-%     \item Task description: Binary diagnosis prediction (e.g., ASD vs. TD)
-%     \item Evaluation Metrics: Accuracy, AUC, F1-score
-% \end{itemize}
-
-\subsubsection{Regression} 
-We evaluate brain age estimation using the healthy cohorts from Cam-CAN. 
-We report performance using R² and MAE.
-
-% \begin{itemize}
-%     \item Task description: Age prediction (brain age estimation)
-%     \item Evaluation Metrics: R², MAE
-% \end{itemize}
-
-\subsection{Evaluation protocols}
-To rigorously evaluate the predictive models, we employ a stratified 5-fold cross-validation strategy. 
-We also ensure fixed and reproducible splits through seed initialization. Strict 
-separation between training and testing data is maintained at all stages; preprocessing steps, feature 
-normalization, and hyperparameter tuning are fitted exclusively on the training set of each fold and 
-subsequently applied to the held-out test set, preventing any information leakage. 
-
-% \begin{itemize}
-%     \item Data Splitting Strategy (Fixed train/test splits)
-%     \item Cross-validation within training set. Stratification
-%     \item No information leakage
-%     \item Mean ± std across folds
-%     \item Statistical comparison tests (e.g., paired t-tests, Wilcoxon signed-rank tests) to assess significance of performance differences between models
-% \end{itemize}
-
-%%%%%%%%%%%
-% \subsection{Prediction}
-% \begin{itemize}
-%     \item Feature normalization
-%         \begin{itemize}
-%             \item Binary targets (encoded 0/1), Continuous targets (standardized during training)
-%             \item Standardization fitted on training set only
-%             \item Applied to validation/test sets 
-%             \item Inverse transform for regression outputs (for visualization)
-%         \end{itemize}
-%     \item Task definitions and labels and reasons for task selection
-%         \begin{itemize}
-%             \item Classification: Binary diagnosis prediction (e.g., ASD vs. TD)
-%             \item Regression: Age prediction (brain age estimation)
-%             \item Task selection rationale: Clinical relevance, data availability, and established benchmarks in the literature
-%         \end{itemize}
-%     \item Evaluation Metrics
-%         \begin{itemize}
-%             \item Classification: Accuracy, AUC, F1-score
-%             \item Regression: R², MAE
-%             \item Mean ± std across folds
-%             \item Statistical comparison tests (e.g., paired t-tests, Wilcoxon signed-rank tests) to assess significance of performance differences between models
-%         \end{itemize}
-%     \item Models Used
-%         \begin{itemize}
-%             \item Dummy baseline (e.g., majority class for classification, mean predictor for regression)
-%             \item Classical ML pipeline: Linear models (e.g., logistic regression, linear regression), Random Forests, Support Vector Machines (SVM) + their PCA versions
-%             \item Deep Learning models (e.g., dinov2, medicalnet)
-%             \item Unified hyperparameter search strategy (e.g., grid search or random search with cross-validation on the training set)
-%         \end{itemize}
-% \end{itemize}
-
-% \subsection{Validation, Evaluation and Visualizations}
-% \begin{itemize}
-%     \item Data Splitting Strategy (Fixed train/test splits)
-%     \item Cross-validation within training set. Stratification
-%     \item No information leakage
-%     \item Explanation of plots and statistics
-% \end{itemize}
+\subsection{Benchmark implementation}
+To ensure reproducibility and fair comparison, the benchmark is implemented as an open-source, modular pipeline.
+Configuration is handled with \texttt{Hydra}\footnote{https://github.com/facebookresearch/hydra}, enabling systematic control of data processing, training, and evaluation.
+Data are organized according to the BIDS standard~\cite{gorgolewski2016brain}.
+The framework supports parallel execution for data preparation and training with SLURM, and caches intermediate results to ensure efficient and reproducible experimentation.
+% To ensure reproducibility and fair comparisons across models and datasets, the benchmark implementation is modular, fully configurable pipeline.  All components are controlled via \texttt{Hydra} \cite{Yadan2019Hydra}, enabling systematic experiment management for data preparation, model training, and analysis.
+% The data structure follows the BIDS standard \cite{gorgolewski2016brain}, ensuring consistent data organization and facilitating multi-site analyses, with site identity available as a covariate. The framework provides command-line entry points and supports parallel execution via \texttt{joblib} or SLURM. Intermediate outputs as microstructural features, deep learning embeddings, and per-fold scores, are cached to disk, avoiding redundant computation across iterative runs.

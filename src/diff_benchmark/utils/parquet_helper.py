@@ -1,5 +1,7 @@
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
+
 
 def metrics_to_rows(
     metrics: dict,
@@ -31,11 +33,13 @@ def metrics_to_rows(
         )
     return rows
 
+
 class ParquetSaver:
     """
     Utility to handle parquet saving with duplicate avoidance.
     Can be used for targets, predictions, or metrics.
     """
+
     def __init__(self, path: Path, key_columns: list, columns: list = None):
         self.path = path
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -48,7 +52,9 @@ class ParquetSaver:
         if self.path.exists():
             self.df_existing = pd.read_parquet(self.path)
         else:
-            self.df_existing = pd.DataFrame(columns=self.columns if self.columns else [])
+            self.df_existing = pd.DataFrame(
+                columns=self.columns if self.columns else []
+            )
 
     def add_rows(self, rows: list[dict]):
         """Add new rows to be saved later; filter duplicates when saving."""
@@ -65,7 +71,7 @@ class ParquetSaver:
                 self.df_existing[self.key_columns],
                 on=self.key_columns,
                 how="left",
-                indicator=True
+                indicator=True,
             )
             df_to_add = merged[merged["_merge"] == "left_only"].drop(columns="_merge")
         else:

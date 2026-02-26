@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.2.18)  20 FEB 2026 18:25
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.2.18)  24 FEB 2026 09:51
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -218,60 +218,28 @@ LaTeX Font Info:    External font `cmex10' loaded for size
 (Font)              <7> on input line 51.
 LaTeX Font Info:    External font `cmex10' loaded for size
 (Font)              <5> on input line 51.
- (./reuben.tex [1
-
-{/data/parietal/store4/work/ggomezji/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map}] [2] [3] [4]
-Overfull \hbox (5.48785pt too wide) in paragraph at lines 151--152
-[]\T1/cmr/m/n/10 Compared fea-ture rep-re-sen-ta-tions (MD, SH, MK, RTOP) and mod-els (dummy
- []
-
-[5]) (./introduction.tex) (./benchmark.tex
-<Benchmark.drawio.pdf, id=28, 601.28638pt x 380.38109pt>
-File: Benchmark.drawio.pdf Graphic file (type pdf)
-<use Benchmark.drawio.pdf>
-Package pdftex.def Info: Benchmark.drawio.pdf  used on input line 14.
-(pdftex.def)             Requested size: 347.12354pt x 219.59384pt.
- [6] [7 <./Benchmark.drawio.pdf>]
-Overfull \hbox (7.25076pt too wide) in paragraph at lines 112--124
- \T1/cmr/m/it/10 White Mat-ter Rep-re-sen-ta-tion[] \T1/cmr/m/n/10 White mat-ter mi-crostruc-ture was rep-re-sented within
- []
-
-[8] [9] [10]) (./results.tex) (./conclusion.tex
-Overfull \hbox (5.48785pt too wide) in paragraph at lines 3--4
-[]\T1/cmr/m/n/10 Compared fea-ture rep-re-sen-ta-tions (MD, SH, MK, RTOP) and mod-els (dummy
- []
-
-[11])
-
-LaTeX Warning: Citation `chen2024deep' on page 12 undefined on input line 85.
 
 
-LaTeX Warning: Citation `basser1994mr' on page 12 undefined on input line 86.
+! LaTeX Error: File `reuben.tex' not found.
 
-LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <9> on input line 94.
-LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <6> on input line 94.
-No file "MICCAI2026-main conference paper template".bbl.
-[12] (./MICCAI2026-main conference paper template.aux)
- ***********
-LaTeX2e <2025-11-01>
-L3 programming layer <2026-01-19>
- ***********
- ) 
+Type X to quit or <RETURN> to proceed,
+or enter new name. (Default extension: tex)
+
+Enter file name: 
+/data/parietal/store3/work/ggomezji/projects/diff_benchmark/MICCAI2026-Latex-Template/MICCAI2026-main conference paper template.tex:67: Emergency stop.
+<read *> 
+         
+l.67 \input{reuben.tex}
+                       ^^M
+*** (cannot \read from terminal in nonstop modes)
+
+ 
 Here is how much of TeX's memory you used:
- 2121 strings out of 469005
- 33471 string characters out of 5450604
- 443756 words of memory out of 5000000
- 30814 multiletter control sequences out of 15000+600000
- 638144 words of font info for 59 fonts, out of 8000000 for 9000
+ 2039 strings out of 469005
+ 31881 string characters out of 5450604
+ 435756 words of memory out of 5000000
+ 30763 multiletter control sequences out of 15000+600000
+ 632218 words of font info for 47 fonts, out of 8000000 for 9000
  319 hyphenation exceptions out of 8191
- 57i,9n,65p,510b,248s stack positions out of 10000i,1000n,20000p,200000b,200000s
- </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0600.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecti1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1200.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ectt0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0900.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1000.600pk> </data/parietal/store4/work/ggomezji/.texlive2025/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1440.600pk></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></data/parietal/store4/work/ggomezji/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb>
-Output written on "MICCAI2026-main conference paper template.pdf" (12 pages, 1427687 bytes).
-PDF statistics:
- 448 PDF objects out of 1000 (max. 8388607)
- 100 compressed objects within 1 object stream
- 0 named destinations out of 1000 (max. 500000)
- 6 words of extra memory for PDF output out of 10000 (max. 10000000)
-
+ 57i,1n,65p,510b,221s stack positions out of 10000i,1000n,20000p,200000b,200000s
+/data/parietal/store3/work/ggomezji/projects/diff_benchmark/MICCAI2026-Latex-Template/MICCAI2026-main conference paper template.tex:67:  ==> Fatal error occurred, no output PDF file produced!

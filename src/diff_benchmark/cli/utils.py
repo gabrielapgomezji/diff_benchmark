@@ -1,18 +1,8 @@
-from hydra import initialize, compose
-from itertools import product
-from omegaconf import OmegaConf
 from copy import deepcopy
-from omegaconf import DictConfig
+from itertools import product
 
+from hydra import compose, initialize
 from omegaconf import DictConfig, OmegaConf
-from itertools import product
-from copy import deepcopy
-
-from itertools import product
-from omegaconf import OmegaConf
-from copy import deepcopy
-
-
 
 CHOICE_KEY = "_choices_"
 
@@ -47,12 +37,14 @@ def split_base_and_axes(obj):
     base = rec(base, ())
     return base, axes
 
+
 def set_by_dotpath(d, dotpath, value):
     keys = dotpath.split(".")
     cur = d
     for k in keys[:-1]:
         cur = cur[k]
     cur[keys[-1]] = value
+
 
 def cartesian_cfgs(cfg: DictConfig):
     base, axes = split_base_and_axes(cfg)
@@ -70,13 +62,12 @@ def cartesian_cfgs(cfg: DictConfig):
     return cfgs
 
 
-
-
 def build_config_grid(cfg: DictConfig):
     """
     Expand list-valued fields into a list of configs,
     where each config has a single value per hyperparameter.
     """
+
     def find_list_leaves(cfg, prefix=""):
         leaves = {}
         for k, v in cfg.items():
@@ -102,6 +93,7 @@ def build_config_grid(cfg: DictConfig):
             OmegaConf.update(cfg_i, k, v, merge=False)
         configs.append(cfg_i)
     return configs
+
 
 def find_grid_params(cfg: DictConfig, prefix=""):
     """

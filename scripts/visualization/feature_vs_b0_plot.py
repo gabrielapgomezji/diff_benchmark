@@ -11,8 +11,6 @@ import seaborn as sns
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
-from config import MICCAI_DOUBLE_COLUMN_FIGSIZE, apply_miccai_style
 from utils import (
     choose_spread_metric,
     clean_target,
@@ -21,6 +19,8 @@ from utils import (
     map_model_family,
     normalize_score,
 )
+
+from config import MICCAI_DOUBLE_COLUMN_FIGSIZE, apply_miccai_style
 
 FEATURE_DELTA_COMBOS = [
     ("hcp", "Gender", "binary_classification"),
@@ -33,7 +33,9 @@ FEATURE_PREFERRED_ORDER = ["md", "mk", "sh"]
 FEATURE_EXCLUDE = {"rtop"}
 
 PLOT_TITLE = "Feature benefit vs b0 by model (paired Δ normalized score)"
-PLOT_SUBTITLE = "Each point: one dataset×task×tissue×fold. Δ = score(feature) − score(b0)."
+PLOT_SUBTITLE = (
+    "Each point: one dataset×task×tissue×fold. Δ = score(feature) − score(b0)."
+)
 
 MODEL_DISPLAY_ORDER = ["Linear", "RandomForest", "Deep Learning"]
 
@@ -51,35 +53,42 @@ FAMILY_LABELS = {
 
 # Individual-model view
 INDIVIDUAL_MODEL_ORDER = [
-    "linear", "pca_linear", "lasso", "svm", "pca_svm",
-    "forest", "pca_forest",
-    "medicalnet", "dinov2", "curia",
+    "linear",
+    "pca_linear",
+    "lasso",
+    "svm",
+    "pca_svm",
+    "forest",
+    "pca_forest",
+    "medicalnet",
+    "dinov2",
+    "curia",
 ]
 
 INDIVIDUAL_MODEL_COLORS = {
-    "linear":    "#4C78A8",
+    "linear": "#4C78A8",
     "pca_linear": "#6EA6D0",
-    "lasso":     "#9DC6E8",
-    "svm":       "#2C5F8A",
-    "pca_svm":   "#1A3D5C",
-    "forest":    "#59A14F",
+    "lasso": "#9DC6E8",
+    "svm": "#2C5F8A",
+    "pca_svm": "#1A3D5C",
+    "forest": "#59A14F",
     "pca_forest": "#8CC97E",
     "medicalnet": "#E15759",
-    "dinov2":    "#F28E2B",
-    "curia":     "#B07AA1",
+    "dinov2": "#F28E2B",
+    "curia": "#B07AA1",
 }
 
 INDIVIDUAL_MODEL_LABELS = {
-    "linear":    "Linear",
+    "linear": "Linear",
     "pca_linear": "PCA+Linear",
-    "lasso":     "Lasso",
-    "svm":       "SVM",
-    "pca_svm":   "PCA+SVM",
-    "forest":    "Random forest",
+    "lasso": "Lasso",
+    "svm": "SVM",
+    "pca_svm": "PCA+SVM",
+    "forest": "Random forest",
     "pca_forest": "PCA+RF",
     "medicalnet": "MedicalNet",
-    "dinov2":    "DINOv2",
-    "curia":     "Curia",
+    "dinov2": "DINOv2",
+    "curia": "Curia",
 }
 
 
@@ -207,7 +216,9 @@ def _build_paired_delta_df(fold_df: pd.DataFrame) -> pd.DataFrame:
     )
 
     if "b0" not in wide.columns:
-        raise RuntimeError("Feature 'b0' is missing after pivoting; cannot build paired deltas")
+        raise RuntimeError(
+            "Feature 'b0' is missing after pivoting; cannot build paired deltas"
+        )
 
     before = len(wide)
     wide = wide[wide["b0"].notna()].copy()
@@ -233,16 +244,20 @@ def _build_paired_delta_df(fold_df: pd.DataFrame) -> pd.DataFrame:
     delta_df = delta_df[delta_df["feature_score"].notna()].copy()
     delta_df["delta"] = delta_df["feature_score"] - delta_df["b0"]
     delta_df["primary_metric"] = delta_df["feature"]
-    delta_df["cell_id"] = delta_df[
-        [
-            "dataset",
-            "target_clean",
-            "prediction_task",
-            "tissue_type",
-            "model_name",
-            "fold_index",
+    delta_df["cell_id"] = (
+        delta_df[
+            [
+                "dataset",
+                "target_clean",
+                "prediction_task",
+                "tissue_type",
+                "model_name",
+                "fold_index",
+            ]
         ]
-    ].astype(str).agg("|".join, axis=1)
+        .astype(str)
+        .agg("|".join, axis=1)
+    )
 
     keep_cols = [
         "cell_id",
@@ -285,9 +300,11 @@ def _aggregate_over_folds(delta_df: pd.DataFrame) -> pd.DataFrame:
         )
         .copy()
     )
-    out["cell_id"] = out[
-        ["dataset", "target_clean", "prediction_task", "tissue_type", "model_name"]
-    ].astype(str).agg("|".join, axis=1)
+    out["cell_id"] = (
+        out[["dataset", "target_clean", "prediction_task", "tissue_type", "model_name"]]
+        .astype(str)
+        .agg("|".join, axis=1)
+    )
     if out.empty:
         raise RuntimeError("No rows left after averaging deltas over folds")
     return out
@@ -298,12 +315,6 @@ def _ordered_features(features: list[str]) -> list[str]:
     ordered = [f for f in FEATURE_PREFERRED_ORDER if f in seen]
     ordered.extend(sorted([f for f in features if f not in ordered]))
     return ordered
-
-
-
-
-
-
 
 
 # (dataset, target_clean, prediction_task, row label); None = all data
@@ -388,24 +399,35 @@ def _draw_delta_ax(
         legend_handles = [label_to_handle[n] for n in hue_order if n in label_to_handle]
         if group_by_family:
             ax.legend(
-                legend_handles, legend_labels,
-                title="Model", loc="upper center",
+                legend_handles,
+                legend_labels,
+                title="Model",
+                loc="upper center",
                 bbox_to_anchor=(0.5, 1.18),
                 ncol=len(legend_handles),
-                frameon=False, borderaxespad=0.3, fontsize=8,
+                frameon=False,
+                borderaxespad=0.3,
+                fontsize=8,
             )
         else:
             ax.legend(
-                legend_handles, legend_labels,
-                title="Model", loc="upper left",
+                legend_handles,
+                legend_labels,
+                title="Model",
+                loc="upper left",
                 bbox_to_anchor=(1.01, 1.0),
-                ncol=1, frameon=True, borderaxespad=0.3, fontsize=8,
+                ncol=1,
+                frameon=True,
+                borderaxespad=0.3,
+                fontsize=8,
             )
     else:
         ax.legend_.remove() if ax.legend_ else None
 
 
-def _plot_deltas(delta_df: pd.DataFrame, out_file: Path, group_by_family: bool = True) -> None:
+def _plot_deltas(
+    delta_df: pd.DataFrame, out_file: Path, group_by_family: bool = True
+) -> None:
     feature_order = _ordered_features(sorted(delta_df["feature"].unique().tolist()))
     if group_by_family:
         display_order = MODEL_DISPLAY_ORDER
@@ -415,7 +437,9 @@ def _plot_deltas(delta_df: pd.DataFrame, out_file: Path, group_by_family: bool =
         display_order = INDIVIDUAL_MODEL_ORDER
         palette = INDIVIDUAL_MODEL_COLORS
         label_map = INDIVIDUAL_MODEL_LABELS
-    hue_order = [m for m in display_order if m in delta_df["model_plot"].unique().tolist()]
+    hue_order = [
+        m for m in display_order if m in delta_df["model_plot"].unique().tolist()
+    ]
 
     if not feature_order:
         raise RuntimeError("No features available for plotting")
@@ -484,7 +508,11 @@ def plot_feature_vs_b0(
     delta_df = _build_paired_delta_df(fold_df)
 
     suffix = "family" if group_by_family else "individual"
-    _plot_deltas(delta_df, out_path / f"feature_vs_b0_by_model_{suffix}_delta.pdf", group_by_family=group_by_family)
+    _plot_deltas(
+        delta_df,
+        out_path / f"feature_vs_b0_by_model_{suffix}_delta.pdf",
+        group_by_family=group_by_family,
+    )
     return out_path
 
 
@@ -509,7 +537,9 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    out_path = plot_feature_vs_b0(args.input, args.outdir, group_by_family=not args.individual_models)
+    out_path = plot_feature_vs_b0(
+        args.input, args.outdir, group_by_family=not args.individual_models
+    )
     print("Saved feature-vs-b0 plot to", out_path)
 
 

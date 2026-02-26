@@ -4,11 +4,30 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+
 # from sklearn.svm import SVC, SVR
 from sklearn.svm import LinearSVC, LinearSVR
-import numpy as np
 
 from diff_benchmark.models.utils_models.trainer import SklearnModel
+
+
+# ---------------------------------------------------------------------------
+# Private helpers – shared across model classes
+# ---------------------------------------------------------------------------
+
+
+def _rf_head_and_scoring(prediction_task: str, random_state: int = 42):
+    """Return the appropriate Random Forest estimator and GridSearchCV scoring string."""
+    if prediction_task == "binary_classification":
+        return RandomForestClassifier(random_state=random_state), "balanced_accuracy"
+    return RandomForestRegressor(random_state=random_state), "neg_mean_absolute_error"
+
+
+def _svm_head_and_scoring(prediction_task: str):
+    """Return the appropriate SVM estimator and GridSearchCV scoring string."""
+    if prediction_task == "binary_classification":
+        return LinearSVC(), "balanced_accuracy"
+    return LinearSVR(), "neg_mean_absolute_error"
 
 
 class PCARandomForestModel(SklearnModel):
@@ -19,14 +38,8 @@ class PCARandomForestModel(SklearnModel):
 
     def _build_model(self, **kwargs) -> BaseEstimator:
         self.prediction_task = kwargs.get("prediction_task", None)
-        # Define pipeline: standardization -> PCA -> RandomForest
-        # Choose RF head depending on task
-        if self.prediction_task == "binary_classification":
-            rf_head = RandomForestClassifier(random_state=42)
-            scoring = "balanced_accuracy"
-        else:  # if self.prediction_task == "regression":
-            rf_head = RandomForestRegressor(random_state=42)
-            scoring = "neg_mean_absolute_error"  # scikit-learn convention
+        random_state = kwargs.get("random_state", 42)
+        rf_head, scoring = _rf_head_and_scoring(self.prediction_task, random_state)
 
         pipeline = Pipeline(
             [
@@ -36,17 +49,14 @@ class PCARandomForestModel(SklearnModel):
             ]
         )
 
-        # Define hyperparameter grid
         param_grid = {
-            "pca__n_components": [10, 20, 30, 50, 60, 75, 100, 400], #[50, 100, 400],
-            "rf__n_estimators": [200], #[100, 200, 500],
-            "rf__max_depth": [5, 10, 15], #[None, 10, 30],
-            # "rf__min_samples_split": [2, 5, 10],
+            "pca__n_components": [10, 20, 30, 50, 60, 75, 100, 400], 
+            "rf__n_estimators": [200], 
+            "rf__max_depth": [5, 10, 15], 
             "rf__max_features": ["sqrt", 0.3],
-            "rf__min_samples_leaf": [5, 10, 20], #[1, 2, 4],
+            "rf__min_samples_leaf": [5, 10, 20], 
         }
 
-        # Define GridSearchCV
         return GridSearchCV(
             estimator=pipeline,
             param_grid=param_grid,
@@ -65,14 +75,8 @@ class RandomForestModel(SklearnModel):
 
     def _build_model(self, **kwargs) -> BaseEstimator:
         self.prediction_task = kwargs.get("prediction_task", None)
-        # Define pipeline: standardization -> PCA -> RandomForest
-        # Choose RF head depending on task
-        if self.prediction_task == "binary_classification":
-            rf_head = RandomForestClassifier(random_state=42)
-            scoring = "balanced_accuracy"
-        else:  # if self.prediction_task == "regression":
-            rf_head = RandomForestRegressor(random_state=42)
-            scoring = "neg_mean_absolute_error"  # scikit-learn convention
+        random_state = kwargs.get("random_state", 42)
+        rf_head, scoring = _rf_head_and_scoring(self.prediction_task, random_state)
 
         pipeline = Pipeline(
             [
@@ -81,16 +85,13 @@ class RandomForestModel(SklearnModel):
             ]
         )
 
-        # Define hyperparameter grid
         param_grid = {
-            "rf__n_estimators": [200], #[100, 200, 500],
-            "rf__max_depth": [5, 10, 15], #[None, 10, 30],
-            # "rf__min_samples_split": [2, 5, 10],
+            "rf__n_estimators": [200], 
+            "rf__max_depth": [5, 10, 15], 
             "rf__max_features": ["sqrt", 0.3],
-            "rf__min_samples_leaf": [5, 10, 20], #[1, 2, 4],
+            "rf__min_samples_leaf": [5, 10, 20],
         }
 
-        # Define GridSearchCV
         return GridSearchCV(
             estimator=pipeline,
             param_grid=param_grid,
@@ -104,22 +105,13 @@ class RandomForestModel(SklearnModel):
 class PCASVMModel(SklearnModel):
     """
     PCASVMModel combines PCA for dimensionality reduction
-    with a Support Vector Machine classifier.
+    with a Support Vector Machine classifier or regressor.
     """
 
     def _build_model(self, **kwargs) -> BaseEstimator:
         self.prediction_task = kwargs.get("prediction_task", None)
-        if self.prediction_task == "binary_classification":
-            svm_head = LinearSVC() #(probability=True) #SVC(probability=True)
-            scoring = "balanced_accuracy"
-            # svm_gamma = ["scale"] #["scale", "auto"]
+        svm_head, scoring = _svm_head_and_scoring(self.prediction_task)
 
-        else:  # regression
-            svm_head = LinearSVR() #SVR()
-            scoring = "neg_mean_absolute_error"
-            # svm_gamma = ["scale"]
-
-        # Define pipeline: scaling -> PCA -> SVM
         pipeline = Pipeline(
             [
                 ("scaler", StandardScaler()),
@@ -128,15 +120,11 @@ class PCASVMModel(SklearnModel):
             ]
         )
 
-        # Define hyperparameter grid
         param_grid = {
-            "pca__n_components": [50], #10, 20, 30, 50, 60, 75, 100, 400
-            "svm__C": [0.1, 1], #[0.1, 1, 10, 100],
-            # "svm__kernel": ["rbf"], #["linear", "rbf"],
-            # "svm__gamma": svm_gamma,
+            "pca__n_components": [50],
+            "svm__C": [0.1, 1], 
         }
 
-        # Define GridSearchCV
         return GridSearchCV(
             estimator=pipeline,
             param_grid=param_grid,
@@ -155,17 +143,8 @@ class SVMModel(SklearnModel):
 
     def _build_model(self, **kwargs) -> BaseEstimator:
         self.prediction_task = kwargs.get("prediction_task", None)
-        if self.prediction_task == "binary_classification":
-            svm_head = LinearSVC() #SVC(probability=True)
-            scoring = "balanced_accuracy"
-            # svm_gamma = ["scale"] #["scale", "auto"]
+        svm_head, scoring = _svm_head_and_scoring(self.prediction_task)
 
-        else:  # regression
-            svm_head = LinearSVR() #SVR()
-            scoring = "neg_mean_absolute_error"
-            # svm_gamma = ["scale"]
-
-        # Define pipeline: scaling -> PCA -> SVM
         pipeline = Pipeline(
             [
                 ("scaler", StandardScaler()),
@@ -173,14 +152,10 @@ class SVMModel(SklearnModel):
             ]
         )
 
-        # Define hyperparameter grid
         param_grid = {
-            "svm__C": [0.1, 1], #[0.1, 1, 10, 100],
-            # "svm__kernel": ["rbf"], #["linear", "rbf"],
-            # "svm__gamma": svm_gamma,
+            "svm__C": [0.1, 1],
         }
 
-        # Define GridSearchCV
         return GridSearchCV(
             estimator=pipeline,
             param_grid=param_grid,
@@ -189,3 +164,4 @@ class SVMModel(SklearnModel):
             n_jobs=-1,
             verbose=1,
         )
+

@@ -2,22 +2,18 @@
 % demographic and clinical variables across model families, feature representations, and cross-validation 
 % folds. Beyond absolute performance, we explicitly analyze performance variability to assess the stability 
 % and generalizability of different configurations.
-
-We evaluated the predictive power of diffusion MRI microstructural representations across datasets, tasks, tissue 
-compartments, and model families.
-Rather than focusing only on peak performance, we analyze global patterns across configurations, allowing us to 
-assess performance stability, tissue-specific contributions, and the added value of diffusion-derived features 
-beyond non-diffusion baselines.
-
-
-\begin{figure}
+\begin{figure}[t!]
     \centering
     \includegraphics[width=\textwidth]{../exp_outputs/summary/plots/folds/combined_model_vs_prep.pdf}
-    \caption{Combined analysis of model-family performance and preprocessing sensitivity across tasks using a normalized score (0 = dummy, 1 = perfect) for cross-metric comparison.
-Left: Cross-validation results grouped by model family (points = models, violins = distributions, diamonds = medians; lines = linear baseline).
-Right: Sensitivity to preprocessing across feature × tissue configurations (dots = strategies; bars = IQR and range).}
+    \caption{
+        \textit{(Left)} Model-family performance normalized across metrics and folds (dummy = 0, perfect = 1) reveals no consistent advantage of any model class.
+        \textit{(Right)} Preprocessing sensitivity across (feature, tissue) configurations demonstrates that performance strongly depends on representation and tissue selection.
+    }
     \label{fig:model_family}
 \end{figure}
+
+We evaluated the predictive power of dMRI microstructural representations across datasets, tasks, tissue types, and model families to assess performance stability, tissue specific contributions, and the added value of diffusion-derived microstructural features 
+beyond non-diffusion baselines.
 
 % Figure \ref{fig:model_family}  reveals two important patterns. First, regularized linear models consistently 
 % perform on par with deep learning approaches, despite their lower representational capacity. While deep 
@@ -28,151 +24,81 @@ Right: Sensitivity to preprocessing across feature × tissue configurations (dot
 % indicating that conclusions drawn from a single model or microstructural representation may be unstable. These findings 
 % underscore the importance of reporting variability and evaluating robustness across configurations when 
 % assessing predictive performance in diffusion MRI.
-Figure \ref{fig:model_family} highlights two central findings. First, when evaluated on a common 
-normalized scale, performance differences between model families are consistently modest. Regularized 
-linear models remain competitive with 
-deep learning
- architectures, independently of the task and data preparation strategy. Thus, the current data representation may not 
- be sufficient to leverage the full potential of recent neural architectures. This likely reflects dataset size constraints;
-image-based models (Curia, DinoV2) were used as frozen feature extractors without 
-fine-tuning, which typically demands larger cohorts to yield competitive performance.
+Figure \ref{fig:model_family} highlights two central findings.
+First we evaluated the relative performance of different model families across datasets and configurations.
+To enable direct comparison across tasks, performance metrics were rescaled using min–max normalization relative to a dummy baseline that predicts the training-set mean (for regression) or majority class (for classification).
+The results show that no single model consistently outperforms the others, and that regularized linear models remain competitive with deep learning architectures.
+This suggests that current data representations may not fully exploit the representational capacity of deep models, or that they are not sufficiently informative to justify increased model complexity.
+In the context of dMRI, limited sample sizes combined with high-dimensional signals further constrain the effective use of deep architectures -- e.g. ABIDE II includes only 218 samples.
+Indeed, Curia and DINOv2 were employed as frozen feature extractors without fine-tuning, a transfer-learning regime that typically requires larger cohorts to achieve competitive performance.
 
+Second, preprocessing and microstructural choices introduce substantial variability.
+In several tasks, differences across feature and tissue configurations exceed those between model families.
+This indicates that performance cannot be attributed to model choice alone.
+Preprocessing is a major source of variance, and conclusions from a single configuration may be unreliable, emphasizing the need for robustness analyses.
 
-Second, variability across preprocessing and microstructural parameterizations is substantial. In 
-several tasks, the dispersion induced by feature and tissue configurations is larger than the 
-differences observed between model families. This sensitivity indicates that predictive performance 
-in diffusion MRI cannot be attributed to model choice alone. Instead, preprocessing strategy 
-happens to be a major and often underreported source of variance. Conclusions drawn 
-from a single representation or configuration may be unstable, therefore, underscoring the need for robustness 
-analyses across preprocessing settings.
-
-\subsection{Impact of tissue type}
-% \begin{figure}
-%     \centering
-%     \includegraphics[width=\textwidth]{../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_feature_combined.pdf}
-%     \caption{Fold-level paired comparison of white vs. gray matter using normalized scores (0 = dummy, 1 = perfect).
-% Each point shows the matched fold difference ($\Delta$ = white $-$ gray) under identical settings.
-% Left: dataset-level tissue effects; Right: microstructure-level effects, both adjusted for baseline offsets.
-% Boxplots summarize fold differences; p-values test mean effects against zero.}
-%     \label{fig:white_vs_gray}
-% \end{figure}
-% We next quantify the impact of tissue type by comparing the performance of models with white and gray matter under identical 
-% dataset–target–task–feature
-% configurations. For each fold, performance is normalized relative to a dummy baseline and the
-%  difference $\Delta = \text{white} - \text{gray}$ is computed, yielding a matched, 
-%  configuration-specific tissue effect. To disentangle tissue influence from dataset and 
-%  representation biases, we residualize the effects in two complementary ways: (i) removing 
-%  feature-specific baselines to isolate dataset-dependent tissue effects, and (ii) removing 
-%  dataset–task baselines to isolate feature-dependent tissue effects. Statistical inference is 
-%  performed on configuration-level mean effects to account for fold dependence, testing whether the 
-%  tissue difference distribution deviates from zero.
-
-% As shown in Figure \ref{fig:white_vs_gray}, tissue effects are strongly dataset-dependent. 
-% In HCP, we observe a systematic predominance of white matter over gray matter, with positive 
-% effect distributions indicating consistent white-matter superiority across configurations. In 
-% contrast, CamCAN exhibits the opposite pattern, with gray matter showing a stable advantage. 
-% For ABIDE, the distribution of differences is centered around zero, suggesting no clear 
-% predominance of either compartment.
-
-% When stratified by microstructural representation, most features do not demonstrate a 
-% consistent tissue preference. Collectively, these findings demonstrate 
-% that tissue preference is neither universal nor negligible, but instead comes up from the 
-% interaction between dataset characteristics and specific microstructural representations.
-%%%%%%%%%%%%%%%%
-\begin{figure}
+\begin{figure}[t!]
     \centering
-    \includegraphics[width=\textwidth]{../exp_outputs/summary/plots/folds/white_vs_gray_tscore_task_feature_combined.pdf}
-    \caption{Fold-level paired comparison of white vs. gray matter using normalized scores (0 = dummy, 1 = perfect).
-Each point shows the matched fold difference ($\Delta$ = white $-$ gray) under identical settings.
-Left: tissue effects by dataset $\times$ target (microstructure baseline removed); Right: tissue effects by microstructure feature (dataset-task baseline removed).
-Boxplots summarize fold differences; p-values test mean effects against zero.}
+    \includegraphics[width=\textwidth]{../exp_outputs/summary/plots/folds/white_vs_gray_dataset_task_linear_rf_deep.pdf}
+    \caption{
+        Fold-level paired differences ($\Delta = \text{white} - \text{gray}$) were computed under identical settings, after removing microstructural representation baseline effects.
+        Significance was assessed via a nonparametric paired bootstrap test with Benjamini–Hochberg FDR correction across all (dataset, task, model family) combinations ($\alpha$ = 0.05)
+        HCP favors white matter, CamCAN favors gray matter and no visible preference in ABIDE.
+        % \textit{(Right)} Dataset-level tissue effects after removing microstructural feature-specific baselines reveal strong dataset dependence (HCP favors white matter, CamCAN favors gray matter).
+        % \textit{(Left)} Microstructure-level effects after removing dataset–task baselines show no consistent tissue preference across representations.
+    }
     \label{fig:white_vs_gray}
 \end{figure}
 
-We next quantify the impact of tissue type by comparing the performance of models with white and gray matter under 
-identical 
-dataset–target–task–feature
-configurations. For each fold, performance is normalized relative to a dummy baseline and the
- difference $\Delta = \text{white} - \text{gray}$ is computed, giving a matched, 
- configuration-specific tissue effect. To disentangle tissue influence from dataset and 
- representation biases, we residualize the effects in two complementary ways: (i) removing 
- feature-specific baselines to isolate dataset-dependent tissue effects, and (ii) removing 
- dataset–task baselines to isolate feature-dependent tissue effects. Statistical inference is 
- performed on configuration-level mean effects to account for fold dependence, testing whether the 
- tissue difference distribution deviates from zero.
 
-As shown in Figure \ref{fig:white_vs_gray}, tissue effects are strongly dataset- and task-dependent.
-When stratified by dataset~$\times$~target, gender classification in both HCP and CamCAN shows 
-distributions centered near zero, indicating no systematic predominance of either tissue compartment 
-for this task. In contrast, age prediction in CamCAN shows a slight tendency toward white-matter 
-superiority, with a positive shift in the fold-difference distribution suggesting that white-matter 
-microstructure carries marginally more age-relevant information. Diagnostic classification 
-(DX\_GROUP) in ABIDE shows the opposite pattern, with gray matter producing consistently higher 
-performance, pointing to a gray-matter advantage for this clinical task.
+\subsubsection{Impact of tissue type.}
 
-When stratified by microstructural representation, most features do not show a 
-consistent tissue preference, suggesting that the tissue effect is driven primarily by the 
-task and dataset context rather than the choice of diffusion metric. Collectively, these findings 
-demonstrate that tissue preference is neither universal nor negligible, but instead emerges from the 
-interaction between dataset characteristics, prediction target, and microstructural representation.
-%%%%%%%%%%%%%%%%
-% \vspace{4pt}
-%     \hrule
-%   \vspace{4pt}
-% \begin{figure}
-%     \centering
-%     \includegraphics[width=\textwidth]{../exp_outputs/summary/plots/folds/white_vs_gray_tscore_dataset_raw_task_raw_combined.pdf}
-%     \caption{Fold-level paired comparison of white vs. gray matter using normalized scores (0 = dummy, 1 = perfect).
-% Each point shows the matched fold difference ($\Delta$ = white $-$ gray) under identical settings.
-% Left: dataset-level tissue effects; Right: task-level effects.
-% Boxplots summarize fold differences; p-values test mean effects against zero.}
-%     \label{fig:white_vs_gray_v2}
-% \end{figure}
-% We next quantify the impact of tissue type by comparing the performance of models with white and gray matter under identical 
-% dataset–target–task–feature
-% configurations. For each fold, performance is normalized relative to a dummy baseline and the
-%  difference $\Delta = \text{white} - \text{gray}$ is computed, yielding a matched, 
-%  configuration-specific tissue effect. Statistical inference is 
-%  performed on configuration-level mean effects to account for fold dependence, testing whether the 
-%  tissue difference distribution deviates from zero.
+In Figure \ref{fig:white_vs_gray}, we quantify the impact of tissue type by comparing the performance of model families with white and gray matter for each (dataset, task) configuration.
+As before, performance is min-max normalized relative to a dummy baseline and we compute $\Delta = \text{white} - \text{gray}$.
+We remove microstructural representation baseline effects to isolate tissue differences within each (dataset, task) configuration.
+Statistical inference is performed on fold-level paired differences for each configuration.
+Significance is assessed using a nonparametric paired bootstrap test to assess whether the mean tissue effect differs from zero. 
+Resulting p-values are corrected for multiple comparisons using the Benjamini–Hochberg false discovery rate (FDR) procedure across all dataset, (task, model family) comparisons ($\alpha$ = 0.05).
 
-% As shown in Figure \ref{fig:white_vs_gray_v2}, gray matter has a stronger dependent. 
-
-% When stratified by task representation, features like age and gender for Camcan
-% and the DX\_GROUP task show a higher performance in gray matter.
-% Collectively, these findings demonstrate 
-% that gray matter performance is considerably higher for predictive tasks.
-% \vspace{4pt}
-%     \hrule
-% \vspace{4pt}
-%%%%%%%%%%%%%%%%%%%%%%%%
+Figure \ref{fig:white_vs_gray} shows that tissue effects are strongly dataset-dependent. 
+In HCP, positive effect distributions indicate consistent white-matter superiority across configurations.
+In contrast, CamCAN exhibits the opposite pattern, with gray matter showing a stable advantage. 
+For ABIDE, the distribution of differences is centered around zero, suggesting no clear 
+advantage of either tissue type.
+% Moreover, no microstructural representation demonstrates a consistent tissue preference.
 
 \begin{figure}
     \centering
-    \includegraphics[width=\textwidth]{../exp_outputs/summary/plots/features/feature_benefit_heatmap.pdf}
-    \caption{Proportion of models improving over the non-diffusion baseline (b0), stratified by task and feature.
-Improvement is based on fold-level normalized differences ($\Delta$ = feature $-$ b0).
-Left: statistical criterion (t-test against zero, p < 0.05 and mean $\Delta$ > 0); Right: robustness criterion (median $\Delta \geq$ 0.03 and $\geq$80\% positive folds).
-Cells report the fraction of models meeting each criterion per target (rows) and feature (columns).}
+    \includegraphics[width=\textwidth]{../exp_outputs/summary/plots/features/feature_benefit_heatmap_robust_by_tissue.pdf}
+    \caption{
+        Proportion of models outperforming the non-diffusion baseline (b0), stratified by task and microstructural feature, based on fold-level normalized differences ($\Delta = \text{microstructure feature} - \text{b0}$).
+        Given the large number of configurations and multiple comparisons, we adopt a robustness-based criterion (median $\Delta \geq 0.05$ and $\geq$80\% positive folds) rather than formal hypothesis testing. 
+        Benefits are task-specific rather than universal.
+    }
     \label{fig:feature_impact}
 \end{figure}
 
-\subsection{Impact of diffusion features}
-To assess whether diffusion-derived microstructural features provide predictive value beyond 
-non-diffusion signal, we quantified model-wise improvements relative to b0. The results reveal 
-that diffusion information does not uniformly enhance performance across tasks or datasets. For 
-proxy tasks such as gender classification in HCP and CamCAN, diffusion features do not confer a 
-systematic advantage over b0, indicating that non-diffusion signal (likely reflecting global 
-anatomical properties such as brain size) already captures most of the discriminative information. 
-In contrast, tasks more directly linked to microstructural variation show measurable gains from 
-diffusion metrics. Age prediction in CamCAN and diagnostic classification (DX\_GROUP) in ABIDE 
-exhibit consistent improvements for several diffusion representations, particularly under linear 
-models operating on array-based features (e.g., spherical harmonics).
+\subsubsection{Impact of diffusion microstructure features}
 
-Notably, deep learning models tend to exhibit positive gains in certain gender classification settings, likely 
-reflecting their sensitivity to global morphological cues embedded in image-based representations 
+To assess whether diffusion-derived microstructural features provide predictive value beyond 
+non-diffusion signal, we quantified model-wise improvements relative to b0.
+Given the large number of configurations (datasets, tasks, model families, and features), formal hypothesis testing would require extensive multiple-comparison correction and provide limited interpretability.
+Instead, we adopt a robustness-based criterion, defining consistent improvement as a median fold-level gain $\Delta \geq 0.05$ with at least 80\% of folds positive.
+Under this criterion, microstructural information does not uniformly enhance performance across tasks or datasets.
+For tasks such as sex classification in HCP and CamCAN, diffusion microstructural features do not confer a 
+systematic advantage over b0.
+It suggests that non-diffusion signal --likely reflecting global 
+anatomical properties such as brain size-- already captures most of the discriminative information. 
+In contrast, tasks more directly linked to microstructural variation show measurable gains from 
+diffusion metrics.
+Age prediction in CamCAN and diagnostic classification (DX\_GROUP) in ABIDE 
+exhibit consistent improvements for several diffusion representations, particularly under linear 
+models operating on array-based features.
+
+Deep learning models demonstrate positive gains in certain sex classification settings, likely 
+reflecting sensitivity to morphology encoded in image-based representations 
 rather than diffusion-specific contrast. Overall, these findings indicate that the added value of 
-diffusion MRI depends strongly on the biological relevance of the task, the dataset characteristics, 
+dMRI depends strongly on the biological relevance of the task, the dataset characteristics, 
 and the modeling framework, rather than representing a universal performance boost.
 
 % \subsection{Within-Dataset Performance}

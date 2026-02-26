@@ -3,7 +3,6 @@ from __future__ import annotations
 import matplotlib as mpl
 import seaborn as sns
 
-
 # Approximate useful figure widths for MICCAI/LNCS papers.
 MICCAI_SINGLE_COLUMN_FIGSIZE = (3.4, 2.4)
 MICCAI_DOUBLE_COLUMN_FIGSIZE = (7.5, 2.5)

@@ -7,7 +7,6 @@ from functools import wraps
 from typing import Any, Callable
 
 import submitit
-from submitit import Job
 from joblib import Parallel, delayed
 
 

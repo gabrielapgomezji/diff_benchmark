@@ -1,7 +1,9 @@
 from torch import nn
+
 from diff_benchmark.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
+
 
 class MLPHead(nn.Module):
     def __init__(
@@ -107,7 +109,9 @@ class PredictionHead(nn.Module):
             )
 
         else:
-            logger.warning(f"Unknown task: {prediction_task}. Prediction Head only implemented for binary classification and regression tasks.")
+            logger.warning(
+                f"Unknown task: {prediction_task}. Prediction Head only implemented for binary classification and regression tasks."
+            )
             # raise ValueError(f"Unknown task: {prediction_task}")
 
     def forward(self, x):
@@ -142,8 +146,18 @@ def build_prediction_head(
     Returns:
         nn.Module: A prediction head module configured for the specified task and parameters.
     """
-    num_classes = 2 if prediction_task == "binary_classification" else 1 if prediction_task == "regression" else Exception(f"Unknown task: {prediction_task}. Prediction Head only implemented for binary classification and regression tasks.")
-    
+    num_classes = (
+        2
+        if prediction_task == "binary_classification"
+        else (
+            1
+            if prediction_task == "regression"
+            else Exception(
+                f"Unknown task: {prediction_task}. Prediction Head only implemented for binary classification and regression tasks."
+            )
+        )
+    )
+
     return PredictionHead(
         embedding_dim=embedding_dim,
         prediction_task=prediction_task,

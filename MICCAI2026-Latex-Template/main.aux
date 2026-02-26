@@ -1,18 +1,25 @@
 \relax 
 \citation{novikov2019quantifying}
-\citation{chen2024deep,he2022model}
+\citation{chen2024deep,he2022model,chen2020generalization,de2018age,dibaji2024sex}
 \citation{egle2022prediction,wen2021reproducible}
-\citation{kotikalapudi2025replicability}
-\@writefile{toc}{\contentsline {title}{How predictive is diffusion MRI microstructure? A reproducible benchmark across datasets, features and models}{1}{}\protected@file@percent }
+\citation{kotikalapudi2025replicability,menon2020microstructural}
+\citation{chen2024deep}
+\citation{menon2020microstructural}
+\citation{chen2023deep,he2022model}
+\@writefile{toc}{\contentsline {title}{ DiffBench: A Reproducible Benchmark in Diffusion MRI Prediction }{1}{}\protected@file@percent }
 \@writefile{toc}{\authcount {1}}
 \@writefile{toc}{\contentsline {author}{Anonymized Authors}{1}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{}\protected@file@percent }
+\citation{wu2023challenges,genon2022linking,rosenblatt2024power}
+\citation{wen2021reproducible}
+\citation{rosenblatt2024power}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Overview of the proposed diffusion MRI benchmark pipeline end-to-end.}}{2}{}\protected@file@percent }
+\newlabel{fig:benchmark_overview}{{1}{2}{}{figure.1}{}}
 \citation{van2013wu}
 \citation{shafto2014cambridge}
 \citation{di2017enhancing}
-\@writefile{toc}{\contentsline {section}{\numberline {2}Benchmark}{2}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Datasets}{2}{}\protected@file@percent }
 \citation{Garyfallidis2014}
+\citation{esteban2019fmriprep}
 \citation{Smith2004}
 \citation{Avants2009}
 \citation{Dale1999a}
@@ -22,69 +29,81 @@
 \citation{Veraart2016b}
 \citation{Andersson2016}
 \citation{greve2009accurate}
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Overview of the proposed diffusion MRI benchmark pipeline, illustrating the end-to-end process from preprocessing to microstructural feature extraction, predictive modeling, and evaluation.}}{3}{}\protected@file@percent }
-\newlabel{fig:benchmark_overview}{{1}{3}{}{figure.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Data Preparation}{3}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{Preprocessing}{3}{}\protected@file@percent }
+\citation{hwang2021prediction,he2022model,chen2023deep,cardenas2025autism}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Benchmark Pipeline}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Datasets}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}DiffBench Preprocessing}{3}{}\protected@file@percent }
+\citation{basser1994mr}
+\citation{jensen2005diffusional}
+\citation{tournier2004direct}
+\citation{pasternak2009free}
+\citation{desikan2006automated}
 \citation{greve2009accurate}
 \citation{smith2006tract}
 \citation{mori2008stereotaxic}
-\citation{basser1994mr}
-\citation{jensen2005diffusional}
-\@writefile{toc}{\contentsline {subsubsection}{Spatial normalization}{4}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Gray Matter}{4}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{White Matter}{4}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{Microstructural representation}{4}{}\protected@file@percent }
-\citation{tournier2004direct}
-\citation{pasternak2009free}
-\citation{hastie2009elements}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Data Preparation}{4}{}\protected@file@percent }
+\citation{wen2021reproducible,cardenas2025autism}
+\citation{menon2020microstructural}
 \citation{oquab2023dinov2}
 \citation{dancette2025curia}
 \citation{chen2019med3d}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Prediction models}{5}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Benchmarks tasks and evaluation metrics}{5}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{Classification}{5}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{Regression}{5}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}Evaluation protocols}{6}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {3}Results}{6}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Combined analysis of model-family performance and preprocessing sensitivity across tasks using a normalized score (0 = dummy, 1 = perfect) for cross-metric comparison. Left: Cross-validation results grouped by model family (points = models, violins = distributions, diamonds = medians; lines = linear baseline). Right: Sensitivity to preprocessing across feature × tissue configurations (dots = strategies; bars = IQR and range).}}{6}{}\protected@file@percent }
+\citation{cardenas2025autism}
+\citation{chen2024deep,dibaji2024sex}
+\citation{chen2020generalization,de2018age,hwang2021prediction}
+\citation{gorgolewski2016brain}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Prediction and validation}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}Benchmark implementation}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Results}{5}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces  \textit  {(Left)} Model-family performance normalized across metrics and folds (dummy = 0, perfect = 1) reveals no consistent advantage of any model class. \textit  {(Right)} Preprocessing sensitivity across (feature, tissue) configurations demonstrates that performance strongly depends on representation and tissue selection. }}{6}{}\protected@file@percent }
 \newlabel{fig:model_family}{{2}{6}{}{figure.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Impact of tissue type}{7}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Fold-level paired comparison of white vs. gray matter using normalized scores (0 = dummy, 1 = perfect). Each point shows the matched fold difference ($\Delta $ = white $-$ gray) under identical settings. Left: tissue effects by dataset $\times $ target (microstructure baseline removed); Right: tissue effects by microstructure feature (dataset-task baseline removed). Boxplots summarize fold differences; p-values test mean effects against zero.}}{7}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Impact of tissue type.}{6}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces  Fold-level paired differences ($\Delta = \text  {white} - \text  {gray}$) were computed under identical settings, after removing microstructural representation baseline effects. Significance was assessed via a nonparametric paired bootstrap test with Benjamini–Hochberg FDR correction across all (dataset, task, model family) combinations ($\alpha $ = 0.05) HCP favors white matter, CamCAN favors gray matter and no visible preference in ABIDE. }}{7}{}\protected@file@percent }
 \newlabel{fig:white_vs_gray}{{3}{7}{}{figure.3}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Proportion of models improving over the non-diffusion baseline (b0), stratified by task and feature. Improvement is based on fold-level normalized differences ($\Delta $ = feature $-$ b0). Left: statistical criterion (t-test against zero, p < 0.05 and mean $\Delta $ > 0); Right: robustness criterion (median $\Delta \geq $ 0.03 and $\geq $80\% positive folds). Cells report the fraction of models meeting each criterion per target (rows) and feature (columns).}}{8}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Impact of diffusion microstructure features}{7}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces  Proportion of models outperforming the non-diffusion baseline (b0), stratified by task and microstructural feature, based on fold-level normalized differences ($\Delta = \text  {microstructure feature} - \text  {b0}$). Given the large number of configurations and multiple comparisons, we adopt a robustness-based criterion (median $\Delta \geq 0.05$ and $\geq $80\% positive folds) rather than formal hypothesis testing. Benefits are task-specific rather than universal. }}{8}{}\protected@file@percent }
 \newlabel{fig:feature_impact}{{4}{8}{}{figure.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Impact of diffusion features}{8}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {4}Conclusion}{9}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Conclusion}{8}{}\protected@file@percent }
 \bibstyle{splncs04}
 \bibdata{references}
 \bibcite{Andersson2016}{1}
 \bibcite{Avants2009}{2}
 \bibcite{basser1994mr}{3}
-\bibcite{chen2024deep}{4}
-\bibcite{chen2019med3d}{5}
-\bibcite{Cordero-Grande2019}{6}
-\bibcite{Cox1996}{7}
-\bibcite{Dale1999a}{8}
-\bibcite{dancette2025curia}{9}
-\bibcite{di2017enhancing}{10}
-\bibcite{egle2022prediction}{11}
-\bibcite{Garyfallidis2014}{12}
-\bibcite{greve2009accurate}{13}
-\bibcite{hastie2009elements}{14}
-\bibcite{he2022model}{15}
-\bibcite{jensen2005diffusional}{16}
-\bibcite{kotikalapudi2025replicability}{17}
-\bibcite{mori2008stereotaxic}{18}
-\bibcite{novikov2019quantifying}{19}
-\bibcite{oquab2023dinov2}{20}
-\bibcite{pasternak2009free}{21}
-\bibcite{shafto2014cambridge}{22}
-\bibcite{smith2006tract}{23}
-\bibcite{Smith2004}{24}
-\bibcite{tournier2004direct}{25}
-\bibcite{van2013wu}{26}
-\bibcite{Veraart2016b}{27}
-\bibcite{Veraart2016a}{28}
-\bibcite{wen2021reproducible}{29}
-\gdef \@abspage@last{12}
+\bibcite{cardenas2025autism}{4}
+\bibcite{chen2020generalization}{5}
+\bibcite{chen2023deep}{6}
+\bibcite{chen2024deep}{7}
+\bibcite{chen2019med3d}{8}
+\bibcite{Cordero-Grande2019}{9}
+\bibcite{Cox1996}{10}
+\bibcite{Dale1999a}{11}
+\bibcite{dancette2025curia}{12}
+\bibcite{desikan2006automated}{13}
+\bibcite{di2017enhancing}{14}
+\bibcite{dibaji2024sex}{15}
+\bibcite{egle2022prediction}{16}
+\bibcite{esteban2019fmriprep}{17}
+\bibcite{Garyfallidis2014}{18}
+\bibcite{genon2022linking}{19}
+\bibcite{gorgolewski2016brain}{20}
+\bibcite{greve2009accurate}{21}
+\bibcite{he2022model}{22}
+\bibcite{hwang2021prediction}{23}
+\bibcite{jensen2005diffusional}{24}
+\bibcite{kotikalapudi2025replicability}{25}
+\bibcite{menon2020microstructural}{26}
+\bibcite{de2018age}{27}
+\bibcite{mori2008stereotaxic}{28}
+\bibcite{novikov2019quantifying}{29}
+\bibcite{oquab2023dinov2}{30}
+\bibcite{pasternak2009free}{31}
+\bibcite{rosenblatt2024power}{32}
+\bibcite{shafto2014cambridge}{33}
+\bibcite{smith2006tract}{34}
+\bibcite{Smith2004}{35}
+\bibcite{tournier2004direct}{36}
+\bibcite{van2013wu}{37}
+\bibcite{Veraart2016b}{38}
+\bibcite{Veraart2016a}{39}
+\bibcite{wen2021reproducible}{40}
+\bibcite{wu2023challenges}{41}
+\gdef \@abspage@last{11}
