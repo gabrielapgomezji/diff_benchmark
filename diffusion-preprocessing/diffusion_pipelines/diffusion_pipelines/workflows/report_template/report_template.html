@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>dMRI preprocessing report: ${subject_id}</title>
+</head>
+
+<body>
+    <h1 style='text-align:center'>Preprocessing steps: ${subject_id}</h1>
+    <hr />
+    <h2 style="background-color: rgb(153, 153, 153);color: white;">Brain extraction of diffusion image</h2>
+    ${plot_bet}
+    <h2 style="background-color: rgb(153, 153, 153);color: white;">MP-PCA denoising of diffusion image</h2>
+    ${plot_before_after_mppca}
+    <h2 style="background-color: rgb(153, 153, 153);color: white;">Gibbs unringing of MP-PCA denoised diffusion image
+    </h2>
+    ${plot_before_after_gibbs}
+    <h2 style="background-color: rgb(153, 153, 153);color: white;">Eddy correction and coregistration of Gibbs unringed
+        and MP-PCA denoised diffusion image
+    </h2>
+    ${plot_before_after_eddy}
+    <h2 style="background-color: rgb(153, 153, 153);color: white;">Subject T1 masking</h2>
+    ${plot_before_after_mask_t1}
+    <h2 style="background-color: rgb(153, 153, 153);color: white;">Subject T1 and diffusion image registered to it</h2>
+    ${plot_before_after_t1_dwi}
+    <h2 style="background-color: rgb(153, 153, 153);color: white;">Mask and diffusion image registered to subject T1
+    </h2>
+    ${plot_transformed}
+    <h2 style="background-color: rgb(153, 153, 153);color: white;">FreeSurfer segmentations on subject T1</h2>
+    ${plot_recon_segmentations_on_t1}
+    <h2 style="background-color: rgb(153, 153, 153);color: white;">FreeSurfer reconstructed surface contours on subject
+        T1</h2>
+    ${plot_recon_surface_on_t1}
+    <h2 style="background-color: rgb(153, 153, 153);color: white;">FreeSurfer reconstructed surface contours on
+        diffusion image</h2>
+    ${plot_ribbon_on_dwi}
+    <hr />
+</body>
+
+</html>
