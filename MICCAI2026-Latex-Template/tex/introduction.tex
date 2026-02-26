@@ -1,27 +1,7 @@
-% \textbf{First paragraph:}
-% \begin{itemize}
-%     \item Context: Diffusion MRI provides quantitative microstructural biomarkers
-%     \item Increasing use of ML for prediction (age, diagnosis, cognition, etc.)
-%     \item Lack of standardized benchmark
-% \end{itemize}
+
 Diffusion magnetic resonance imaging (dMRI) enables in vivo representation of tissue microstructure and provides biologically meaningful biomarkers sensitive to axonal organization, myelination, and tissue complexity \cite{novikov2019quantifying}.
 Leveraging these microstructural descriptors for predictive modeling has become increasingly common, with applications ranging from demographic estimation~\cite{chen2024deep,he2022model,chen2020generalization,de2018age,dibaji2024sex}, clinical diagnosis~\cite{egle2022prediction,wen2021reproducible}, and cognitive characterization \cite{kotikalapudi2025replicability,menon2020microstructural}.
 The combination of diffusion imaging and machine learning is therefore often viewed as a powerful framework for data-driven neurobiological inference.
-
-% \noindent \textbf{Second paragraph: literature review:}
-% \begin{itemize}
-%     \item  Literature review of techniques: Variability of the proposed approach (ML-based, deep-learning based etc)
-%     \item Problems: High variability in reported performance across studies + Limited reproducibility 
-% \end{itemize}
-
-% While many studies demonstrate the promising predictive power of dMRI, reported performance varies widely across studies, tasks, and datasets. -> refs
-% Moreover, direct comparisons between studies are often difficult to achieve \cite{yeung2020pipeline,chen2024deep,he2022model,chen2020generalization}.
-% Preprocessing pipelines differ substantially \cite{rauland2025benchmarking}, microstructural information is represented in multiple ways (e.g., voxel-wise maps, ROI summaries, or learned embeddings)\cite{menon2020microstructural,chen2023deep,chen2024deep,he2022model}, and evaluation protocols vary in data splits, cross-validation schemes, and hyperparameter selection \cite{wen2021reproducible}.
-% Moreover, limited code and configuration sharing further restrict reproducibility.
-% As a result, reported performance differences may reflect inconsistencies in implementation and evaluation rather than modeling improvements.
-% Together, these factors make it difficult to determine which approaches generalize reliably and provide meaningful insights \cite{wu2023challenges,genon2022linking,rosenblatt2024power}.
-
-
 
 
 While many studies demonstrate the promising predictive power of dMRI, reported performance varies widely across studies, tasks, and datasets, making direct comparisons difficult.
@@ -30,7 +10,7 @@ Preprocessing pipelines differ substantially, microstructural information is rep
 Limited code and configuration sharing further restrict reproducibility.
 Consequently, reported performance differences may reflect inconsistencies in implementation and evaluation rather than genuine modeling improvements.
 
-Addressing replication challenges in brain structure–behavior research~\cite{wu2023challenges,genon2022linking,rosenblatt2024power} it is essential to control of these methodological sources of variability and comparable evaluation standards for dMRI prediction.
+Addressing replication challenges in brain structure–behavior research~\cite{wu2023challenges,genon2022linking,rosenblatt2024power}, it is essential to control of these methodological sources of variability and comparable evaluation standards for dMRI prediction.
 Accordingly, there has been increasing interest in reproducible benchmarking frameworks within specific clinical contexts or imaging modalities~\cite{wen2021reproducible}, and large-scale analyses have assessed the replicability of dMRI-based brain–behavior associations across phenotypes~\cite{rosenblatt2024power}.
 However, these efforts do not jointly vary microstructural representations, tissue compartments, model families, datasets, and predictive tasks within a unified experimental design.
 As a result, several fundamental questions remain unsolved: how representation and model choice interact with task characteristics, whether white and gray matter contribute differently across datasets and prediction targets, and under what conditions diffusion-derived features provide consistent predictive value beyond non-diffusion baselines.
@@ -44,29 +24,12 @@ As a result, several fundamental questions remain unsolved: how representation a
     \label{fig:benchmark_overview}
 \end{figure}
 
-To address this, we introduce an open-source dMRI benchmark that enables controlled comparison across datasets, tissue types, microstructural representations, and model families. 
-The benchmark explicitly quantifies performance variability across folds and configurations, isolates representation and tissue-specific effects, and evaluates the value of diffusion-derived features beyond non-diffusion baselines. 
-We believe this provides the foundation for isolating microstructural signal from configuration-driven variability and for establishing comparable evaluation standards in diffusion MRI prediction.
-
-% \noindent \textbf{Third paragraph: reasons for these problems}
-% \begin{itemize}
-%     \item Reason 1: Heterogeneous preprocessing pipelines
-%     \item Reason 2: Inconsistent feature representations (voxel-wise vs ROI-based), not analysis cross microstructure features
-%     \item Reason 3: Evaluation protocols not directly comparable + results on different datasets
-%     \item Reason 4: Missing code
-%     \item Our solution: "To address these challenges, we propose: 1) an open-source and standardized benchmark; 2) of various machine learning techniques in dMRI; 3) on several tasks (classification, regression) 4) encompassing N datasets 
-% \end{itemize}
+To address these limitations, we introduce \textbf{DiffBench}, an open-source, and reproducible benchmark for dMRI prediction. 
+DiffBench enables controlled comparison of preprocessing, spatial normalization, microstructural representation, model family, and validation within a unified framework applied across multiple public datasets.
+Specifically, DiffBench (i) unifies preprocessing across cohorts; (ii) compares various tissue-specific microstructural representations; (iii) includes classical machine learning models and deep foundation architectures; and (iv) evaluates performance across classification and regression tasks.
+Our analysis shows that performance differences are often as sensitive to representation and preprocessing choices as to model family, highlighting the need for a standardized benchmark.
 
 
-% \noindent \textbf{Fourth paragraph: your contributions}
-% \begin{itemize}
-%     \item Standardized preprocessing pipeline for diffusion MRI
-%     \item Implemented various representation of the microstructural input data
-%     \item Unified feature extraction strategy
-%     \item Controlled evaluation protocol (train/test splits)
-%     \item Comparison of multiple feature representations
-%     \item Integration of both classical and DL predictors
-%     \item Public release of code and benchmark configuration
-%     \item End-to-end analysis
-% \end{itemize}
-
+% Diffbench enables controlled comparison across datasets, tissue types, microstructural representations, and model families. 
+% The benchmark explicitly quantifies performance variability across folds and configurations, isolates representation and tissue-specific effects, and evaluates the value of diffusion-derived features beyond non-diffusion baselines. 
+% We believe this provides the foundation for isolating microstructural signal from configuration-driven variability and for establishing comparable evaluation standards in diffusion MRI prediction.

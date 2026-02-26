@@ -21,7 +21,7 @@ from pathlib import Path
 import matplotlib
 import numpy as np
 import pandas as pd
-from scipy.stats import ttest_1samp
+from scipy.stats import false_discovery_control, ttest_1samp
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -216,21 +216,14 @@ def _benefit_flags(delta_df: pd.DataFrame) -> pd.DataFrame:
         if deltas.size == 0:
             continue
 
-        # --- p-value method ---
-        # Collapse folds to one cluster mean then t-test
-        # (here each row is already one fold; cluster = the group itself)
-        # We treat each fold as an independent observation → ttest_1samp
-        benefit_pvalue = 0
+        # --- raw p-value (thresholding deferred until after FDR correction) ---
+        raw_pvalue = float("nan")
         if deltas.size >= 2:
             res = ttest_1samp(deltas, popmean=0.0, nan_policy="omit")
-            if (
-                np.isfinite(res.pvalue)
-                and res.pvalue < PVALUE_THRESHOLD
-                and deltas.mean() > 0
-            ):
-                benefit_pvalue = 1
+            if np.isfinite(res.pvalue):
+                raw_pvalue = float(res.pvalue)
 
-        # --- robustness rule ---
+        # --- robustness rule (no correction needed) ---
         median_delta = float(np.median(deltas))
         frac_positive = float(np.mean(deltas > 0))
         benefit_robust = int(median_delta >= EPSILON and frac_positive >= TAU)
@@ -240,9 +233,13 @@ def _benefit_flags(delta_df: pd.DataFrame) -> pd.DataFrame:
         row["mean_delta"] = float(deltas.mean())
         row["median_delta"] = median_delta
         row["frac_positive"] = frac_positive
-        row["benefit_pvalue"] = benefit_pvalue
+        row["raw_pvalue"] = raw_pvalue   # BH correction applied in _collapse_across_models
+        row["benefit_pvalue"] = 0        # filled after FDR correction
         row["benefit_robust"] = benefit_robust
         rows.append(row)
+
+    if not rows:
+        return pd.DataFrame(rows)
 
     return pd.DataFrame(rows)
 
@@ -255,20 +252,38 @@ def _benefit_flags(delta_df: pd.DataFrame) -> pd.DataFrame:
 def _collapse_across_models(flags_df: pd.DataFrame) -> pd.DataFrame:
     """Aggregate benefit flags across models for each (dataset-task, feature).
 
-    Tissue types are collapsed (max benefit across tissues per model) before
-    counting, so a model is counted once per dataset-task-feature regardless
-    of tissue.
+    Tissue types are collapsed first (most significant p across tissues per model),
+    then BH FDR correction is applied across the ~(n_dataset_tasks × n_models × n_features)
+    per-model cells that directly feed into the heatmap — a much smaller correction
+    pool than the raw ~360 (tissue × model × feature × dataset) tests.
+    A model is then counted as benefiting if its BH-adjusted p < threshold and mean Δ > 0.
     """
-    # Per model: take max benefit across tissues (if any tissue shows benefit,
-    # count the model as benefiting)
+    # Per model: take most significant p-value and max robust benefit across tissues
     per_model = flags_df.groupby(
         ["dataset", "target_clean", "prediction_task", "model_name", "feature"],
         dropna=False,
         as_index=False,
     ).agg(
-        benefit_pvalue=("benefit_pvalue", "max"),
+        mean_delta=("mean_delta", "mean"),
+        raw_pvalue=("raw_pvalue", "min"),    # most significant p across tissues
         benefit_robust=("benefit_robust", "max"),
     )
+
+    # --- Apply BH across the per-model × feature × dataset-task cells ---
+    finite_mask = per_model["raw_pvalue"].notna() & np.isfinite(per_model["raw_pvalue"])
+    per_model["adjusted_pvalue"] = float("nan")
+    if finite_mask.any():
+        adjusted = false_discovery_control(
+            per_model.loc[finite_mask, "raw_pvalue"].to_numpy(dtype=float),
+            method="bh",
+        )
+        per_model.loc[finite_mask, "adjusted_pvalue"] = adjusted
+
+    per_model["benefit_pvalue"] = (
+        (per_model["adjusted_pvalue"] < PVALUE_THRESHOLD) & (per_model["mean_delta"] > 0)
+    ).astype(int)
+
+    per_model = per_model.drop(columns=["raw_pvalue", "adjusted_pvalue", "mean_delta"])
 
     agg = per_model.groupby(
         ["dataset", "target_clean", "prediction_task", "feature"],

@@ -364,7 +364,7 @@ def _draw_right(
     ax.set_xlim(-0.55, (len(order) - 1) * GROUP_SPACING_RIGHT + 0.55)
     ax.set_xticks([i * GROUP_SPACING_RIGHT for i in range(len(order))])
     ax.set_xticklabels(pretty_labels, rotation=24, ha="right")
-    ax.set_title("Preprocessing sensitivity")
+    ax.set_title("Data Preparation\nsensitivity")
 
     iqr_h = Line2D([0], [0], color=IQR_COLOR, linewidth=4, alpha=0.30, label="IQR")
     med_h = Line2D(

@@ -11,6 +11,7 @@ import seaborn as sns
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
+from scipy.stats import false_discovery_control
 
 from config import MICCAI_DOUBLE_COLUMN_FIGSIZE, apply_miccai_style
 from utils import (
@@ -48,14 +49,14 @@ BOTTOM_REGION_COLOR = "#FAEFDB"
 Y_LIM = 1.0
 
 FAMILY_COLORS = {
-    "Linear": "#D6E3F3",
-    "Random Forest": "#D8ECD0",
-    "Deep": "#F6D6C8",
+    "Linear": "#A8BEDD",        # lighter version of #4C78A8
+    "Random Forest": "#A8D4A0",  # lighter version of #59A14F
+    "Deep": "#F0AEAF",          # lighter version of #E15759
 }
 FAMILY_POINT_COLORS = {
-    "Linear": "#4C78A8",
-    "Random Forest": "#59A14F",
-    "Deep": "#E07B39",
+    "Linear": "#4C78A8",   # same as combined_plot.py
+    "Random Forest": "#59A14F",  # same as combined_plot.py
+    "Deep": "#E15759",     # medicalnet color from combined_plot.py
 }
 
 
@@ -264,12 +265,43 @@ def _plot_family_comparison(plot_df: pd.DataFrame, output_file: Path) -> None:
         Patch(facecolor=FAMILY_COLORS[family], edgecolor="#3a3a3a", label=f"{family} models")
         for family in MODEL_FAMILY_ORDER
     ]
-    ax.legend(handles=legend_handles, loc="upper right", frameon=False)
+    ax.legend(
+        handles=legend_handles,
+        loc="upper left",
+        bbox_to_anchor=(0.0, 1.0),
+        frameon=True,
+        framealpha=0.85,
+        edgecolor="none",
+    )
 
-    pvals = _compute_family_pvalues(plot_df, order)
+    # pvals = _compute_family_pvalues(plot_df, order)
+    # --- Compute raw p-values ---
+    raw_pvals_dict = _compute_family_pvalues(plot_df, order)
+
+    # Collect finite p-values for FDR correction
+    keys = []
+    raw_pvals = []
+    for key, p in raw_pvals_dict.items():
+        if np.isfinite(p):
+            keys.append(key)
+            raw_pvals.append(p)
+
+    raw_pvals = np.asarray(raw_pvals, dtype=float)
+
+    # --- Apply Benjamini–Hochberg FDR ---
+    adjusted_dict = raw_pvals_dict.copy()
+    if raw_pvals.size > 0:
+        adjusted_pvals = false_discovery_control(raw_pvals, method="bh")
+        for key, p_adj in zip(keys, adjusted_pvals):
+            adjusted_dict[key] = float(p_adj)
+
+    pvals = adjusted_dict
     group_max = plot_df.groupby(["combo_label", "family"])["normalized_diff"].max()
     y_pad = 0.06 * Y_LIM
-    y_cap = 0.84 * Y_LIM
+    y_cap = 1.05 * Y_LIM          # place p-values above y=1, in the clear headroom
+    y_floor = 0.08 * Y_LIM        # never let a p-value sit at or below the zero line
+    # Vertical step between staggered p-value labels to avoid overlap
+    y_stagger_step = 0.10 * Y_LIM
 
     n_families = len(MODEL_FAMILY_ORDER)
     offsets = np.linspace(
@@ -280,6 +312,8 @@ def _plot_family_comparison(plot_df: pd.DataFrame, output_file: Path) -> None:
     family_offsets = dict(zip(MODEL_FAMILY_ORDER, offsets, strict=False))
 
     for idx, combo_label in enumerate(order):
+        # Collect candidate y positions for all families in this group
+        candidate_y: dict[str, float] = {}
         for family in MODEL_FAMILY_ORDER:
             subset = plot_df[
                 (plot_df["combo_label"] == combo_label) & (plot_df["family"] == family)
@@ -288,9 +322,35 @@ def _plot_family_comparison(plot_df: pd.DataFrame, output_file: Path) -> None:
                 continue
             box_top = group_max.get((combo_label, family), np.nan)
             y_text = y_cap if not np.isfinite(box_top) else min(float(box_top) + y_pad, y_cap)
+            candidate_y[family] = max(y_floor, y_text)
+
+        # Resolve overlaps: sort families by their candidate y, then stagger if too close
+        sorted_families = sorted(candidate_y.keys(), key=lambda f: candidate_y[f])
+        resolved_y: dict[str, float] = {}
+        for i, family in enumerate(sorted_families):
+            y = candidate_y[family]
+            if i > 0:
+                prev_family = sorted_families[i - 1]
+                prev_y = resolved_y[prev_family]
+                if y - prev_y < y_stagger_step:
+                    y = prev_y + y_stagger_step
+            # Clamp: never below the floor, never above the ceiling
+            resolved_y[family] = max(y_floor, min(y, y_cap + (n_families - 1) * y_stagger_step))
+
+        for family in MODEL_FAMILY_ORDER:
+            subset = plot_df[
+                (plot_df["combo_label"] == combo_label) & (plot_df["family"] == family)
+            ]
+            if subset.empty:
+                continue
+            x_pos = idx + family_offsets[family]
+            # Nudge the Random Forest p-value label slightly right so it doesn't
+            # land on the left edge of the adjacent Deep models box.
+            if family == "Random Forest":
+                x_pos -= 0.02
             ax.text(
-                idx + family_offsets[family],
-                y_text,
+                x_pos,
+                resolved_y[family],
                 _format_pvalue(pvals[(combo_label, family)]),
                 ha="center",
                 va="bottom",
@@ -298,10 +358,10 @@ def _plot_family_comparison(plot_df: pd.DataFrame, output_file: Path) -> None:
                 color="#303030",
             )
 
-    ax.axhspan(0.0, Y_LIM, color=TOP_REGION_COLOR, alpha=0.32, zorder=0)
+    ax.axhspan(0.0, Y_LIM * 1.35, color=TOP_REGION_COLOR, alpha=0.32, zorder=0)
     ax.axhspan(-Y_LIM, 0.0, color=BOTTOM_REGION_COLOR, alpha=0.32, zorder=0)
     ax.axhline(0.0, color="#333333", linewidth=1.0)
-    ax.set_ylim(-Y_LIM, Y_LIM)
+    ax.set_ylim(-Y_LIM, Y_LIM * 1.35)
     ax.set_yticks([-1.0, -0.5, 0.0, 0.5, 1.0])
     ax.set_xlabel("")
     ax.set_ylabel(Y_AXIS_LABEL)
@@ -310,7 +370,7 @@ def _plot_family_comparison(plot_df: pd.DataFrame, output_file: Path) -> None:
     ax.set_xticklabels([format_label(label) for label in order], rotation=18, ha="right")
     ax.text(
         0.5,
-        Y_LIM * 0.94,
+        Y_LIM * 1.26,
         TOP_REGION_LABEL,
         transform=ax.get_yaxis_transform(),
         ha="center",

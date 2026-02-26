@@ -6,12 +6,12 @@ public datasets. The overall structure is illustrated in Figure~\ref{fig:benchma
 \subsection{Datasets}
 To ensure reproducibility, DiffBench leverages three publicly available datasets 
 covering both healthy and clinical populations.
-\textbf{HCP}: The Human Connectome Project (HCP) Young Adult dataset \cite{van2013wu} targets gender and age. It includes 
+\textbf{HCP}: The Human Connectome Project (HCP) Young Adult dataset \cite{van2013wu} targets sex and age. It includes 
 1,036 healthy subjects after filtering (474 males, 562 females; ages 22-37).
 HCP data were acquired on a customized Siemens 3T Connectome scanner using a multi-shell Spin-Echo EPI sequence 
 (TR/TE = 5520/89.5 ms, 1.25 mm isotropic, multiband factor 3; $b$-values = 1000, 2000, 3000 s/mm$^2$, 90 directions/shell).
 \textbf{Cam-CAN}: The Cambridge Centre for Ageing and Neuroscience (Cam-CAN) dataset \cite{shafto2014cambridge} targets 
-gender and age. It includes 629 healthy subjects (316 males, 313 females; ages 18-88), scanned on a Siemens 3T TIM Trio using 
+sex and age. It includes 629 healthy subjects (316 males, 313 females; ages 18-88), scanned on a Siemens 3T TIM Trio using 
 a 2D twice-refocused SE EPI sequence (TR/TE = 9100/104 ms, 2.0 mm isotropic; $b$-values = 1000, 2000 s/mm$^2$, 30 directions each).
 \textbf{ABIDE II}: The Autism Brain Imaging Data Exchange II (ABIDE II) dataset \cite{di2017enhancing} targets Autism Spectrum 
 Disorder (ASD) diagnosis.
@@ -160,7 +160,7 @@ Details are fully available in the codebase.
 The prediction tasks covers classification and regression and were selected based on data availability and existing literature. 
 \textbf{Classification.} 
 BenchDiff includes binary classification tasks, such as Autism Spectrum Disorder (ASD) diagnosis (ASD vs. 
-Typically Developing) using ABIDE II \cite{cardenas2025autism}, and gender prediction in the HCP and Cam-CAN 
+Typically Developing) using ABIDE II \cite{cardenas2025autism}, and sex prediction in the HCP and Cam-CAN 
 cohorts \cite{chen2024deep,dibaji2024sex}. Performance is reported using balanced accuracy, which accounts for class imbalance. 
 \textbf{Regression.} Brain age prediction \cite{chen2020generalization,de2018age,hwang2021prediction} was used as a regression task on the healthy Cam-CAN cohort.
 Performance is quantified with $R^2$ and mean absolute error (MAE). 
@@ -171,7 +171,7 @@ Performance is quantified with $R^2$ and mean absolute error (MAE).
 % \end{itemize}
 
 We adopt a stratified 5-fold cross-validation scheme for all tasks.
-For classification, stratification ensures class balance across folds. For regression, splits are stratified by gender. 
+For classification, stratification ensures class balance across folds. For regression, splits are stratified by sex. 
 Random seeds are fixed to guarantee reproducibility. 
 
 % To ensure rigorous model evaluation, we employ a stratified 5-fold cross-validation strategy for all tasks.
