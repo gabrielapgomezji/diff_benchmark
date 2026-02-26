@@ -615,8 +615,6 @@ class MedicalNet(ResNet):
         # Stack with channel dimension: (B, 1, D, H, W)
         if xs[0].ndim >= 3:
             xs = torch.stack([x.unsqueeze(0) for x in xs], dim=0)
-            # Normalize images mean=0.5, std=0.5
-            # xs = (xs - mean) / std
         else:
             # Stack features: (B, F)
             xs = torch.stack(xs)

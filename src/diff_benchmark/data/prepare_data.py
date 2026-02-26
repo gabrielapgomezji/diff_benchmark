@@ -121,7 +121,6 @@ class DatasetPreparation:
 
         # Special handling for medicalnet: treat as cacheable even if freeze_backbone missing
         # (user can override by explicitly setting freeze_backbone=False)
-
         if (
             self.model_name == "medicalnet"
             and "freeze_backbone" not in self.cfg.model.backbone
@@ -223,12 +222,6 @@ class DatasetPreparation:
         """
         from diff_benchmark.data.cached_features import append_augmentations_to_cache
 
-        # def safe_collate(batch):
-        #     batch = [b for b in batch if b is not None]
-        #     if not batch:
-        #         return None
-        #     return torch.utils.data.dataloader.default_collate(batch)
-
         if not cache_exists:
             # Need to compute from scratch
             logger.info(f"Cache not found. Computing {required_augs} augmentations...")
@@ -254,7 +247,6 @@ class DatasetPreparation:
                 batch_size=self.cfg.data.batch_size,
                 shuffle=False,
                 num_workers=0,  # No multiprocessing for caching
-                # collate_fn=safe_collate,
             )
 
             # Get device

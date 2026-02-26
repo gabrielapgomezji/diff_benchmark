@@ -16,11 +16,11 @@ from diff_benchmark.models.sklearn_models.logistic_regression import (
     LinearModel,
     PCALinearModel,
 )
-from diff_benchmark.models.torch_models.cnn import ResNet3SliceMultihead
-from diff_benchmark.models.torch_models.curia import CuriaBackbone
-from diff_benchmark.models.torch_models.dinov2 import DinoViTBackbone
-from diff_benchmark.models.torch_models.medicalnet import MedicalNet
-from diff_benchmark.models.torch_models.vit import GoogleViTBackbone
+from diff_benchmark.models.deep_models.cnn import ResNet3SliceMultihead
+from diff_benchmark.models.deep_models.curia import CuriaBackbone
+from diff_benchmark.models.deep_models.dinov2 import DinoViTBackbone
+from diff_benchmark.models.deep_models.medicalnet import MedicalNet
+from diff_benchmark.models.deep_models.vit import GoogleViTBackbone
 from diff_benchmark.models.utils_models.prediction_head import build_prediction_head
 from diff_benchmark.models.utils_models.trainer import (
     LightningTrainer,

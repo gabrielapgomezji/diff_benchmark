@@ -57,13 +57,13 @@ class PCALinearModel(SklearnModel):
                     75,
                     100,
                     400,
-                ],  # [10, 50, 100],
-                "linear__C": np.logspace(-10, 10, 21),  # [0.01, 0.1, 1, 10, 100],
+                ], 
+                "linear__C": np.logspace(-10, 10, 21), 
                 "linear__solver": ["lbfgs"],
                 "linear__penalty": ["l2"],
             }
 
-        else:  # if self.prediction_task == "regression":  # regression
+        else:  
             head = Ridge()  # or LinearRegression()
             scoring = "neg_mean_absolute_error"
 
@@ -80,7 +80,7 @@ class PCALinearModel(SklearnModel):
                 ],  # [10, 50, 100],
                 "linear__alpha": np.logspace(
                     -10, 10, 21
-                ),  # [0.01, 0.1, 1, 10],  # Ridge regularization
+                ), 
             }
 
         pipeline = Pipeline(
@@ -120,15 +120,14 @@ class LinearModel(SklearnModel):
             head = LogisticRegression(max_iter=1000)
             scoring = "balanced_accuracy"
             param_grid = {
-                "linear__C": np.logspace(-10, 10, 21),  # [0.01, 0.1, 1], #
+                "linear__C": np.logspace(-10, 10, 21), 
                 "linear__solver": ["lbfgs"],
-                # "linear__penalty": ["l2"],
             }
         else:
             head = Ridge()
             scoring = "neg_mean_absolute_error"
             param_grid = {
-                "linear__alpha": np.logspace(-10, 10, 21),  # [0.01, 0.1, 1],
+                "linear__alpha": np.logspace(-10, 10, 21), 
             }
 
         pipeline = Pipeline(
@@ -164,12 +163,11 @@ class LassoModel(SklearnModel):
 
         if self.prediction_task == "binary_classification":
             head = LogisticRegression(
-                penalty="l1", solver="saga", max_iter=5000  # or "liblinear"
+                penalty="l1", solver="saga", max_iter=5000 
             )
             scoring = "balanced_accuracy"
             param_grid = {
-                "linear__C": np.logspace(-10, 10, 21),  # [0.01, 0.1, 1], #
-                # "linear__solver": ["lbfgs"],
+                "linear__C": np.logspace(-10, 10, 21), 
             }
         else:
             head = Lasso(max_iter=10000)

@@ -8,7 +8,7 @@ from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
 from diff_benchmark.preprocessing.preparation_pipeline import (
     BrainDataPreparationPipeline,
 )
-from diff_benchmark.preprocessing.utils_brain_feature_extraction import (
+from diff_benchmark.preprocessing.utils.utils_brain_feature_extraction import (
     extract_region_data,
 )
 from diff_benchmark.utils.logger import setup_logger
@@ -160,7 +160,7 @@ class DefaultPipeline(BrainDataPreparationPipeline):
             right_data = np.nan_to_num(nib.load(right_file).darrays[0].data).clip(0, 7)
 
             # Resample to template space
-            from diff_benchmark.preprocessing.utils_brain_feature_extraction import (
+            from diff_benchmark.preprocessing.utils.utils_brain_feature_extraction import (
                 resample_subject_to_template,
             )
 
@@ -227,7 +227,7 @@ class DefaultPipeline(BrainDataPreparationPipeline):
                         # Concatenate L, R, M for white matter
                         if target is not None:
                             # Regional WM analysis - extract specific tract groups
-                            from diff_benchmark.preprocessing.utils_brain_feature_extraction import (
+                            from diff_benchmark.preprocessing.utils.utils_brain_feature_extraction import (
                                 extract_wm_tract_subset,
                             )
 

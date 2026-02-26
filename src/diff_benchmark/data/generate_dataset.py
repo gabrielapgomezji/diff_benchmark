@@ -32,7 +32,6 @@ class CustomDataset(Dataset):
         gender: np.ndarray,
         transform: Callable = None,
     ):
-        # self.features = torch.tensor(features, dtype=torch.float32)
         self._subject_ids = features["subject_id"].tolist()
         self.features = features.drop(columns=["subject_id"])
         self.targets = torch.tensor(targets, dtype=torch.float32)

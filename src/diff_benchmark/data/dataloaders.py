@@ -74,11 +74,8 @@ class PreprocessedData:
 
         # If using absolute number > 1 or percentage < 1 (where 1.0 means 100% so no change)
         if train_size != 1.0:
-            # logger.info(f"Applying train_size: {train_size}")
             print(f"Applying train_size: {train_size}")
-
             # Use a fixed random state for reproducibility and nested subsets independent of the main seed
-            # We specifically want the "first 100" to always be the "same 100" regardless of other config changes
             rng = np.random.RandomState(self.config.random_state)
 
             # We need to modify the indices list in place so get_dataloader_fold uses the new indices
@@ -95,7 +92,6 @@ class PreprocessedData:
                     # Absolute number of samples
                     n_samples = int(train_size)
                     if n_samples > n_train:
-                        # logger.warning(f"Requested train_size {n_samples} is larger than available training data {n_train}. Using all data.")
                         n_samples = n_train
                 elif 0 < train_size <= 1:
                     # Percentage
@@ -110,8 +106,7 @@ class PreprocessedData:
                 selected_train_idx = shuffled_train_idx[:n_samples]
 
                 new_indices.append((selected_train_idx, test_idx))
-
-                # logger.info(f"Fold {i}: Reduced training set from {n_train} to {len(selected_train_idx)} samples")
+                
                 print(
                     f"Fold {fold_idx}: Reduced training set from {n_train} to {len(selected_train_idx)} samples"
                 )
@@ -127,7 +122,6 @@ class PreprocessedData:
         Returns:
             torch.Tensor: A collated tensor of the batch with None samples removed.
         """
-        # drop None samples
         batch = [b for b in batch if b is not None]
         return torch.utils.data.dataloader.default_collate(batch)
 
@@ -137,7 +131,7 @@ class PreprocessedData:
         fold_idx: int,
         fold_indices: list,
         num_workers: int = 0,
-        batch_size: int = 32,  # shuffle=True
+        batch_size: int = 32, 
     ) -> tuple[DataLoader, DataLoader]:
         """
         Returns DataLoaders for the specified fold index using precomputed indices.

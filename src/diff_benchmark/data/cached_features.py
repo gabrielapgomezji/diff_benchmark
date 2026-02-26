@@ -417,11 +417,6 @@ class CachedFeatureDataset(Dataset):
                             f"Processing batch {batch_idx}/{total_batches}... (elapsed: {elapsed:.1f}s)"
                         )
 
-                    # # Skip None batches produced by safe_collate when all samples failed
-                    # if batch is None:
-                    #     logger.warning(f"Skipping empty batch at index {batch_idx} (all samples were None)")
-                    #     continue
-
                     # Unpack batch (might have 2 or 3 elements)
                     if len(batch) >= 2:
                         x = batch[0]
@@ -444,9 +439,6 @@ class CachedFeatureDataset(Dataset):
                             f"sample_{batch_idx * dataloader.batch_size + i}"
                             for i in range(len(x))
                         ]
-                    #     subject_ids = [f"sample_{processed_sample_count + i}" for i in range(len(x))]
-
-                    # processed_sample_count += len(x)
 
                     # Process each sample in batch
                     for sample_idx in range(len(x)):

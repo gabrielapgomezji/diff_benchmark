@@ -50,12 +50,11 @@ class PCARandomForestModel(SklearnModel):
         )
 
         param_grid = {
-            "pca__n_components": [10, 20, 30, 50, 60, 75, 100, 400],  # [50, 100, 400],
-            "rf__n_estimators": [200],  # [100, 200, 500],
-            "rf__max_depth": [5, 10, 15],  # [None, 10, 30],
-            # "rf__min_samples_split": [2, 5, 10],
+            "pca__n_components": [10, 20, 30, 50, 60, 75, 100, 400], 
+            "rf__n_estimators": [200], 
+            "rf__max_depth": [5, 10, 15], 
             "rf__max_features": ["sqrt", 0.3],
-            "rf__min_samples_leaf": [5, 10, 20],  # [1, 2, 4],
+            "rf__min_samples_leaf": [5, 10, 20], 
         }
 
         return GridSearchCV(
@@ -87,11 +86,10 @@ class RandomForestModel(SklearnModel):
         )
 
         param_grid = {
-            "rf__n_estimators": [200],  # [100, 200, 500],
-            "rf__max_depth": [5, 10, 15],  # [None, 10, 30],
-            # "rf__min_samples_split": [2, 5, 10],
+            "rf__n_estimators": [200], 
+            "rf__max_depth": [5, 10, 15], 
             "rf__max_features": ["sqrt", 0.3],
-            "rf__min_samples_leaf": [5, 10, 20],  # [1, 2, 4],
+            "rf__min_samples_leaf": [5, 10, 20],
         }
 
         return GridSearchCV(
@@ -123,10 +121,8 @@ class PCASVMModel(SklearnModel):
         )
 
         param_grid = {
-            "pca__n_components": [50],  # 10, 20, 30, 50, 60, 75, 100, 400
-            "svm__C": [0.1, 1],  # [0.1, 1, 10, 100],
-            # "svm__kernel": ["rbf"],
-            # "svm__gamma": svm_gamma,
+            "pca__n_components": [50],
+            "svm__C": [0.1, 1], 
         }
 
         return GridSearchCV(
@@ -157,9 +153,7 @@ class SVMModel(SklearnModel):
         )
 
         param_grid = {
-            "svm__C": [0.1, 1],  # [0.1, 1, 10, 100],
-            # "svm__kernel": ["rbf"],
-            # "svm__gamma": svm_gamma,
+            "svm__C": [0.1, 1],
         }
 
         return GridSearchCV(
