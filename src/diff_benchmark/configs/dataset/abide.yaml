@@ -1,7 +1,7 @@
 name: abide
 data_reading: multicenter-bids
 
-metric_to_compute: rtop
+metric_to_compute: md
 scale: 1000
 
 big_delta: 0.024

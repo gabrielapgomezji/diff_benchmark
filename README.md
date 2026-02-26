@@ -1,78 +1,254 @@
-# LAUNCH BENCHMARK AND CONFIGURATION FILE
-## Launch Benchmark
-To launch the main script if:
-- You're using poetry: 
-`poetry install`
-`poetry run python scripts/main.py`
-- You're using Jean Zay:
-`module load pytorch-gpu/py3/2.8.0`
-`python scripts/main.py`
+# DiffBench — Diffusion MRI Prediction Benchmark
 
-This benchmark allows to evaluate how well different models predict cognitive and demographic information from different microstructural parameters. For every microstructura
+**DiffBench** is an open-source, reproducible benchmarking framework for evaluating machine learning and deep learning models on diffusion MRI (dMRI) microstructure-based prediction tasks. It enables controlled, systematic comparison across:
 
-Depending on the models, make sure that in the main the input features correspond to the type of model you're evaluating. (For the moment we can only evaluate at the same time models that take as input the same type of data. However, it is possible to re-run the benchmark with models that have other configurations and then compare the obtained results).
-Make sure that just one of this `brain_preparator` is defined
-- For array-like input models (as classical ML pipelines or dummy models)
-`brain_preparator = DefaultHcpPipeline(config)` for HCP dataset
-- For image-like input models (as 2d or 3d convolutional models)
-`brain_preparator = ImageHcpPipeline(config)` for HCP dataset
-- For sphere-like input models 
-`brain_preparator = LcotEmbedHcpPipeline(config)` for HCP dataset
+- **Datasets**: HCP, CamCAN, ABIDE
+- **Tissue types**: gray matter (cortical surface), white matter skeleton
+- **Microstructural metrics**: MD, MK, SH power, b0
+- **Model families**: classical ML pipelines, 2D/3D CNNs, and vision foundation models (DINOv2, MedicalNet)
+- **Prediction tasks**: binary classification and regression of cognitive/demographic targets
 
-## Configurationo file
-Some of the specifications for the `configuration.yaml` file and the elements that must contain:
-### configuration.yaml elements
-n_jobs: 40
-base_path: # Path to the unprocessed dataset
-data_path: # Path to the mask data (processed for each subject)
-deen_path: # Path to the ROI to analyse
-results_path_2: # Path to temporary storage of data
-csv_file: # Path to csv demographic data
-target_columns:
-  - 'Gender'
-train_size: 0.8
-val_size: 0.1
-validation_size: 0.1
-n_splits: 5
-random_state: 42
-batch_size: 32
-num_epochs: 100
-n_components: 2
-model_name: dummy_classifier
-debugging_analysis: True # True or False
-models:
-- name: "pca_forest"
-  params:
-    name: pca_forest with rtop
-    comment: "PCA + Random Forest"
-    batch_size: 32
-- name: 2dcnn_lite
-  params:
-    name: 2dcnn_lite
-    comment: Prediction with best checkpoint. With folds. Test 
-    input_slices: 145
-    num_classes: 2
-    device: cuda
-    pretrained: true
-    freeze_backbone: true
-    trainable_blocks: 0
-    epochs: 50
-    batch_size: 32
-    dropout: 0.3
-    scheduler_type: exponential # plateau # step # 
-    learning_rate: 0.0001
-    weight_decay: 0.1
+---
 
+## Repository Structure
 
-Please, ensure that in the model configurations the variable `name` correspond to an existing name of valuable and included models in the benchmark. To confirm that yoour model name is included go to `src/diff_benchmark/models/model_configuration.py`
+```
+diff_benchmark/
+├── diffusion-preprocessing/        # dMRI preprocessing submodule (see its README)
+│   └── README.md
+├── scripts/                        # Utility and legacy scripts
+│   ├── main.py                     # Legacy entry point
+│   └── data_preparation.py
+├── src/diff_benchmark/
+│   ├── benchmark.py                # Programmatic Benchmark API
+│   ├── cli/
+│   │   ├── __main__.py             # CLI dispatcher (diffbenchmark <command>)
+│   │   ├── run.py                  # Run experiments with cross-validation
+│   │   ├── features.py             # Compute microstructural features
+│   │   ├── cache_features.py       # Pre-cache backbone features to disk
+│   │   ├── analysis.py             # Results analysis, tables, and plots
+│   │   ├── data_distribution.py    # Dataset distribution analysis
+│   │   └── resample.py             # Resample surface features to template space
+│   ├── configs/                    # Hydra configuration files
+│   │   ├── main.yaml               # Root config
+│   │   ├── dataset/                # Per-dataset configs (hcp, camcan, abide)
+│   │   ├── model/                  # Per-model configs
+│   │   ├── pred_head/              # Prediction head configs (regression, classification)
+│   │   ├── target/                 # Prediction target configs (age, gender, dx_group, ...)
+│   │   └── cluster/                # Compute environment and path configs
+│   ├── data/
+│   │   ├── prepare_data.py         # End-to-end dataset preparation pipeline
+│   │   ├── dataloaders.py          # PyTorch dataloaders
+│   │   └── cached_features.py      # Feature caching utilities
+│   ├── models/
+│   │   ├── model_configurations.py # Model registry and factory
+│   │   ├── deep_models/            # CNN, DINOv2, CuriaBackbone, MedicalNet, ViT
+│   │   └── sklearn_models/         # Linear, Lasso, Forest, SVM, Dummy
+│   ├── preprocessing/
+│   │   ├── brain_feature_extraction.py  # DefaultPipeline / ImagePipeline
+│   │   ├── datasets_dataclasses.py      # DatasetConfig dataclass
+│   │   ├── preparation_pipeline.py      # Abstract base pipeline
+│   │   ├── demographics_pipeline.py
+│   │   └── utils/                       # dMRI metrics, surface projection utilities
+│   ├── analysis/                   # Plotting and result analysis scripts
+│   └── utils/                      # Logging, job management, scoring, run IDs
+├── config/                         # Legacy YAML configs
+├── pyproject.toml
+└── README.md
+```
 
+---
 
+## Installation
 
-# ADD A MODEL TO THE BENCHMARK
-Steps:
-- Go to `src/diff_benchamrk/moodels/base.py`
-There you will see 3 abstract classes that you will be able to create your model from: `NumpyAbstractModel` for classical and `sklearn` pipelines, `TorchAbstractModel` for Deep Learning moodels where you have to specifically define the training in the fit function and `LightningModel` for Deep Learning models where the training, testing and validation is handled by lightning (RECOOMMENDED for deep learning).
-- Create a script with your model with the mandatory functions
-These are mainly `fit`,  `predict` and `_dataloader_to_numpy`(which is a function to ensure the correct functioning of the main script for all models classical and deep learning).
+Requires **Python ≥ 3.12**.
 
-That's all for the moment :)
+```bash
+# Clone the repository
+git clone <repo-url>
+cd diff_benchmark
+
+# Install with pip (editable)
+pip install -e .
+
+# Or with Poetry
+poetry install
+```
+
+---
+
+## Workflow Overview
+
+The benchmark follows a three-step pipeline:
+
+```
+1. Preprocessing (raw dMRI)  →  2. Feature extraction  →  3. Training & evaluation
+```
+
+### Step 1 — Preprocessing
+
+Raw dMRI data must be preprocessed before running the benchmark. This is handled by the `diffusion-preprocessing` submodule, which wraps dMRIPrep-based pipelines and can be run via Docker or Singularity.
+
+➡️ See [`diffusion-preprocessing/README.md`](diffusion-preprocessing/README.md) for full instructions.
+
+### Step 2 — Feature Extraction
+
+Compute microstructural maps (MD, MK, SH, b0) and project them to the cortical surface or white matter skeleton for all subjects in a dataset:
+
+```bash
+diffbenchmark-features dataset=hcp dataset.metric_to_compute=md dataset.tissue_type=gray
+```
+
+Optionally, pre-cache features from frozen deep learning backbone models to disk to speed up subsequent training:
+
+```bash
+diffbenchmark-cache dataset=hcp model=dinov2
+```
+
+### Step 3 — Run Benchmark
+
+Train and evaluate models across cross-validation folds:
+
+```bash
+diffbenchmark-run dataset=hcp model=pca_forest pred_head=binary_classification target=gender dataset.metric_to_compute=md dataset.tissue_type=gray
+```
+
+---
+
+## CLI Commands
+
+All commands use [Hydra](https://hydra.cc/) for configuration. Dataset paths and compute settings are defined in `src/diff_benchmark/configs/cluster/`. Overrides are passed as `key=value` arguments.
+
+### `diffbenchmark-features`
+
+Compute and store microstructural features for all subjects in a dataset.
+
+```bash
+diffbenchmark-features dataset=hcp dataset.metric_to_compute=md dataset.tissue_type=gray
+```
+
+### `diffbenchmark-run`
+
+Run a full benchmark experiment (cross-validation, metrics, per-fold predictions).
+
+```bash
+diffbenchmark-run \
+    dataset=hcp \
+    model=linear \
+    pred_head=regression \
+    target=age \
+    dataset.metric_to_compute=md \
+    dataset.tissue_type=white
+```
+
+### `diffbenchmark-cache`
+
+Pre-compute and cache features from a frozen backbone model to disk.
+
+```bash
+diffbenchmark-cache dataset=hcp model=dinov2
+```
+
+### `diffbenchmark-analysis`
+
+Analyse experiment results and generate summary tables and plots.
+
+```bash
+# Both tables and plots (default)
+diffbenchmark-analysis
+
+# Only summary tables
+diffbenchmark-analysis plots=false
+
+# Only plots
+diffbenchmark-analysis tables=false
+
+# Force recompute of all plots
+diffbenchmark-analysis force_plots=true
+
+# Include debug plots for incomplete/failed runs
+diffbenchmark-analysis analysis.debug=true
+```
+
+### `diffbenchmark-distribution`
+
+Analyse the demographic and feature distribution of a dataset.
+
+```bash
+diffbenchmark-distribution dataset=hcp target=gender
+```
+
+### `diffbenchmark-resample`
+
+Resample existing surface feature files from native to template space. Useful for data preprocessed before the automatic resampling feature was added.
+
+```bash
+diffbenchmark-resample dataset=camcan
+```
+
+---
+
+## Configuration
+
+The benchmark is configured via Hydra YAML files in `src/diff_benchmark/configs/`. The root config is [`main.yaml`](src/diff_benchmark/configs/main.yaml).
+
+### Key configuration groups
+
+| Group | Available options |
+|---|---|
+| `dataset` | `hcp`, `camcan`, `abide` |
+| `model` | `linear`, `pca_linear`, `lasso`, `forest`, `pca_forest`, `svm`, `pca_svm`, `dummy_classifier`, `dummy_regressor`,  `dinov2`, `curia`, `medicalnet`|
+| `pred_head` | `binary_classification`, `regression` |
+| `target` | `gender`, `age`, `dx_group` |
+| `dataset.tissue_type` | `gray`, `white` |
+| `dataset.metric_to_compute` | `md`, `mk`, `sh`, `b0` |
+
+### Setting up dataset paths
+
+Dataset paths are set per compute environment in `src/diff_benchmark/configs/cluster/`. Create or copy an existing cluster config file and point it to your data:
+
+```yaml
+# src/diff_benchmark/configs/cluster/my_env.yaml
+name: my_env
+paths:
+  hcp:
+    base_dir: /path/to/HCP/raw
+    results_dir: /path/to/HCP/preprocessed
+    csv_file: /path/to/HCP/demographics.csv
+  camcan:
+    base_dir: /path/to/camcan/raw
+    results_dir: /path/to/camcan/preprocessed
+    csv_file: /path/to/camcan/demographics.csv
+```
+
+Then activate it with `cluster=my_env` in any command.
+
+---
+
+## Outputs
+
+Experiment results are saved under `exp_outputs/experiments/exp_<run_id>/`:
+
+```
+exp_outputs/experiments/exp_<run_id>/
+├── config.yaml         # Full Hydra configuration used
+├── metadata.yaml       # Run metadata (model, dataset, status, timing)
+├── metrics/            # Per-fold metrics (Parquet)
+├── predictions/        # Per-fold predictions (Parquet)
+├── debug/              # Debug training curves
+└── logs/               # Run logs
+```
+
+Summary tables and plots from `diffbenchmark-analysis` are saved under `exp_outputs/`.
+
+---
+
+## Adding a New Model
+
+1. Create a new script under `src/diff_benchmark/models/` (in `deep_models/` or `sklearn_models/`).
+2. Subclass one of the three abstract base classes from `src/diff_benchmark/models/`:
+   - `NumpyAbstractModel` — for classical `sklearn`-style pipelines
+   - `TorchAbstractModel` — for PyTorch models with a custom training loop
+3. Implement the required methods: `fit`, `predict`, and `_dataloader_to_numpy`.
+4. Register your model in `src/diff_benchmark/models/model_configurations.py`.
+5. Add a corresponding YAML config in `src/diff_benchmark/configs/model/`.
