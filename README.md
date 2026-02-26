@@ -10,55 +10,6 @@
 
 ---
 
-## Repository Structure
-
-```
-diff_benchmark/
-├── diffusion-preprocessing/        # dMRI preprocessing submodule (see its README)
-│   └── README.md
-├── scripts/                        # Utility and legacy scripts
-│   ├── main.py                     # Legacy entry point
-│   └── data_preparation.py
-├── src/diff_benchmark/
-│   ├── benchmark.py                # Programmatic Benchmark API
-│   ├── cli/
-│   │   ├── __main__.py             # CLI dispatcher (diffbenchmark <command>)
-│   │   ├── run.py                  # Run experiments with cross-validation
-│   │   ├── features.py             # Compute microstructural features
-│   │   ├── cache_features.py       # Pre-cache backbone features to disk
-│   │   ├── analysis.py             # Results analysis, tables, and plots
-│   │   ├── data_distribution.py    # Dataset distribution analysis
-│   │   └── resample.py             # Resample surface features to template space
-│   ├── configs/                    # Hydra configuration files
-│   │   ├── main.yaml               # Root config
-│   │   ├── dataset/                # Per-dataset configs (hcp, camcan, abide)
-│   │   ├── model/                  # Per-model configs
-│   │   ├── pred_head/              # Prediction head configs (regression, classification)
-│   │   ├── target/                 # Prediction target configs (age, gender, dx_group, ...)
-│   │   └── cluster/                # Compute environment and path configs
-│   ├── data/
-│   │   ├── prepare_data.py         # End-to-end dataset preparation pipeline
-│   │   ├── dataloaders.py          # PyTorch dataloaders
-│   │   └── cached_features.py      # Feature caching utilities
-│   ├── models/
-│   │   ├── model_configurations.py # Model registry and factory
-│   │   ├── deep_models/            # CNN, DINOv2, CuriaBackbone, MedicalNet, ViT
-│   │   └── sklearn_models/         # Linear, Lasso, Forest, SVM, Dummy
-│   ├── preprocessing/
-│   │   ├── brain_feature_extraction.py  # DefaultPipeline / ImagePipeline
-│   │   ├── datasets_dataclasses.py      # DatasetConfig dataclass
-│   │   ├── preparation_pipeline.py      # Abstract base pipeline
-│   │   ├── demographics_pipeline.py
-│   │   └── utils/                       # dMRI metrics, surface projection utilities
-│   ├── analysis/                   # Plotting and result analysis scripts
-│   └── utils/                      # Logging, job management, scoring, run IDs
-├── config/                         # Legacy YAML configs
-├── pyproject.toml
-└── README.md
-```
-
----
-
 ## Installation
 
 Requires **Python ≥ 3.12**.
