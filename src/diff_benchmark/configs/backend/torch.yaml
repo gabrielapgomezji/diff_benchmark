@@ -1,0 +1,12 @@
+backend: torch
+debug: true
+epochs: 50
+accelerator: gpu
+devices: 1
+learning_rate: 1e-4
+weight_decay: 1e-4
+
+# optim:
+#   optimizer: adamw
+#   learning_rate: 1e-4
+#   weight_decay: 1e-4

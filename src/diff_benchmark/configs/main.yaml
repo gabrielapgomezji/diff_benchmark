@@ -1,0 +1,28 @@
+defaults:
+  - dataset: hcp
+  - model: 2dcnn
+  - pred_head: binary_classification
+  - backend: torch
+  - data: default
+  - target: gender
+  - cluster: margaret
+  - analysis: default
+  - _self_
+
+random_state: 42
+runtime:
+  force: false
+  learning_curve_exp: false
+  run_id: null
+  learning_curve_id: null
+  experiment_hash: null
+
+
+choices:
+  model: [dummy_classifier, linear, pca_linear, forest, pca_forest, svm, pca_svm, lasso]
+  dataset: [hcp]
+  backend: [sklearn]
+  dataset.tissue_type: [white, gray]
+  cluster: [margaret_cpu]
+  dataset.metric_to_compute: [md]
+ 

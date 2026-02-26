@@ -1,0 +1,19 @@
+name: abide
+data_reading: multicenter-bids
+
+metric_to_compute: rtop
+scale: 1000
+
+big_delta: 0.024
+small_delta: 0.007
+
+bvec_extensions:
+  - bvec
+  - bvecs_image
+bval_extensions:
+  - bval
+
+tissue_type: gray
+
+# ABIDE data will be resampled to fsLR 32k for analysis
+surface_space: fslr_32k

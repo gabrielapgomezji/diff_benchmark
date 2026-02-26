@@ -1,0 +1,11 @@
+name: 2dcnn
+
+backbone:
+  input_slices: 145
+  num_classes: 2
+  pretrained: true
+  input_channels: 
+    _choices_: [3]
+  freeze_backbone: true
+  trainable_blocks:
+    _choices_: [0, 1]
