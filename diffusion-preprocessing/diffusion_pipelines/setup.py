@@ -6,8 +6,8 @@ if __name__ == "__main__":
         name="diffusion_pipelines",
         version="0.1",
         description="Diffusion processing pipelines",
-        author="Demian Wassermann",
-        author_email="demian.wassermann@inria.fr",
+        author=,
+        author_email=,
         packages=["diffusion_pipelines"],
         entry_points={
             "console_scripts": [
