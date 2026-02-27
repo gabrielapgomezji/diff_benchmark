@@ -6,8 +6,8 @@ if __name__ == "__main__":
         name="diffusion_pipelines",
         version="0.1",
         description="Diffusion processing pipelines",
-        author=,
-        author_email=,
+        author="XXXXX XXXXXX",
+        author_email="XXXXX@XXXXX.XXX",
         packages=["diffusion_pipelines"],
         entry_points={
             "console_scripts": [
