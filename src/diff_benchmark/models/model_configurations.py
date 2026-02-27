@@ -11,7 +11,7 @@ from diff_benchmark.models.sklearn_models.dummy import (
     DummyClassifierModel,
     DummyRegressorModel,
 )
-from diff_benchmark.models.sklearn_models.logistic_regression import (
+from diff_benchmark.models.sklearn_models.linear import (
     LassoModel,
     LinearModel,
     PCALinearModel,
