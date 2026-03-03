@@ -121,22 +121,6 @@ diffbenchmark-analysis force_plots=true
 diffbenchmark-analysis analysis.debug=true
 ```
 
-### `diffbenchmark-distribution`
-
-Analyse the demographic and feature distribution of a dataset.
-
-```bash
-diffbenchmark-distribution dataset=hcp target=gender
-```
-
-### `diffbenchmark-resample`
-
-Resample existing surface feature files from native to template space. Useful for data preprocessed before the automatic resampling feature was added.
-
-```bash
-diffbenchmark-resample dataset=camcan
-```
-
 ---
 
 ## Configuration

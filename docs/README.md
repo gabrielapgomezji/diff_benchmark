@@ -27,12 +27,12 @@ Raw dMRI data
 
 | Document | Component | CLI entry point |
 |---|---|---|
-| [00 — Preprocessing](../../diffusion-preprocessing/README.md) | Computation of required dMRI files | Docker/singularity |
-| [01 — Data Preparation](01_data-preparation.md) | Raw dMRI → microstructure feature maps | `diffbenchmark-features` |
-| [02 — Model Training](02_model_training.md) | Trainer backends, model registry | *(called by run)* |
-| [03 — Main Run](03_main_run.md) | Orchestration, cross-validation loop | `diffbenchmark-run` |
-| [04 — Analysis](04_analysis.md) | Aggregation, reports, plots | `diffbenchmark-analysis` |
-| [05 — Utilities](05_utilities.md) | Feature caching, job manager, run ID | `diffbenchmark-cache` |
+| [00 — Preprocessing](../diffusion-preprocessing/README.md) | Computation of required dMRI files | Docker/singularity |
+| [01 — Data Preparation](pipeline/01_data-preparation.md) | Raw dMRI → microstructure feature maps | `diffbenchmark-features` |
+| [02 — Model Training](pipeline/02_model_training.md) | Trainer backends, model registry | *(called by run)* |
+| [03 — Main Run](pipeline/03_main_run.md) | Orchestration, cross-validation loop | `diffbenchmark-run` |
+| [04 — Analysis](pipeline/04_analysis.md) | Aggregation, reports, plots | `diffbenchmark-analysis` |
+| [05 — Utilities](pipeline/05_utilities.md) | Feature caching, job manager, run ID | `diffbenchmark-cache` |
 
 
 ## Metrics Reference
