@@ -5,9 +5,12 @@ This command computes features from frozen backbone models and saves them to dis
 dramatically speeding up subsequent training runs.
 """
 
+import json
+import traceback
 from pathlib import Path
 
 import hydra
+import pandas as pd
 import torch
 from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader
@@ -139,16 +142,12 @@ def compute_features_for_dataset(
         logger.info("Use force_recompute=True to recompute")
 
         # Load metadata
-        import json
-
         metadata_path = cache_path.with_suffix(".meta.json")
         if metadata_path.exists():
             with open(metadata_path, "r") as f:
                 metadata = json.load(f)
         else:
             # Fallback: read from parquet
-            import pandas as pd
-
             df = pd.read_parquet(cache_path)
             metadata = {
                 "num_samples": len(df["subject_id"].unique()),
@@ -286,8 +285,6 @@ def main(cfg: DictConfig) -> None:
 
     except Exception as e:
         logger.error(f"Error computing features for {model_name}: {e}")
-        import traceback
-
         traceback.print_exc()
         raise
 

@@ -61,98 +61,74 @@ def create_model(
     model_kwargs: dict | None = None,
     pred_head: dict | None = None,
 ):
-    """Creates a model instance based on the specified type.
+    """Instantiate a model from its name and config dicts.
+
+    For sklearn-based models the prediction task is forwarded via
+    ``model_kwargs["prediction_task"]``.  For deep models a
+    :class:`TaskModel` wrapping backbone + head is returned.
+
     Args:
-        model_name (str): The type of model to create (e.g., "forest", "2dcnn", "vit").
-        model_kwargs (dict | None): Additional keyword arguments forwarded to the model constructor.
-        pred_head (dict | None): Prediction head configuration (prediction_task, num_classes, etc.).
+        model_name: Model identifier, e.g. ``"forest"``, ``"2dcnn"``,
+            ``"vit"``.
+        model_kwargs: Extra keyword arguments forwarded to the model
+            constructor.
+        pred_head: Prediction-head config (``prediction_task``,
+            ``num_classes``, etc.).
+
     Returns:
-        nn.Module | SklearnModel: Configured model instance.
+        Configured model or :class:`TaskModel` instance.
+
     Raises:
-        ValueError: If model_name is not recognised.
+        ValueError: If *model_name* is not recognised.
     """
     model_kwargs = model_kwargs or {}
     pred_head = pred_head or {}
+
+    # --- Dummy baselines (no prediction_task needed) ---
     if model_name == "dummy_classifier":
-        backbone = DummyClassifierModel(**model_kwargs)
-        return backbone
+        return DummyClassifierModel(**model_kwargs)
 
     if model_name == "dummy_regressor":
-        backbone = DummyRegressorModel(**model_kwargs)
-        return backbone
+        return DummyRegressorModel(**model_kwargs)
 
-    if model_name == "linear":
+    # --- sklearn models (prediction_task forwarded via kwargs) ---
+    _sklearn_models: dict[str, type] = {
+        "linear": LinearModel,
+        "pca_linear": PCALinearModel,
+        "forest": RandomForestModel,
+        "svm": SVMModel,
+        "pca_forest": PCARandomForestModel,
+        "pca_svm": PCASVMModel,
+        "lasso": LassoModel,
+    }
+    if model_name in _sklearn_models:
         model_kwargs["prediction_task"] = pred_head["prediction_task"]
-        backbone = LinearModel(**model_kwargs)
-        return backbone
+        return _sklearn_models[model_name](**model_kwargs)
 
-    if model_name == "pca_linear":
-        model_kwargs["prediction_task"] = pred_head["prediction_task"]
-        backbone = PCALinearModel(**model_kwargs)
-        return backbone
-
-    if model_name == "forest":
-        model_kwargs["prediction_task"] = pred_head["prediction_task"]
-        backbone = RandomForestModel(**model_kwargs)
-        return backbone
-
-    if model_name == "svm":
-        model_kwargs["prediction_task"] = pred_head["prediction_task"]
-        backbone = SVMModel(**model_kwargs)
-        return backbone
-
-    if model_name == "pca_forest":
-        model_kwargs["prediction_task"] = pred_head["prediction_task"]
-        backbone = PCARandomForestModel(**model_kwargs)
-        return backbone
-
-    if model_name == "pca_svm":
-        model_kwargs["prediction_task"] = pred_head["prediction_task"]
-        backbone = PCASVMModel(**model_kwargs)
-        return backbone
-
-    if model_name == "lasso":
-        model_kwargs["prediction_task"] = pred_head["prediction_task"]
-        backbone = LassoModel(**model_kwargs)
-        return backbone
-
+    # --- Deep models (backbone + head) ---
     if model_name == "2dcnn":
         backbone = ResNet3SliceMultihead(**model_kwargs)
-        head = build_prediction_head(
-            embedding_dim=backbone.out_dim,
-            **pred_head,
-        )
+        head = build_prediction_head(embedding_dim=backbone.out_dim, **pred_head)
         return TaskModel(backbone, head)
 
     if model_name == "medicalnet":
         backbone = MedicalNet(**model_kwargs)
-        head = build_prediction_head(
-            embedding_dim=backbone.out_dim,
-            **pred_head,
-        )
+        head = build_prediction_head(embedding_dim=backbone.out_dim, **pred_head)
         return TaskModel(backbone, head)
+
     if model_name == "dinov2":
         backbone = DinoViTBackbone(**model_kwargs)
-        head = build_prediction_head(
-            embedding_dim=backbone.embedding_dim,
-            **pred_head,
-        )
+        head = build_prediction_head(embedding_dim=backbone.embedding_dim, **pred_head)
         return TaskModel(backbone, head)
 
     if model_name == "vit":
         backbone = GoogleViTBackbone(**model_kwargs)
-        head = build_prediction_head(
-            embedding_dim=backbone.embedding_dim,
-            **pred_head,
-        )
+        head = build_prediction_head(embedding_dim=backbone.embedding_dim, **pred_head)
         return TaskModel(backbone, head)
 
     if model_name == "curia":
         backbone = CuriaBackbone(**model_kwargs)
-        head = build_prediction_head(
-            embedding_dim=backbone.embedding_dim,
-            **pred_head,
-        )
+        head = build_prediction_head(embedding_dim=backbone.embedding_dim, **pred_head)
         return TaskModel(backbone, head)
 
     raise ValueError(f"Unknown model type: {model_name}")

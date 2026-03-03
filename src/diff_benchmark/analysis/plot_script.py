@@ -14,7 +14,18 @@ def load_predictions_and_targets(
     predictions_path: Path,
     targets_path: Path,
     run_id: str,
-):
+) -> pd.DataFrame:
+    """Load and join predictions with ground-truth targets for *run_id*.
+
+    Args:
+        predictions_path: Path to the predictions Parquet file.
+        targets_path: Path to the targets Parquet file.
+        run_id: Run identifier used to filter both files.
+
+    Returns:
+        Merged DataFrame with columns ``"true"`` (ground-truth) and
+        ``"pred"`` (model prediction).
+    """
     df_pred = pd.read_parquet(predictions_path)
     df_tgt = pd.read_parquet(targets_path)
 
@@ -32,18 +43,42 @@ def load_predictions_and_targets(
 
 
 def load_metrics(metrics_path: Path, run_id: str) -> pd.DataFrame:
+    """Load per-fold metrics for *run_id* from a Parquet file.
+
+    Args:
+        metrics_path: Path to the metrics Parquet file.
+        run_id: Run identifier used to filter rows.
+
+    Returns:
+        DataFrame of metric rows for the given run.
+    """
     df = pd.read_parquet(metrics_path)
     return df[df["run_id"] == run_id]
 
 
-def get_prediction_task(metrics_df, run_id):
-    # breakpoint()
+def get_prediction_task(metrics_df: pd.DataFrame, run_id: str) -> str:
+    """Return the prediction task string for *run_id*.
+
+    Args:
+        metrics_df: DataFrame containing a ``"prediction_task"`` column.
+        run_id: Run identifier to look up.
+
+    Returns:
+        Prediction task string, e.g. ``"regression"`` or
+        ``"binary_classification"``.
+    """
     return metrics_df.loc[metrics_df["run_id"] == run_id, "prediction_task"].iloc[0]
 
 
 def infer_classification_type(df: pd.DataFrame) -> str:
-    """
-    binary or multiclass
+    """Infer whether the classification task is binary or multiclass.
+
+    Args:
+        df: DataFrame containing a ``"true"`` column of class labels.
+
+    Returns:
+        ``"binary"`` if there are exactly two distinct classes, otherwise
+        ``"multiclass"``.
     """
     n_classes = df["true"].nunique()
     return "binary" if n_classes == 2 else "multiclass"
@@ -71,9 +106,6 @@ def plot_true_vs_pred_regression(df, run_id, model, output_dir):
     ax.legend()
     ax.grid(True)
 
-    # Set axis limits
-    # ax.set_xlim(0, 100)
-    # ax.set_ylim(0, 100)
     ax.set_xlim(df["true"].min(), df["true"].max())
     ax.set_ylim(df["true"].min(), df["true"].max())
 
@@ -270,7 +302,20 @@ def plot_run(
     predictions_path: Path,
     targets_path: Path,
     output_root: Path,
-):
+) -> None:
+    """Generate all diagnostic plots for a single experiment run.
+
+    Dispatches to regression or classification plot helpers depending on the
+    prediction task recorded in the metrics file.
+
+    Args:
+        run_id: Unique run identifier.
+        metrics_dir: Path to the metrics Parquet file.
+        predictions_path: Path to the predictions Parquet file.
+        targets_path: Path to the targets Parquet file.
+        output_root: Root directory; plots are saved under
+            ``output_root / run_id /``.
+    """
     df = load_predictions_and_targets(predictions_path, targets_path, run_id)
     metrics_df = load_metrics(
         metrics_dir,
@@ -278,11 +323,7 @@ def plot_run(
     )
 
     model = df["model"].iloc[0]
-    # prediction_task = infer_prediction_task(df)
-    prediction_task = get_prediction_task(
-        metrics_df,
-        run_id,
-    )
+    prediction_task = get_prediction_task(metrics_df, run_id)
 
     output_dir = output_root / run_id
     output_dir.mkdir(parents=True, exist_ok=True)

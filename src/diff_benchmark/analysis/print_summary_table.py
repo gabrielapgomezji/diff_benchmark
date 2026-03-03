@@ -1,6 +1,3 @@
-import json
-from pathlib import Path
-
 import pandas as pd
 from omegaconf import OmegaConf
 
@@ -112,6 +109,19 @@ def table_model_aggregate(
 def table_best_means(
     df: pd.DataFrame, primary_metric: str = "accuracy"
 ) -> pd.DataFrame:
+    """Return the best-performing run per (dataset, task, model) group.
+
+    Rows are first sorted by ``"mean"`` descending so that ``groupby.first()``
+    selects the highest mean for each group.
+
+    Args:
+        df: Summary DataFrame with one row per run/metric/split.
+        primary_metric: Metric name (or substring) to filter on.
+
+    Returns:
+        DataFrame containing the best run for each model/dataset group,
+        restricted to test-split rows matching *primary_metric*.
+    """
 
     # Find all metrics containing the primary metric string
     related_metrics = df[
@@ -135,6 +145,17 @@ def table_best_means(
 
 
 def select_best_runs(df: pd.DataFrame, primary_metric: str = "accuracy") -> dict:
+    """Select the run_id with the highest mean test score per model/dataset group.
+
+    Args:
+        df: Summary DataFrame with columns including ``"metric"``, ``"split"``,
+            ``"mean"``, and ``"run_id"``.
+        primary_metric: Exact metric name to compare runs on.
+
+    Returns:
+        Dict mapping ``(dataset[, tissue_type], prediction_task, model_name)``
+        tuples to the best ``run_id`` string.
+    """
 
     df_test = df[(df["metric"] == primary_metric) & (df["split"] == "test")]
 
@@ -154,6 +175,18 @@ def select_best_runs(df: pd.DataFrame, primary_metric: str = "accuracy") -> dict
 def table_detailed(
     df_metrics: pd.DataFrame, best_runs: dict, primary_metric: str = "accuracy"
 ) -> pd.DataFrame:
+    """Build a long-format table of per-fold values for the best runs.
+
+    Args:
+        df_metrics: Full per-fold metrics DataFrame with columns
+            ``"run_id"``, ``"metric"``, ``"fold"``, ``"split"``, ``"value"``.
+        best_runs: Dict returned by :func:`select_best_runs` mapping group
+            keys to ``run_id`` strings.
+        primary_metric: Metric name (or substring) to include.
+
+    Returns:
+        Long-format DataFrame sorted by dataset/task/model/metric/fold/split.
+    """
 
     rows = []
 
@@ -202,6 +235,18 @@ def table_folds_wide(
     split: str = "test",
     primary_metric: str = "accuracy",
 ) -> pd.DataFrame:
+    """Build a wide-format table with one column per fold for the best runs.
+
+    Args:
+        df_metrics: Full per-fold metrics DataFrame.
+        best_runs: Dict returned by :func:`select_best_runs`.
+        split: Which data split to include (``"train"`` or ``"test"``).
+        primary_metric: Metric name (or substring) to include.
+
+    Returns:
+        Wide DataFrame with columns
+        ``[dataset, [tissue_type,] task, model, metric, fold0, fold1, …, mean, std]``.
+    """
 
     rows = []
 
@@ -260,7 +305,12 @@ def table_folds_wide(
     return df[base_cols + fold_cols + ["mean", "std"]]
 
 
-def print_table(df: pd.DataFrame):
+def print_table(df: pd.DataFrame) -> None:
+    """Pretty-print *df* to stdout with 3 decimal places for floats.
+
+    Args:
+        df: DataFrame to print.  Prints ``"(empty table)"`` when *df* is empty.
+    """
     if df.empty:
         print("(empty table)")
         return
