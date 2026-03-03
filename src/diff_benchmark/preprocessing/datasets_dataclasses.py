@@ -19,7 +19,7 @@ class DatasetConfig:
     small_delta: Optional[float] = None
     big_delta_per_bvalue: Optional[Dict[int, float]] = None
 
-    # Files extensions (nodif, aparcaseg for hcp)
+    # Raw file descriptor extensions
     dwi_desc: str = "eddycorrected+bbreg"
     bvec_extensions: str | Iterable[str] = ("bvec",)
     bval_extensions: str | Iterable[str] = ("bval",)
@@ -28,9 +28,7 @@ class DatasetConfig:
     aparcaseg_extension: str | None = None
 
     region: str | None = None
-    tissue_type: str = "gray"  # "white"
+    tissue_type: str = "gray"  # "gray" or "white"
 
-    # Surface space configuration
-    surface_space: str = (
-        "fslr_32k"  # "fslr_32k" for HCP, "fsaverage" for CamCAN/FreeSurfer
-    )
+    # Target surface space: "fslr_32k" (HCP) or "fsaverage" (FreeSurfer/CamCAN)
+    surface_space: str = "fslr_32k"

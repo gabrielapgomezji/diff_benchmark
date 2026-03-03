@@ -51,15 +51,10 @@ logger = setup_logger(__name__)
 
 
 def read_label_file() -> dict:
-    """
-    Read a FreeSurfer-style label file and return a dictionary mapping
-    lowercase label names to their indices.
-
-    Args:
-        filepath (str): Path to the .txt label file.
+    """Read the FreeSurfer colour LUT and return a mapping of label name → index.
 
     Returns:
-        dict: Dictionary with label names (lowercase) as keys and indices as values.
+        Dict with lowercase label names as keys and integer indices as values.
     """
     filepath = (
         Path(__file__).parent.parent.parent.parent
@@ -82,7 +77,7 @@ def read_label_file() -> dict:
 
             try:
                 index = int(parts[0])
-                label_name = parts[1].lower()  # convert to lowercase
+                label_name = parts[1].lower()
                 label_dict[label_name] = index
             except (ValueError, IndexError):
                 continue
@@ -93,12 +88,16 @@ def read_label_file() -> dict:
 def extract_selected_labels(
     nifti_path: Path, labels_dict: dict | None = None, tissue_type: str = "gray"
 ) -> dict:
-    """Extract selected labels from a NIfTI file's header extensions.
+    """Extract parcellation labels from a NIfTI header extension.
+
     Args:
-        nifti_path (Path): Path to the NIfTI file.
-        labels_dict (dict | None): Optional dictionary of labels to use if extraction fails.
+        nifti_path: Path to the NIfTI file with an embedded XML label table.
+        labels_dict: Fallback label dict used when header parsing fails.
+        tissue_type: ``"gray"`` keeps cortical and ventricular labels;
+            ``"white"`` keeps white-matter and ventricular labels.
+
     Returns:
-        dict: Dictionary of selected labels.
+        Dict mapping label name → integer index.
     """
     try:
         header = nib.load(nifti_path).header
@@ -138,7 +137,6 @@ def extract_selected_labels(
             Path(__file__).parent.parent.parent.parent / "aux_materials/fs_labels.json"
         )
         labels_dict = json.load(fs_labels.open())
-        # read_label_file()
         return labels_dict
 
 
@@ -148,13 +146,20 @@ def create_masks(
     selected_labels: list | None = None,
     tissue_type: str = "gray",
 ) -> tuple:
-    """Create context and ventricle masks from parcellation image.
+    """Build tissue and ventricle masks from a parcellation image.
+
     Args:
-        parcellation_img (nib.Nifti1Image): Parcellation NIfTI image.
-        labels (dict): Dictionary of label names to indices.
-        selected_labels (list | None): Optional list of specific labels to include in context mask.
+        parcellation_img: Parcellation NIfTI image.
+        labels: Dict mapping label name → integer index.
+        selected_labels: Subset of label names to include in the tissue mask.
+            When ``None``, all cortical labels (``"ctx"`` prefix) are used.
+        tissue_type: ``"gray"`` or ``"white"``.
+
     Returns:
-        tuple: Context mask and ventricle mask as NIfTI images.
+        ``(tissue_mask, vent_mask)`` as NIfTI images.
+
+    Raises:
+        ValueError: If ``tissue_type`` is not ``"gray"`` or ``"white"``.
     """
     if tissue_type == "gray":
         # Original gray matter logic
@@ -180,7 +185,7 @@ def create_masks(
                     ("white" in k.lower() and "matter" in k.lower()),
                     ("cerebral-white-matter" in k.lower()),
                     ("wm" in k.lower() and "cerebral" in k.lower()),
-                    (v in [2, 41]),  # Standard FreeSurfer left/right cerebral WM IDs
+                    (v in [2, 41]),  # FreeSurfer left/right cerebral WM label IDs
                 ]
             )
         ]
@@ -192,7 +197,7 @@ def create_masks(
             f"Unknown tissue_type: {tissue_type}. Must be 'gray', 'white', or 'both'"
         )
 
-    # Ventricle mask (unchanged)
+    # Erode ventricle mask to reduce partial-volume contamination
     vent_mask_raw = nimage.math_img(
         " + ".join(f"(x == {v})" for k, v in labels.items() if "vent" in k),
         x=parcellation_img,

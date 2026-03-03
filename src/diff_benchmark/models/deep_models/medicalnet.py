@@ -16,30 +16,26 @@ def standardize_batch_volumes(
     target_depth: int | None = None,
     slice_size: int = 256,
 ) -> list[torch.Tensor]:
-    """
-    Standardizes a batch of 3D volumes to have consistent orientation and size.
+    """Standardize a batch of 3D volumes to consistent orientation and depth.
 
-    This function performs two main operations:
-    1. Reorients volumes to a consistent (D, H, W) format where H and W are the slice dimensions
-    2. Resizes all volumes to have the same depth using trilinear interpolation
+    Reorients each volume to ``(D, H, W)`` by detecting which two dimensions
+    match *slice_size*, then resizes all volumes to the same depth via
+    trilinear interpolation.
 
     Args:
-        volumes (list[torch.Tensor]): List of 3D tensors with potentially different shapes and orientations.
-        target_depth (int, optional): Target depth for all volumes. If None, uses the median depth.
-        slice_size (int, optional): Expected size of the slice dimensions (H, W). Defaults to 256.
+        volumes (list[torch.Tensor]): 3D tensors with potentially different
+            shapes and orientations.
+        target_depth (int | None): Target depth for all volumes. If ``None``,
+            uses the median depth of the batch.
+        slice_size (int): Expected size of the slice dimensions (H, W).
 
     Returns:
-        list[torch.Tensor]: List of standardized volumes, all with shape (target_depth, slice_size, slice_size).
-
-    Example:
-        >>> volumes = [torch.randn(170, 256, 256), torch.randn(256, 256, 180), torch.randn(128, 256, 256)]
-        >>> standardized = standardize_batch_volumes(volumes)
-        >>> print([v.shape for v in standardized])  # All will have the same shape
+        list[torch.Tensor]: Standardized volumes, all with shape
+            ``(target_depth, slice_size, slice_size)``.
     """
     if not volumes:
         return volumes
 
-    # Step 1: Detect slice dimensions and reorient all volumes
     reoriented_volumes = []
 
     for volume in volumes:
@@ -84,23 +80,19 @@ def standardize_batch_volumes(
 
         reoriented_volumes.append(volume)
 
-    # Step 2: Determine target depth
     if target_depth is None:
         depths = [vol.shape[0] for vol in reoriented_volumes]
         target_depth = int(torch.tensor(depths).float().median().item())
         logger.info(f"Using median depth {target_depth} from batch depths: {depths}")
 
-    # Step 3: Resize all volumes to target depth using trilinear interpolation
     standardized_volumes = []
 
     for volume in reoriented_volumes:
         current_depth, height, width = volume.shape
 
         if current_depth != target_depth or height != slice_size or width != slice_size:
-            # Add batch and channel dimensions: (D, H, W) -> (1, 1, D, H, W)
             volume_5d = volume.unsqueeze(0).unsqueeze(0)
 
-            # Resize using trilinear interpolation
             volume_resized = F.interpolate(
                 volume_5d,
                 size=(target_depth, slice_size, slice_size),
@@ -108,7 +100,6 @@ def standardize_batch_volumes(
                 align_corners=False,
             )
 
-            # Remove batch and channel dims: (1, 1, D, H, W) -> (D, H, W)
             volume = volume_resized.squeeze(0).squeeze(0)
 
         standardized_volumes.append(volume)
@@ -119,18 +110,17 @@ def standardize_batch_volumes(
 def conv3x3x3(
     in_planes: int, out_planes: int, stride: int = 1, dilation: int = 1
 ) -> nn.Conv3d:
-    """
-    Creates a 3D convolutional layer with a 3x3x3 kernel.
+    """3×3×3 convolution with same-size padding.
+
     Args:
         in_planes (int): Number of input channels.
         out_planes (int): Number of output channels.
-        stride (int, optional): Stride of the convolution. Default is 1.
-        dilation (int, optional): Dilation rate for the convolution. Default is 1.
-    Returns:
-        nn.Conv3d: A 3D convolutional layer with the specified parameters.
-    """
+        stride (int): Convolution stride.
+        dilation (int): Dilation rate.
 
-    # 3x3x3 convolution with padding
+    Returns:
+        nn.Conv3d: Configured 3D convolutional layer.
+    """
     return nn.Conv3d(
         in_planes,
         out_planes,
@@ -145,19 +135,16 @@ def conv3x3x3(
 def downsample_basic_block(
     x: torch.Tensor, planes: int, stride: int, no_cuda: bool = False
 ) -> torch.Tensor:
-    """
-    Downsamples a 3D tensor using average pooling and zero-padding.
+    """Downsample via average pooling and zero-pad to the target channel count.
+
     Args:
-        x (torch.Tensor): The input tensor with shape (N, C, D, H, W), where
-            N is the batch size, C is the number of channels, and D, H, W are
-            the spatial dimensions.
-        planes (int): The target number of channels after downsampling.
-        stride (int): The stride for the average pooling operation.
-        no_cuda (bool, optional): If True, ensures the operation is performed
-            on the CPU even if the input tensor is on the GPU. Defaults to False.
+        x (torch.Tensor): Input tensor of shape ``(N, C, D, H, W)``.
+        planes (int): Target number of output channels.
+        stride (int): Stride for average pooling.
+        no_cuda (bool): If ``True``, keep zero-padding on CPU.
+
     Returns:
-        torch.Tensor: The downsampled tensor with shape (N, planes, D', H', W'),
-        where D', H', W' are the spatial dimensions after downsampling.
+        torch.Tensor: Downsampled tensor with ``planes`` channels.
     """
 
     out = F.avg_pool3d(x, kernel_size=1, stride=stride)
@@ -203,17 +190,6 @@ class BasicBlock(nn.Module):
         self.dilation = dilation
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Defines the forward pass of the model.
-        Args:
-            x (torch.Tensor): Input tensor of shape (N, C, H, W, D), where
-                N is the batch size, C is the number of channels, and H, W, D
-                are the spatial dimensions.
-        Returns:
-            torch.Tensor: Output tensor after applying the convolutional layers,
-            batch normalization, ReLU activation, and residual connection.
-        """
-
         residual = x
 
         out = self.conv1(x)
@@ -232,41 +208,7 @@ class BasicBlock(nn.Module):
 
 
 class Bottleneck(nn.Module):
-    """
-    Bottleneck block for a 3D convolutional neural network.
-    This class implements a bottleneck block, which is a building block for
-    deep residual networks. It uses three convolutional layers with Batch
-    Normalization and ReLU activation. The block supports downsampling and
-    dilated convolutions.
-    Attributes:
-        expansion (int): Expansion factor for the output channels of the third
-            convolutional layer. Default is 4.
-        conv1 (nn.Conv3d): First 1x1x1 convolutional layer.
-        bn1 (nn.BatchNorm3d): Batch normalization for the first convolutional layer.
-        conv2 (nn.Conv3d): Second 3x3x3 convolutional layer.
-        bn2 (nn.BatchNorm3d): Batch normalization for the second convolutional layer.
-        conv3 (nn.Conv3d): Third 1x1x1 convolutional layer.
-        bn3 (nn.BatchNorm3d): Batch normalization for the third convolutional layer.
-        relu (nn.ReLU): ReLU activation function.
-        downsample (callable, optional): Downsampling layer to match the dimensions
-            of the input and output. Default is None.
-        stride (int): Stride for the second convolutional layer. Default is 1.
-        dilation (int): Dilation rate for the second convolutional layer. Default is 1.
-    Methods:
-        forward(x):
-            Performs the forward pass of the bottleneck block. Applies three
-            convolutional layers with Batch Normalization and ReLU activation,
-            adds the residual connection, and applies the final ReLU activation.
-    Args:
-        inplanes (int): Number of input channels.
-        planes (int): Number of output channels for the first and second
-            convolutional layers. The third convolutional layer outputs
-            `planes * expansion` channels.
-        stride (int, optional): Stride for the second convolutional layer. Default is 1.
-        dilation (int, optional): Dilation rate for the second convolutional layer. Default is 1.
-        downsample (callable, optional): Downsampling layer to match the dimensions
-            of the input and output. Default is None.
-    """
+    """Bottleneck residual block for 3D ResNet (1×1 → 3×3 → 1×1 convolutions)."""
 
     expansion = 4
 
@@ -299,17 +241,6 @@ class Bottleneck(nn.Module):
         self.dilation = dilation
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Defines the forward pass of the model.
-        Args:
-            x (torch.Tensor): Input tensor of shape (N, C, D, H, W), where
-                N is the batch size, C is the number of channels, and D, H, W
-                are the depth, height, and width of the input tensor, respectively.
-        Returns:
-            torch.Tensor: Output tensor after applying the convolutional layers,
-            batch normalization, ReLU activation, and residual connection.
-        """
-
         residual = x
 
         out = self.conv1(x)
@@ -333,39 +264,7 @@ class Bottleneck(nn.Module):
 
 
 class ResNet(nn.Module):
-    """
-    ResNet is a 3D convolutional neural network model designed for processing volumetric data.
-    It is based on the ResNet architecture and supports custom configurations for the number
-    of layers, blocks, and other parameters.
-    Args:
-        block (nn.Module): A block class that defines the building block of the ResNet model.
-        layers (list of int): A list specifying the number of blocks in each layer of the network.
-        num_classes (int): The number of output classes for the final fully connected layer.
-        shortcut_type (str, optional): The type of shortcut connection to use ("A" or "B").
-            Defaults to "B".
-        no_cuda (bool, optional): If True, disables the use of CUDA for the model. Defaults to False.
-    Attributes:
-        conv1 (nn.Conv3d): The initial 3D convolutional layer.
-        bn1 (nn.BatchNorm3d): Batch normalization layer for the initial convolutional layer.
-        relu (nn.ReLU): ReLU activation function.
-        maxpool (nn.MaxPool3d): Max pooling layer after the initial convolution.
-        layer1 (nn.Sequential): The first residual layer.
-        layer2 (nn.Sequential): The second residual layer.
-        layer3 (nn.Sequential): The third residual layer with dilation.
-        layer4 (nn.Sequential): The fourth residual layer with increased dilation.
-        avgpool (nn.AdaptiveAvgPool3d): Adaptive average pooling layer to reduce spatial dimensions.
-        fc (nn.Linear): Fully connected layer for classification.
-    Methods:
-        forward(x):
-            Defines the forward pass of the ResNet model.
-            Args:
-                x (torch.Tensor): Input tensor of shape (N, C, D, H, W), where N is the batch size,
-                    C is the number of channels, and D, H, W are the depth, height, and width of the
-                    input volume.
-            Returns:
-                torch.Tensor: Output tensor of shape (N, num_classes), where N is the batch size and
-                    num_classes is the number of output classes.
-    """
+    """3D ResNet supporting BasicBlock and Bottleneck variants."""
 
     def __init__(
         self,
@@ -475,11 +374,6 @@ class ResNet(nn.Module):
         Returns:
             torch.Tensor: Output tensor after passing through the network.
         """
-        # # Unnormalize to match pre-training distribution if coming from normalized cache/loader
-        # # Maps [-1, 1] back to [0, 1]
-        # # This aligns with DinoV2 behavior and helps frozen BN statistics
-        # if x.ndim >= 3: # Only unnormalize images/volumes
-        #      x = x * 0.5 + 0.5
 
         # Check if input is already features (from cache) or raw images
         if x.ndim == 2:

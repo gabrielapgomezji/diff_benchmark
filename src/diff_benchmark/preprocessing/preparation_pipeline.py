@@ -170,14 +170,7 @@ class BrainDataPreparationPipeline(ABC):
             )
 
     def get_subjects(self) -> list[str]:
-        """
-        Retrieve a sorted list of unique subject identifiers from the layouts.
-        This method aggregates subject identifiers from all layouts associated
-        with the instance, removes duplicates, and returns them in sorted order.
-        Returns:
-            list[str]: A sorted list of unique subject identifiers.
-        """
-
+        """Return a sorted list of unique subject IDs across all registered BIDS layouts."""
         return sorted(
             {subject for layout in self.layouts for subject in layout.get_subjects()}
         )
@@ -442,15 +435,10 @@ class BrainDataPreparationPipeline(ABC):
         return None
 
     def compute_microstructure(self, subject_id: str) -> None:
-        """Compute microstructure maps and project them to the surface/skeleton.
+        """Compute microstructure maps and project them to the surface or skeleton.
 
-        This method:
-        1. Creates the output derivatives directory.
-        2. Loads raw inputs (DWI image, b-values, b-vectors, parcellation).
-        3. Resamples the parcellation to DWI space.
-        4. Selects tissue-specific parcel labels and builds tissue masks.
-        5. Calls :func:`compute_save_and_project_metric` to compute, save, and
-           project the requested metric.
+        Loads raw DWI inputs, builds tissue masks from the parcellation, and
+        delegates to :func:`compute_save_and_project_metric`.
 
         Args:
             subject_id: Subject identifier.
@@ -690,9 +678,7 @@ class BrainDataPreparationPipeline(ABC):
         Returns:
             ``DataFrame`` produced by :meth:`export_to_csv`.
         """
-        logger.info(
-            "All data should be preprocessed already. Getting microstructure files..."
-        )
+        logger.info("All data should be preprocessed already. Getting microstructure files...")
         self.run_analysis()
         print("Computing df...")
         return self.export_to_csv()

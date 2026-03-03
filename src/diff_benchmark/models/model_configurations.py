@@ -30,16 +30,7 @@ from diff_benchmark.models.utils_models.trainer import (
 
 
 class TaskModel(nn.Module):
-    """
-    A composite neural network model that combines a backbone and head architecture.
-    This class serves as a container for two-stage models where a backbone network
-    extracts features and a head network produces the final output. It provides a
-    unified interface for forward passes and exposes the backbone's data type.
-    Attributes:
-        backbone (nn.Module): The feature extraction network that processes input data.
-        head (nn.Module): The output network that processes backbone features to produce
-                          the final model output.
-    """
+    """Backbone + prediction head assembled into a single forward pass."""
 
     def __init__(self, backbone: nn.Module, head: nn.Module):
         super().__init__()
@@ -57,23 +48,10 @@ class TaskModel(nn.Module):
 
     @property
     def data_type(self) -> str:
-        """
-        Get the data type of the model's backbone.
-        Returns:
-            str: The data type used by the backbone model (e.g., 'float32', 'float16', etc.).
-        """
-
+        """Data type string from the backbone (e.g. ``'images'``, ``'array'``)."""
         return self.backbone.data_type
 
     def forward(self, x):
-        """
-        Forward pass through the model.
-        Args:
-            x: Input tensor to the model.
-        Returns:
-            Output tensor from the model head applied to backbone features.
-        """
-
         feats = self.backbone(x)
         return self.head(feats)
 
@@ -184,28 +162,18 @@ def create_backend_trainer(
     model,
     backend_kwargs: dict,
 ):
-    """
-    Create a backend trainer based on the specified backend type.
-    Parameters
-    ----------
-    model : object
-        The machine learning model to be trained.
-    backend : str
-        The backend framework to use for training. Supported options are:
-        - "sklearn": scikit-learn based trainer
-        - "torch": PyTorch based trainer
-        - "lightning": PyTorch Lightning based trainer
-        Case-insensitive.
-    backend_kwargs : dict
-        Additional keyword arguments to pass to the selected trainer class.
-    Returns
-    -------
-    SklearnTrainer | TorchTrainer | LightningTrainer
-        An instance of the appropriate trainer class based on the backend parameter.
-    Raises
-    ------
-    ValueError
-        If the backend string does not match any of the supported backends.
+    """Create a backend trainer for the given model.
+
+    Args:
+        model: The model to be trained.
+        backend_kwargs (dict): Keyword arguments forwarded to the trainer; must contain
+            ``backend`` (``"sklearn"``, ``"torch"``, or ``"lightning"``).
+
+    Returns:
+        SklearnTrainer | TorchTrainer | LightningTrainer: Configured trainer instance.
+
+    Raises:
+        ValueError: If ``backend_kwargs["backend"]`` is not a supported backend name.
     """
     backend = backend_kwargs["backend"].lower()
     if backend == "sklearn":
@@ -245,17 +213,15 @@ def create_trainer(
 
 
 def get_model(name: str, config: dict) -> object:
-    """
-    Assemble and return a trainer for the named model using a resolved config dict.
+    """Assemble and return a trainer for the named model using a resolved config dict.
 
-    Pulls backend, data-partition, and random-state settings out of the config,
-    injects them into the backend kwargs, then delegates to :func:`create_trainer`.
-
-    Parameters:
+    Args:
         name (str): Model name, e.g. ``"linear"``, ``"forest"``, ``"2dcnn"``.
         config (dict): Fully-resolved config dictionary produced by OmegaConf.
+
     Returns:
         BaseTrainer: Configured trainer wrapping the model.
+
     Raises:
         ValueError: If *name* is not a recognised model identifier.
     """

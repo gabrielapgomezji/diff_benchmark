@@ -31,10 +31,7 @@ def _svm_head_and_scoring(prediction_task: str):
 
 
 class PCARandomForestModel(SklearnModel):
-    """
-    PCARandomForestModel combines PCA for dimensionality reduction
-    with a Random Forest classifier for classification tasks.
-    """
+    """PCA + Random Forest pipeline with GridSearchCV."""
 
     def _build_model(self, **kwargs) -> BaseEstimator:
         self.prediction_task = kwargs.get("prediction_task", None)
@@ -68,10 +65,7 @@ class PCARandomForestModel(SklearnModel):
 
 
 class RandomForestModel(SklearnModel):
-    """
-    RandomForestModel uses a Random Forest classifier or regressor
-    depending on the prediction task.
-    """
+    """Random Forest pipeline with GridSearchCV."""
 
     def _build_model(self, **kwargs) -> BaseEstimator:
         self.prediction_task = kwargs.get("prediction_task", None)
@@ -103,10 +97,7 @@ class RandomForestModel(SklearnModel):
 
 
 class PCASVMModel(SklearnModel):
-    """
-    PCASVMModel combines PCA for dimensionality reduction
-    with a Support Vector Machine classifier or regressor.
-    """
+    """PCA + SVM pipeline with GridSearchCV."""
 
     def _build_model(self, **kwargs) -> BaseEstimator:
         self.prediction_task = kwargs.get("prediction_task", None)
@@ -136,10 +127,7 @@ class PCASVMModel(SklearnModel):
 
 
 class SVMModel(SklearnModel):
-    """
-    SVMModel uses a Support Vector Machine classifier or regressor
-    depending on the prediction task.
-    """
+    """SVM pipeline with GridSearchCV."""
 
     def _build_model(self, **kwargs) -> BaseEstimator:
         self.prediction_task = kwargs.get("prediction_task", None)

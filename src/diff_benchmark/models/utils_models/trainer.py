@@ -53,13 +53,11 @@ train_transforms = transforms.Compose(
     [
         transforms.RandomHorizontalFlip(),
         transforms.RandomRotation(15),
-        # transforms.RandomResizedCrop((224, 224), scale=(0.8, 1.0)),
         transforms.Normalize(mean=[0.5], std=[0.5]),
     ]
 )
 val_transforms = transforms.Compose(
     [
-        # transforms.Resize((224, 224)),
         transforms.Normalize(mean=[0.5], std=[0.5]),
     ]
 )
@@ -100,10 +98,7 @@ class BaseTrainer(ABC):
 
 
 class SklearnModel(ABC, BaseEstimator):
-    """
-    Base class for sklearn models.
-    Implements fit and predict methods.
-    """
+    """Base class for sklearn-compatible models; implements ``fit`` and ``predict``."""
 
     data_type = "array"
 
@@ -113,67 +108,46 @@ class SklearnModel(ABC, BaseEstimator):
 
     @abstractmethod
     def _build_model(self, **kwargs) -> BaseEstimator:
-        """
-        Build and instantiate the machine learning model.
-        This is an abstract method that must be implemented by subclasses to define
-        the specific model architecture and configuration.
-        Parameters
-        ----------
-        **kwargs : dict
-            Additional keyword arguments for model configuration and customization.
-        Returns
-        -------
-        BaseEstimator
-            The instantiated and configured model object that follows the scikit-learn
-            estimator interface.
-        Raises
-        ------
-        NotImplementedError
-            This method must be implemented by subclasses.
-        """
+        """Build and return the sklearn estimator.
 
+        Args:
+            **kwargs: Model-specific configuration.
+
+        Returns:
+            BaseEstimator: Configured estimator.
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses.
+        """
         raise NotImplementedError
 
     def fit(self, X: np.ndarray, y: np.ndarray):
-        """
-        Fit the model to the training data.
-        Parameters
-        ----------
-        X : np.ndarray
-            Training feature matrix of shape (n_samples, n_features).
-        y : np.ndarray
-            Target variable of shape (n_samples,).
-        Returns
-        -------
-        self
-            Returns the fitted trainer instance for method chaining.
+        """Fit the model to training data.
+
+        Args:
+            X (np.ndarray): Feature matrix of shape ``(n_samples, n_features)``.
+            y (np.ndarray): Targets of shape ``(n_samples,)``.
+
+        Returns:
+            self
         """
         self.model.fit(X, y)
         return self
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        """
-        Make predictions on input data using the trained model.
-        Parameters
-        ----------
-        X : np.ndarray
-            Input features for prediction. Shape should be (n_samples, n_features).
-        Returns
-        -------
-        np.ndarray
-            Predicted values from the model. Shape depends on the model type and task
-            (e.g., (n_samples,) for regression/binary classification,
-            (n_samples, n_classes) for multi-class classification).
-        """
+        """Return predictions for *X*.
 
+        Args:
+            X (np.ndarray): Input features of shape ``(n_samples, n_features)``.
+
+        Returns:
+            np.ndarray: Predicted values.
+        """
         return self.model.predict(X)
 
 
 class SklearnTrainer(BaseTrainer):
-    """
-    Abstract base class for all models in the diff_benchmark framework.
-    Defines the interface that all models must implement.
-    """
+    """Sklearn backend trainer wrapping a :class:`SklearnModel`."""
 
     def __init__(self, model: SklearnModel, **kwargs):
         self.model = model
@@ -182,16 +156,13 @@ class SklearnTrainer(BaseTrainer):
     def _dataloader_to_numpy(
         self, dataloader: DataLoader
     ) -> tuple[np.ndarray, np.ndarray]:
-        """
-        Converts a dataloader containing batches of data into NumPy arrays.
+        """Convert a DataLoader to concatenated NumPy arrays.
+
         Args:
-            dataloader (iterable): An iterable that yields batches of data in the form
-                                   (x_batch, y_batch, _), where x_batch and y_batch
-                                   are the input and target tensors, respectively.
+            dataloader: Yields ``(x_batch, y_batch, _)`` tuples.
+
         Returns:
-            tuple: A tuple containing two NumPy arrays:
-                - features (np.ndarray): Concatenated array of input data.
-                - targets (np.ndarray): Concatenated array of target data.
+            tuple[np.ndarray, np.ndarray]: ``(features, targets)``.
         """
 
         features_list = []
@@ -234,29 +205,22 @@ class SklearnTrainer(BaseTrainer):
 
 
 def split_loader(dataloader, collate_fn: Callable | None, val_ratio=0.2, seed=42):
-    """
-    Split a PyTorch DataLoader into training and validation subsets.
+    """Split a DataLoader into stratified train and validation subsets.
 
-    For cached feature datasets, automatically configures augmentation:
-    - Training: randomly selects one augmentation per subject (consistent across epochs)
-    - Validation: uses only non-transformed features (augmentation_idx=0)
+    For cached feature datasets, configures augmentation automatically:
+    training uses random per-subject augmentation; validation uses
+    non-transformed features only.
 
-    This function takes an existing DataLoader and splits its underlying dataset
-    into training and validation sets based on a specified ratio. It creates new
-    DataLoaders with the same configuration as the input DataLoader while preserving
-    reproducibility through a fixed random seed.
     Args:
-        dataloader (DataLoader): The original PyTorch DataLoader to split.
-        val_ratio (float, optional): Fraction of the dataset to use for validation.
-            Must be between 0 and 1. Defaults to 0.2 (20%).
-        seed (int, optional): Random seed for reproducibility of the split.
-            Defaults to 42.
+        dataloader (DataLoader): Source DataLoader to split.
+        collate_fn (Callable | None): Per-batch collate function; if provided,
+            training batches receive ``train_transforms`` and validation batches
+            receive ``val_transforms``.
+        val_ratio (float): Fraction reserved for validation.
+        seed (int): Random seed for the split.
+
     Returns:
-        tuple[DataLoader, DataLoader]: A tuple containing:
-            - train_loader (DataLoader): DataLoader for the training subset with
-              shuffling enabled and random augmentation per subject.
-            - val_loader (DataLoader): DataLoader for the validation subset with
-              shuffling disabled and no augmentation.
+        tuple[DataLoader, DataLoader]: ``(train_loader, val_loader)``.
     """
     print(f"Val ratio: {val_ratio}, seed: {seed}")
     dataset = dataloader.dataset
@@ -270,7 +234,6 @@ def split_loader(dataloader, collate_fn: Callable | None, val_ratio=0.2, seed=42
     )
 
     # Create distinct improved copies for validation to allow independent augmentation state
-    # We shallow copy the top-level dataset (Subset) and its underlying dataset (CachedFeatureDataset)
     # This allows setting different augmentation modes for train vs val while sharing heavy data
     dataset_val = copy.copy(dataset)
     if hasattr(dataset, "dataset"):
@@ -280,7 +243,6 @@ def split_loader(dataloader, collate_fn: Callable | None, val_ratio=0.2, seed=42
     val_ds = Subset(dataset_val, val_idx)
 
     # Configure augmentation for cached datasets
-    # Training: random augmentation per subject (consistent across epochs)
     is_cached_train = configure_cached_dataset_augmentation(train_ds, mode="random")
 
     # aug_indices inside the CahedFeaturesDataset is set to random
@@ -423,7 +385,6 @@ class TorchTrainer(BaseTrainer):
             self.log.info(f"Epoch {epoch+1}/{self.epochs}")
             print(f"Epoch {epoch+1}/{self.epochs} of fold {self.fold_idx}")
 
-            # for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"[Epoch {epoch+1}/{self.epochs}]")):
             for batch_idx, batch in pbar:
                 x, y, *_ = batch
                 x = x.to(self.device, non_blocking=True)
@@ -432,7 +393,6 @@ class TorchTrainer(BaseTrainer):
                 else:
                     y = y.float().to(self.device, non_blocking=True)
                     y = (y - self.target_mean) / self.target_std
-                    # Here you rescale
 
                 self.optimizer.zero_grad()
                 preds = self.model(x)
@@ -442,7 +402,6 @@ class TorchTrainer(BaseTrainer):
                     preds = preds.squeeze(1)
                 loss = self.criterion(preds, y)
                 # Here you compute the loss on the normalized targets, so gradient will be smaller.
-                # Learning rate should be adjusted accordingly, probably increased.
                 loss.backward()
                 self.optimizer.step()
 
@@ -604,17 +563,15 @@ class TorchTrainer(BaseTrainer):
         return torch.cat(outputs).numpy()
 
     def load(self, path: str):
-        """
-        Load model weights from a checkpoint file.
-        Args:
-            path (str): Path to the checkpoint file containing the model state dictionary.
-        Returns:
-            None
-        Raises:
-            FileNotFoundError: If the checkpoint file does not exist at the specified path.
-            RuntimeError: If the checkpoint is incompatible with the current model architecture.
-        """
+        """Load model weights from a checkpoint file.
 
+        Args:
+            path (str): Path to the checkpoint file.
+
+        Raises:
+            FileNotFoundError: If the checkpoint file does not exist.
+            RuntimeError: If the checkpoint is incompatible with the current architecture.
+        """
         self.model.load_state_dict(torch.load(path, map_location=self.device))
 
 
@@ -666,7 +623,7 @@ class _LightningModuleAdapter(pl.LightningModule):
             on_step=False,
             on_epoch=True,
             prog_bar=False,
-            logger=False,  # IMPORTANT: we print ourselves
+            logger=False,
         )
         return {"loss": loss}
 
@@ -710,16 +667,17 @@ class _LightningModuleAdapter(pl.LightningModule):
 
 
 def x_only_loader(dl: DataLoader):
-    """Utility to create a dataloader that yields only inputs (no labels).
+    """Yield only input tensors from a ``(x, y, g)`` dataloader.
+
     Args:
-        dl (DataLoader): Original dataloader yielding (x, y, g).
+        dl (DataLoader): Original dataloader yielding ``(x, y, g)`` tuples.
+
     Yields:
-        tuple: A tuple containing only the input tensor x.
+        tuple: Single-element tuple ``(x,)``.
     """
     for x, _, _ in dl:
         if isinstance(x, list):
             x = torch.stack(x)
-        # Ensure it’s a 5D tensor (B, 1, D, H, W)
         if x.dim() == 4:
             x = x.unsqueeze(1)
         yield (x,)
@@ -756,7 +714,7 @@ class LightningTrainer(BaseTrainer):
             run_id=self.run_id,
             epochs=trainer_kwargs.get("max_epochs"),
         )
-        # trainer_kwargs.setdefault("callbacks", []).append(print_cb)
+      
         trainer_kwargs = dict(trainer_kwargs)
         trainer_kwargs.setdefault("callbacks", []).append(print_cb)
 
@@ -770,7 +728,6 @@ class LightningTrainer(BaseTrainer):
                 debug_dir=debug_dir,
                 enabled=True,
             )
-            # trainer_kwargs.setdefault("callbacks", []).append(debug_cb)
             trainer_kwargs = dict(trainer_kwargs)
             trainer_kwargs.setdefault("callbacks", []).append(debug_cb)
 
@@ -801,11 +758,9 @@ class LightningTrainer(BaseTrainer):
                 f"Whitening targets: mean={self.lightning_model.target_mean.item():.4f}, std={self.lightning_model.target_std.item():.4f}"
             )
 
-        # self.trainer.fit(self.model, train_loader, val_loader)
         self.trainer.fit(self.lightning_model, train_loader, val_loader)
 
     def predict(self, dataloader):
-        # Configure cached dataset to use non-transformed features for prediction
         configure_cached_dataset_augmentation(dataloader.dataset, mode="fixed")
 
         preds = self.trainer.predict(

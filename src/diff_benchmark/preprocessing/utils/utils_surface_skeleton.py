@@ -54,7 +54,6 @@ def download_fsl_skeleton(output_dir: Path = None) -> Path:
         logger.info(f"Skeleton already exists at {skeleton_file}")
         return skeleton_file
 
-    # Try TemplateFlow first (most reliable)
     try:
         logger.info("Downloading white matter skeleton from TemplateFlow...")
         skeleton_path = tflow.get(
@@ -181,21 +180,18 @@ def load_tbss_skeleton(
     skeleton_mask = nib.load(skeleton_path)
     logger.info(f"Loaded TBSS skeleton from {skeleton_path}")
 
-    # Step 2: Load JHU ICBM-DTI-81 atlas (48 tracts)
+    # Load JHU ICBM-DTI-81 atlas (48 tracts)
     jhu_labels_file = aux_dir / "JHU-ICBM-labels-1mm.nii.gz"
     tract_labels_img = nib.load(jhu_labels_file)
-    # Alternative via nilearn (commented out — requires network access):
-    # jhu_data = datasets.fetch_atlas_jhu()
-    # tract_labels_img = nib.load(jhu_data['maps'])
     tract_names = get_jhu_tract_names()
     logger.info(f"Loaded JHU ICBM-DTI-81 atlas with {len(tract_names)} tracts")
 
-    # Step 3: Resample atlas to skeleton space
+    # Resample atlas to skeleton space
     tract_labels_resampled = nimage.resample_to_img(
         tract_labels_img, skeleton_mask, interpolation="nearest"
     )
 
-    # Step 4: Mask tract labels to skeleton voxels only
+    # Restrict tract labels to skeleton voxels (FA > 0.2 threshold)
     skeleton_data = skeleton_mask.get_fdata() > 0.2
     tract_labels_on_skeleton = tract_labels_resampled.get_fdata() * skeleton_data
     tract_labels_skeleton_img = nimage.new_img_like(
@@ -298,13 +294,10 @@ def project_to_skeleton(
     logger.info(f"[{subject_id}] Projecting {metric_name} onto TBSS skeleton")
     skeleton_mask, tract_labels_skeleton_img, tract_names = load_tbss_skeleton()
 
-    logger.info(f"[{subject_id}] Transforming skeleton from MNI to subject space")
-
-    # Resample skeleton mask to subject metric space
+    # Resample skeleton and tract atlas to subject metric space
     skeleton_mask_subject = nimage.resample_to_img(
         skeleton_mask, metric_img, interpolation="linear"
     )
-    # Resample tract labels to subject metric space (nearest for label integrity)
     tract_labels_subject = nimage.resample_to_img(
         tract_labels_skeleton_img, metric_img, interpolation="nearest"
     )
@@ -336,9 +329,6 @@ def project_to_skeleton(
         if len(arr) > 0:
             _save_hemisphere_gifti(arr, hemi, subject_id, metric_name, output_dir)
 
-    # Return value intentionally None (results written to disk)
-    # tract_scalars_all is not returned to keep the original signature
-    # skeleton_img = nimage.new_img_like(metric_img, metric_on_skeleton)  # kept for reference
     return None
 
 
@@ -457,7 +447,6 @@ def project_to_surface(
         ``None`` (results are written to disk).
     """
     if tissue_type == "white":
-        logger.info(f"[{subject_id}] Skipping surface projection for white matter")
         logger.info(f"[{subject_id}] Projecting white matter to skeleton")
         project_to_skeleton(micr_img, output_dir, subject_id, micr_metric)
         return None
@@ -622,7 +611,6 @@ def resample_schaefer_onto_fs_lr(
         ``"left.sulc"``, ``"right.data"``, ``"right.labels"``,
         ``"right.sulc"``.
     """
-    # Load Schaefer atlases from TemplateFlow
     fsaverage_left_schaefer = nib.load(
         tflow.get(
             "fsaverage",
@@ -659,7 +647,6 @@ def resample_schaefer_onto_fs_lr(
     labels_left = labels[labels["hemi"] == "L"]
     labels_right = labels[labels["hemi"] == "R"]
 
-    # Return atlas directly for fsaverage (no resampling needed)
     if target_space == "fsaverage":
         fslr_left_sulc = (
             nib.load(
@@ -833,5 +820,4 @@ def extract_region_data(
 
         region_values.append(np.nanmean(vals) if average else vals)
 
-    # return region_data  # dict version — kept as comment for reference
     return np.concatenate([np.atleast_1d(v) for v in region_values])

@@ -10,12 +10,7 @@ logger = setup_logger(__name__)
 
 
 class GoogleViTBackbone(nn.Module):
-    """
-    Google ViT backbone adapted for 3D volumes via slice-wise processing.
-
-    Note: Expects input data normalized with mean=0.5, std=0.5 (from cache).
-    This will be unnormalized back to [0, 1] before passing to HuggingFace processor.
-    """
+    """Google ViT backbone adapted for 3D volumes via slice-wise processing."""
 
     data_type = "images"
 
@@ -61,9 +56,11 @@ class GoogleViTBackbone(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:
-            x: Tensor of shape (B, D, H, W) or (B, 1, D, H, W) - normalized data from cache (mean=0.5, std=0.5)
+            x (torch.Tensor): Shape ``(B, D, H, W)`` or ``(B, 1, D, H, W)``,
+                normalised with mean=0.5, std=0.5.
+
         Returns:
-            Tensor of shape (B, embedding_dim)
+            torch.Tensor: Shape ``(B, embedding_dim)``.
         """
         # Check if input is already pre-computed features (from cache): (B, embedding_dim)
         # Must be checked BEFORE unnormalization — cached embeddings must not be rescaled.
@@ -90,7 +87,7 @@ class GoogleViTBackbone(nn.Module):
 
         num_slices = slices.shape[1]
 
-        # (B*S, H, W)
+        # (B*S, H, W) Batch
         slices = slices.reshape(B * num_slices, H, W)
 
         # Grayscale → RGB

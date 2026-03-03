@@ -17,26 +17,7 @@ logger = setup_logger(__name__)
 
 
 class DefaultPipeline(BrainDataPreparationPipeline):
-    """
-    DefaultPipeline is a class that extends the BrainDataPreparationPipeline class to handle
-    the preprocessing of brain data for the CamCAN pipeline.
-    Attributes:
-        base_dir (Path): The directory containing the directory data.
-        results_root (Path): The root directory for storing results.
-        metric (str): The metric to compute (e.g., 'rtop', 'md').
-        schaefer_resampled: Resampled Schaefer atlas onto fs_LR.
-        big_delta (float): The big delta value for diffusion metrics.
-        small_delta (float): The small delta value for diffusion metrics.
-    Methods:
-        verify_subject_files(subject_id: str, metric: str, tissue_type: str) -> bool:
-            Checks if required .scalar.gii files exist for the given subject, metric, and tissue type.
-        compute_microstructure(subject_id: str):
-            Computes microstructure metrics for the given subject and saves the results.
-        run_analysis():
-            Runs the analysis on the scalar files and computes average data per parcel.
-        extract_features():
-            Placeholder method for extracting features (to be implemented).
-    """
+    """Surface-based pipeline that stores per-subject metrics as ``.scalar.gii`` files."""
 
     def __init__(self, dataset_config: DatasetConfig):
         super().__init__(dataset_config)
@@ -45,13 +26,15 @@ class DefaultPipeline(BrainDataPreparationPipeline):
     def verify_subject_files(
         self, subject_id: str, metric: str, tissue_type: str
     ) -> bool:
-        """
-        Check if both hemispheres' .scalar.gii files exist for the given subject and metric.
+        """Return True if both hemispheres' ``.scalar.gii`` files exist for the given subject.
+
         Args:
-            subject_id (str): The subject identifier.
-            metric (str): The metric to check (e.g., 'rtop', 'md').
+            subject_id: Subject identifier.
+            metric: Microstructure metric (e.g. ``"rtop"``, ``"md"``).
+            tissue_type: Tissue type (``"gray"`` or ``"white"``).
+
         Returns:
-            bool: True if both files exist, False otherwise.
+            True if both left and right scalar files are present.
         """
         derivatives_dir = (
             self.results_root / "derivatives" / f"sub-{subject_id}" / "dwi"
@@ -68,17 +51,17 @@ class DefaultPipeline(BrainDataPreparationPipeline):
         return left_file.exists() and right_file.exists()
 
     def verify_resampling(self, subject_id: str) -> bool:
-        """
-        Check if data has been properly resampled to template space.
+        """Return True if scalar data is in fsLR 32k template space.
 
-        For BIDS datasets, checks if the vertex count matches the expected template space size.
-        For HCP datasets, always returns True (data is already in template space).
+        For non-BIDS datasets, always returns True (data is already in template
+        space). For BIDS datasets, checks that each hemisphere's vertex count
+        matches the expected fsLR 32k size (32,492 vertices).
 
         Args:
-            subject_id (str): The subject identifier.
+            subject_id: Subject identifier.
 
         Returns:
-            bool: True if data is properly resampled (or doesn't need resampling), False otherwise.
+            True if data is properly resampled (or resampling is not required).
         """
         # HCP data is already in template space, no resampling needed
         if "bids" not in self.data_reading:
@@ -98,8 +81,7 @@ class DefaultPipeline(BrainDataPreparationPipeline):
             return False
 
         try:
-            # Expected vertex count for fsLR 32k template space
-            EXPECTED_VERTICES = 32492
+            EXPECTED_VERTICES = 32492  # fsLR 32k template vertex count
 
             left_data = nib.load(left_file).darrays[0].data
             right_data = nib.load(right_file).darrays[0].data
@@ -125,12 +107,13 @@ class DefaultPipeline(BrainDataPreparationPipeline):
             return False
 
     def resample_data(self, subject_id: str):
-        """
-        Resample existing scalar.gii files from native space to template space.
-        This is useful for data that was preprocessed before the automatic resampling feature.
+        """Resample existing ``.scalar.gii`` files from native to template space.
+
+        Only applies to BIDS datasets. Intended for data preprocessed before
+        automatic resampling was introduced.
 
         Args:
-            subject_id (str): The subject identifier.
+            subject_id: Subject identifier.
         """
         if "bids" not in self.data_reading:
             logger.info(f"[{subject_id}] Not a BIDS dataset, no resampling needed")
@@ -155,7 +138,7 @@ class DefaultPipeline(BrainDataPreparationPipeline):
         try:
             logger.info(f"[{subject_id}] Resampling existing data to template space")
 
-            # Load native space data
+            # Clip extreme outliers to ensure stable interpolation during resampling.
             left_data = np.nan_to_num(nib.load(left_file).darrays[0].data).clip(0, 7)
             right_data = np.nan_to_num(nib.load(right_file).darrays[0].data).clip(0, 7)
 
@@ -172,7 +155,7 @@ class DefaultPipeline(BrainDataPreparationPipeline):
                 target_space=self.surface_space,
             )
 
-            # Save resampled data with the same filenames (overwriting)
+            # Overwrite native-space files with template-space data
             left_gii = nib.gifti.GiftiImage()
             left_gii.add_gifti_data_array(
                 nib.gifti.GiftiDataArray(data=left_resampled.astype(np.float32))
@@ -191,7 +174,11 @@ class DefaultPipeline(BrainDataPreparationPipeline):
             logger.error(f"[{subject_id}] Error during resampling: {e}")
 
     def run_analysis(self):
-        """Run analysis extracting region data."""
+        """Fill ``self.results`` with existing ``.scalar.gii`` derivative files.
+
+        Loads left/right hemisphere scalar files, extracts parcel-level or
+        tract-level features, and stores them keyed by subject ID.
+        """
         tissue_type = self.dataset_config.tissue_type
 
         scalar_files = sorted(
@@ -207,6 +194,7 @@ class DefaultPipeline(BrainDataPreparationPipeline):
                 )
 
                 # Load data (already in template space if BIDS dataset was properly preprocessed)
+                # Clip extreme outliers to ensure stable interpolation during resampling.
                 left_data = np.nan_to_num(nib.load(left_file).darrays[0].data).clip(
                     0, 7
                 )
@@ -226,7 +214,7 @@ class DefaultPipeline(BrainDataPreparationPipeline):
                         ).clip(0, 7)
                         # Concatenate L, R, M for white matter
                         if target is not None:
-                            # Regional WM analysis - extract specific tract groups
+                            # Extract a subset of tracts matching the target pattern
                             from diff_benchmark.preprocessing.utils.utils_brain_feature_extraction import (
                                 extract_wm_tract_subset,
                             )
@@ -243,7 +231,6 @@ class DefaultPipeline(BrainDataPreparationPipeline):
                                 f"[{subject_id}] Extracted {len(tract_data)} tracts matching '{target}'"
                             )
                         else:
-                            # All tracts
                             tract_data = np.concatenate(
                                 [left_data, right_data, midline_data]
                             )
@@ -252,11 +239,7 @@ class DefaultPipeline(BrainDataPreparationPipeline):
                     else:
                         tract_data = np.concatenate([left_data, right_data])
                         self.results[subject_id] = tract_data
-                # No resampling needed here - data should already be in template space
-                # If you see warnings about mismatched sizes, it means preprocessing
-                # was done before this optimization was implemented
                 else:
-
                     avg_data = extract_region_data(
                         left_data,
                         right_data,
@@ -271,43 +254,24 @@ class DefaultPipeline(BrainDataPreparationPipeline):
 
 
 class ImagePipeline(BrainDataPreparationPipeline):
-    """
-    ImagePipeline is a class that extends the BrainDataPreparationPipeline class to handle
-    the preprocessing of brain data for the Human Connectome Project (HCP) pipeline.
-    Attributes:
-        base_dir (Path): The directory containing the directory data.
-        results_root (Path): The root directory for storing results.
-        metric (str): The metric to compute (e.g., 'rtop', 'md').
-        schaefer_resampled: Resampled Schaefer atlas onto fs_LR.
-        big_delta (float): The big delta value for diffusion metrics.
-        small_delta (float): The small delta value for diffusion metrics.
-    Methods:
-        verify_subject_files(subject_id: str, metric: str, tissue_type: str) -> bool:
-            Checks if required .nii.gz files exist for the given subject, metric, and tissue type.
-        compute_microstructure(subject_id: str):
-            Computes microstructure metrics for the given subject and saves the results.
-        run_analysis():
-            Runs the analysis on the scalar files and computes average data per parcel.
-        extract_features():
-            Placeholder method for extracting features (to be implemented).
-    """
+    """Volumetric pipeline that stores per-subject metrics as ``.nii.gz`` files."""
 
     def __init__(self, dataset_config: DatasetConfig):
         super().__init__(dataset_config)
-        # self.in_derivatives = self.base_dir / "derivatives"
         self.results_root = Path(dataset_config.results_dir) / "default"
 
     def verify_subject_files(
         self, subject_id: str, metric: str, tissue_type: str
     ) -> bool:
-        """
-        Check if whole brain .nii.gz files exist for the given subject, metric, and tissue type.
+        """Return True if the whole-brain ``.nii.gz`` metric file exists.
+
         Args:
-            subject_id (str): The subject identifier.
-            metric (str): The metric to check (e.g., 'rtop', 'md').
-            tissue_type (str): Type of tissue ('gray' or 'white').
+            subject_id: Subject identifier.
+            metric: Microstructure metric (e.g. ``"rtop"``, ``"md"``).
+            tissue_type: Tissue type (``"gray"`` or ``"white"``).
+
         Returns:
-            bool: True if the file exists, False otherwise.
+            True if the expected NIfTI file is present.
         """
         tissue_type = self.dataset_config.tissue_type
         derivatives_dir = (
@@ -321,7 +285,7 @@ class ImagePipeline(BrainDataPreparationPipeline):
         return file.exists()
 
     def run_analysis(self):
-        """Run analysis extracting region data."""
+        """Fill ``self.results`` with paths to existing ``.nii.gz`` derivative files."""
         tissue_type = self.dataset_config.tissue_type
         img_files = sorted(
             self.results_root.glob(
@@ -336,7 +300,10 @@ class ImagePipeline(BrainDataPreparationPipeline):
                 print(f"[{subject_id}] Expected error during analysis: {e}")
 
     def run_analysis_region(self):
-        """Run analysis extracting region data."""
+        """Fill ``self.results`` with paths to existing ``.nii.gz`` derivative files.
+
+        Identical to :meth:`run_analysis` but additionally logs warnings on failure.
+        """
         tissue_type = self.dataset_config.tissue_type
         img_files = sorted(
             self.results_root.glob(

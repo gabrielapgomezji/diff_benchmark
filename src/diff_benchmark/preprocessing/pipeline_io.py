@@ -91,8 +91,7 @@ def process_subject_wrapper(subject_id, pipeline_cls, dataset_config, recompute)
         dataset_config: :class:`~datasets_dataclasses.DatasetConfig` instance.
         recompute: Whether to recompute even when output files already exist.
     """
-    # A new pipeline instance is created here deliberately so the object is
-    # not shared across processes (avoids pickle issues with BIDS layouts).
-    # pipeline._process_subject(subject_id, recompute)  # old direct-instance call
+    # A fresh instance per call avoids pickle/sharing issues with BIDS layouts
+    # when running under joblib or SLURM.
     pipeline = pipeline_cls(dataset_config)
     pipeline._process_subject(subject_id, recompute)

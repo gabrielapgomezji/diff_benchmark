@@ -57,14 +57,17 @@ def _parse_image_size(resize_shape) -> Union[Tuple[int, int], None]:
 def get_data_pipeline(
     data_type: str, dataset: DatasetConfig
 ) -> BrainDataPreparationPipeline:
-    """Factory function to get the appropriate data pipeline based on data_type.
+    """Factory returning the appropriate data pipeline for *data_type*.
+
     Args:
-        data_type (str): Type of data pipeline to use. One of ['images', 'array'].
-        config (dict): Configuration dictionary for the data pipeline.
+        data_type: One of ``'images'`` or ``'array'``.
+        dataset: Dataset configuration.
+
     Returns:
-        DataPreparationBrain: An instance of the selected data pipeline.
+        An instance of the selected :class:`BrainDataPreparationPipeline`.
+
     Raises:
-        ValueError: If an unknown data_type is provided.
+        ValueError: If *data_type* is not recognized.
     """
     if data_type == "images":
         logger.info("Using Image Pipeline")
@@ -96,20 +99,12 @@ class DatasetPreparation:
         cfg: DictConfig,
         source_dataset: DatasetConfig,
     ):
-        """
-        Initialize the data preparation process.
-        """
         self.cfg = cfg
         self.model_name = cfg.model.name
         self.source_dataset = source_dataset
 
     def _should_use_cache(self) -> bool:
-        """
-        Determine if this model should use cached features.
-
-        Returns:
-            bool: True if model is cacheable and freeze_backbone=True
-        """
+        """Return ``True`` if this model is cacheable and ``freeze_backbone=True``."""
         # Only cache for heavy pretrained models
         cacheable_models = ["vit", "dinov2", "curia"]  # , "medicalnet"]
 
@@ -140,12 +135,7 @@ class DatasetPreparation:
         return True
 
     def _get_cache_info(self) -> Tuple[Path, bool, int, int]:
-        """
-        Check cache status and requirements.
-
-        Returns:
-            Tuple of (cache_path, exists, required_augs, cached_augs)
-        """
+        """Return ``(cache_path, exists, required_augs, cached_augs)``."""
         cache_dir = Path(self.cfg.cluster.paths.cache_dir) / "dl_features"
 
         # Get image_size from config to ensure separate caches for resized/non-resized
@@ -370,11 +360,7 @@ class DatasetPreparation:
         )
 
     def _get_brain_df(self) -> pd.DataFrame:
-        """
-        Prepare brain DataFrame.
-        Returns:
-            pd.DataFrame: Preprocessed brain features DataFrame.
-        """
+        """Load and return the brain features DataFrame."""
         # -------- MODEL & PIPELINE --------
 
         model = get_model(
@@ -391,11 +377,7 @@ class DatasetPreparation:
         return brain_df
 
     def _get_demographics_df(self) -> pd.DataFrame:
-        """
-        Prepare demographics DataFrame.
-        Returns:
-            pd.DataFrame: Preprocessed demographics DataFrame.
-        """
+        """Load and return the demographics DataFrame for the configured target column."""
         # -------- DEMOGRAPHICS --------
         if self.source_dataset.name == "hcp":
             cog_file = self.cfg.cluster.paths[self.source_dataset.name].csv_file
@@ -420,7 +402,6 @@ class DatasetPreparation:
         Returns:
             pd.DataFrame: Full demographics DataFrame with all columns
         """
-        # Ensure brain preparator is initialized
         if not hasattr(self, "brain_preparator"):
             brain_df = self._get_brain_df()
 
@@ -542,12 +523,10 @@ class DatasetPreparation:
             Tuple[Union[CustomDataset, CachedFeatureDataset], PreprocessedData]:
                 The prepared dataset and preprocessed data.
         """
-        # Check if we should use cache
         use_cache = self._should_use_cache()
 
-        # Always prepare demographics (needed for both cached and non-cached)
         print("Preparing demographics data...")
-        brain_df = self._get_brain_df()  # Need this to align subjects
+        brain_df = self._get_brain_df()
         demographics_df = self._get_demographics_df()
 
         print("Aligning and filtering data...")

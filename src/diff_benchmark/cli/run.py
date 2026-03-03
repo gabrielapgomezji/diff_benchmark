@@ -51,7 +51,6 @@ def run_single_model(cfg_og, model_name, results_path):
     }
 
     OmegaConf.save(metadata, experiment_dir / "metadata.yaml")
-    # Create directory tree
     (experiment_dir / "metrics").mkdir(parents=True, exist_ok=True)
     (experiment_dir / "predictions").mkdir(parents=True, exist_ok=True)
     (experiment_dir / "debug").mkdir(parents=True, exist_ok=True)
@@ -129,7 +128,6 @@ def run_single_model(cfg_og, model_name, results_path):
         try:
             logger.info(f"Run ID: {run_id} - Fold {fold_idx+1}/{len(indices)}")
             print(f"Run ID: {run_id} - Fold {fold_idx+1}/{len(indices)}")
-            # local_config["fold_idx"] = fold_idx
             train_loader, test_loader = preprocessed.get_dataloader_fold(
                 dataset,
                 fold_idx,
@@ -312,7 +310,6 @@ def main():
     experiments_root = results_path / "experiments"
     experiments_root.mkdir(parents=True, exist_ok=True)
 
-    # 1) compose base once
     with hydra.initialize(
         version_base="1.3", config_path="pkg://diff_benchmark.configs"
     ):
@@ -323,15 +320,13 @@ def main():
             hydra.compose(config_name="main", overrides=ovr) for ovr in override_sets
         ]
 
-    # 2) job_cfgs are fully composed, each with different defaults selections
     all_confs = []
     for job_cfg in job_cfgs:
-        all_confs.extend(cartesian_cfgs(job_cfg))  # or just run_one(job_cfg)
+        all_confs.extend(cartesian_cfgs(job_cfg))
 
     filtered_confs = []
     skipped = 0
 
-    # 3) Compute IDs + cache filtering
     for cfg in all_confs:
         force = cfg.runtime.force
 
@@ -379,21 +374,6 @@ def main():
         n_jobs=cluster_cfg.conf.n_jobs,
         wait_for_results=cluster_cfg.conf.wait_for_results,
     )
-
-    # failed = [
-    #     (i, r) for i, r in enumerate(results)
-    #     if isinstance(r, JobResult) and not r.ok
-    # ]
-    # if failed:
-    #     for i, r in failed:
-    #         cfg_i = filtered_confs[i]
-    #         print(
-    #             f"\n❌ Job {i} FAILED "
-    #             f"(model={cfg_i.model.name}, dataset={cfg_i.dataset.name})\n"
-    #             f"   Error: {r.error}\n"
-    #             f"   Traceback:\n{r.traceback}"
-    #         )
-    #     raise SystemExit(1)
 
 
 if __name__ == "__main__":

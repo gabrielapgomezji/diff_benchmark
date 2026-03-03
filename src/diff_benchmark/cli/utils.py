@@ -63,10 +63,7 @@ def cartesian_cfgs(cfg: DictConfig):
 
 
 def build_config_grid(cfg: DictConfig):
-    """
-    Expand list-valued fields into a list of configs,
-    where each config has a single value per hyperparameter.
-    """
+    """Expand list-valued fields into a cartesian product of single-value configs."""
 
     def find_list_leaves(cfg, prefix=""):
         leaves = {}
@@ -96,10 +93,7 @@ def build_config_grid(cfg: DictConfig):
 
 
 def find_grid_params(cfg: DictConfig, prefix=""):
-    """
-    Find all list-valued leaves in a DictConfig.
-    Returns { "a.b.c": [v1, v2] }
-    """
+    """Find all list-valued leaves in a DictConfig as ``{"a.b.c": [v1, v2]}``."""
     grid = {}
 
     for k, v in cfg.items():
@@ -114,9 +108,7 @@ def find_grid_params(cfg: DictConfig, prefix=""):
 
 
 def build_config_grid2(cfg: DictConfig) -> list[DictConfig]:
-    """
-    Expands list-valued parameters in cfg into a cartesian product of configs.
-    """
+    """Expand list-valued parameters in *cfg* into a cartesian product of configs."""
 
     grid_params = find_grid_params(cfg)
 

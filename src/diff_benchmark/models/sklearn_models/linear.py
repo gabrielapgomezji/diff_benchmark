@@ -10,35 +10,7 @@ from diff_benchmark.models.utils_models.trainer import SklearnModel
 
 
 class PCALinearModel(SklearnModel):
-    """
-    A scikit-learn based model combining PCA dimensionality reduction with linear classification or regression.
-    This class extends SklearnModel to create a pipeline that preprocesses data with standardization
-    and PCA, then applies either logistic regression for classification tasks or Ridge regression
-    for regression tasks. Hyperparameters are optimized using GridSearchCV with 5-fold cross-validation.
-    Attributes:
-        prediction_task (str): Type of prediction task - either "classification" or "regression".
-        output_dim (int): Number of output dimensions (currently fixed to 1).
-    Methods:
-        _build_model(**kwargs) -> BaseEstimator:
-            Constructs and returns a GridSearchCV object wrapping a Pipeline.
-            For classification tasks:
-                - Uses LogisticRegression as the final estimator
-                - Optimizes PCA n_components, LogisticRegression C, solver, and penalty parameters
-                - Uses accuracy as the scoring metric
-            For regression tasks:
-                - Uses Ridge regression as the final estimator
-                - Optimizes PCA n_components and Ridge alpha (regularization) parameters
-                - Uses negative mean squared error as the scoring metric
-            The pipeline consists of three stages:
-                1. StandardScaler: Standardizes features
-                2. PCA: Reduces dimensionality to specified components
-                3. Linear model: Applies LogisticRegression or Ridge
-            Args:
-                **kwargs: Keyword arguments including 'prediction_task' specifying the task type.
-            Returns:
-                GridSearchCV: Configured grid search object for model optimization with 5-fold CV
-                             and parallel processing using all available cores.
-    """
+    """PCA + linear head (LogisticRegression or Ridge) pipeline with GridSearchCV."""
 
     def _build_model(self, **kwargs) -> BaseEstimator:
         self.prediction_task = kwargs.get("prediction_task", None)

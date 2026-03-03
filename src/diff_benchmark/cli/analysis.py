@@ -313,15 +313,14 @@ def build_summary_metrics(df_folds: pd.DataFrame, out_path: Path) -> pd.DataFram
 
 def flatten_config(cfg: DictConfig, prefix: str = "") -> dict:
     """
-    Recursively flatten a nested OmegaConf config into a flat dictionary.
-    Converts all OmegaConf types to native Python types for parquet compatibility.
+    Recursively flatten a nested OmegaConf config into a flat dict with dot-separated keys.
 
     Args:
-        cfg: OmegaConf config object
-        prefix: Prefix for nested keys
+        cfg: OmegaConf config object.
+        prefix: Prefix for nested keys.
 
     Returns:
-        Flat dictionary with dot-separated keys and native Python values
+        Flat dictionary with native Python values; complex types (list, dict) are stringified.
     """
     flat = {}
 
@@ -329,20 +328,15 @@ def flatten_config(cfg: DictConfig, prefix: str = "") -> dict:
         full_key = f"{prefix}{key}" if prefix else key
 
         if isinstance(value, DictConfig):
-            # Recursively flatten nested configs
             flat.update(flatten_config(value, prefix=f"{full_key}."))
         else:
-            # Convert to native Python type using OmegaConf.to_container
-            # This handles ListConfig, DictConfig, and other OmegaConf types
             try:
                 native_value = OmegaConf.to_container(value, resolve=True)
-                # Convert complex types to string for parquet compatibility
                 if isinstance(native_value, (list, tuple, dict)):
                     flat[full_key] = str(native_value)
                 else:
                     flat[full_key] = native_value
             except Exception:
-                # Fallback to string representation if conversion fails
                 flat[full_key] = str(value)
 
     return flat
@@ -374,10 +368,8 @@ def build_comprehensive_table(
         if not config_file.exists():
             continue
 
-        # Load config
         cfg = OmegaConf.load(config_file)
 
-        # Base experiment info
         exp_info = {
             "run_id": exp_dir.name.replace("exp_", ""),
             "model_name": cfg.model.name,
@@ -388,11 +380,9 @@ def build_comprehensive_table(
             "prediction_task": cfg.pred_head.prediction_task,
         }
 
-        # Load metrics if available
         if metrics_file.exists():
             df_metrics = pd.read_parquet(metrics_file)
 
-            # Create columns for each metric-fold-split combination
             for _, row in df_metrics.iterrows():
                 metric = row["metric"]
                 fold = row.get("fold", 0)
@@ -402,7 +392,6 @@ def build_comprehensive_table(
                 col_name = f"{metric}_{split}_fold{fold}"
                 exp_info[col_name] = value
 
-            # Compute mean and std for each metric-split combination
             for split in df_metrics["split"].unique():
                 df_split = df_metrics[df_metrics["split"] == split]
 
@@ -413,8 +402,6 @@ def build_comprehensive_table(
                     exp_info[f"{metric}_{split}_mean"] = np.mean(values)
                     exp_info[f"{metric}_{split}_std"] = np.std(values)
 
-        # Flatten and add all config parameters
-        # Focus on model, backend, pred_head, data, target and runtime sections
         sections_to_include = [
             "model",
             "backend",
@@ -433,8 +420,8 @@ def build_comprehensive_table(
                 for param_key, param_value in flat_params.items():
                     exp_info[param_key] = param_value
 
-        # Ensure learning-curve runtime fields always exist for downstream analysis
-        # (older experiments/configs may not define runtime or learning-curve params)
+        # Older experiments may not have runtime or learning-curve params;
+        # ensure these columns always exist for downstream analysis.
         exp_info.setdefault("config.runtime.learning_curve_exp", None)
         exp_info.setdefault("config.runtime.learning_curve_id", None)
 
@@ -443,11 +430,8 @@ def build_comprehensive_table(
     if not all_experiments:
         raise RuntimeError("No valid experiments found")
 
-    # Create DataFrame - pandas will automatically fill missing columns with NaN
     df_comprehensive = pd.DataFrame(all_experiments)
 
-    # Sort columns for better readability
-    # 1. Identifiers
     id_cols = [
         "run_id",
         "model_name",
@@ -458,7 +442,6 @@ def build_comprehensive_table(
         "prediction_task",
     ]
 
-    # 2. Metric columns (mean/std first, then individual folds)
     metric_cols = [
         col
         for col in df_comprehensive.columns
@@ -467,19 +450,13 @@ def build_comprehensive_table(
     mean_std_cols = [col for col in metric_cols if "_mean" in col or "_std" in col]
     fold_cols = [col for col in metric_cols if col not in mean_std_cols]
 
-    # Sort mean/std columns
     mean_std_cols.sort()
-    # Sort fold columns
     fold_cols.sort()
 
-    # 3. Config columns
     config_cols = [col for col in df_comprehensive.columns if col.startswith("config.")]
     config_cols.sort()
 
-    # Reorder columns
     ordered_cols = id_cols + mean_std_cols + fold_cols + config_cols
-
-    # Keep only columns that exist
     ordered_cols = [col for col in ordered_cols if col in df_comprehensive.columns]
 
     df_comprehensive = df_comprehensive[ordered_cols]
@@ -692,11 +669,10 @@ def _render_report_group(
 
 def generate_dataset_reports(df_comprehensive: pd.DataFrame, output_dir: Path) -> None:
     """
-    Generates text reports per dataset comparing experiments.
-    For each (model, tissue, task, target) group:
-      - Identifies the best run (based on primary metric on test set)
-      - Lists all runs
-      - Highlights hyperparameters that differ from the best run
+    Write per-dataset text reports comparing experiment runs.
+
+    For each ``(model, tissue, task, target)`` group, identifies the best run and
+    highlights hyperparameters that differ from it.
     """
     print(f"\nGenerating dataset reports in {output_dir}...")
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -935,11 +911,7 @@ def process_experiment_plots(
             (exp_dir / "debug").iterdir()
         )
 
-        # If we are in debug mode, we want to plot debug info for running experiments too
-        # Otherwise, we only look at successful experiments
         if not is_successful and not (debug_mode and has_debug_info):
-            # Skip if failed/running AND we don't want to debug running experiments
-            # OR if valid but no debug info and not successful
             # Actually logic:
             # If successful -> process normally
             # If not successful -> skip unless debug=true and has_debug_info
@@ -948,14 +920,12 @@ def process_experiment_plots(
         run_id = exp_dir.name.replace("exp_", "")
         print(f"Processing plots for run: {run_id}")
 
-        # Paths
         metrics_path = exp_dir / "metrics" / "fold_metrics.parquet"
         predictions_path = exp_dir / "predictions" / "predictions.parquet"
         targets_path = exp_dir / "predictions" / "targets.parquet"
         debug_dir = exp_dir / "debug"
         run_plots_dir = plots_root / run_id
 
-        # Check if main plots already exist
         main_plots_exist = False
         if not force_plots and run_plots_dir.exists():
             main_plot_patterns = [
@@ -968,14 +938,12 @@ def process_experiment_plots(
                 run_plots_dir.glob(pattern) for pattern in main_plot_patterns
             )
 
-        # Check if debug plots already exist
         debug_plots_exist = False
         debug_plots_dir = run_plots_dir / "debug"
         if not force_plots and debug_plots_dir.exists():
             debug_plots_exist = any(debug_plots_dir.glob("debug_training_*.png"))
 
-        # Debug plots if debug data exists and plots don't exist yet
-        # MODIFIED: Allow plotting even if experiment isn't fully successful if debug info is there
+        # Plot debug info if present (even for incomplete experiments)
         if debug_dir.exists() and any(debug_dir.iterdir()):
             if not debug_plots_exist or force_plots:
                 print(f"  Creating debug plots for {run_id}...")
@@ -985,8 +953,6 @@ def process_experiment_plots(
             else:
                 print(f"  Debug plots already exist for {run_id}, skipping...")
 
-        # Main experiment plots if not already computed (Requires success usually implies metrics exist)
-        # Only try to plot main results if metrics exist (which usually implies success or at least partial success)
         if not main_plots_exist:
             if (
                 metrics_path.exists()
@@ -1062,7 +1028,6 @@ def main(cfg: DictConfig) -> None:
     # 3) Print tables and reports
     # -----------------------------------------------------------------
     if show_tables:
-        # Build comprehensive table with all experiment information
         print(f"\nBuilding comprehensive results table...")
         df_comprehensive = build_comprehensive_table(
             experiments_root, comprehensive_table_path
@@ -1072,11 +1037,9 @@ def main(cfg: DictConfig) -> None:
             f"  Shape: {df_comprehensive.shape[0]} experiments × {df_comprehensive.shape[1]} columns"
         )
 
-        # Build coverage table showing which experiments have been run
         tables_dir = summary_root / "tables"
         build_coverage_table(df_comprehensive, tables_dir)
 
-        # Generate detailed reports per dataset
         reports_dir = summary_root / "reports"
         generate_dataset_reports(df_comprehensive, reports_dir)
 
