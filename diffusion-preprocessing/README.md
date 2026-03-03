@@ -5,7 +5,7 @@
 - Pull the docker image
 
   ```bash
-  docker pull ghcr.io/man-shu/diffusion-preprocessing:main
+  docker pull ghcr.io/XXX/diffusion-preprocessing:main
   ```
 
 - **Optionally**, you can also build the docker image
@@ -13,20 +13,20 @@
   - Clone this repository and navigate to the directory
 
     ```bash
-    git clone git@github.com:man-shu/diffusion-preprocessing.git
+    git clone git@github.com:XXX/diffusion-preprocessing.git
     cd diffusion-preprocessing
     ```
 
   - If you're using a machine with x86_64 architecture (check with `uname -m`):
 
     ```bash
-    docker image build --tag ghcr.io/man-shu/diffusion-preprocessing:main .
+    docker image build --tag ghcr.io/XXX/diffusion-preprocessing:main .
     ```
 
   - If you're using a machine with ARM architecture (for example, Apple M1):
 
     ```bash
-    docker image build --platform linux/x86_64 --tag ghcr.io/man-shu/diffusion-preprocessing:main .
+    docker image build --platform linux/x86_64 --tag ghcr.io/XXX/diffusion-preprocessing:main .
     ```
 
 - Run the container
@@ -37,7 +37,7 @@
     docker container run --rm --interactive \
     --user "$(id -u):$(id -g)" \
     --mount type=bind,source=/data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data,target=/home/input \
-    ghcr.io/man-shu/diffusion-preprocessing:main /home/input/WAND-downsampled \
+    ghcr.io/XXX/diffusion-preprocessing:main /home/input/WAND-downsampled \
     /home/input/WAND-downsampled/derivatives \
     --work-dir /home/input/cache \
     --output-spaces fsLR:den-32k MNI152NLin6Asym T1w fsaverage5 \
@@ -57,7 +57,7 @@
     docker container run --rm --interactive \
     --user "$(id -u):$(id -g)" \
     --mount type=bind,source=/data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data,target=/home/input \
-    ghcr.io/man-shu/diffusion-preprocessing:main /home/input/WAND-downsampled \
+    ghcr.io/XXX/diffusion-preprocessing:main /home/input/WAND-downsampled \
     /home/input/WAND-downsampled/derivatives \
     --work-dir /home/input/cache \
     --output-spaces fsLR:den-32k MNI152NLin6Asym T1w fsaverage5 \
@@ -75,7 +75,7 @@
     --platform linux/x86_64 \
     --user "$(id -u):$(id -g)" \
     --mount type=bind,source=/data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data,target=/home/input \
-    ghcr.io/man-shu/diffusion-preprocessing:main /home/input/WAND-downsampled \
+    ghcr.io/XXX/diffusion-preprocessing:main /home/input/WAND-downsampled \
     /home/input/WAND-downsampled/derivatives \
     --work-dir /home/input/cache \
     --output-spaces fsLR:den-32k MNI152NLin6Asym T1w fsaverage5 \
@@ -104,7 +104,7 @@
     docker container run --rm --interactive \
     --user "$(id -u):$(id -g)" \
     --mount type=bind,source=/data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data,target=/home/input \
-    ghcr.io/man-shu/diffusion-preprocessing:main /home/input/WAND-downsampled \
+    ghcr.io/XXX/diffusion-preprocessing:main /home/input/WAND-downsampled \
     /home/input/WAND-downsampled/derivatives \
     --work-dir /home/input/cache \
     --output-spaces fsLR:den-32k MNI152NLin6Asym T1w fsaverage5 \
@@ -122,7 +122,7 @@
 - Pull the singularity image
 
   ```bash
-  singularity pull oras://ghcr.io/man-shu/diffusion-preprocessing:main_singularity
+  singularity pull oras://ghcr.io/XXX/diffusion-preprocessing:main_singularity
   ```
 
 - Run the singularity image
