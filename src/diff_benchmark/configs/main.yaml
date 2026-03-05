@@ -19,11 +19,10 @@ runtime:
 
 
 choices:
-  model: [dinov2] #[dummy_classifier, linear, pca_linear, forest, pca_forest, svm, pca_svm, lasso]
-  dataset: [wand]
-  # backend: [sklearn]
-  dataset.tissue_type: [gray] #, white]
-  # cluster: [margaret_cpu]
+  model: [dummy_classifier, linear, pca_linear, forest, pca_forest, svm, pca_svm, lasso]
+  dataset: [hcp]
+  backend: [sklearn]
+  dataset.tissue_type: [white, gray]
   dataset.metric_to_compute: [md]
   cluster.conf.parallel_type: [None]
   data.batch_size: [1]
