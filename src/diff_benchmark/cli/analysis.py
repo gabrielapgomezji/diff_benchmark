@@ -1,4 +1,5 @@
 from pathlib import Path
+import traceback
 
 import hydra
 import matplotlib.pyplot as plt
@@ -20,6 +21,17 @@ from diff_benchmark.analysis.print_summary_table import (
 
 
 def _as_bool(value) -> bool:
+    """Coerce a loosely-typed value to ``bool``.
+
+    Accepts actual booleans, NaN (→ ``False``), and common truth/falsy strings
+    such as ``"true"``, ``"1"``, ``"yes"``, ``"y"``, ``"t"``.
+
+    Args:
+        value: Any value to interpret as a boolean.
+
+    Returns:
+        Boolean interpretation of *value*.
+    """
     if isinstance(value, bool):
         return value
     if pd.isna(value):
@@ -28,6 +40,16 @@ def _as_bool(value) -> bool:
 
 
 def _infer_learning_curve_x_column(df: pd.DataFrame) -> str | None:
+    """Detect the x-axis column for learning-curve plots.
+
+    Tries a list of candidate column names in priority order.
+
+    Args:
+        df: Comprehensive results DataFrame.
+
+    Returns:
+        Name of the first matching column, or ``None`` if none are found.
+    """
     candidates = [
         "config.data.data_partition.train_size",
         "config.data.train_size",
@@ -253,8 +275,19 @@ def plot_learning_curves_from_comprehensive_table(
 
 
 def build_global_metrics(experiments_root: Path, output_path: Path) -> pd.DataFrame:
-    all_dfs = []
+    """Collect per-fold metrics from all experiment directories into one DataFrame.
 
+    Args:
+        experiments_root: Directory containing ``exp_*`` subdirectories.
+        output_path: Destination Parquet path for the combined metrics.
+
+    Returns:
+        DataFrame with one row per (experiment, fold, split, metric).
+
+    Raises:
+        RuntimeError: If no valid experiments are found.
+    """
+    all_dfs = []
     for exp_dir in experiments_root.glob("exp_*"):
         metrics_file = exp_dir / "metrics" / "fold_metrics.parquet"
         config_file = exp_dir / "config.yaml"
@@ -286,6 +319,16 @@ def build_global_metrics(experiments_root: Path, output_path: Path) -> pd.DataFr
 
 
 def build_summary_metrics(df_folds: pd.DataFrame, out_path: Path) -> pd.DataFrame:
+    """Aggregate per-fold metrics to per-run mean/std.
+
+    Args:
+        df_folds: Long-format per-fold metrics DataFrame (output of
+            :func:`build_global_metrics`).
+        out_path: Destination Parquet path for the summary.
+
+    Returns:
+        DataFrame with ``mean`` and ``std`` columns aggregated over folds.
+    """
     df = (
         df_folds.groupby(
             [
@@ -312,15 +355,17 @@ def build_summary_metrics(df_folds: pd.DataFrame, out_path: Path) -> pd.DataFram
 
 
 def flatten_config(cfg: DictConfig, prefix: str = "") -> dict:
-    """
-    Recursively flatten a nested OmegaConf config into a flat dict with dot-separated keys.
+    """Recursively flatten a nested OmegaConf config into a flat dict.
+
+    Keys are joined with dots (e.g. ``"model.backbone.depth"``).  Lists and
+    nested dicts are stringified so all values are JSON-primitive.
 
     Args:
-        cfg: OmegaConf config object.
-        prefix: Prefix for nested keys.
+        cfg: OmegaConf DictConfig to flatten.
+        prefix: Dot-separated prefix prepended to each key.
 
     Returns:
-        Flat dictionary with native Python values; complex types (list, dict) are stringified.
+        Flat ``dict[str, ...]`` with native Python scalar values.
     """
     flat = {}
 
@@ -905,16 +950,26 @@ def build_coverage_table(df_comprehensive: pd.DataFrame, output_dir: Path) -> No
 def process_experiment_plots(
     exp_dir: Path, plots_root: Path, force_plots: bool, debug_mode: bool
 ) -> None:
+    """Generate diagnostic and debug plots for a single experiment directory.
+
+    Skips experiments that are neither successful nor (in debug mode) have debug
+    artefacts.  Respects the *force_plots* flag to overwrite existing outputs.
+
+    Args:
+        exp_dir: Path to the ``exp_<run_id>`` directory.
+        plots_root: Root directory for all plots.
+        force_plots: When ``True``, regenerate plots even if they already exist.
+        debug_mode: When ``True``, also plot incomplete experiments that have
+            debug log files.
+    """
     try:
         is_successful = is_successful_experiment(exp_dir)
         has_debug_info = (exp_dir / "debug").exists() and any(
             (exp_dir / "debug").iterdir()
         )
 
+        # Skip experiments that have nothing to plot.
         if not is_successful and not (debug_mode and has_debug_info):
-            # Actually logic:
-            # If successful -> process normally
-            # If not successful -> skip unless debug=true and has_debug_info
             return
 
         run_id = exp_dir.name.replace("exp_", "")
@@ -978,8 +1033,6 @@ def process_experiment_plots(
             print(f"  Main plots already exist for {run_id}, skipping...")
     except Exception as e:
         print(f"Error processing {exp_dir.name}: {e}")
-        import traceback
-
         traceback.print_exc()
 
 
