@@ -23,6 +23,5 @@ choices:
   dataset: [hcp]
   backend: [sklearn]
   dataset.tissue_type: [white, gray]
-  cluster: [margaret_cpu]
   dataset.metric_to_compute: [md]
  
