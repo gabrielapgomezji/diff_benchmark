@@ -20,6 +20,7 @@ class CuriaBackbone(nn.Module):
         freeze_backbone: bool = False,
         slice_axis: int = 0,  # axial by default
         pooling: str = "mean",  # mean | max | cls
+        **kwargs,
     ):
         super().__init__()
 

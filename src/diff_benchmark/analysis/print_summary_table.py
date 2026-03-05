@@ -1,5 +1,6 @@
 import pandas as pd
 from omegaconf import OmegaConf
+from pathlib import Path
 
 
 def is_successful_experiment(exp_dir: Path) -> bool:

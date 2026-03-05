@@ -2,14 +2,18 @@ from pathlib import Path
 
 import nibabel as nib
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 
+from diff_benchmark.data.surface_mesh import SurfaceMeshData
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
 from diff_benchmark.preprocessing.preparation_pipeline import (
     BrainDataPreparationPipeline,
 )
 from diff_benchmark.preprocessing.utils.utils_brain_feature_extraction import (
+    build_parcel_label_vector,
     extract_region_data,
+    load_template_surface,
 )
 from diff_benchmark.utils.logger import setup_logger
 
@@ -318,3 +322,221 @@ class ImagePipeline(BrainDataPreparationPipeline):
             except (FileNotFoundError, OSError, ValueError, IndexError) as e:
                 print(f"[{subject_id}] Expected error during analysis: {e}")
                 logger.warning(f"[{subject_id}] Expected error during analysis: {e}")
+
+
+class MeshPipeline(DefaultPipeline):
+    """Surface-mesh pipeline that stores per-subject :class:`~diff_benchmark.data.surface_mesh.SurfaceMeshData` objects.
+
+    Each result value is a :class:`~diff_benchmark.data.surface_mesh.SurfaceMeshData`
+    instance that bundles:
+
+    - The template-space cortical mesh (vertices + faces from TemplateFlow).
+    - Per-vertex microstructural features loaded from ``.scalar.gii`` derivatives.
+    - A vertex-wise parcellation label vector built from the Schaefer atlas
+      already held in ``self.schaefer_resampled``.
+
+    This pipeline is a **drop-in extension** of :class:`DefaultPipeline`: it
+    reuses identical file discovery, verification, and resampling logic —
+    only :meth:`run_analysis` is overridden to assemble
+    :class:`~diff_benchmark.data.surface_mesh.SurfaceMeshData` objects instead
+    of flat arrays.
+
+    The resulting objects are compatible with PyTorch Geometric (call
+    :meth:`~diff_benchmark.data.surface_mesh.SurfaceMeshData.to_pyg`) and
+    can be used directly for graph-based pooling using ``parcel_labels``.
+
+    Args:
+        dataset_config: Dataset configuration.  The ``tissue_type`` field must
+            be ``"gray"`` (only cortical surface is supported).
+        surface_type: Which surface geometry to load from TemplateFlow
+            (``"midthickness"``, ``"inflated"``, ``"pial"``, ``"white"``).
+            Defaults to ``"midthickness"`` as it is the standard choice for
+            signal projection.
+    """
+
+    def __init__(
+        self,
+        dataset_config: DatasetConfig,
+        surface_type: str = "midthickness",
+    ):
+        super().__init__(dataset_config)
+        self.surface_type = surface_type
+        self._template_mesh: dict | None = None  # lazily loaded
+
+    # ------------------------------------------------------------------
+    # Template mesh (shared across all subjects)
+    # ------------------------------------------------------------------
+
+    def _get_template_mesh(self) -> dict:
+        """Load (and cache) the template-space surface geometry.
+
+        Returns:
+            Dict with keys ``"left_vertices"``, ``"left_faces"``,
+            ``"right_vertices"``, ``"right_faces"`` (all numpy arrays).
+        """
+        if self._template_mesh is not None:
+            return self._template_mesh
+
+        logger.info(
+            "Loading template surface (%s, %s)", self.surface_space, self.surface_type
+        )
+        lv, lf = load_template_surface(
+            hemi="L", space=self.surface_space, surf_type=self.surface_type
+        )
+        rv, rf = load_template_surface(
+            hemi="R", space=self.surface_space, surf_type=self.surface_type
+        )
+        self._template_mesh = {
+            "left_vertices": lv,
+            "left_faces": lf,
+            "right_vertices": rv,
+            "right_faces": rf,
+        }
+        return self._template_mesh
+
+    # ------------------------------------------------------------------
+    # Parcel label vector (shared across all subjects)
+    # ------------------------------------------------------------------
+
+    def _get_parcel_labels(self, n_left: int, n_right: int) -> np.ndarray:
+        """Return a vertex-wise parcel label vector for the combined mesh.
+
+        Args:
+            n_left: Number of left-hemisphere vertices.
+            n_right: Number of right-hemisphere vertices.
+
+        Returns:
+            ``(N_L + N_R,)`` int32 array of Schaefer parcel IDs.
+        """
+        return build_parcel_label_vector(
+            self.schaefer_resampled, n_left=n_left, n_right=n_right
+        )
+
+    # ------------------------------------------------------------------
+    # Analysis
+    # ------------------------------------------------------------------
+
+    def run_analysis(self) -> None:
+        """Fill ``self.results`` with :class:`~diff_benchmark.data.surface_mesh.SurfaceMeshData` objects.
+
+        Iterates over existing ``.scalar.gii`` derivative files (same glob
+        pattern as :class:`DefaultPipeline`), assembles a combined L+R mesh
+        with per-vertex features and parcel labels, and stores the result
+        keyed by subject ID.
+
+        Only gray-matter (cortical) data is supported.  If ``tissue_type``
+        is not ``"gray"``, a ``ValueError`` is raised.
+
+        Raises:
+            ValueError: If ``tissue_type != "gray"``.
+        """
+        tissue_type = self.dataset_config.tissue_type
+        if tissue_type != "gray":
+            raise ValueError(
+                "MeshPipeline only supports tissue_type='gray' "
+                f"(got '{tissue_type}').  Use DefaultPipeline for white matter."
+            )
+
+        # Load template geometry once
+        tmesh = self._get_template_mesh()
+        lv = tmesh["left_vertices"]
+        lf = tmesh["left_faces"]
+        rv = tmesh["right_vertices"]
+        rf = tmesh["right_faces"]
+
+        # Pre-compute parcel labels (same for all subjects in template space)
+        parcel_labels = self._get_parcel_labels(
+            n_left=lv.shape[0], n_right=rv.shape[0]
+        )
+
+        # Offset right-hemisphere faces
+        n_left_verts = lv.shape[0]
+        rf_offset = rf + n_left_verts
+
+        # Combined template mesh arrays
+        all_vertices = np.concatenate([lv, rv], axis=0)
+        all_faces = np.concatenate([lf, rf_offset], axis=0)
+
+        scalar_files = sorted(
+            self.results_root.glob(
+                f"derivatives/sub-*/dwi/*_hemi-L_param-{self.metric}_tissue-{tissue_type}.scalar.gii"
+            )
+        )
+
+        for left_file in tqdm(scalar_files, desc="Building mesh dataset"):
+            try:
+                subject_id = left_file.stem.split("_")[0].replace("sub-", "")
+                right_file = left_file.with_name(
+                    left_file.name.replace("hemi-L", "hemi-R")
+                )
+
+                if not right_file.exists():
+                    logger.warning("[%s] Right scalar file missing, skipping", subject_id)
+                    continue
+
+                # Load and clip scalar data (same as DefaultPipeline)
+                left_data = np.nan_to_num(
+                    nib.load(left_file).darrays[0].data
+                ).clip(0, 7).astype(np.float32)
+                right_data = np.nan_to_num(
+                    nib.load(right_file).darrays[0].data
+                ).clip(0, 7).astype(np.float32)
+
+                # Stack features: shape (N_L + N_R, 1)
+                combined_features = np.concatenate(
+                    [left_data[:, np.newaxis], right_data[:, np.newaxis]], axis=0
+                )
+
+                mesh = SurfaceMeshData(
+                    vertices=all_vertices.copy(),
+                    faces=all_faces.copy(),
+                    features=combined_features,
+                    parcel_labels=parcel_labels.copy(),
+                    subject_id=subject_id,
+                    metric=self.metric,
+                    hemisphere="LR",
+                )
+                self.results[subject_id] = mesh
+
+            except (FileNotFoundError, OSError, ValueError, IndexError) as e:
+                print(f"[{subject_id}] Expected error during mesh analysis: {e}")
+                logger.warning(
+                    "[%s] Expected error during mesh analysis: %s", subject_id, e
+                )
+
+    # ------------------------------------------------------------------
+    # Export override — DataFrames don't hold meshes; return a plain index DF
+    # ------------------------------------------------------------------
+
+    def export_to_csv(self) -> pd.DataFrame:
+        """Return a single-column DataFrame with ``subject_id`` as the index.
+
+        The actual :class:`~diff_benchmark.data.surface_mesh.SurfaceMeshData`
+        objects remain in ``self.results`` and are accessed directly by the
+        dataset class via :meth:`get_mesh_results`.
+
+        Returns:
+            DataFrame with ``subject_id`` index and a dummy ``"mesh"`` column
+            so the standard :meth:`load_features` / ``reset_index()`` call
+            chain in :class:`~diff_benchmark.data.prepare_data.DatasetPreparation`
+            still works.
+        """
+        if not self.results:
+            raise ValueError("No results to save.")
+
+        df = pd.DataFrame(
+            {"mesh": list(self.results.keys())},
+            index=pd.Index(list(self.results.keys()), name="subject_id"),
+        )
+        return df
+
+    def get_mesh_results(self) -> dict:
+        """Return the raw ``{subject_id: SurfaceMeshData}`` dictionary.
+
+        Call this after :meth:`load_features` to retrieve the full mesh objects.
+
+        Returns:
+            Dict mapping subject ID strings to
+            :class:`~diff_benchmark.data.surface_mesh.SurfaceMeshData` instances.
+        """
+        return dict(self.results)

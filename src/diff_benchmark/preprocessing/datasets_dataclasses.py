@@ -32,3 +32,8 @@ class DatasetConfig:
 
     # Target surface space: "fslr_32k" (HCP) or "fsaverage" (FreeSurfer/CamCAN)
     surface_space: str = "fslr_32k"
+
+    # ---- Mesh-pipeline options (only used when data_type == "mesh") ----
+    # Surface geometry to load from TemplateFlow for the mesh representation.
+    # Common choices: "midthickness" (default), "inflated", "pial", "white".
+    mesh_surface_type: str = "midthickness"

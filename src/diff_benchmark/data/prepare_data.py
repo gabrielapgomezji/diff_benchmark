@@ -15,6 +15,7 @@ from diff_benchmark.models.model_configurations import get_model
 from diff_benchmark.preprocessing.brain_feature_extraction import (
     DefaultPipeline,
     ImagePipeline,
+    MeshPipeline,
 )
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
 from diff_benchmark.preprocessing.preparation_pipeline import (
@@ -60,7 +61,7 @@ def get_data_pipeline(
     """Factory returning the appropriate data pipeline for *data_type*.
 
     Args:
-        data_type: One of ``'images'`` or ``'array'``.
+        data_type: One of ``'images'``, ``'array'``, or ``'mesh'``.
         dataset: Dataset configuration.
 
     Returns:
@@ -77,9 +78,14 @@ def get_data_pipeline(
         logger.info("Using Default Array Pipeline")
         print("Using Default Array Pipeline")
         brain_preparator = DefaultPipeline(dataset)
+    elif data_type == "mesh":
+        logger.info("Using Mesh Pipeline (surface graph representation)")
+        print("Using Mesh Pipeline (surface graph representation)")
+        surface_type = getattr(dataset, "mesh_surface_type", "midthickness")
+        brain_preparator = MeshPipeline(dataset, surface_type=surface_type)
     else:
         raise ValueError(
-            f"Unknown data_type '{data_type}'. Must be one of ['images', 'array']."
+            f"Unknown data_type '{data_type}'. Must be one of ['images', 'array', 'mesh']."
         )
 
     return brain_preparator
@@ -360,7 +366,12 @@ class DatasetPreparation:
         )
 
     def _get_brain_df(self) -> pd.DataFrame:
-        """Load and return the brain features DataFrame."""
+        """Load and return the brain features DataFrame.
+
+        For the mesh pipeline the DataFrame contains only a ``subject_id`` index
+        column (mesh objects live in ``self.brain_preparator.results``); for all
+        other pipelines the full feature matrix is returned.
+        """
         # -------- MODEL & PIPELINE --------
 
         model = get_model(
@@ -446,9 +457,15 @@ class DatasetPreparation:
     ) -> Tuple[CustomDataset, PreprocessedData]:
         """
         Create CustomDataset and PreprocessedData objects.
+
+        When the active pipeline is :class:`~diff_benchmark.preprocessing.brain_feature_extraction.MeshPipeline`,
+        the mesh objects stored in ``self.brain_preparator.results`` are passed
+        to :class:`~diff_benchmark.data.generate_dataset.CustomDataset` so each
+        sample additionally returns a mesh tensor dict.
+
         Args:
-            brain_filtered (pd.DataFrame): Filtered brain features DataFrame.
-            demographics_filtered (pd.DataFrame): Filtered demographics DataFrame.
+            brain_filtered: Filtered brain features DataFrame.
+            demographics_filtered: Filtered demographics DataFrame.
         Returns:
             Tuple[CustomDataset, PreprocessedData]: Created dataset and preprocessed data.
         """
@@ -458,6 +475,14 @@ class DatasetPreparation:
         y = np.asarray(demographics_filtered[self.cfg.target.target_column[0]])
         gender = np.asarray(demographics_filtered["Gender"])
         subject_ids = demographics_filtered["Subject"].values
+
+        # Check whether the active pipeline holds mesh results
+        mesh_data = None
+        if hasattr(self, "brain_preparator") and isinstance(
+            self.brain_preparator, MeshPipeline
+        ):
+            mesh_data = self.brain_preparator.get_mesh_results()
+            logger.info("Attaching mesh data for %d subjects", len(mesh_data))
 
         if use_cache:
             # Load cached features
@@ -473,8 +498,7 @@ class DatasetPreparation:
             image_size = _parse_image_size(self.cfg.data.get("resize_shape"))
 
             # Create a reference regular dataset to verify subject alignment
-            # This is cheap as we don't load images, just the file paths/dataframe
-            regular_dataset = CustomDataset(X, y, gender)
+            regular_dataset = CustomDataset(X, y, gender, mesh_data=mesh_data)
             reference_loader = DataLoader(
                 regular_dataset,
                 batch_size=self.cfg.data.batch_size,
@@ -491,24 +515,17 @@ class DatasetPreparation:
                 source_dataloader=reference_loader,
             )
 
-            # Store targets and genders using the public properties
-            # These provide a consistent interface with CustomDataset
             cached_dataset.subject_ids = subject_ids.tolist()
-            cached_dataset.targets = (
-                y  # Stored as numpy array, converted to tensor in __getitem__
-            )
-            cached_dataset.gender = (
-                gender  # Stored as numpy array, converted to tensor in __getitem__
-            )
+            cached_dataset.targets = y
+            cached_dataset.gender = gender
 
-            # Create PreprocessedData with dummy X (features are in cache)
             X_dummy = pd.DataFrame({"subject_id": subject_ids})
             preprocessed = PreprocessedData(X_dummy, y, gender, config=self.cfg)
 
             return cached_dataset, preprocessed
         else:
-            # Regular dataset
-            torch_dataset = CustomDataset(X, y, gender)
+            # Regular dataset (with optional mesh data)
+            torch_dataset = CustomDataset(X, y, gender, mesh_data=mesh_data)
             preprocessed = PreprocessedData(X, y, gender, config=self.cfg)
             return torch_dataset, preprocessed
 
@@ -524,7 +541,6 @@ class DatasetPreparation:
                 The prepared dataset and preprocessed data.
         """
         use_cache = self._should_use_cache()
-
         print("Preparing demographics data...")
         brain_df = self._get_brain_df()
         demographics_df = self._get_demographics_df()

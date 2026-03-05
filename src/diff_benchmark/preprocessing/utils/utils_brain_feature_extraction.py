@@ -35,12 +35,14 @@ from diff_benchmark.preprocessing.utils.utils_dmri_metrics import (  # noqa: F40
 )
 from diff_benchmark.preprocessing.utils.utils_surface_skeleton import (  # noqa: F401
     average_per_parcel,
+    build_parcel_label_vector,
     classify_tract_hemisphere,
     download_fsl_skeleton,
     extract_region_data,
     extract_wm_tract_subset,
     get_jhu_tract_names,
     load_tbss_skeleton,
+    load_template_surface,
     project_to_skeleton,
     project_to_surface,
     resample_schaefer_onto_fs_lr,

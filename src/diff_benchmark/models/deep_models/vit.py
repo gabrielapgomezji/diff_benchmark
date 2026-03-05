@@ -20,6 +20,7 @@ class GoogleViTBackbone(nn.Module):
         freeze_backbone: bool = False,
         slice_axis: int = 0,
         pooling: str = "mean",  # mean | max | cls
+        **kwargs,
     ):
         super().__init__()
 

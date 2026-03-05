@@ -20,6 +20,7 @@ class DinoViTBackbone(nn.Module):
         freeze_backbone: bool = False,
         slice_axis: int = 0,  # axial slices
         pooling: str = "mean",  # mean | max | cls
+        **kwargs
     ):
         super().__init__()
         self.slice_axis = slice_axis

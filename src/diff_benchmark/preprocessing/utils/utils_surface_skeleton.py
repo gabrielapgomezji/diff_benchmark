@@ -762,6 +762,100 @@ def average_per_parcel(
     return rtop_avg
 
 
+# ---------------------------------------------------------------------------
+# Surface-mesh helpers (used by MeshPipeline)
+# ---------------------------------------------------------------------------
+
+
+def load_template_surface(
+    hemi: str,
+    space: str = "fslr_32k",
+    surf_type: str = "midthickness",
+) -> tuple[np.ndarray, np.ndarray]:
+    """Load template-space surface vertices and faces from TemplateFlow.
+
+    Downloads the surface file if not already cached locally.
+
+    Args:
+        hemi: Hemisphere identifier — ``"L"`` or ``"R"``.
+        space: Template space.  Currently only ``"fslr_32k"`` is supported
+            (uses the HCP fsLR 32k surface from TemplateFlow).
+        surf_type: Surface type (``"midthickness"``, ``"inflated"``,
+            ``"pial"``, ``"white"``).
+
+    Returns:
+        ``(vertices, faces)`` as ``(N, 3)`` float32 and ``(M, 3)`` int32 arrays.
+
+    Raises:
+        ValueError: If *space* is not supported.
+        FileNotFoundError: If TemplateFlow cannot fetch the file.
+    """
+    if space != "fslr_32k":
+        raise ValueError(
+            f"load_template_surface: only 'fslr_32k' is currently supported, "
+            f"got '{space}'"
+        )
+
+    surf_path = tflow.get(
+        "fsLR",
+        hemi=hemi,
+        density="32k",
+        suffix=surf_type,
+        extension=".surf.gii",
+    )
+    if not surf_path:
+        raise FileNotFoundError(
+            f"TemplateFlow could not find {surf_type} surface for fsLR 32k "
+            f"hemisphere {hemi}"
+        )
+
+    img = nib.load(str(surf_path))
+    vertices = img.darrays[0].data.astype(np.float32)  # (N, 3)
+    faces = img.darrays[1].data.astype(np.int32)       # (M, 3)
+    logger.debug(
+        "Loaded template surface %s %s %s: %d vertices, %d faces",
+        space, hemi, surf_type, vertices.shape[0], faces.shape[0],
+    )
+    return vertices, faces
+
+
+def build_parcel_label_vector(
+    schaefer_resampled: dict,
+    n_left: int | None = None,
+    n_right: int | None = None,
+) -> np.ndarray:
+    """Build a combined vertex-wise parcel label vector for L+R hemispheres.
+
+    Concatenates the left and right parcel ID arrays from *schaefer_resampled*
+    into a single ``(N_L + N_R,)`` int32 vector.  Vertices on the medial wall
+    (parcel ID == 0) are left as 0.
+
+    Args:
+        schaefer_resampled: Dict returned by :func:`resample_schaefer_onto_fs_lr`.
+        n_left: Expected number of left-hemisphere vertices.  If given and the
+            label array length differs, a warning is emitted.
+        n_right: Expected number of right-hemisphere vertices.
+
+    Returns:
+        ``(N_L + N_R,)`` int32 array of parcel IDs.
+    """
+    left_labels = schaefer_resampled["left.data"].astype(np.int32)
+    right_labels = schaefer_resampled["right.data"].astype(np.int32)
+
+    if n_left is not None and len(left_labels) != n_left:
+        logger.warning(
+            "build_parcel_label_vector: left label count %d != expected %d",
+            len(left_labels), n_left,
+        )
+    if n_right is not None and len(right_labels) != n_right:
+        logger.warning(
+            "build_parcel_label_vector: right label count %d != expected %d",
+            len(right_labels), n_right,
+        )
+
+    return np.concatenate([left_labels, right_labels])
+
+
 def extract_region_data(
     hem_left: np.ndarray,
     hem_right: np.ndarray,

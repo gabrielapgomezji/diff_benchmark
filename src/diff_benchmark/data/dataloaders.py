@@ -1,5 +1,6 @@
 from collections import Counter
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import torch
@@ -87,16 +88,55 @@ class PreprocessedData:
 
         return new_indices
 
-    def safe_collate(self, batch: list) -> torch.Tensor:
-        """Collate function that filters out ``None`` samples.
+    def safe_collate(self, batch: list) -> Any:
+        """Collate function that filters out ``None`` samples and handles mesh dicts.
+
+        Supports both the classic three-tuple ``(features, target, gender)`` and
+        the extended four-tuple ``(features, target, gender, mesh_dict)`` returned
+        when :class:`~diff_benchmark.data.generate_dataset.CustomDataset` carries
+        mesh data.
+
+        Mesh tensors are stacked along the batch dimension when all entries in the
+        batch contain a non-empty mesh dict.  If any sample is missing its mesh
+        (empty dict ``{}``), the ``"mesh"`` key is omitted from the collated batch
+        to avoid shape mismatches.
 
         Args:
             batch: List of samples from :meth:`Dataset.__getitem__`.
 
         Returns:
-            Default-collated batch after removing ``None`` entries.
+            Default-collated batch after removing ``None`` entries, with an
+            optional stacked ``"mesh"`` dict appended as the last element.
         """
+        # Drop failed samples
         batch = [b for b in batch if b is not None]
+        if not batch:
+            return torch.utils.data.dataloader.default_collate([])
+
+        # Detect whether batch carries mesh dicts (4-tuples)
+        if len(batch[0]) == 4:
+            scalars = [(b[0], b[1], b[2]) for b in batch]
+            mesh_dicts: List[Optional[Dict[str, torch.Tensor]]] = [b[3] for b in batch]
+
+            # Collate scalar part normally
+            collated = torch.utils.data.dataloader.default_collate(scalars)
+
+            # Collate mesh part: only if every sample has a non-empty mesh dict
+            valid_meshes = [m for m in mesh_dicts if m]  # non-empty dicts
+            if len(valid_meshes) == len(batch):
+                # All samples have mesh data — stack per key
+                mesh_keys = list(valid_meshes[0].keys())
+                stacked_mesh: Dict[str, torch.Tensor] = {
+                    k: torch.stack([m[k] for m in valid_meshes], dim=0)
+                    for k in mesh_keys
+                }
+            else:
+                # Mixed or missing mesh data — skip mesh in this batch
+                stacked_mesh = {}
+
+            return (*collated, stacked_mesh)
+
+        # Classic 3-tuple path (no mesh)
         return torch.utils.data.dataloader.default_collate(batch)
 
     def get_dataloader_fold(
