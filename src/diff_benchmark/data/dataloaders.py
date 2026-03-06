@@ -1,8 +1,9 @@
 from collections import Counter
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, List
 
 import numpy as np
+import pandas as pd
 import torch
 from sklearn.model_selection import StratifiedKFold
 from torch.utils.data import DataLoader, Subset, TensorDataset
@@ -89,55 +90,92 @@ class PreprocessedData:
         return new_indices
 
     def safe_collate(self, batch: list) -> Any:
-        """Collate function that filters out ``None`` samples and handles mesh dicts.
+        """Collate function that filters ``None`` samples and loads mesh data.
 
-        Supports both the classic three-tuple ``(features, target, gender)`` and
-        the extended four-tuple ``(features, target, gender, mesh_dict)`` returned
-        when :class:`~diff_benchmark.data.generate_dataset.CustomDataset` carries
-        mesh data.
+        All samples carry a three-tuple ``(X, target, gender)`` where ``X`` is
+        either a float tensor (array / image pipelines) or a dict
+        ``{"nodes_path": Path, "edges_path": Path}`` (mesh pipeline).
 
-        Mesh tensors are stacked along the batch dimension when all entries in the
-        batch contain a non-empty mesh dict.  If any sample is missing its mesh
-        (empty dict ``{}``), the ``"mesh"`` key is omitted from the collated batch
-        to avoid shape mismatches.
+        Collation rules:
+
+        - ``None`` batch entries (failed I/O reads) are silently dropped.
+        - If ``X`` is a **tensor** the full batch is collated with PyTorch's
+          default collate: ``(X_tensor, y_tensor, gender_tensor)``.
+        - If ``X`` is a **dict** (mesh mode) both ``nodes.parquet`` and
+          ``edges.parquet`` are loaded here for each sample. ``X_batch`` is
+          returned as a **list of mesh dicts**, one per sample::
+
+              {
+                  "node_features":  FloatTensor (N, F),
+                  "vertices":       FloatTensor (N, 3),
+                  "parcel_labels":  LongTensor  (N,),
+                  "edge_index":     LongTensor  (2, E),
+              }
+
+          ``y`` and ``gender`` are collated into tensors normally.
 
         Args:
             batch: List of samples from :meth:`Dataset.__getitem__`.
 
         Returns:
-            Default-collated batch after removing ``None`` entries, with an
-            optional stacked ``"mesh"`` dict appended as the last element.
+            Three-tuple ``(X, y, gender)`` where ``X`` is either a stacked
+            tensor (array/image) or a list of mesh dicts (mesh pipeline).
         """
+        from torch.utils.data.dataloader import default_collate
+
         # Drop failed samples
         batch = [b for b in batch if b is not None]
         if not batch:
-            return torch.utils.data.dataloader.default_collate([])
+            return default_collate([])
 
-        # Detect whether batch carries mesh dicts (4-tuples)
-        if len(batch[0]) == 4:
-            scalars = [(b[0], b[1], b[2]) for b in batch]
-            mesh_dicts: List[Optional[Dict[str, torch.Tensor]]] = [b[3] for b in batch]
+        # All samples are 3-tuples: (X, y, gender)
+        first_x = batch[0][0]
 
-            # Collate scalar part normally
-            collated = torch.utils.data.dataloader.default_collate(scalars)
+        if isinstance(first_x, dict):
+            # Mesh mode — load both parquets and build a rich dict per sample
+            mesh_batch: List[dict] = []
+            for sample in batch:
+                paths = sample[0]
 
-            # Collate mesh part: only if every sample has a non-empty mesh dict
-            valid_meshes = [m for m in mesh_dicts if m]  # non-empty dicts
-            if len(valid_meshes) == len(batch):
-                # All samples have mesh data — stack per key
-                mesh_keys = list(valid_meshes[0].keys())
-                stacked_mesh: Dict[str, torch.Tensor] = {
-                    k: torch.stack([m[k] for m in valid_meshes], dim=0)
-                    for k in mesh_keys
-                }
-            else:
-                # Mixed or missing mesh data — skip mesh in this batch
-                stacked_mesh = {}
+                # ---- nodes parquet ----
+                nodes_df = pd.read_parquet(paths["nodes_path"], engine="pyarrow")
+                feat_cols = sorted(
+                    [c for c in nodes_df.columns if c.startswith("feature_")],
+                    key=lambda c: int(c.split("_")[1]),
+                )
+                node_features = torch.tensor(
+                    nodes_df[feat_cols].to_numpy(dtype="float32"),
+                    dtype=torch.float32,
+                )  # (N, F)
+                vertices = torch.tensor(
+                    nodes_df[["x", "y", "z"]].to_numpy(dtype="float32"),
+                    dtype=torch.float32,
+                )  # (N, 3)
+                parcel_labels = torch.tensor(
+                    nodes_df["parcel_label"].to_numpy(dtype="int32"),
+                    dtype=torch.long,
+                )  # (N,)
 
-            return (*collated, stacked_mesh)
+                # ---- edges parquet ----
+                edges_df = pd.read_parquet(paths["edges_path"], engine="pyarrow")
+                edge_index = torch.tensor(
+                    edges_df[["src", "dst"]].to_numpy(dtype="int64").T,
+                    dtype=torch.long,
+                )  # (2, E)
 
-        # Classic 3-tuple path (no mesh)
-        return torch.utils.data.dataloader.default_collate(batch)
+                mesh_batch.append({
+                    "node_features": node_features,
+                    "vertices":      vertices,
+                    "parcel_labels": parcel_labels,
+                    "edge_index":    edge_index,
+                })
+
+            y_batch = default_collate([b[1] for b in batch])
+            gender_batch = default_collate([b[2] for b in batch])
+            return mesh_batch, y_batch, gender_batch
+
+        # Array / image mode — default collate handles everything
+        return default_collate(batch)
 
     def get_dataloader_fold(
         self,

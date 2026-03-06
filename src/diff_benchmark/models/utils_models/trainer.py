@@ -24,6 +24,14 @@ from diff_benchmark.utils.logger import (
 from diff_benchmark.utils.scores import compute_metrics
 
 
+def _to_device(x, device, non_blocking: bool = False):
+    """Move *x* to *device*.  Handles tensors and lists of mesh dicts."""
+    if isinstance(x, torch.Tensor):
+        return x.to(device, non_blocking=non_blocking)
+    # mesh batch: list of dicts with tensor values
+    return [{k: v.to(device, non_blocking=non_blocking) for k, v in d.items()} for d in x]
+
+
 def configure_cached_dataset_augmentation(dataset, mode: str = "random"):
     """
     Configure augmentation mode for cached feature datasets.
@@ -159,7 +167,8 @@ class SklearnTrainer(BaseTrainer):
         """Convert a DataLoader to concatenated NumPy arrays.
 
         Args:
-            dataloader: Yields ``(x_batch, y_batch, _)`` tuples.
+            dataloader: Yields ``(x_batch, y_batch, gender_batch)`` tuples.
+                The ``gender_batch`` element is ignored.
 
         Returns:
             tuple[np.ndarray, np.ndarray]: ``(features, targets)``.
@@ -167,7 +176,8 @@ class SklearnTrainer(BaseTrainer):
 
         features_list = []
         targets_list = []
-        for features_batch, targets_batch, _ in dataloader:
+        for batch in dataloader:
+            features_batch, targets_batch = batch[0], batch[1]
             features_list.append(features_batch.numpy())
             targets_list.append(targets_batch.numpy())
         features = np.concatenate(features_list, axis=0)
@@ -387,7 +397,7 @@ class TorchTrainer(BaseTrainer):
 
             for batch_idx, batch in pbar:
                 x, y, *_ = batch
-                x = x.to(self.device, non_blocking=True)
+                x = _to_device(x, self.device, non_blocking=True)
                 if self.prediction_task == "binary_classification":
                     y = y.long().to(self.device, non_blocking=True)
                 else:
@@ -401,6 +411,9 @@ class TorchTrainer(BaseTrainer):
                 else:
                     preds = preds.squeeze(1)
                 loss = self.criterion(preds, y)
+                # Optional structured regularisation (e.g. group lasso on parcel weights).
+                if hasattr(self.model, "regularization_loss"):
+                    loss = loss + self.model.regularization_loss()
                 # Here you compute the loss on the normalized targets, so gradient will be smaller.
                 loss.backward()
                 self.optimizer.step()
@@ -469,7 +482,7 @@ class TorchTrainer(BaseTrainer):
         with torch.no_grad():
             for batch in val_loader:
                 x, y, *_ = batch
-                x = x.to(self.device, non_blocking=True)
+                x = _to_device(x, self.device, non_blocking=True)
                 if self.prediction_task == "binary_classification":
                     y = y.long().to(self.device, non_blocking=True)
                 else:
@@ -550,8 +563,7 @@ class TorchTrainer(BaseTrainer):
         with torch.no_grad():
             for batch in predict_dataloader:
                 x, *_ = batch
-
-                x = x.to(self.device)
+                x = _to_device(x, self.device)
                 preds = self.model(x)
                 if self.prediction_task == "binary_classification":
                     preds = preds.argmax(dim=1)
@@ -616,6 +628,8 @@ class _LightningModuleAdapter(pl.LightningModule):
             preds = preds.squeeze(1)
 
         loss = self.criterion(preds, y)
+        if hasattr(self.model, "regularization_loss"):
+            loss = loss + self.model.regularization_loss()
 
         self.log(
             "train_loss",
@@ -667,15 +681,17 @@ class _LightningModuleAdapter(pl.LightningModule):
 
 
 def x_only_loader(dl: DataLoader):
-    """Yield only input tensors from a ``(x, y, g)`` dataloader.
+    """Yield only input tensors from a ``(x, y, gender)`` dataloader.
 
     Args:
-        dl (DataLoader): Original dataloader yielding ``(x, y, g)`` tuples.
+        dl (DataLoader): Original dataloader yielding ``(x, y, gender)``
+            tuples.
 
     Yields:
         tuple: Single-element tuple ``(x,)``.
     """
-    for x, _, _ in dl:
+    for batch in dl:
+        x = batch[0]
         if isinstance(x, list):
             x = torch.stack(x)
         if x.dim() == 4:

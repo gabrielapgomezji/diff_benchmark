@@ -15,6 +15,10 @@ from diff_benchmark.preprocessing.utils.utils_brain_feature_extraction import (
     extract_region_data,
     load_template_surface,
 )
+from diff_benchmark.preprocessing.utils.utils_graph_export import (
+    export_mesh_graph,
+    mesh_parquet_paths,
+)
 from diff_benchmark.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -324,7 +328,7 @@ class ImagePipeline(BrainDataPreparationPipeline):
                 logger.warning(f"[{subject_id}] Expected error during analysis: {e}")
 
 
-class MeshPipeline(DefaultPipeline):
+class MeshPipeline(BrainDataPreparationPipeline):
     """Surface-mesh pipeline that stores per-subject :class:`~diff_benchmark.data.surface_mesh.SurfaceMeshData` objects.
 
     Each result value is a :class:`~diff_benchmark.data.surface_mesh.SurfaceMeshData`
@@ -335,11 +339,10 @@ class MeshPipeline(DefaultPipeline):
     - A vertex-wise parcellation label vector built from the Schaefer atlas
       already held in ``self.schaefer_resampled``.
 
-    This pipeline is a **drop-in extension** of :class:`DefaultPipeline`: it
-    reuses identical file discovery, verification, and resampling logic —
-    only :meth:`run_analysis` is overridden to assemble
-    :class:`~diff_benchmark.data.surface_mesh.SurfaceMeshData` objects instead
-    of flat arrays.
+    Unlike :class:`DefaultPipeline` or :class:`ImagePipeline`, this pipeline
+    inherits directly from :class:`~diff_benchmark.preprocessing.preparation_pipeline.BrainDataPreparationPipeline`
+    and stores results under a dedicated ``mesh/`` sub-directory so that mesh
+    Parquet files never collide with flat-array derivatives.
 
     The resulting objects are compatible with PyTorch Geometric (call
     :meth:`~diff_benchmark.data.surface_mesh.SurfaceMeshData.to_pyg`) and
@@ -362,6 +365,223 @@ class MeshPipeline(DefaultPipeline):
         super().__init__(dataset_config)
         self.surface_type = surface_type
         self._template_mesh: dict | None = None  # lazily loaded
+        # Mesh pipeline keeps its own results root separate from "default/"
+        self.results_root = Path(dataset_config.results_dir) / "mesh"
+        # Root where microstructure (.scalar.gii / .nii.gz) files are stored
+        # by DefaultPipeline / compute_microstructure — never written into mesh/
+        self._default_root = Path(dataset_config.results_dir) / "default"
+
+    # ------------------------------------------------------------------
+    # Directory helpers
+    # ------------------------------------------------------------------
+
+    def _mesh_dwi_dir(self, subject_id: str) -> Path:
+        """Return the mesh derivatives directory for *subject_id*.
+
+        Output layout: ``<results_dir>/mesh/derivatives/sub-<id>/dwi/``
+        """
+        return self.results_root / "derivatives" / f"sub-{subject_id}" / "dwi"
+
+    def _default_dwi_dir(self, subject_id: str) -> Path:
+        """Return the default derivatives directory for *subject_id*.
+
+        Microstructure files (``.scalar.gii``, ``.nii.gz``) are stored here.
+        Layout: ``<results_dir>/default/derivatives/sub-<id>/dwi/``
+        """
+        return self._default_root / "derivatives" / f"sub-{subject_id}" / "dwi"
+
+    # ------------------------------------------------------------------
+    # Cache-check helpers
+    # ------------------------------------------------------------------
+
+    def _mesh_outputs_exist(self, subject_id: str) -> bool:
+        """Return True if all three mesh output files already exist.
+
+        Checks for BIDS-named files:
+
+        - ``sub-<id>_param-<metric>_tissue-<tissue_type>_nodes.parquet``
+        - ``sub-<id>_param-<metric>_tissue-<tissue_type>_edges.parquet``
+        - ``sub-<id>_param-<metric>_tissue-<tissue_type>_mesh.npz``
+
+        all inside ``mesh/derivatives/sub-<id>/dwi/``.
+        """
+        d = self._mesh_dwi_dir(subject_id)
+        nodes_path, edges_path = mesh_parquet_paths(
+            subject_id, d, self.metric, self.tissue_type
+        )
+        stem = f"sub-{subject_id}_param-{self.metric}_tissue-{self.tissue_type}"
+        return (
+            nodes_path.exists()
+            and edges_path.exists()
+            and (d / f"{stem}_mesh.npz").exists()
+        )
+
+    def _microstructure_outputs_exist(self, subject_id: str) -> bool:
+        """Return True if the scalar.gii microstructure files already exist.
+
+        Looks inside ``default/derivatives/sub-<id>/dwi/`` for the left and
+        right ``.scalar.gii`` files produced by
+        :meth:`~diff_benchmark.preprocessing.preparation_pipeline.BrainDataPreparationPipeline.compute_microstructure`.
+        """
+        d = self._default_dwi_dir(subject_id)
+        left = d / (
+            f"sub-{subject_id}_hemi-L_param-{self.metric}"
+            f"_tissue-{self.tissue_type}.scalar.gii"
+        )
+        right = d / (
+            f"sub-{subject_id}_hemi-R_param-{self.metric}"
+            f"_tissue-{self.tissue_type}.scalar.gii"
+        )
+        return left.exists() and right.exists()
+
+    # ------------------------------------------------------------------
+    # Abstract-method implementation — delegates to mesh outputs
+    # ------------------------------------------------------------------
+
+    def verify_subject_files(
+        self, subject_id: str, metric: str, tissue_type: str
+    ) -> bool:
+        """Return True if all mesh output files exist for *subject_id*.
+
+        The mesh pipeline considers a subject "done" when the Parquet graph
+        files **and** the debug NPZ are all present under
+        ``mesh/derivatives/sub-<id>/dwi/``.  This is what
+        :meth:`~diff_benchmark.preprocessing.preparation_pipeline.BrainDataPreparationPipeline._process_subject`
+        consults to decide whether to skip computation.
+
+        Args:
+            subject_id: Subject identifier.
+            metric: Unused (kept for signature compatibility).
+            tissue_type: Unused (kept for signature compatibility).
+
+        Returns:
+            True when nodes.parquet, edges.parquet and sub-<id>_mesh.npz all exist.
+        """
+        return self._mesh_outputs_exist(subject_id)
+
+    # ------------------------------------------------------------------
+    # Mesh validation
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _validate_mesh(mesh: "SurfaceMeshData", subject_id: str) -> None:
+        """Assert shape consistency of a :class:`~diff_benchmark.data.surface_mesh.SurfaceMeshData`.
+
+        Args:
+            mesh: Mesh object to validate.
+            subject_id: Used in error messages.
+
+        Raises:
+            ValueError: On vertices/features/labels count mismatch or out-of-
+                range face indices.
+        """
+        n = mesh.vertices.shape[0]
+        if n != mesh.features.shape[0]:
+            raise ValueError(
+                f"[{subject_id}] vertices ({n}) != features ({mesh.features.shape[0]})"
+            )
+        if n != mesh.parcel_labels.shape[0]:
+            raise ValueError(
+                f"[{subject_id}] vertices ({n}) != parcel_labels "
+                f"({mesh.parcel_labels.shape[0]})"
+            )
+        if mesh.faces.shape[0] > 0 and int(mesh.faces.max()) >= n:
+            raise ValueError(
+                f"[{subject_id}] face index {int(mesh.faces.max())} "
+                f">= n_vertices {n}"
+            )
+
+
+    # ------------------------------------------------------------------
+    # Debug NPZ export
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _export_debug_npz(
+        mesh: "SurfaceMeshData",
+        subject_id: str,
+        output_dir: Path,
+        metric: str,
+        tissue_type: str,
+    ) -> Path:
+        """Save mesh arrays to a compressed ``.npz`` for offline inspection.
+
+        Writes ``sub-{subject_id}_param-{metric}_tissue-{tissue_type}_mesh.npz``
+        containing arrays: ``vertices``, ``faces``, ``features``, ``parcel_labels``.
+
+        Args:
+            mesh: Source mesh object.
+            subject_id: Used for file naming.
+            output_dir: Directory to write into (created if absent).
+            metric: Microstructure metric name (e.g. ``"ndi"``).
+            tissue_type: Tissue type (e.g. ``"white"`` or ``"gray"``).
+
+        Returns:
+            Path to the written file.
+        """
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        stem = f"sub-{subject_id}_param-{metric}_tissue-{tissue_type}"
+        npz_path = output_dir / f"{stem}_mesh.npz"
+        np.savez_compressed(
+            npz_path,
+            vertices=mesh.vertices,
+            faces=mesh.faces,
+            features=mesh.features,
+            parcel_labels=mesh.parcel_labels,
+        )
+        return npz_path
+
+    # ------------------------------------------------------------------
+    # Visualization
+    # ------------------------------------------------------------------
+
+    def _save_visualizations(
+        self, mesh: "SurfaceMeshData", subject_id: str, mesh_cfg
+    ) -> None:
+        """Render and save visualisation plots for *subject_id*.
+
+        Outputs go to ``./exp_outputs/mesh/``.
+
+        Args:
+            mesh: The mesh to visualise.
+            subject_id: Subject identifier (used for file naming).
+            mesh_cfg: Hydra ``mesh_pipeline`` config node exposing
+                ``visualization_method`` (``"plotly"`` or ``"nilearn"``).
+        """
+        from diff_benchmark.preprocessing.utils.utils_mesh_visualization import (
+            plot_mesh_nilearn,
+            plot_mesh_plotly,
+        )
+
+        viz_dir = Path("./exp_outputs/mesh")
+        viz_dir.mkdir(parents=True, exist_ok=True)
+
+        graph_dir = self._mesh_dwi_dir(subject_id)
+        method = getattr(mesh_cfg, "visualization_method", "plotly")
+
+        if method == "plotly":
+            html_path = viz_dir / f"sub-{subject_id}_plotly.html"
+            plot_mesh_plotly(
+                subject_id=subject_id,
+                graph_dir=graph_dir,
+                show_edges=False,
+                output_html=html_path,
+            )
+        elif method == "nilearn":
+            png_path = viz_dir / f"sub-{subject_id}_nilearn.png"
+            plot_mesh_nilearn(
+                mesh,
+                mode="feature",
+                hemi="left",
+                view="lateral",
+                output_file=png_path,
+            )
+        else:
+            logger.warning(
+                "[MeshPipeline] [%s] Unknown visualization_method '%s' — skipping",
+                subject_id, method,
+            )
 
     # ------------------------------------------------------------------
     # Template mesh (shared across all subjects)
@@ -416,20 +636,44 @@ class MeshPipeline(DefaultPipeline):
     # Analysis
     # ------------------------------------------------------------------
 
-    def run_analysis(self) -> None:
+    def run_analysis(
+        self,
+        subject_filter: str | None = None,
+        mesh_cfg=None,
+    ) -> None:
         """Fill ``self.results`` with :class:`~diff_benchmark.data.surface_mesh.SurfaceMeshData` objects.
 
-        Iterates over existing ``.scalar.gii`` derivative files (same glob
-        pattern as :class:`DefaultPipeline`), assembles a combined L+R mesh
-        with per-vertex features and parcel labels, and stores the result
-        keyed by subject ID.
+        Two-tier cache logic per subject
+        ---------------------------------
+        1. **All mesh outputs present** (nodes.parquet + edges.parquet + mesh.npz)
+           → load the mesh from Parquet and skip all computation.
+        2. **Microstructure outputs present** (.scalar.gii in default/) but mesh
+           outputs missing → build the mesh from cached scalar files, then
+           export graph + NPZ.
+        3. **Nothing present** → this should not happen if called after
+           :meth:`~diff_benchmark.preprocessing.preparation_pipeline.BrainDataPreparationPipeline.run_pipeline`
+           which calls :meth:`~diff_benchmark.preprocessing.preparation_pipeline.BrainDataPreparationPipeline.compute_microstructure`
+           first.  A warning is logged and the subject is skipped.
 
-        Only gray-matter (cortical) data is supported.  If ``tissue_type``
-        is not ``"gray"``, a ``ValueError`` is raised.
+        Microstructure files (``.scalar.gii``) are **always** read from
+        ``<results_dir>/default/derivatives/sub-<id>/dwi/`` and mesh outputs
+        are **always** written to
+        ``<results_dir>/mesh/derivatives/sub-<id>/dwi/``.
+
+        Args:
+            subject_filter: When provided, process only this subject ID.
+            mesh_cfg: Hydra ``mesh_pipeline`` config node.  Controls
+                ``export_graph``, ``export_debug_mesh``, and
+                ``run_visualization`` flags.  When ``None`` all export/viz
+                steps are performed with their defaults (export on, viz off).
 
         Raises:
             ValueError: If ``tissue_type != "gray"``.
         """
+        from diff_benchmark.preprocessing.utils.utils_graph_export import (
+            load_graph_from_parquet,
+        )
+
         tissue_type = self.dataset_config.tissue_type
         if tissue_type != "gray":
             raise ValueError(
@@ -437,44 +681,130 @@ class MeshPipeline(DefaultPipeline):
                 f"(got '{tissue_type}').  Use DefaultPipeline for white matter."
             )
 
-        # Load template geometry once
+        # Resolve config flags (safe defaults when mesh_cfg is None)
+        do_export_graph = True if mesh_cfg is None else bool(mesh_cfg.export_graph)
+        do_export_npz = True if mesh_cfg is None else bool(mesh_cfg.export_debug_mesh)
+        do_viz = False if mesh_cfg is None else bool(mesh_cfg.run_visualization)
+
+        # Load template geometry once (shared across all subjects)
         tmesh = self._get_template_mesh()
         lv = tmesh["left_vertices"]
         lf = tmesh["left_faces"]
         rv = tmesh["right_vertices"]
         rf = tmesh["right_faces"]
 
-        # Pre-compute parcel labels (same for all subjects in template space)
         parcel_labels = self._get_parcel_labels(
             n_left=lv.shape[0], n_right=rv.shape[0]
         )
-
-        # Offset right-hemisphere faces
         n_left_verts = lv.shape[0]
         rf_offset = rf + n_left_verts
-
-        # Combined template mesh arrays
         all_vertices = np.concatenate([lv, rv], axis=0)
         all_faces = np.concatenate([lf, rf_offset], axis=0)
 
-        scalar_files = sorted(
-            self.results_root.glob(
-                f"derivatives/sub-*/dwi/*_hemi-L_param-{self.metric}_tissue-{tissue_type}.scalar.gii"
-            )
-        )
-
-        for left_file in tqdm(scalar_files, desc="Building mesh dataset"):
-            try:
-                subject_id = left_file.stem.split("_")[0].replace("sub-", "")
-                right_file = left_file.with_name(
-                    left_file.name.replace("hemi-L", "hemi-R")
+        # ------------------------------------------------------------------
+        # Determine which subjects to process
+        # ------------------------------------------------------------------
+        if subject_filter is not None:
+            subject_ids = [subject_filter]
+        else:
+            # Discover subjects from default derivatives (scalar.gii glob)
+            scalar_glob = sorted(
+                self._default_root.glob(
+                    f"derivatives/sub-*/dwi/"
+                    f"*_hemi-L_param-{self.metric}_tissue-{tissue_type}.scalar.gii"
                 )
+            )
+            subject_ids = [
+                p.stem.split("_")[0].replace("sub-", "") for p in scalar_glob
+            ]
 
-                if not right_file.exists():
-                    logger.warning("[%s] Right scalar file missing, skipping", subject_id)
+        # ------------------------------------------------------------------
+        # Per-subject loop
+        # ------------------------------------------------------------------
+        for subject_id in tqdm(subject_ids, desc="Building mesh dataset"):
+            mesh_dir = self._mesh_dwi_dir(subject_id)
+
+            # ---- Tier 1: all mesh outputs already present ---------------
+            if self._mesh_outputs_exist(subject_id):
+                # Load from Parquet so self.results is populated
+                try:
+                    mesh = load_graph_from_parquet(
+                        subject_id=subject_id,
+                        graph_dir=mesh_dir,
+                        metric=self.metric,
+                        tissue_type=tissue_type,
+                    )
+                    self.results[subject_id] = mesh
+                except Exception as load_err:
+                    logger.warning(
+                        "[MeshPipeline] [%s] Failed to load cached mesh: %s",
+                        subject_id, load_err,
+                    )
+                if do_viz:
+                    try:
+                        self._save_visualizations(
+                            self.results[subject_id], subject_id, mesh_cfg
+                        )
+                    except Exception as viz_err:
+                        logger.warning(
+                            "[MeshPipeline] [%s] Visualization failed: %s",
+                            subject_id, viz_err,
+                        )
+                continue
+
+            # ---- Tier 2: microstructure cached, mesh missing ------------
+            default_dir = self._default_dwi_dir(subject_id)
+            left_file = default_dir / (
+                f"sub-{subject_id}_hemi-L_param-{self.metric}"
+                f"_tissue-{tissue_type}.scalar.gii"
+            )
+            right_file = default_dir / (
+                f"sub-{subject_id}_hemi-R_param-{self.metric}"
+                f"_tissue-{tissue_type}.scalar.gii"
+            )
+
+            if self._microstructure_outputs_exist(subject_id):
+                logger.info(
+                    "[MeshPipeline] Found cached microstructure files for sub-%s"
+                    " — skipping recomputation",
+                    subject_id,
+                )
+                print(
+                    f"[MeshPipeline] Found cached microstructure files for sub-{subject_id}"
+                    " — skipping recomputation"
+                )
+            else:
+                # ---- Tier 3: nothing cached — should have been computed by
+                #              run_pipeline() first; log and skip gracefully
+                logger.warning(
+                    "[MeshPipeline] Missing mesh outputs — generating mesh for sub-%s"
+                    " (no cached microstructure found; run run_pipeline() first)",
+                    subject_id,
+                )
+                print(
+                    f"[MeshPipeline] Missing mesh outputs — generating mesh for sub-{subject_id}"
+                    " (microstructure files not found in default/derivatives)"
+                )
+                if not left_file.exists():
+                    logger.warning(
+                        "[MeshPipeline] [%s] Scalar files missing — skipping subject",
+                        subject_id,
+                    )
                     continue
 
-                # Load and clip scalar data (same as DefaultPipeline)
+            # ---- Build SurfaceMeshData from scalar.gii files ------------
+            try:
+                if not right_file.exists():
+                    logger.warning(
+                        "[MeshPipeline] [%s] Right scalar file missing, skipping",
+                        subject_id,
+                    )
+                    continue
+
+                logger.info(
+                    "[MeshPipeline] [%s] Loading scalar data from %s",
+                    subject_id, default_dir,
+                )
                 left_data = np.nan_to_num(
                     nib.load(left_file).darrays[0].data
                 ).clip(0, 7).astype(np.float32)
@@ -482,7 +812,6 @@ class MeshPipeline(DefaultPipeline):
                     nib.load(right_file).darrays[0].data
                 ).clip(0, 7).astype(np.float32)
 
-                # Stack features: shape (N_L + N_R, 1)
                 combined_features = np.concatenate(
                     [left_data[:, np.newaxis], right_data[:, np.newaxis]], axis=0
                 )
@@ -496,12 +825,62 @@ class MeshPipeline(DefaultPipeline):
                     metric=self.metric,
                     hemisphere="LR",
                 )
+
+                # Validate before exporting
+                self._validate_mesh(mesh, subject_id)
+
                 self.results[subject_id] = mesh
+
+                # ---- Export graph (Parquet) --------------------------------
+                if do_export_graph:
+                    logger.info(
+                        "[MeshPipeline] [%s] Exporting graph parquet", subject_id
+                    )
+                    print(f"[MeshPipeline] [{subject_id}] Exporting graph parquet")
+                    try:
+                        export_mesh_graph(
+                            mesh=mesh,
+                            subject_id=subject_id,
+                            output_dir=mesh_dir,
+                            metric=self.metric,
+                            tissue_type=tissue_type,
+                            overwrite=False,
+                        )
+                    except Exception as export_err:
+                        logger.warning(
+                            "[MeshPipeline] [%s] Graph export failed: %s",
+                            subject_id, export_err,
+                        )
+
+                # ---- Export debug NPZ -------------------------------------
+                if do_export_npz:
+                    try:
+                        self._export_debug_npz(
+                            mesh, subject_id, mesh_dir,
+                            metric=self.metric,
+                            tissue_type=tissue_type,
+                        )
+                    except Exception as npz_err:
+                        logger.warning(
+                            "[MeshPipeline] [%s] NPZ export failed: %s",
+                            subject_id, npz_err,
+                        )
+
+                # ---- Visualization ----------------------------------------
+                if do_viz:
+                    try:
+                        self._save_visualizations(mesh, subject_id, mesh_cfg)
+                    except Exception as viz_err:
+                        logger.warning(
+                            "[MeshPipeline] [%s] Visualization failed: %s",
+                            subject_id, viz_err,
+                        )
 
             except (FileNotFoundError, OSError, ValueError, IndexError) as e:
                 print(f"[{subject_id}] Expected error during mesh analysis: {e}")
                 logger.warning(
-                    "[%s] Expected error during mesh analysis: %s", subject_id, e
+                    "[MeshPipeline] [%s] Expected error during mesh analysis: %s",
+                    subject_id, e,
                 )
 
     # ------------------------------------------------------------------
@@ -512,8 +891,9 @@ class MeshPipeline(DefaultPipeline):
         """Return a single-column DataFrame with ``subject_id`` as the index.
 
         The actual :class:`~diff_benchmark.data.surface_mesh.SurfaceMeshData`
-        objects remain in ``self.results`` and are accessed directly by the
-        dataset class via :meth:`get_mesh_results`.
+        objects remain in ``self.results``; parquet file paths are exposed via
+        :meth:`get_mesh_parquet_paths` and consumed by
+        :class:`~diff_benchmark.data.generate_dataset.CustomDataset`.
 
         Returns:
             DataFrame with ``subject_id`` index and a dummy ``"mesh"`` column
@@ -540,3 +920,33 @@ class MeshPipeline(DefaultPipeline):
             :class:`~diff_benchmark.data.surface_mesh.SurfaceMeshData` instances.
         """
         return dict(self.results)
+
+    def get_mesh_parquet_paths(self) -> dict:
+        """Return per-subject paths to the BIDS-named nodes/edges Parquet files.
+
+        Returns:
+            Dict mapping subject ID strings to a sub-dict::
+
+                {
+                    "nodes": Path(..._nodes.parquet),
+                    "edges": Path(..._edges.parquet),
+                }
+
+        Only subjects whose output files exist on disk are included.
+        """
+        from diff_benchmark.preprocessing.utils.utils_graph_export import (
+            mesh_parquet_paths,
+        )
+
+        paths: dict = {}
+        for subject_id in self.results:
+            mesh_dir = self._mesh_dwi_dir(subject_id)
+            nodes_path, edges_path = mesh_parquet_paths(
+                subject_id, mesh_dir, self.metric, self.tissue_type
+            )
+            if nodes_path.exists() and edges_path.exists():
+                paths[subject_id] = {
+                    "nodes": nodes_path,
+                    "edges": edges_path,
+                }
+        return paths

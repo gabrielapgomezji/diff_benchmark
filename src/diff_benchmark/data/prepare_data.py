@@ -373,7 +373,6 @@ class DatasetPreparation:
         other pipelines the full feature matrix is returned.
         """
         # -------- MODEL & PIPELINE --------
-
         model = get_model(
             self.model_name,
             OmegaConf.to_container(self.cfg, resolve=True),
@@ -481,8 +480,10 @@ class DatasetPreparation:
         if hasattr(self, "brain_preparator") and isinstance(
             self.brain_preparator, MeshPipeline
         ):
-            mesh_data = self.brain_preparator.get_mesh_results()
-            logger.info("Attaching mesh data for %d subjects", len(mesh_data))
+            mesh_data = self.brain_preparator.get_mesh_parquet_paths()
+            logger.info(
+                "Attaching mesh parquet paths for %d subjects", len(mesh_data)
+            )
 
         if use_cache:
             # Load cached features

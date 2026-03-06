@@ -49,6 +49,8 @@ diffbenchmark-analysis = "diff_benchmark.cli.analysis:main"
 diffbenchmark-resample = "diff_benchmark.cli.resample:main"
 diffbenchmark-distribution = "diff_benchmark.cli.data_distribution:main"
 diffbenchmark-cache = "diff_benchmark.cli.cache_features:main"
+diffbenchmark-mesh = "diff_benchmark.cli.mesh:main"
+diffbenchmark-mesh-visualize = "diff_benchmark.cli.mesh_visualize:main"
 
 
 [tool.poetry]

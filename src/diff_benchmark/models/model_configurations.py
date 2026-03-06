@@ -1,3 +1,4 @@
+import torch
 from omegaconf import OmegaConf
 from torch import nn
 
@@ -27,6 +28,9 @@ from diff_benchmark.models.utils_models.trainer import (
     SklearnTrainer,
     TorchTrainer,
 )
+from diff_benchmark.models.mesh_models.simple_mesh_model import SimpleMeshModel
+from diff_benchmark.models.mesh_models.spectral_laplacian_model import SpectralLaplacianAdditiveModel
+from diff_benchmark.models.utils_models.additive_parcel_head import build_additive_parcel_head as build_additive_head
 
 
 class TaskModel(nn.Module):
@@ -54,6 +58,12 @@ class TaskModel(nn.Module):
     def forward(self, x):
         feats = self.backbone(x)
         return self.head(feats)
+
+    def regularization_loss(self) -> torch.Tensor:
+        """Forward the head's group regularisation penalty (if any)."""
+        if hasattr(self.head, "regularization_loss"):
+            return self.head.regularization_loss()
+        return torch.tensor(0.0)
 
 
 def create_model(
@@ -109,6 +119,22 @@ def create_model(
     if model_name == "2dcnn":
         backbone = ResNet3SliceMultihead(**model_kwargs)
         head = build_prediction_head(embedding_dim=backbone.out_dim, **pred_head)
+        return TaskModel(backbone, head)
+    
+    if model_name == "simple_mesh":
+        backbone = SimpleMeshModel(**model_kwargs)
+        # regression_head is Linear(hidden_dim → 1); use hidden_dim as embedding_dim
+        head = build_prediction_head(embedding_dim=backbone.hidden_dim, **pred_head)
+        return TaskModel(backbone, head)
+
+    if model_name == "spectral_laplacian":
+        backbone = SpectralLaplacianAdditiveModel(**model_kwargs)
+        # AdditiveParcelHead: one weight vector per parcel, optional group regularisation.
+        # pred_head may carry reg_type / lambda1 / lambda2 in addition to prediction_task.
+        head = build_additive_head(
+            embed_dim=backbone.parcel_embed_dim,
+            **pred_head,
+        )
         return TaskModel(backbone, head)
 
     if model_name == "medicalnet":

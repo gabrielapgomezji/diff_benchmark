@@ -1,12 +1,13 @@
 defaults:
   - dataset: hcp
-  - model: 2dcnn
+  - model: dinov2
   - pred_head: binary_classification
   - backend: torch
   - data: default
   - target: gender
   - cluster: margaret
   - analysis: default
+  - mesh_pipeline: default
   - _self_
 
 random_state: 42
@@ -19,11 +20,13 @@ runtime:
 
 
 choices:
-  model: [dummy_classifier, linear, pca_linear, forest, pca_forest, svm, pca_svm, lasso]
+  model: [spectral_laplacian]
   dataset: [hcp]
-  backend: [sklearn]
-  dataset.tissue_type: [white, gray]
+  # backend: [sklearn]
+  dataset.tissue_type: [gray]
   dataset.metric_to_compute: [md]
-  cluster.conf.parallel_type: [None]
-  data.batch_size: [1]
+  # cluster.conf.parallel_type: [None]
+  cluster.slurm_cfg.timeout_min: [120]
+  pred_head: [mesh_classification]
+  # data.batch_size: [1]
  
