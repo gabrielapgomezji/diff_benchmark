@@ -1,4 +1,3 @@
-import itertools
 import logging
 import os
 import socket
@@ -8,7 +7,7 @@ from pathlib import Path
 import hydra
 import numpy as np
 import pandas as pd
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import OmegaConf
 
 from diff_benchmark.analysis.save_results import save_model_results
 from diff_benchmark.analysis.true_vs_pred import plot_true_vs_pred
@@ -285,46 +284,34 @@ def _save_fold_metrics(metrics_rows: list[dict], experiment_dir: Path) -> None:
     pd.DataFrame(metrics_rows).to_parquet(metrics_path, index=False)
 
 
-def _cartesian_overrides(sweep_cfg: DictConfig) -> list[list[str]]:
-    """Expand a sweep config into Hydra override lists.
-
-    Args:
-        sweep_cfg: OmegaConf DictConfig mapping sweep keys to lists of values.
-
-    Returns:
-        List of override lists, one per combination (e.g. ``["key=val", ...]``).
-    """
-    keys = list(sweep_cfg.keys())
-    vals = [list(sweep_cfg[k]) for k in keys]
-    return [
-        [f"{k}={v}" for k, v in zip(keys, combo)]
-        for combo in itertools.product(*vals)
-    ]
-
-
 def main():
-    """CLI entrypoint for running benchmark experiments.
+    """CLI entrypoint for running benchmark experiments on Jean Zay.
 
-    Reads a Hydra config, expands sweep axes into individual experiment configs,
-    skips already-cached runs, and dispatches jobs in the configured mode.
+    Accepts Hydra-style overrides directly from the command line, e.g.::
+
+        python -m diff_benchmark.cli.run_jz cluster=jean_zay model=linear backend=sklearn
+
+    Overrides are applied on top of ``main_jz.yaml`` defaults.  Any remaining
+    sweep axes defined in the config's ``choices`` block are expanded into a
+    cartesian product of individual experiment configs.
     """
+    import sys
+
     configure_logging(logging.DEBUG)
 
     results_path = Path("./exp_outputs")
     experiments_root = results_path / "experiments"
     experiments_root.mkdir(parents=True, exist_ok=True)
 
-    with hydra.initialize(version_base="1.3", config_path="pkg://diff_benchmark.configs"):
-        base = hydra.compose(config_name="main_jz")
-        override_sets = _cartesian_overrides(base.choices)
-        job_cfgs = [
-            hydra.compose(config_name="main_jz", overrides=ovr) for ovr in override_sets
-        ]
+    # Collect Hydra-style overrides from CLI args (skip the script name itself
+    # and any python -m invocation args that don't contain '=').
+    cli_overrides = [arg for arg in sys.argv[1:] if "=" in arg]
 
-    # Expand any remaining sweep axes within each config.
-    all_confs = []
-    for job_cfg in job_cfgs:
-        all_confs.extend(cartesian_cfgs(job_cfg))
+    with hydra.initialize(version_base="1.3", config_path="pkg://diff_benchmark.configs"):
+        cfg = hydra.compose(config_name="main_jz", overrides=cli_overrides)
+
+    # Expand any remaining sweep axes within the config.
+    all_confs = cartesian_cfgs(cfg)
 
     # Attach run IDs and filter out cached experiments.
     filtered_confs = []
