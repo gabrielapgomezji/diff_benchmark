@@ -186,4 +186,4 @@ Summary tables and plots from `diffbenchmark-analysis` are saved under `exp_outp
    - `TorchAbstractModel` — for PyTorch models with a custom training loop
 3. Implement the required methods: `fit`, `predict`, and `_dataloader_to_numpy`.
 4. Register your model in `src/diff_benchmark/models/model_configurations.py`.
-5. Add a corresponding YAML config in `src/diff_benchmark/configs/model/`.
+5. Add a corresponding YAML config in `src/diff_benchmark/configs/model/`. 
