@@ -1,0 +1,13 @@
+run_id: region_elasticnet_hgramdg_b20c1736
+learning_curve_id: 8db9cf6da8e18d345f8b3edac382c6ac919b65ef
+experiment_hash: b20c1736
+model: region_elasticnet
+dataset: hcp
+tissue_type: gray
+primary_metric: md
+status: running
+n_folds_expected: 5
+n_folds_completed: 0
+start_time: '2026-03-11T15:14:02.737149'
+hostname: margpu009
+job_id: '5063153'
