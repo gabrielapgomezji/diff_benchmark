@@ -1,0 +1,14 @@
+run_id: linear_hgrarog_e1ec8676
+learning_curve_id: 13164d6f5f338c939856f4d8a432d6e17f8cfdf2
+experiment_hash: e1ec8676
+model: linear
+dataset: hcp
+tissue_type: gray
+primary_metric: rtop
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:40:21.387641'
+hostname: marg033
+job_id: '5035608'
+end_time: '2026-02-19T19:53:20.088214'

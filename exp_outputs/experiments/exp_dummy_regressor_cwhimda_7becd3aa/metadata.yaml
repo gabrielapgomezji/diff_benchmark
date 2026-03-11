@@ -1,0 +1,14 @@
+run_id: dummy_regressor_cwhimda_7becd3aa
+learning_curve_id: e55def1fd6fe3ee3557d1b10c9213a0bba67c16f
+experiment_hash: 7becd3aa
+model: dummy_regressor
+dataset: camcan
+tissue_type: white
+primary_metric: md
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:27:24.183427'
+hostname: marg035
+job_id: '5035380'
+end_time: '2026-02-19T19:27:34.970897'

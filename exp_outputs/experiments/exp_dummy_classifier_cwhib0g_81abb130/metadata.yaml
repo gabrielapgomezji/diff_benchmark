@@ -1,0 +1,14 @@
+run_id: dummy_classifier_cwhib0g_81abb130
+learning_curve_id: b4e1b9b5a2a85fb880639c5d6d38084c5b44466f
+experiment_hash: 81abb130
+model: dummy_classifier
+dataset: camcan
+tissue_type: white
+primary_metric: b0
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T19:33:41.387956'
+hostname: marg007
+job_id: '5038505'
+end_time: '2026-02-20T19:33:49.241259'

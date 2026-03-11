@@ -1,0 +1,14 @@
+run_id: linear_hwhishg_f723af90
+learning_curve_id: d0d2fd577dba5cff8e595d7575542c82cd5f7505
+experiment_hash: f723af90
+model: linear
+dataset: hcp
+tissue_type: white
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:03:49.583854'
+hostname: margpu014
+job_id: '5035062'
+end_time: '2026-02-19T19:04:09.579359'

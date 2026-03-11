@@ -1,0 +1,14 @@
+run_id: pca_linear_hgramkg_80c84769
+learning_curve_id: dc54f876e27eda0ff66ef4b691e3574cc1502dd0
+experiment_hash: 80c84769
+model: pca_linear
+dataset: hcp
+tissue_type: gray
+primary_metric: mk
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:04:49.889334'
+hostname: marg035
+job_id: '5035081'
+end_time: '2026-02-19T19:54:29.881485'

@@ -1,0 +1,14 @@
+run_id: dummy_classifier_hwhib0g_df2ada06
+learning_curve_id: ff0776172916de2e17e995cb6fb1145d52fc546c
+experiment_hash: df2ada06
+model: dummy_classifier
+dataset: hcp
+tissue_type: white
+primary_metric: b0
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T15:46:37.408658'
+hostname: marg003
+job_id: null
+end_time: '2026-02-20T15:46:54.172279'

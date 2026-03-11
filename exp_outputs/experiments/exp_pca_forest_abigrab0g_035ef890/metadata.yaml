@@ -1,0 +1,14 @@
+run_id: pca_forest_abigrab0g_035ef890
+learning_curve_id: f81cff5b1c4164cb33bfa654a5b76500b268eba6
+experiment_hash: 035ef890
+model: pca_forest
+dataset: abide
+tissue_type: gray
+primary_metric: b0
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T19:28:36.455820'
+hostname: margpu015
+job_id: '5038422'
+end_time: '2026-02-20T19:34:29.120812'

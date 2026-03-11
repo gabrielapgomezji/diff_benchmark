@@ -1,0 +1,13 @@
+run_id: dinov2_abiwhib0dx__7167f180
+learning_curve_id: ca857b2423940ab9fcbb399a56bc27fbb8ba748f
+experiment_hash: 7167f180
+model: dinov2
+dataset: abide
+tissue_type: white
+primary_metric: b0
+status: running
+n_folds_expected: 5
+n_folds_completed: 0
+start_time: '2026-02-21T22:47:10.481362'
+hostname: margpu012
+job_id: '5038980'

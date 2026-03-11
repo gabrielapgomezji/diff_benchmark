@@ -1,0 +1,14 @@
+run_id: curia_cgrasha_889bffd3
+learning_curve_id: 699a7f50967071a979a5ad1f211d7c2e16d14a2d
+experiment_hash: 889bffd3
+model: curia
+dataset: camcan
+tissue_type: gray
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-22T14:56:50.388252'
+hostname: margpu016
+job_id: '5038842'
+end_time: '2026-02-22T15:06:28.729868'

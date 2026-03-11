@@ -1,0 +1,14 @@
+run_id: dummy_regressor_cwhisha_89e10f5f
+learning_curve_id: 007e922b3042197a43c6b5030b4ecba178bc0360
+experiment_hash: 89e10f5f
+model: dummy_regressor
+dataset: camcan
+tissue_type: white
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:27:23.531006'
+hostname: margpu009
+job_id: '5035381'
+end_time: '2026-02-19T19:27:34.760893'

@@ -1,0 +1,14 @@
+run_id: medicalnet_hwhisha_c2e581c1
+learning_curve_id: 25fa9bba537f63ec0999e29b900cbc401a46af32
+experiment_hash: c2e581c1
+model: medicalnet
+dataset: hcp
+tissue_type: white
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T07:44:26.449450'
+hostname: margpu007
+job_id: '5037036'
+end_time: '2026-02-20T10:12:06.038095'

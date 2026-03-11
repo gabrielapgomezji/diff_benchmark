@@ -1,0 +1,14 @@
+run_id: svm_hwhimkg_acadb11f
+learning_curve_id: de8f8585966153d9cc69b36fa676ab4826aee394
+experiment_hash: acadb11f
+model: svm
+dataset: hcp
+tissue_type: white
+primary_metric: mk
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:15:20.800694'
+hostname: marg035
+job_id: '5035232'
+end_time: '2026-02-19T19:15:59.467302'

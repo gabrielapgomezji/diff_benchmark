@@ -1,0 +1,14 @@
+run_id: linear_cgrab0a_6e97b58b
+learning_curve_id: 4d140972fcbdf04e6b363d6c0ef41bf6b591719e
+experiment_hash: 6e97b58b
+model: linear
+dataset: camcan
+tissue_type: gray
+primary_metric: b0
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T19:32:55.272432'
+hostname: marg003
+job_id: '5038492'
+end_time: '2026-02-20T19:36:53.614574'

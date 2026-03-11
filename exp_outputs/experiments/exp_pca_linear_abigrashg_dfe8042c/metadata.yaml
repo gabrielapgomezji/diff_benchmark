@@ -1,0 +1,14 @@
+run_id: pca_linear_abigrashg_dfe8042c
+learning_curve_id: d13829eca80ca2870ad4199af41e21eb3b41899c
+experiment_hash: dfe8042c
+model: pca_linear
+dataset: abide
+tissue_type: gray
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T19:28:37.552200'
+hostname: marg033
+job_id: '5038409'
+end_time: '2026-02-20T19:40:07.369900'

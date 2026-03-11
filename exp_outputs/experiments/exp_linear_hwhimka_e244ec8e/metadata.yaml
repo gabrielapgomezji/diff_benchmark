@@ -1,0 +1,14 @@
+run_id: linear_hwhimka_e244ec8e
+learning_curve_id: dd65a2fde5bfc0d607fcac0b36320da1543a86a5
+experiment_hash: e244ec8e
+model: linear
+dataset: hcp
+tissue_type: white
+primary_metric: mk
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:29:31.165405'
+hostname: marg033
+job_id: '5035406'
+end_time: '2026-02-19T19:29:50.309216'

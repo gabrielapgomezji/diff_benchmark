@@ -1,0 +1,14 @@
+run_id: forest_cwhib0a_75842171
+learning_curve_id: 60d7732acee7b8569f9c9e6650892da811f9f677
+experiment_hash: '75842171'
+model: forest
+dataset: camcan
+tissue_type: white
+primary_metric: b0
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T19:32:56.420334'
+hostname: marg010
+job_id: '5038495'
+end_time: '2026-02-20T19:33:54.440611'

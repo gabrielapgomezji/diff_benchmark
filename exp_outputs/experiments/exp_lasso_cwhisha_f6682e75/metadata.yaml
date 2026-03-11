@@ -1,0 +1,14 @@
+run_id: lasso_cwhisha_f6682e75
+learning_curve_id: f4ed7a6870fa7e1fbcdf0cc5744baf33bb288e55
+experiment_hash: f6682e75
+model: lasso
+dataset: camcan
+tissue_type: white
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:40:14.527097'
+hostname: marg018
+job_id: '5035600'
+end_time: '2026-02-19T19:40:41.233365'

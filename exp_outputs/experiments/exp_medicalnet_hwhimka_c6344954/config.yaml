@@ -1,0 +1,127 @@
+dataset:
+  name: hcp
+  data_reading: hcp
+  metric_to_compute: mk
+  scale: 1000
+  big_delta: 0.0431
+  small_delta: 0.0106
+  dwi_desc: data.nii.gz
+  bvec_extensions: bvecs
+  bval_extensions: bvals
+  nodif_mask_extension: nodif_brain_mask.nii.gz
+  aparcaseg_extension: T1w/aparc+aseg.nii.gz
+  tissue_type: white
+  surface_space: fslr_32k
+model:
+  name: medicalnet
+  backbone:
+    depth: 10
+    pretrained: true
+    pretrain_path: medicalnet
+    input_channels: 1
+pred_head:
+  prediction_task: regression
+  dropout: 0.5
+  hidden_dims:
+  - 512
+  - 128
+backend:
+  backend: torch
+  debug: true
+  epochs: 50
+  accelerator: gpu
+  devices: 1
+  learning_rate: 1.0e-05
+  weight_decay: 0.0001
+data:
+  batch_size: 1
+  num_workers: 13
+  resize_shape: None
+  num_augmentations: 10
+  normalization:
+    mean: 0.5
+    std: 0.5
+  data_partition:
+    train_size: 1
+    val_size: 0.1
+    n_splits: 5
+target:
+  target_column:
+  - Age
+  prediction_task: regression
+cluster:
+  name: margaret
+  paths:
+    cache_dir: /data/parietal/store3/work/ggomezji/benchmark
+    hcp:
+      base_dir: /data/parietal/store4/data/HCP
+      results_dir: /data/parietal/store3/work/ggomezji/benchmark/HCP900
+      csv_file: /data/parietal/store2/work/ggomezji/Merged_HCP_Demographics.csv
+    camcan:
+      base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/camcan
+      results_dir: /data/parietal/store3/work/ggomezji/benchmark/CamCAN
+      demographics_path: /data/parietal/store3/work/ggomezji/datasets/camcan/cc700-scored
+    wand:
+      base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/WAND-concat
+      results_dir: /data/parietal/store3/work/ggomezji/benchmark/WAND
+    abide:
+      base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/abide
+      results_dir: /data/parietal/store3/work/ggomezji/benchmark/abide
+  conf:
+    enabled: true
+    parallel_type: slurm
+    n_jobs: 50
+    wait_for_results: false
+  slurm_cfg:
+    slurm_partition: parietal,normal,gpu-best
+    tasks_per_node: 1
+    slurm_gpus_per_task: 1
+    slurm_cpus_per_gpu: 20
+    timeout_min: 800
+analysis:
+  tables: false
+  plots: true
+  force_plots: false
+  debug: false
+  run_ids: null
+random_state: 42
+runtime:
+  force: false
+  learning_curve_exp: false
+  run_id: medicalnet_hwhimka_c6344954
+  learning_curve_id: cb10306dab0fa6d40877695fd77d594dce6789b7
+  experiment_hash: c6344954
+choices:
+  model:
+  - medicalnet
+  dataset:
+  - hcp
+  target:
+  - age
+  pred_head:
+  - regression
+  backend.epochs:
+  - 50
+  data.batch_size:
+  - 1
+  data.resize_shape:
+  - null
+  model.backbone.depth:
+  - 10
+  dataset.metric_to_compute:
+  - md
+  - sh
+  - mk
+  - rtop
+  - b0
+  dataset.tissue_type:
+  - white
+  - gray
+  data.num_augmentations:
+  - 10
+  pred_head.dropout:
+  - 0.5
+  backend.learning_rate:
+  - 1.0e-05
+  backend.weight_decay:
+  - 0.0001

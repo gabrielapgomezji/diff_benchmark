@@ -1,0 +1,108 @@
+dataset:
+  name: hcp
+  data_reading: hcp
+  metric_to_compute: md
+  scale: 1000
+  big_delta: 0.0431
+  small_delta: 0.0106
+  dwi_desc: data.nii.gz
+  bvec_extensions: bvecs
+  bval_extensions: bvals
+  nodif_mask_extension: nodif_brain_mask.nii.gz
+  aparcaseg_extension: T1w/aparc+aseg.nii.gz
+  tissue_type: gray
+  surface_space: fslr_32k
+model:
+  name: spectral_laplacian
+  backbone:
+    in_features: 1
+    n_spectral_components: 16
+pred_head:
+  prediction_task: binary_classification
+  reg_type: group_lasso
+  lambda1: 0.001
+  lambda2: 0.0001
+backend:
+  backend: torch
+  debug: true
+  epochs: 50
+  accelerator: gpu
+  devices: 1
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+data:
+  batch_size: 32
+  num_workers: 13
+  resize_shape:
+  - 256
+  - 256
+  num_augmentations: 1
+  normalization:
+    mean: 0.5
+    std: 0.5
+  data_partition:
+    train_size: 1
+    val_size: 0.1
+    n_splits: 5
+target:
+  target_column:
+  - Gender
+  prediction_task: binary_classification
+cluster:
+  name: margaret
+  paths:
+    cache_dir: /data/parietal/store3/work/ggomezji/benchmark
+    hcp:
+      base_dir: /data/parietal/store4/data/HCP
+      results_dir: /data/parietal/store3/work/ggomezji/benchmark/HCP900
+      csv_file: /data/parietal/store2/work/ggomezji/Merged_HCP_Demographics.csv
+    camcan:
+      base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/camcan
+      results_dir: /data/parietal/store3/work/ggomezji/benchmark/CamCAN
+      demographics_path: /data/parietal/store3/work/ggomezji/datasets/camcan/cc700-scored
+    wand:
+      base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/WAND-concat
+      results_dir: /data/parietal/store3/work/ggomezji/benchmark/WAND
+    abide:
+      base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/abide
+      results_dir: /data/parietal/store3/work/ggomezji/benchmark/abide
+  conf:
+    enabled: true
+    parallel_type: slurm
+    n_jobs: 50
+    wait_for_results: false
+  slurm_cfg:
+    slurm_partition: parietal,normal,gpu-best
+    tasks_per_node: 1
+    slurm_gpus_per_task: 1
+    slurm_cpus_per_gpu: 20
+    timeout_min: 800
+analysis:
+  tables: false
+  plots: true
+  force_plots: false
+  debug: false
+  run_ids: null
+mesh_pipeline:
+  export_graph: true
+  export_debug_mesh: true
+  run_visualization: false
+  visualization_method: plotly
+random_state: 42
+runtime:
+  force: false
+  learning_curve_exp: false
+  run_id: spectral_laplacian_hgramdg_904edeb1
+  learning_curve_id: bc7f536cb1336c4420ff2c3accaee26ce3f3f4de
+  experiment_hash: 904edeb1
+choices:
+  model:
+  - spectral_laplacian
+  dataset:
+  - hcp
+  dataset.tissue_type:
+  - gray
+  dataset.metric_to_compute:
+  - md
+  pred_head:
+  - mesh_classification

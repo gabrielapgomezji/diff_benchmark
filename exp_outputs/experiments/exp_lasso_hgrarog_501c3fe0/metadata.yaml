@@ -1,0 +1,13 @@
+run_id: lasso_hgrarog_501c3fe0
+learning_curve_id: 92fc009b154b977256e838ed2ec7e4b83c6c8d20
+experiment_hash: 501c3fe0
+model: lasso
+dataset: hcp
+tissue_type: gray
+primary_metric: rtop
+status: running
+n_folds_expected: 5
+n_folds_completed: 1
+start_time: '2026-02-19T19:40:26.042052'
+hostname: marg008
+job_id: '5035118'

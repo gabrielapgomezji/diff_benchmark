@@ -1,0 +1,14 @@
+run_id: medicalnet_abigramddx__e07e7a02
+learning_curve_id: 590f18630a41463fb420243eda050f7870084d06
+experiment_hash: e07e7a02
+model: medicalnet
+dataset: abide
+tissue_type: gray
+primary_metric: md
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-21T23:41:31.027752'
+hostname: margpu013
+job_id: '5038999'
+end_time: '2026-02-22T01:09:24.748694'

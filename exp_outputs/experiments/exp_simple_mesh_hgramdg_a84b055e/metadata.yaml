@@ -1,0 +1,13 @@
+run_id: simple_mesh_hgramdg_a84b055e
+learning_curve_id: 173bd313148d74c8aacf951afea07877f5a332e9
+experiment_hash: a84b055e
+model: simple_mesh
+dataset: hcp
+tissue_type: gray
+primary_metric: md
+status: running
+n_folds_expected: 5
+n_folds_completed: 0
+start_time: '2026-03-06T10:05:23.512306'
+hostname: margpu008
+job_id: '5056097'

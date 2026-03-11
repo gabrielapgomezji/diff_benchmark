@@ -1,0 +1,13 @@
+run_id: curia_hwhiroa_be380c6b
+learning_curve_id: df74b5fdf7250508579d8d030b2858dd242e8482
+experiment_hash: be380c6b
+model: curia
+dataset: hcp
+tissue_type: white
+primary_metric: rtop
+status: running
+n_folds_expected: 5
+n_folds_completed: 0
+start_time: '2026-02-19T22:01:24.435148'
+hostname: margpu012
+job_id: '5035925'

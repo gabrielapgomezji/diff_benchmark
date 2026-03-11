@@ -1,0 +1,14 @@
+run_id: linear_abiwhisha_72d64c35
+learning_curve_id: 2b09feb5ad15149d93b32df5e41f6fad9047bf62
+experiment_hash: 72d64c35
+model: linear
+dataset: abide
+tissue_type: white
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T19:29:25.580993'
+hostname: marg015
+job_id: '5038448'
+end_time: '2026-02-20T19:29:48.434851'

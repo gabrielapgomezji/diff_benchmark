@@ -1,0 +1,14 @@
+run_id: pca_svm_hgrab0g_f8de1b55
+learning_curve_id: accc4b375d9623752fd17274770163e63a931fe9
+experiment_hash: f8de1b55
+model: pca_svm
+dataset: hcp
+tissue_type: gray
+primary_metric: b0
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T15:42:51.190908'
+hostname: marg010
+job_id: '5037743'
+end_time: '2026-02-20T15:48:09.268809'

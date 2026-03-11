@@ -1,0 +1,14 @@
+run_id: dinov2_cgrab0g_f3c9417c
+learning_curve_id: 5ba81c92db2781df787e2ab3863ea42c7630f16b
+experiment_hash: f3c9417c
+model: dinov2
+dataset: camcan
+tissue_type: gray
+primary_metric: b0
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-23T06:13:52.048430'
+hostname: margpu014
+job_id: '5039181'
+end_time: '2026-02-23T06:18:48.047910'

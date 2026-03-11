@@ -1,0 +1,14 @@
+run_id: svm_abigrasha_c788a648
+learning_curve_id: d3eccd81f126f349b78fc581ee54a0e432d93792
+experiment_hash: c788a648
+model: svm
+dataset: abide
+tissue_type: gray
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T19:29:33.972243'
+hostname: marg034
+job_id: '5038475'
+end_time: '2026-02-20T19:34:45.945874'

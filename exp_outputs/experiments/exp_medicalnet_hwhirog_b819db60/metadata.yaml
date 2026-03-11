@@ -1,0 +1,13 @@
+run_id: medicalnet_hwhirog_b819db60
+learning_curve_id: 4c0ff6ce46d86a9505b28ea2166e8b6c47921b56
+experiment_hash: b819db60
+model: medicalnet
+dataset: hcp
+tissue_type: white
+primary_metric: rtop
+status: running
+n_folds_expected: 5
+n_folds_completed: 0
+start_time: '2026-02-20T04:20:36.507440'
+hostname: margpu002
+job_id: '5036668'

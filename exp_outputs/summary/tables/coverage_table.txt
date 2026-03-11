@@ -1,0 +1,250 @@
+Dataset_Microstructure  |    CURIA    |    DINO     |    DUMMY    |     FOR     |    LASSO    |     LIN     |    MNET     |    PCA_F    |    PCA_L    |    PCA_S    |     SVM    
+===================================================================================================================================================================
+abide_b0                |    gu,wu    |    gu,wu    | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu |    gu,wu    | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu
+abide_md                |    gu,wu    |    gu,wu    | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu |    gu,wu    | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu
+abide_mk                |      -      |    gu,wu    |      -      |      -      |      -      |      -      |      -      |      -      |      -      |      -      |      -     
+abide_sh                |    gu,wu    |    gu,wu    | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu |    gu,wu    | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu | ga,gg,gu,wa,wg,wu
+camcan_b0               | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg
+camcan_md               | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg
+camcan_mk               | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg
+camcan_rtop             |      -      |      -      |      -      |      -      |      -      |      -      |    ga,wa    |      -      |      -      |      -      |      -     
+camcan_sh               | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg
+hcp_b0                  | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg
+hcp_md                  | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg
+hcp_mk                  | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg
+hcp_rtop                | ga,gg,wa,wg | ga,gg,wa,wg |    ga,gg    |    ga,gg    |    ga,gg    |    ga,gg    | ga,gg,wa,wg |    ga,gg    |    ga,gg    |    ga,gg    |    ga,gg   
+hcp_sh                  | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg | ga,gg,wa,wg
+===================================================================================================================================================================
+
+================================================================================
+TRANSPOSED VIEW (for easier reading)
+================================================================================
+
+
+abide_b0:
+----------------------------------------
+  CURIA    : gu,wu
+  DINO     : gu,wu
+  DUMMY    : ga,gg,gu,wa,wg,wu
+  FOR      : ga,gg,gu,wa,wg,wu
+  LASSO    : ga,gg,gu,wa,wg,wu
+  LIN      : ga,gg,gu,wa,wg,wu
+  MNET     : gu,wu
+  PCA_F    : ga,gg,gu,wa,wg,wu
+  PCA_L    : ga,gg,gu,wa,wg,wu
+  PCA_S    : ga,gg,gu,wa,wg,wu
+  SVM      : ga,gg,gu,wa,wg,wu
+
+abide_md:
+----------------------------------------
+  CURIA    : gu,wu
+  DINO     : gu,wu
+  DUMMY    : ga,gg,gu,wa,wg,wu
+  FOR      : ga,gg,gu,wa,wg,wu
+  LASSO    : ga,gg,gu,wa,wg,wu
+  LIN      : ga,gg,gu,wa,wg,wu
+  MNET     : gu,wu
+  PCA_F    : ga,gg,gu,wa,wg,wu
+  PCA_L    : ga,gg,gu,wa,wg,wu
+  PCA_S    : ga,gg,gu,wa,wg,wu
+  SVM      : ga,gg,gu,wa,wg,wu
+
+abide_mk:
+----------------------------------------
+  CURIA    : -
+  DINO     : gu,wu
+  DUMMY    : -
+  FOR      : -
+  LASSO    : -
+  LIN      : -
+  MNET     : -
+  PCA_F    : -
+  PCA_L    : -
+  PCA_S    : -
+  SVM      : -
+
+abide_sh:
+----------------------------------------
+  CURIA    : gu,wu
+  DINO     : gu,wu
+  DUMMY    : ga,gg,gu,wa,wg,wu
+  FOR      : ga,gg,gu,wa,wg,wu
+  LASSO    : ga,gg,gu,wa,wg,wu
+  LIN      : ga,gg,gu,wa,wg,wu
+  MNET     : gu,wu
+  PCA_F    : ga,gg,gu,wa,wg,wu
+  PCA_L    : ga,gg,gu,wa,wg,wu
+  PCA_S    : ga,gg,gu,wa,wg,wu
+  SVM      : ga,gg,gu,wa,wg,wu
+
+camcan_b0:
+----------------------------------------
+  CURIA    : ga,gg,wa,wg
+  DINO     : ga,gg,wa,wg
+  DUMMY    : ga,gg,wa,wg
+  FOR      : ga,gg,wa,wg
+  LASSO    : ga,gg,wa,wg
+  LIN      : ga,gg,wa,wg
+  MNET     : ga,gg,wa,wg
+  PCA_F    : ga,gg,wa,wg
+  PCA_L    : ga,gg,wa,wg
+  PCA_S    : ga,gg,wa,wg
+  SVM      : ga,gg,wa,wg
+
+camcan_md:
+----------------------------------------
+  CURIA    : ga,gg,wa,wg
+  DINO     : ga,gg,wa,wg
+  DUMMY    : ga,gg,wa,wg
+  FOR      : ga,gg,wa,wg
+  LASSO    : ga,gg,wa,wg
+  LIN      : ga,gg,wa,wg
+  MNET     : ga,gg,wa,wg
+  PCA_F    : ga,gg,wa,wg
+  PCA_L    : ga,gg,wa,wg
+  PCA_S    : ga,gg,wa,wg
+  SVM      : ga,gg,wa,wg
+
+camcan_mk:
+----------------------------------------
+  CURIA    : ga,gg,wa,wg
+  DINO     : ga,gg,wa,wg
+  DUMMY    : ga,gg,wa,wg
+  FOR      : ga,gg,wa,wg
+  LASSO    : ga,gg,wa,wg
+  LIN      : ga,gg,wa,wg
+  MNET     : ga,gg,wa,wg
+  PCA_F    : ga,gg,wa,wg
+  PCA_L    : ga,gg,wa,wg
+  PCA_S    : ga,gg,wa,wg
+  SVM      : ga,gg,wa,wg
+
+camcan_rtop:
+----------------------------------------
+  CURIA    : -
+  DINO     : -
+  DUMMY    : -
+  FOR      : -
+  LASSO    : -
+  LIN      : -
+  MNET     : ga,wa
+  PCA_F    : -
+  PCA_L    : -
+  PCA_S    : -
+  SVM      : -
+
+camcan_sh:
+----------------------------------------
+  CURIA    : ga,gg,wa,wg
+  DINO     : ga,gg,wa,wg
+  DUMMY    : ga,gg,wa,wg
+  FOR      : ga,gg,wa,wg
+  LASSO    : ga,gg,wa,wg
+  LIN      : ga,gg,wa,wg
+  MNET     : ga,gg,wa,wg
+  PCA_F    : ga,gg,wa,wg
+  PCA_L    : ga,gg,wa,wg
+  PCA_S    : ga,gg,wa,wg
+  SVM      : ga,gg,wa,wg
+
+hcp_b0:
+----------------------------------------
+  CURIA    : ga,gg,wa,wg
+  DINO     : ga,gg,wa,wg
+  DUMMY    : ga,gg,wa,wg
+  FOR      : ga,gg,wa,wg
+  LASSO    : ga,gg,wa,wg
+  LIN      : ga,gg,wa,wg
+  MNET     : ga,gg,wa,wg
+  PCA_F    : ga,gg,wa,wg
+  PCA_L    : ga,gg,wa,wg
+  PCA_S    : ga,gg,wa,wg
+  SVM      : ga,gg,wa,wg
+
+hcp_md:
+----------------------------------------
+  CURIA    : ga,gg,wa,wg
+  DINO     : ga,gg,wa,wg
+  DUMMY    : ga,gg,wa,wg
+  FOR      : ga,gg,wa,wg
+  LASSO    : ga,gg,wa,wg
+  LIN      : ga,gg,wa,wg
+  MNET     : ga,gg,wa,wg
+  PCA_F    : ga,gg,wa,wg
+  PCA_L    : ga,gg,wa,wg
+  PCA_S    : ga,gg,wa,wg
+  SVM      : ga,gg,wa,wg
+
+hcp_mk:
+----------------------------------------
+  CURIA    : ga,gg,wa,wg
+  DINO     : ga,gg,wa,wg
+  DUMMY    : ga,gg,wa,wg
+  FOR      : ga,gg,wa,wg
+  LASSO    : ga,gg,wa,wg
+  LIN      : ga,gg,wa,wg
+  MNET     : ga,gg,wa,wg
+  PCA_F    : ga,gg,wa,wg
+  PCA_L    : ga,gg,wa,wg
+  PCA_S    : ga,gg,wa,wg
+  SVM      : ga,gg,wa,wg
+
+hcp_rtop:
+----------------------------------------
+  CURIA    : ga,gg,wa,wg
+  DINO     : ga,gg,wa,wg
+  DUMMY    : ga,gg
+  FOR      : ga,gg
+  LASSO    : ga,gg
+  LIN      : ga,gg
+  MNET     : ga,gg,wa,wg
+  PCA_F    : ga,gg
+  PCA_L    : ga,gg
+  PCA_S    : ga,gg
+  SVM      : ga,gg
+
+hcp_sh:
+----------------------------------------
+  CURIA    : ga,gg,wa,wg
+  DINO     : ga,gg,wa,wg
+  DUMMY    : ga,gg,wa,wg
+  FOR      : ga,gg,wa,wg
+  LASSO    : ga,gg,wa,wg
+  LIN      : ga,gg,wa,wg
+  MNET     : ga,gg,wa,wg
+  PCA_F    : ga,gg,wa,wg
+  PCA_L    : ga,gg,wa,wg
+  PCA_S    : ga,gg,wa,wg
+  SVM      : ga,gg,wa,wg
+
+================================================================================
+
+LEGEND:
+  First letter = tissue type: g=gray, w=white
+  Second letter = target: g=gender, a=age, d=diagnosis
+  Example: 'gg' = gray matter, gender prediction
+           'wa' = white matter, age prediction
+  '-' = no experiments for this combination
+
+STATISTICS:
+  Total dataset-microstructure combinations: 14
+  Total models: 11
+  Total experiments: 649
+
+MODEL COVERAGE:
+       CURIA:  12/ 14 combinations ( 85.7%)
+        DINO:  13/ 14 combinations ( 92.9%)
+       DUMMY:  12/ 14 combinations ( 85.7%)
+         FOR:  12/ 14 combinations ( 85.7%)
+       LASSO:  12/ 14 combinations ( 85.7%)
+         LIN:  12/ 14 combinations ( 85.7%)
+        MNET:  13/ 14 combinations ( 92.9%)
+       PCA_F:  12/ 14 combinations ( 85.7%)
+       PCA_L:  12/ 14 combinations ( 85.7%)
+       PCA_S:  12/ 14 combinations ( 85.7%)
+         SVM:  12/ 14 combinations ( 85.7%)
+
+DATASET COVERAGE:
+       abide:  4 microstructures
+      camcan:  5 microstructures
+         hcp:  5 microstructures

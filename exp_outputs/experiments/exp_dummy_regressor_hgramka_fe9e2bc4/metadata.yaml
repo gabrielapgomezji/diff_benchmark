@@ -1,0 +1,14 @@
+run_id: dummy_regressor_hgramka_fe9e2bc4
+learning_curve_id: 6f6fe716111708041bfef9428a667d2a7be8b03f
+experiment_hash: fe9e2bc4
+model: dummy_regressor
+dataset: hcp
+tissue_type: gray
+primary_metric: mk
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:24:53.024668'
+hostname: margpu009
+job_id: '5035362'
+end_time: '2026-02-19T19:26:32.810533'

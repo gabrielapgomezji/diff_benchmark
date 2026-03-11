@@ -1,0 +1,14 @@
+run_id: curia_abigramddx__3579595c
+learning_curve_id: 3ab7c7dc99c63bbcb5c813184d22c6ec348fa415
+experiment_hash: 3579595c
+model: curia
+dataset: abide
+tissue_type: gray
+primary_metric: md
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-21T21:36:13.438917'
+hostname: margpu006
+job_id: '5038878'
+end_time: '2026-02-21T21:47:12.247159'

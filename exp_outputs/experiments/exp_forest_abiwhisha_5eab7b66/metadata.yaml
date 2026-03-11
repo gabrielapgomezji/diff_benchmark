@@ -1,0 +1,14 @@
+run_id: forest_abiwhisha_5eab7b66
+learning_curve_id: 136d5b15ad93cb8015ffe42262e49c5c67a7ec45
+experiment_hash: 5eab7b66
+model: forest
+dataset: abide
+tissue_type: white
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T19:29:28.274631'
+hostname: marg033
+job_id: '5038460'
+end_time: '2026-02-20T19:30:01.475999'

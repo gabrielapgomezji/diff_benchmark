@@ -1,0 +1,15 @@
+run_id: spectral_laplacian_hgramdg_5bfc38ab
+learning_curve_id: fb9c8f5b38bf0e1eff3a9ae52077f672431e4873
+experiment_hash: 5bfc38ab
+model: spectral_laplacian
+dataset: hcp
+tissue_type: gray
+primary_metric: md
+status: crashed
+n_folds_expected: 5
+n_folds_completed: 0
+start_time: '2026-03-10T17:21:23.583816'
+hostname: margpu009
+job_id: '5063153'
+error: '''TaskModel'' object has no attribute ''fit'''
+end_time: '2026-03-10T17:22:00.219307'

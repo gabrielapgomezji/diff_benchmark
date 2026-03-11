@@ -1,0 +1,14 @@
+run_id: forest_hgrashg_8d7069e3
+learning_curve_id: 3c6e037b038554f411f656f57e1f1c250dc11c97
+experiment_hash: 8d7069e3
+model: forest
+dataset: hcp
+tissue_type: gray
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:05:50.095780'
+hostname: margpu014
+job_id: '5035105'
+end_time: '2026-02-19T23:04:04.331086'

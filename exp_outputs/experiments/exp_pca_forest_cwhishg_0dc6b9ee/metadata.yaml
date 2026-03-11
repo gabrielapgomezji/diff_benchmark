@@ -1,0 +1,14 @@
+run_id: pca_forest_cwhishg_0dc6b9ee
+learning_curve_id: b01a97edea5395878191859155c3d20713e24489
+experiment_hash: 0dc6b9ee
+model: pca_forest
+dataset: camcan
+tissue_type: white
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:10:59.262222'
+hostname: marg034
+job_id: '5035179'
+end_time: '2026-02-19T19:11:49.794886'

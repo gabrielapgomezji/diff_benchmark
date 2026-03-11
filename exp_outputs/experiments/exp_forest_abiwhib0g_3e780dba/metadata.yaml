@@ -1,0 +1,14 @@
+run_id: forest_abiwhib0g_3e780dba
+learning_curve_id: 0ec5b47c3ca725cf5265acd4f593a865f55e0396
+experiment_hash: 3e780dba
+model: forest
+dataset: abide
+tissue_type: white
+primary_metric: b0
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T19:28:33.007142'
+hostname: margpu009
+job_id: '5038413'
+end_time: '2026-02-20T19:29:07.529576'

@@ -1,0 +1,20 @@
+run_id: medicalnet_hwhishg_e59b06da
+learning_curve_id: 74e56509147916f109843991e583a476830c7382
+experiment_hash: e59b06da
+model: medicalnet
+dataset: hcp
+tissue_type: white
+primary_metric: sh
+status: crashed
+n_folds_expected: 5
+n_folds_completed: 0
+start_time: '2026-02-20T04:18:07.513397'
+hostname: margpu002
+job_id: '5036655'
+error: CUDA out of memory. Tried to allocate 250.00 MiB. GPU 0 has a total capacity
+  of 21.98 GiB of which 33.19 MiB is free. Including non-PyTorch memory, this process
+  has 21.94 GiB memory in use. Of the allocated memory 21.48 GiB is allocated by PyTorch,
+  and 279.24 MiB is reserved by PyTorch but unallocated. If reserved but unallocated
+  memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to
+  avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+end_time: '2026-02-20T04:18:33.911612'

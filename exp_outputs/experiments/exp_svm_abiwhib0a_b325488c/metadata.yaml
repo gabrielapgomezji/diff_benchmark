@@ -1,0 +1,14 @@
+run_id: svm_abiwhib0a_b325488c
+learning_curve_id: af5866fb516aafc05c30bb656241ca0ce98041a3
+experiment_hash: b325488c
+model: svm
+dataset: abide
+tissue_type: white
+primary_metric: b0
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T19:29:33.964252'
+hostname: marg034
+job_id: '5038473'
+end_time: '2026-02-20T19:30:04.516699'

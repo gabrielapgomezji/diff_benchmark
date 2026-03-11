@@ -1,0 +1,14 @@
+run_id: dummy_regressor_hwhisha_204cfd93
+learning_curve_id: 944dc533948add27fa7070e0baa6ec9c1f4a6c38
+experiment_hash: 204cfd93
+model: dummy_regressor
+dataset: hcp
+tissue_type: white
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:26:05.695206'
+hostname: marg018
+job_id: '5035371'
+end_time: '2026-02-19T19:26:16.042060'
