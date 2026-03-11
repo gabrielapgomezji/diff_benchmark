@@ -1,0 +1,14 @@
+run_id: linear_cwhimda_a5a311d0
+learning_curve_id: c32637958d25aabadd1aae8496bcc563700fd912
+experiment_hash: a5a311d0
+model: linear
+dataset: camcan
+tissue_type: white
+primary_metric: md
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:29:21.248663'
+hostname: margpu015
+job_id: '5035415'
+end_time: '2026-02-19T19:29:37.984490'

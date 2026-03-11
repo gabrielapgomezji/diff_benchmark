@@ -1,4 +1,5 @@
 from pathlib import Path
+import traceback
 
 import hydra
 import matplotlib.pyplot as plt
@@ -8,24 +9,29 @@ from omegaconf import DictConfig, OmegaConf
 
 from diff_benchmark.analysis.plot_debug import plot_debug_run
 from diff_benchmark.analysis.plot_script import plot_run
-from diff_benchmark.analysis.plot_summary import plot_metrics_summary
 from diff_benchmark.analysis.print_summary_table import (
     is_successful_experiment,
     print_table,
     select_best_runs,
     table_all_runs,
     table_best_means,
-    table_detailed,
     table_folds_wide,
     table_model_aggregate,
-    table_weighted_aggregate,
 )
-from diff_benchmark.preprocessing.brain_feature_extraction import DefaultPipeline
-from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
-from diff_benchmark.utils.job_manager import run_jobs
 
 
 def _as_bool(value) -> bool:
+    """Coerce a loosely-typed value to ``bool``.
+
+    Accepts actual booleans, NaN (→ ``False``), and common truth/falsy strings
+    such as ``"true"``, ``"1"``, ``"yes"``, ``"y"``, ``"t"``.
+
+    Args:
+        value: Any value to interpret as a boolean.
+
+    Returns:
+        Boolean interpretation of *value*.
+    """
     if isinstance(value, bool):
         return value
     if pd.isna(value):
@@ -34,6 +40,16 @@ def _as_bool(value) -> bool:
 
 
 def _infer_learning_curve_x_column(df: pd.DataFrame) -> str | None:
+    """Detect the x-axis column for learning-curve plots.
+
+    Tries a list of candidate column names in priority order.
+
+    Args:
+        df: Comprehensive results DataFrame.
+
+    Returns:
+        Name of the first matching column, or ``None`` if none are found.
+    """
     candidates = [
         "config.data.data_partition.train_size",
         "config.data.train_size",
@@ -48,6 +64,133 @@ def _infer_learning_curve_x_column(df: pd.DataFrame) -> str | None:
         if col in df.columns:
             return col
     return None
+
+
+def _resolve_lc_metrics(prediction_task: str, df_curve: pd.DataFrame) -> tuple:
+    """Return (test_mean_col, test_std_col, train_mean_col, train_std_col, y_label)
+    for a learning-curve group based on the prediction task and available columns."""
+    if "regression" in prediction_task:
+        if "r2_test_mean" in df_curve.columns:
+            return "r2_test_mean", "r2_test_std", "r2_train_mean", "r2_train_std", "Mean R2"
+        if "pearson_correlation_test_mean" in df_curve.columns:
+            return (
+                "pearson_correlation_test_mean",
+                "pearson_correlation_test_std",
+                "pearson_correlation_train_mean",
+                "pearson_correlation_train_std",
+                "Mean Pearson Correlation",
+            )
+        return (
+            "mae_weighted_test_mean",
+            "mae_weighted_test_std",
+            "mae_weighted_train_mean",
+            "mae_weighted_train_std",
+            "Mean MAE (weighted)",
+        )
+    return (
+        "accuracy_weighted_test_mean",
+        "accuracy_weighted_test_std",
+        "accuracy_weighted_train_mean",
+        "accuracy_weighted_train_std",
+        "Mean Accuracy (weighted)",
+    )
+
+
+def _build_lc_filename(lc_id: str, df_curve: pd.DataFrame) -> str:
+    """Construct an output filename for a learning-curve plot."""
+    safe_lc_id = str(lc_id).replace("/", "_").replace(" ", "_")
+    if "run_id" in df_curve.columns and not df_curve["run_id"].isna().all():
+        run_id = str(df_curve["run_id"].iloc[0])
+        parts = run_id.split("_")
+        if len(parts) >= 3:
+            base_run_id = "_".join(parts[:-1])
+            return f"learning_curve_{base_run_id}_{safe_lc_id}.png"
+    return f"learning_curve_{safe_lc_id}.png"
+
+
+def _plot_single_learning_curve(
+    lc_id: str,
+    df_curve: pd.DataFrame,
+    x_col: str,
+    output_dir: Path,
+) -> bool:
+    """Plot and save one learning curve. Returns True if a file was written."""
+    prediction_task = str(df_curve["prediction_task"].iloc[0]).lower()
+    test_mean_col, test_std_col, train_mean_col, train_std_col, y_label = (
+        _resolve_lc_metrics(prediction_task, df_curve)
+    )
+
+    if test_mean_col not in df_curve.columns:
+        print(f"Skipping learning_curve_id={lc_id}: missing column `{test_mean_col}`")
+        return False
+
+    cols_to_keep = [x_col, test_mean_col]
+    for c in [test_std_col, train_mean_col, train_std_col]:
+        if c in df_curve.columns:
+            cols_to_keep.append(c)
+
+    df_plot = df_curve[cols_to_keep].copy()
+    for c in cols_to_keep:
+        if c != x_col:
+            df_plot[c] = pd.to_numeric(df_plot[c], errors="coerce")
+
+    df_plot = df_plot[df_plot[test_mean_col].notna()]
+    if df_plot.empty:
+        print(f"Skipping learning_curve_id={lc_id}: no valid `{test_mean_col}` values")
+        return False
+
+    agg_dict = {test_mean_col: "mean"}
+    for c in [test_std_col, train_mean_col, train_std_col]:
+        if c in df_plot.columns:
+            agg_dict[c] = "mean"
+
+    df_mean = df_plot.groupby(x_col, as_index=False).agg(agg_dict).sort_values(x_col)
+    if df_mean.empty:
+        return False
+
+    model_name = str(df_curve["model_name"].iloc[0])
+    dataset = str(df_curve["dataset"].iloc[0])
+    tissue_type = str(df_curve["tissue_type"].iloc[0])
+    metric_to_compute = str(df_curve["primary_metric"].iloc[0])
+    target = str(df_curve["target"].iloc[0])
+    title = f"{model_name} {dataset} - {tissue_type} - {metric_to_compute} - {target}"
+
+    plt.figure(figsize=(10, 6))
+
+    plt.plot(df_mean[x_col], df_mean[test_mean_col], marker="o", linewidth=2, label="Test", color="red")
+    if test_std_col in df_mean.columns:
+        plt.fill_between(
+            df_mean[x_col],
+            df_mean[test_mean_col] - df_mean[test_std_col],
+            df_mean[test_mean_col] + df_mean[test_std_col],
+            color="red",
+            alpha=0.2,
+        )
+
+    if train_mean_col in df_mean.columns:
+        plt.plot(df_mean[x_col], df_mean[train_mean_col], marker="s", linestyle="--", linewidth=2, label="Train", color="blue")
+        if train_std_col in df_mean.columns:
+            plt.fill_between(
+                df_mean[x_col],
+                df_mean[train_mean_col] - df_mean[train_std_col],
+                df_mean[train_mean_col] + df_mean[train_std_col],
+                color="blue",
+                alpha=0.2,
+            )
+
+    xlabel = x_col.replace("config.data.", "data.").replace("config.runtime.", "runtime.")
+    plt.xlabel(xlabel)
+    plt.ylabel(y_label)
+    plt.title(title)
+    plt.legend()
+    plt.ylim(0, 1)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+
+    out_file = output_dir / _build_lc_filename(lc_id, df_curve)
+    plt.savefig(out_file, dpi=160)
+    plt.close()
+    return True
 
 
 def plot_learning_curves_from_comprehensive_table(
@@ -125,176 +268,26 @@ def plot_learning_curves_from_comprehensive_table(
     for lc_id, df_curve in df_lc.groupby(group_cols, dropna=False):
         if isinstance(lc_id, tuple):
             lc_id = lc_id[0]
-
-        prediction_task = str(df_curve["prediction_task"].iloc[0]).lower()
-        if "regression" in prediction_task:
-            # Prefer R2 or Pearson over MAE for learning curves as requested
-            if "r2_test_mean" in df_curve.columns:
-                test_mean_col = "r2_test_mean"
-                test_std_col = "r2_test_std"
-                train_mean_col = "r2_train_mean"
-                train_std_col = "r2_train_std"
-                y_label = "Mean R2"
-            elif "pearson_correlation_test_mean" in df_curve.columns:
-                test_mean_col = "pearson_correlation_test_mean"
-                test_std_col = "pearson_correlation_test_std"
-                train_mean_col = "pearson_correlation_train_mean"
-                train_std_col = "pearson_correlation_train_std"
-                y_label = "Mean Pearson Correlation"
-            else:
-                test_mean_col = "mae_weighted_test_mean"
-                test_std_col = "mae_weighted_test_std"
-                train_mean_col = "mae_weighted_train_mean"
-                train_std_col = "mae_weighted_train_std"
-                y_label = "Mean MAE (weighted)"
-        else:
-            test_mean_col = "accuracy_weighted_test_mean"
-            test_std_col = "accuracy_weighted_test_std"
-            train_mean_col = "accuracy_weighted_train_mean"
-            train_std_col = "accuracy_weighted_train_std"
-            y_label = "Mean Accuracy (weighted)"
-
-        # Check for required test mean column at minimum
-        if test_mean_col not in df_curve.columns:
-            print(
-                f"Skipping learning_curve_id={lc_id}: missing column `{test_mean_col}`"
-            )
-            continue
-
-        # Prepare data for plotting
-        cols_to_keep = [x_col, test_mean_col]
-        # Add other columns if they exist
-        for c in [test_std_col, train_mean_col, train_std_col]:
-            if c in df_curve.columns:
-                cols_to_keep.append(c)
-
-        df_plot = df_curve[cols_to_keep].copy()
-
-        # Ensure numeric
-        for c in cols_to_keep:
-            if c != x_col:  # x_col already handled
-                df_plot[c] = pd.to_numeric(df_plot[c], errors="coerce")
-
-        df_plot = df_plot[df_plot[test_mean_col].notna()]
-        if df_plot.empty:
-            print(
-                f"Skipping learning_curve_id={lc_id}: no valid `{test_mean_col}` values"
-            )
-            continue
-
-        # Aggregate by x_col
-        agg_dict = {test_mean_col: "mean"}
-        if test_std_col in df_plot.columns:
-            agg_dict[test_std_col] = "mean"
-        if train_mean_col in df_plot.columns:
-            agg_dict[train_mean_col] = "mean"
-        if train_std_col in df_plot.columns:
-            agg_dict[train_std_col] = "mean"
-
-        df_mean = (
-            df_plot.groupby(x_col, as_index=False).agg(agg_dict).sort_values(x_col)
-        )
-
-        if df_mean.empty:
-            continue
-
-        model_name = str(df_curve["model_name"].iloc[0])
-        dataset = str(df_curve["dataset"].iloc[0])
-        tissue_type = str(df_curve["tissue_type"].iloc[0])
-        metric_to_compute = str(df_curve["primary_metric"].iloc[0])
-        target = str(df_curve["target"].iloc[0])
-
-        title = (
-            f"{model_name} {dataset} - {tissue_type} - {metric_to_compute} - {target}"
-        )
-
-        plt.figure(figsize=(10, 6))
-
-        # Plot Test
-        plt.plot(
-            df_mean[x_col],
-            df_mean[test_mean_col],
-            marker="o",
-            linewidth=2,
-            label="Test",
-            color="red",
-        )
-        if test_std_col in df_mean.columns:
-            plt.fill_between(
-                df_mean[x_col],
-                df_mean[test_mean_col] - df_mean[test_std_col],
-                df_mean[test_mean_col] + df_mean[test_std_col],
-                color="red",
-                alpha=0.2,
-            )
-
-        # Plot Train
-        if train_mean_col in df_mean.columns:
-            plt.plot(
-                df_mean[x_col],
-                df_mean[train_mean_col],
-                marker="s",
-                linestyle="--",
-                linewidth=2,
-                label="Train",
-                color="blue",
-            )
-            if train_std_col in df_mean.columns:
-                plt.fill_between(
-                    df_mean[x_col],
-                    df_mean[train_mean_col] - df_mean[train_std_col],
-                    df_mean[train_mean_col] + df_mean[train_std_col],
-                    color="blue",
-                    alpha=0.2,
-                )
-
-        xlabel = x_col
-        xlabel = xlabel.replace("config.data.", "data.")
-        xlabel = xlabel.replace("config.runtime.", "runtime.")
-        plt.xlabel(xlabel)
-        plt.ylabel(y_label)
-        plt.title(title)
-        plt.legend()
-        plt.ylim(0, 1)
-        plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-
-        # Construct filename based on run_id structure: {model}_{run_hash}_{conf_hash}
-        # We want to keep {model}_{run_hash} and replace {conf_hash} with learning_curve_id
-        if "run_id" in df_curve.columns and not df_curve["run_id"].isna().all():
-            run_id = str(df_curve["run_id"].iloc[0])
-            parts = run_id.split("_")
-
-            if len(parts) >= 3:
-                base_run_id = "_".join(
-                    parts[:-1]
-                )  # Keep everything except the last part (conf_hash)
-                safe_lc_id = str(lc_id).replace("/", "_").replace(" ", "_")
-                # If lc_id has underscores, user asked for the "beginning", assuming potentially like grouping ID
-                # To be safe and follow request precisely "substitue it with the begining of the learning_curve_id"
-                # If lc_id is simple, beginning is whole. If it has parts, let's take first part?
-                # But grouping is by whole lc_id. So we should use whole lc_id to distinguish curves.
-                # However, maybe user implies lc_id matches conf_hash structure? Unlikely.
-                # Let's just use the full safe_lc_id as replacement for conf_hash.
-                out_filename = f"learning_curve_{base_run_id}_{safe_lc_id}.png"
-            else:
-                safe_id = str(lc_id).replace("/", "_").replace(" ", "_")
-                out_filename = f"learning_curve_{safe_id}.png"
-        else:
-            safe_id = str(lc_id).replace("/", "_").replace(" ", "_")
-            out_filename = f"learning_curve_{safe_id}.png"
-
-        out_file = output_dir / out_filename
-        plt.savefig(out_file, dpi=160)
-        plt.close()
-        n_plots += 1
+        if _plot_single_learning_curve(lc_id, df_curve, x_col, output_dir):
+            n_plots += 1
 
     print(f"✓ Learning curves saved to: {output_dir} ({n_plots} plots)")
 
 
 def build_global_metrics(experiments_root: Path, output_path: Path) -> pd.DataFrame:
-    all_dfs = []
+    """Collect per-fold metrics from all experiment directories into one DataFrame.
 
+    Args:
+        experiments_root: Directory containing ``exp_*`` subdirectories.
+        output_path: Destination Parquet path for the combined metrics.
+
+    Returns:
+        DataFrame with one row per (experiment, fold, split, metric).
+
+    Raises:
+        RuntimeError: If no valid experiments are found.
+    """
+    all_dfs = []
     for exp_dir in experiments_root.glob("exp_*"):
         metrics_file = exp_dir / "metrics" / "fold_metrics.parquet"
         config_file = exp_dir / "config.yaml"
@@ -326,6 +319,16 @@ def build_global_metrics(experiments_root: Path, output_path: Path) -> pd.DataFr
 
 
 def build_summary_metrics(df_folds: pd.DataFrame, out_path: Path) -> pd.DataFrame:
+    """Aggregate per-fold metrics to per-run mean/std.
+
+    Args:
+        df_folds: Long-format per-fold metrics DataFrame (output of
+            :func:`build_global_metrics`).
+        out_path: Destination Parquet path for the summary.
+
+    Returns:
+        DataFrame with ``mean`` and ``std`` columns aggregated over folds.
+    """
     df = (
         df_folds.groupby(
             [
@@ -352,16 +355,17 @@ def build_summary_metrics(df_folds: pd.DataFrame, out_path: Path) -> pd.DataFram
 
 
 def flatten_config(cfg: DictConfig, prefix: str = "") -> dict:
-    """
-    Recursively flatten a nested OmegaConf config into a flat dictionary.
-    Converts all OmegaConf types to native Python types for parquet compatibility.
+    """Recursively flatten a nested OmegaConf config into a flat dict.
+
+    Keys are joined with dots (e.g. ``"model.backbone.depth"``).  Lists and
+    nested dicts are stringified so all values are JSON-primitive.
 
     Args:
-        cfg: OmegaConf config object
-        prefix: Prefix for nested keys
+        cfg: OmegaConf DictConfig to flatten.
+        prefix: Dot-separated prefix prepended to each key.
 
     Returns:
-        Flat dictionary with dot-separated keys and native Python values
+        Flat ``dict[str, ...]`` with native Python scalar values.
     """
     flat = {}
 
@@ -369,20 +373,15 @@ def flatten_config(cfg: DictConfig, prefix: str = "") -> dict:
         full_key = f"{prefix}{key}" if prefix else key
 
         if isinstance(value, DictConfig):
-            # Recursively flatten nested configs
             flat.update(flatten_config(value, prefix=f"{full_key}."))
         else:
-            # Convert to native Python type using OmegaConf.to_container
-            # This handles ListConfig, DictConfig, and other OmegaConf types
             try:
                 native_value = OmegaConf.to_container(value, resolve=True)
-                # Convert complex types to string for parquet compatibility
                 if isinstance(native_value, (list, tuple, dict)):
                     flat[full_key] = str(native_value)
                 else:
                     flat[full_key] = native_value
             except Exception:
-                # Fallback to string representation if conversion fails
                 flat[full_key] = str(value)
 
     return flat
@@ -414,10 +413,8 @@ def build_comprehensive_table(
         if not config_file.exists():
             continue
 
-        # Load config
         cfg = OmegaConf.load(config_file)
 
-        # Base experiment info
         exp_info = {
             "run_id": exp_dir.name.replace("exp_", ""),
             "model_name": cfg.model.name,
@@ -428,11 +425,9 @@ def build_comprehensive_table(
             "prediction_task": cfg.pred_head.prediction_task,
         }
 
-        # Load metrics if available
         if metrics_file.exists():
             df_metrics = pd.read_parquet(metrics_file)
 
-            # Create columns for each metric-fold-split combination
             for _, row in df_metrics.iterrows():
                 metric = row["metric"]
                 fold = row.get("fold", 0)
@@ -442,7 +437,6 @@ def build_comprehensive_table(
                 col_name = f"{metric}_{split}_fold{fold}"
                 exp_info[col_name] = value
 
-            # Compute mean and std for each metric-split combination
             for split in df_metrics["split"].unique():
                 df_split = df_metrics[df_metrics["split"] == split]
 
@@ -453,8 +447,6 @@ def build_comprehensive_table(
                     exp_info[f"{metric}_{split}_mean"] = np.mean(values)
                     exp_info[f"{metric}_{split}_std"] = np.std(values)
 
-        # Flatten and add all config parameters
-        # Focus on model, backend, pred_head, data, target and runtime sections
         sections_to_include = [
             "model",
             "backend",
@@ -473,8 +465,8 @@ def build_comprehensive_table(
                 for param_key, param_value in flat_params.items():
                     exp_info[param_key] = param_value
 
-        # Ensure learning-curve runtime fields always exist for downstream analysis
-        # (older experiments/configs may not define runtime or learning-curve params)
+        # Older experiments may not have runtime or learning-curve params;
+        # ensure these columns always exist for downstream analysis.
         exp_info.setdefault("config.runtime.learning_curve_exp", None)
         exp_info.setdefault("config.runtime.learning_curve_id", None)
 
@@ -483,11 +475,8 @@ def build_comprehensive_table(
     if not all_experiments:
         raise RuntimeError("No valid experiments found")
 
-    # Create DataFrame - pandas will automatically fill missing columns with NaN
     df_comprehensive = pd.DataFrame(all_experiments)
 
-    # Sort columns for better readability
-    # 1. Identifiers
     id_cols = [
         "run_id",
         "model_name",
@@ -498,7 +487,6 @@ def build_comprehensive_table(
         "prediction_task",
     ]
 
-    # 2. Metric columns (mean/std first, then individual folds)
     metric_cols = [
         col
         for col in df_comprehensive.columns
@@ -507,19 +495,13 @@ def build_comprehensive_table(
     mean_std_cols = [col for col in metric_cols if "_mean" in col or "_std" in col]
     fold_cols = [col for col in metric_cols if col not in mean_std_cols]
 
-    # Sort mean/std columns
     mean_std_cols.sort()
-    # Sort fold columns
     fold_cols.sort()
 
-    # 3. Config columns
     config_cols = [col for col in df_comprehensive.columns if col.startswith("config.")]
     config_cols.sort()
 
-    # Reorder columns
     ordered_cols = id_cols + mean_std_cols + fold_cols + config_cols
-
-    # Keep only columns that exist
     ordered_cols = [col for col in ordered_cols if col in df_comprehensive.columns]
 
     df_comprehensive = df_comprehensive[ordered_cols]
@@ -531,329 +513,239 @@ def build_comprehensive_table(
     return df_comprehensive
 
 
+def _find_best_run(
+    df_group_orig: pd.DataFrame,
+    prediction_task: str,
+) -> tuple:
+    """Return (metric_col, metric_name, lower_is_better, best_run, metrics_priority).
+
+    Falls back to the first row when no usable metric column is found.
+    """
+    if "classification" in prediction_task or "binary" in prediction_task:
+        metrics_priority = ["accuracy_weighted", "accuracy", "roc_auc", "f1_weighted"]
+    elif "regression" in prediction_task:
+        metrics_priority = ["r2"]
+    else:
+        metrics_priority = ["accuracy_weighted", "rmse_weighted", "accuracy", "rmse"]
+
+    metric_col = None
+    metric_name = None
+
+    candidates = []
+    for m in metrics_priority:
+        for split in ["test", "val"]:
+            col = f"{m}_{split}_mean"
+            if col in df_group_orig.columns:
+                valid_count = df_group_orig[col].count()
+                if valid_count > 0:
+                    candidates.append(
+                        {
+                            "col": col,
+                            "metric": m,
+                            "split": split,
+                            "count": valid_count,
+                            "priority_idx": metrics_priority.index(m),
+                            "split_score": 1 if split == "test" else 0,
+                        }
+                    )
+
+    if candidates:
+        candidates.sort(key=lambda x: (-x["count"], x["priority_idx"], -x["split_score"]))
+        metric_col = candidates[0]["col"]
+        metric_name = candidates[0]["metric"]
+
+    lower_is_better = bool(metric_name and any(x in metric_name.lower() for x in ["r2"]))
+
+    if metric_col is None:
+        return "run_id", "N/A", False, df_group_orig.iloc[0], metrics_priority
+
+    if lower_is_better:
+        best_idx = df_group_orig[metric_col].idxmin()
+    else:
+        best_idx = df_group_orig[metric_col].idxmax()
+
+    if pd.isna(best_idx):
+        return "run_id", "N/A", False, df_group_orig.iloc[0], metrics_priority
+
+    return metric_col, metric_name, lower_is_better, df_group_orig.loc[best_idx], metrics_priority
+
+
+def _build_report_row(
+    row: pd.Series,
+    best_run_id: str,
+    metric_col: str,
+    metric_name: str,
+    metrics_priority: list,
+    best_primary_metric,
+    variable_config_cols: list,
+    best_config_vals: dict,
+) -> list:
+    """Build a single data row for the per-group report table."""
+    row_data = []
+
+    rid = str(row["run_id"])
+    if row["run_id"] == best_run_id:
+        rid += " *"
+    row_data.append(rid)
+
+    if metric_col != "run_id":
+        val = row[metric_col]
+        current_metric_name = metric_name
+        if pd.isna(val):
+            found_fallback = False
+            for m in metrics_priority:
+                for split in ["test", "val"]:
+                    col_candidate = f"{m}_{split}_mean"
+                    if col_candidate in row and pd.notna(row[col_candidate]):
+                        val = row[col_candidate]
+                        current_metric_name = m
+                        found_fallback = True
+                        break
+                if found_fallback:
+                    break
+        if pd.notna(val):
+            score = f"{val:.4f}"
+            if current_metric_name != metric_name:
+                score += f" ({current_metric_name})"
+        else:
+            score = "nan"
+        row_data.append(score)
+    else:
+        row_data.append("-")
+
+    p_metric = str(row["primary_metric"])
+    if p_metric != str(best_primary_metric):
+        p_metric = f"|{p_metric}|"
+    row_data.append(p_metric)
+
+    for c in variable_config_cols:
+        val = row[c]
+        val_str = str(val) if pd.notna(val) else "-"
+        v_str = str(val) if pd.notna(val) else "nan"
+        b_str = str(best_config_vals[c]) if pd.notna(best_config_vals[c]) else "nan"
+        if v_str != b_str:
+            val_str = f"|{val_str}|"
+        if len(val_str) > 30:
+            val_str = val_str[:27] + "..."
+        row_data.append(val_str)
+
+    return row_data
+
+
+def _render_report_group(
+    df_group_orig: pd.DataFrame,
+    config_cols: list,
+    group_desc: str,
+    prediction_task: str,
+) -> list:
+    """Return report lines for a single (model, tissue, task, target) group."""
+    report_lines = [f"\nGROUP: {group_desc}", "-" * 140]
+
+    if len(df_group_orig) == 0:
+        return report_lines
+
+    metric_col, metric_name, lower_is_better, best_run, metrics_priority = _find_best_run(
+        df_group_orig, prediction_task
+    )
+
+    best_run_id = best_run["run_id"]
+
+    if metric_col == "run_id":
+        report_lines.append(
+            f"  Warning: Could not find performance metric column. Task: {prediction_task}"
+        )
+    else:
+        val_disp = f"{best_run[metric_col]:.4f}"
+        report_lines.append(
+            f"  Best Run ID: {best_run_id} (Metric: {metric_col}, Score: {val_disp})"
+        )
+    report_lines.append(
+        "  Highlighting: Parameters different from Best Run are enclosed in |...|"
+    )
+
+    variable_config_cols = sorted(
+        c
+        for c in config_cols
+        if c in df_group_orig.columns and len(df_group_orig[c].astype(str).unique()) > 1
+    )
+
+    short_col_map = {
+        c: c.replace("config.", "").replace("model.", "").replace("optimizer.", "opt.").replace("backend.", "bk.")
+        for c in variable_config_cols
+    }
+    headers = ["RunID", "Score", "PrimaryMetric"] + [short_col_map[c] for c in variable_config_cols]
+
+    df_sorted = df_group_orig.copy()
+    df_sorted["is_best"] = df_sorted["run_id"] == best_run_id
+    if metric_col != "run_id":
+        df_sorted = df_sorted.sort_values(
+            ["is_best", metric_col], ascending=[False, lower_is_better]
+        )
+
+    best_config_vals = {c: best_run[c] for c in variable_config_cols}
+    best_primary_metric = best_run["primary_metric"]
+
+    table_data = [
+        _build_report_row(
+            row, best_run_id, metric_col, metric_name, metrics_priority,
+            best_primary_metric, variable_config_cols, best_config_vals,
+        )
+        for _, row in df_sorted.iterrows()
+    ]
+
+    col_widths = [min(max(len(h), max((len(r[i]) for r in table_data), default=0)) + 2, 50) for i, h in enumerate(headers)]
+    fmt = "".join([f"{{:<{w}}}" for w in col_widths])
+
+    try:
+        report_lines.append(fmt.format(*headers))
+        report_lines.append("-" * sum(col_widths))
+    except Exception as e:
+        report_lines.append(f"Error formatting table: {e}")
+
+    for row in table_data:
+        try:
+            report_lines.append(fmt.format(*row))
+        except Exception:
+            pass
+
+    report_lines.append("\n" + "=" * 40 + "\n")
+    return report_lines
+
+
 def generate_dataset_reports(df_comprehensive: pd.DataFrame, output_dir: Path) -> None:
     """
-    Generates text reports per dataset comparing experiments.
-    For each (model, tissue, task, target) group:
-      - Identifies the best run (based on primary metric on test set)
-      - Lists all runs
-      - Highlights hyperparameters that differ from the best run
+    Write per-dataset text reports comparing experiment runs.
+
+    For each ``(model, tissue, task, target)`` group, identifies the best run and
+    highlights hyperparameters that differ from it.
     """
     print(f"\nGenerating dataset reports in {output_dir}...")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Filter out dummy models from report
     df_filtered = df_comprehensive[
-        ~df_comprehensive["model_name"]
-        .astype(str)
-        .str.contains("dummy", case=False, na=False)
+        ~df_comprehensive["model_name"].astype(str).str.contains("dummy", case=False, na=False)
     ]
 
-    # Identify config columns
     config_cols = [c for c in df_filtered.columns if c.startswith("config.")]
 
-    # Group by dataset
     for dataset_name, df_dataset in df_filtered.groupby("dataset"):
-        report_lines = []
-        report_lines.append(f"DATASET REPORT: {dataset_name}")
-        report_lines.append("=" * 140)
+        report_lines = [f"DATASET REPORT: {dataset_name}", "=" * 140]
 
-        # Group by model/tissue/task/target
-        # Using fillna for grouping columns to handle potential NaNs safely
-        # Removed primary_metric from grouping as requested
         group_keys = ["model_name", "tissue_type", "prediction_task", "target"]
-        # Filter keys present in current df
         active_keys = [k for k in group_keys if k in df_dataset.columns]
 
-        # We replace NaNs with string 'NaN' for grouping purposes to avoid dropping data
         df_dataset_safe = df_dataset.copy()
         for k in active_keys:
             df_dataset_safe[k] = df_dataset_safe[k].fillna("NaN")
 
         for group_values, df_group in df_dataset_safe.groupby(active_keys):
-            # Restore original dataframe rows for this group to get correct types
             df_group_orig = df_dataset.loc[df_group.index]
-
-            # Create a string describing the group
-            group_desc = ", ".join(
-                f"{k}={v}" for k, v in zip(active_keys, group_values)
-            )
-            report_lines.append(f"\nGROUP: {group_desc}")
-            report_lines.append("-" * 140)
-
-            if len(df_group_orig) == 0:
-                continue
-
-            # Find best run
+            group_desc = ", ".join(f"{k}={v}" for k, v in zip(active_keys, group_values))
             prediction_task = str(df_group["prediction_task"].iloc[0]).lower()
-
-            # Determine target metrics based on task
-            metrics_priority = []
-            if "classification" in prediction_task or "binary" in prediction_task:
-                metrics_priority = [
-                    "accuracy_weighted",
-                    "accuracy",
-                    "roc_auc",
-                    "f1_weighted",
-                ]
-            elif "regression" in prediction_task:
-                metrics_priority = [
-                    "r2"
-                ]  # , "rmse_weighted", "rmse", "mae_weighted", "mae"]
-            else:
-                metrics_priority = [
-                    "accuracy_weighted",
-                    "rmse_weighted",
-                    "accuracy",
-                    "rmse",
-                ]
-
-            metric_col = None
-            metric_name = None
-
-            # Find the best metric column (prioritizing test set but also coverage)
-            # We want a metric that is available for most runs
-            candidates = []
-            for m in metrics_priority:
-                for split in ["test", "val"]:
-                    col = f"{m}_{split}_mean"
-                    if col in df_group_orig.columns:
-                        valid_count = df_group_orig[col].count()
-                        if valid_count > 0:
-                            candidates.append(
-                                {
-                                    "col": col,
-                                    "metric": m,
-                                    "split": split,
-                                    "count": valid_count,
-                                    "priority_idx": metrics_priority.index(m),
-                                }
-                            )
-
-            if candidates:
-                # Sort candidates:
-                # 1. Coverage (descending)
-                # 2. Priority of metric (ascending index)
-                # 3. Split (Test preferred over Val? alphabetical test comes before val? No, test/val order in loop matters)
-                # Let's prioritize coverage mostly, but break ties with metric priority and split
-
-                # To prioritize test split over val split if counts are equal:
-                # assign score to split: test=1, val=0
-                for c in candidates:
-                    c["split_score"] = 1 if c["split"] == "test" else 0
-
-                # Sort: most counts -> best metric priority -> test split
-                candidates.sort(
-                    key=lambda x: (-x["count"], x["priority_idx"], -x["split_score"])
-                )
-
-                best_candidate = candidates[0]
-                metric_col = best_candidate["col"]
-                metric_name = best_candidate["metric"]
-
-            # Determine direction (default higher is better, switch for loss/error)
-            lower_is_better = False
-            if metric_name:
-                lower_is_better = any(
-                    x in metric_name.lower() for x in ["r2"]
-                )  # , 'mae', 'rmse', 'mse', 'loss', 'error'])
-
-            if metric_col is None:
-                report_lines.append(
-                    f"  Warning: Could not find performance metric column. Task: {prediction_task}"
-                )
-                # Fallback to just listing runs without sorting by metric
-                metric_col = "run_id"  # Dummy
-                metric_name = "N/A"
-                best_run = df_group_orig.iloc[0]
-                lower_is_better = False
-            else:
-                if lower_is_better:
-                    best_idx = df_group_orig[metric_col].idxmin()
-                else:
-                    best_idx = df_group_orig[metric_col].idxmax()
-
-                # Safety check for nan index
-                if pd.isna(best_idx):
-                    report_lines.append(
-                        f"  Warning: Metric column {metric_col} contained only NaNs."
-                    )
-                    metric_col = "run_id"
-                    metric_name = "N/A"
-                    best_run = df_group_orig.iloc[0]
-                    lower_is_better = False
-                else:
-                    best_run = df_group_orig.loc[best_idx]
-
-            best_run_id = best_run["run_id"]
-            val_disp = (
-                f"{best_run[metric_col]:.4f}" if metric_col != "run_id" else "N/A"
-            )
-            report_lines.append(
-                f"  Best Run ID: {best_run_id} (Metric: {metric_col}, Score: {val_disp})"
-            )
-            report_lines.append(
-                f"  Highlighting: Parameters different from Best Run are enclosed in |...|"
+            report_lines.extend(
+                _render_report_group(df_group_orig, config_cols, group_desc, prediction_task)
             )
 
-            # Identify variable config params for this group
-            # We filter for columns that have > 1 unique value across the group
-            variable_config_cols = []
-            for c in config_cols:
-                if c not in df_group_orig.columns:
-                    continue
-                # Convert to string to compare uniqueness safely including NaNs
-                unique_vals = df_group_orig[c].astype(str).unique()
-                if len(unique_vals) > 1:
-                    variable_config_cols.append(c)
-
-            # Sort variable config cols by name
-            variable_config_cols.sort()
-
-            # Prepare table
-            # Columns: RunID | Score | PrimaryMetric | VarConfig1 | VarConfig2 ...
-            display_cols = ["run_id"]
-            if metric_col != "run_id":
-                display_cols.append(metric_col)
-
-            # Headers
-            short_col_map = {
-                c: c.replace("config.", "")
-                .replace("model.", "")
-                .replace("optimizer.", "opt.")
-                .replace("backend.", "bk.")
-                for c in variable_config_cols
-            }
-            headers = ["RunID", "Score", "PrimaryMetric"] + [
-                short_col_map[c] for c in variable_config_cols
-            ]
-
-            # Data rows
-            table_data = []
-
-            # Sort: Best first, then by metric
-            df_sorted = df_group_orig.copy()
-            df_sorted["is_best"] = df_sorted["run_id"] == best_run_id
-
-            if metric_col != "run_id":
-                if lower_is_better:
-                    df_sorted = df_sorted.sort_values(
-                        ["is_best", metric_col], ascending=[False, True]
-                    )
-                else:
-                    df_sorted = df_sorted.sort_values(
-                        ["is_best", metric_col], ascending=[False, False]
-                    )
-
-            best_config_vals = {c: best_run[c] for c in variable_config_cols}
-            best_primary_metric = best_run["primary_metric"]
-
-            for _, row in df_sorted.iterrows():
-                row_data = []
-                # RunID
-                rid = str(row["run_id"])
-                if row["run_id"] == best_run_id:
-                    rid += " *"  # Mark best
-                row_data.append(rid)
-
-                # Score
-                if metric_col != "run_id":
-                    val = row[metric_col]
-                    current_metric_name = metric_name
-
-                    # Fallback if primary metric is missing
-                    if pd.isna(val):
-                        found_fallback = False
-                        for m in metrics_priority:
-                            for split in ["test", "val"]:
-                                col_candidate = f"{m}_{split}_mean"
-                                if col_candidate in row and pd.notna(
-                                    row[col_candidate]
-                                ):
-                                    val = row[col_candidate]
-                                    current_metric_name = m
-                                    found_fallback = True
-                                    break
-                            if found_fallback:
-                                break
-
-                    if pd.notna(val):
-                        score = f"{val:.4f}"
-                        if current_metric_name != metric_name:
-                            score += f" ({current_metric_name})"
-                    else:
-                        score = "nan"
-                    row_data.append(score)
-                else:
-                    row_data.append("-")
-
-                # Primary Metric
-                p_metric = str(row["primary_metric"])
-                if p_metric != str(best_primary_metric):
-                    p_metric = f"|{p_metric}|"
-                row_data.append(p_metric)
-
-                # Configs
-                for c in variable_config_cols:
-                    val = row[c]
-                    # Convert to string
-                    val_str = str(val) if pd.notna(val) else "-"
-
-                    # Compare
-                    best_val = best_config_vals[c]
-
-                    is_diff = False
-                    # Comparison logic
-                    v_str = str(val) if pd.notna(val) else "nan"
-                    b_str = str(best_val) if pd.notna(best_val) else "nan"
-
-                    if v_str != b_str:
-                        is_diff = True
-
-                    if is_diff:
-                        # Highlight diff
-                        val_str = f"|{val_str}|"  # Using pipes to highlight
-
-                    # Truncate very long strings for readability
-                    if len(val_str) > 30:
-                        val_str = val_str[:27] + "..."
-
-                    row_data.append(val_str)
-
-                table_data.append(row_data)
-
-            # Render table
-            col_widths = [len(h) for h in headers]
-            for row in table_data:
-                for i, val in enumerate(row):
-                    if i < len(col_widths):
-                        col_widths[i] = max(col_widths[i], len(val))
-
-            # Add padding
-            col_widths = [w + 2 for w in col_widths]
-
-            # Cap column width to avoid explosion
-            col_widths = [min(w, 50) for w in col_widths]
-
-            fmt = "".join([f"{{:<{w}}}" for w in col_widths])
-
-            # Print header
-            try:
-                report_lines.append(fmt.format(*headers))
-                report_lines.append("-" * sum(col_widths))
-            except Exception as e:
-                report_lines.append(f"Error formatting table: {e}")
-
-            # Print rows
-            for row in table_data:
-                try:
-                    report_lines.append(fmt.format(*row))
-                except Exception:
-                    pass  # Skip row if format fails
-
-            report_lines.append("\n" + "=" * 40 + "\n")
-
-        # Write file
         out_file = output_dir / f"{dataset_name}_report.txt"
         try:
             with open(out_file, "w") as f:
@@ -1058,33 +950,37 @@ def build_coverage_table(df_comprehensive: pd.DataFrame, output_dir: Path) -> No
 def process_experiment_plots(
     exp_dir: Path, plots_root: Path, force_plots: bool, debug_mode: bool
 ) -> None:
+    """Generate diagnostic and debug plots for a single experiment directory.
+
+    Skips experiments that are neither successful nor (in debug mode) have debug
+    artefacts.  Respects the *force_plots* flag to overwrite existing outputs.
+
+    Args:
+        exp_dir: Path to the ``exp_<run_id>`` directory.
+        plots_root: Root directory for all plots.
+        force_plots: When ``True``, regenerate plots even if they already exist.
+        debug_mode: When ``True``, also plot incomplete experiments that have
+            debug log files.
+    """
     try:
         is_successful = is_successful_experiment(exp_dir)
         has_debug_info = (exp_dir / "debug").exists() and any(
             (exp_dir / "debug").iterdir()
         )
 
-        # If we are in debug mode, we want to plot debug info for running experiments too
-        # Otherwise, we only look at successful experiments
+        # Skip experiments that have nothing to plot.
         if not is_successful and not (debug_mode and has_debug_info):
-            # Skip if failed/running AND we don't want to debug running experiments
-            # OR if valid but no debug info and not successful
-            # Actually logic:
-            # If successful -> process normally
-            # If not successful -> skip unless debug=true and has_debug_info
             return
 
         run_id = exp_dir.name.replace("exp_", "")
         print(f"Processing plots for run: {run_id}")
 
-        # Paths
         metrics_path = exp_dir / "metrics" / "fold_metrics.parquet"
         predictions_path = exp_dir / "predictions" / "predictions.parquet"
         targets_path = exp_dir / "predictions" / "targets.parquet"
         debug_dir = exp_dir / "debug"
         run_plots_dir = plots_root / run_id
 
-        # Check if main plots already exist
         main_plots_exist = False
         if not force_plots and run_plots_dir.exists():
             main_plot_patterns = [
@@ -1097,14 +993,12 @@ def process_experiment_plots(
                 run_plots_dir.glob(pattern) for pattern in main_plot_patterns
             )
 
-        # Check if debug plots already exist
         debug_plots_exist = False
         debug_plots_dir = run_plots_dir / "debug"
         if not force_plots and debug_plots_dir.exists():
             debug_plots_exist = any(debug_plots_dir.glob("debug_training_*.png"))
 
-        # Debug plots if debug data exists and plots don't exist yet
-        # MODIFIED: Allow plotting even if experiment isn't fully successful if debug info is there
+        # Plot debug info if present (even for incomplete experiments)
         if debug_dir.exists() and any(debug_dir.iterdir()):
             if not debug_plots_exist or force_plots:
                 print(f"  Creating debug plots for {run_id}...")
@@ -1114,8 +1008,6 @@ def process_experiment_plots(
             else:
                 print(f"  Debug plots already exist for {run_id}, skipping...")
 
-        # Main experiment plots if not already computed (Requires success usually implies metrics exist)
-        # Only try to plot main results if metrics exist (which usually implies success or at least partial success)
         if not main_plots_exist:
             if (
                 metrics_path.exists()
@@ -1141,8 +1033,6 @@ def process_experiment_plots(
             print(f"  Main plots already exist for {run_id}, skipping...")
     except Exception as e:
         print(f"Error processing {exp_dir.name}: {e}")
-        import traceback
-
         traceback.print_exc()
 
 
@@ -1191,7 +1081,6 @@ def main(cfg: DictConfig) -> None:
     # 3) Print tables and reports
     # -----------------------------------------------------------------
     if show_tables:
-        # Build comprehensive table with all experiment information
         print(f"\nBuilding comprehensive results table...")
         df_comprehensive = build_comprehensive_table(
             experiments_root, comprehensive_table_path
@@ -1201,17 +1090,14 @@ def main(cfg: DictConfig) -> None:
             f"  Shape: {df_comprehensive.shape[0]} experiments × {df_comprehensive.shape[1]} columns"
         )
 
-        # Build coverage table showing which experiments have been run
         tables_dir = summary_root / "tables"
         build_coverage_table(df_comprehensive, tables_dir)
 
-        # Generate detailed reports per dataset
         reports_dir = summary_root / "reports"
         generate_dataset_reports(df_comprehensive, reports_dir)
 
         df_folds = build_global_metrics(experiments_root, metrics_folds_path)
         df_summary = build_summary_metrics(df_folds, summary_metrics_path)
-        # df_metrics = load_global_metrics(summary_metrics_path)
 
         # -----------------------------------------------------------------
         # MODEL AGGREGATE STATISTICS (mean across all runs per model)
@@ -1283,31 +1169,14 @@ def main(cfg: DictConfig) -> None:
         print("\n--- Primary Metric: pearson_correlation ---")
         df_best = table_best_means(df_summary, primary_metric="pearson_correlation")
         print_table(df_best)
-        # try:
-        #     print("--- Primary Metric: correlation ---")
-        #     df_best = table_best_means(df_summary, primary_metric="rmse")
-        #     print_table(df_best)
-        # except Exception as e:
-        #     print(f"Skipping RMSE table: {e}")
 
         best_runs = select_best_runs(df_summary, primary_metric="accuracy_weighted")
-        # print("\n=== DETAILED RESULTS (BEST RUN PER MODEL) ===")
-        # df_detailed = table_detailed(df_folds, best_runs, primary_metric="accuracy")
-        # print_table(df_detailed)
-
-        # df_wide_train = table_folds_wide(df_folds, best_runs, split="train", primary_metric="accuracy")
-        # print("\n=== WIDE-FORMAT RESULTS TRAIN ===")
-        # print_table(df_wide_train)
 
         print("\n=== WIDE-FORMAT RESULTS TEST ===")
         df_wide_test = table_folds_wide(
             df_folds, best_runs, split="test", primary_metric="accuracy_weighted"
         )
         print_table(df_wide_test)
-
-        # for metric, df_m in df_summary.groupby("metric"):
-        #     print(f"\n### Metric: {metric}")
-        #     print_table(table_best_means(df_m, metric))
 
         # -----------------------------------------------------------------
         # Group by tissue type for tissue-specific analysis

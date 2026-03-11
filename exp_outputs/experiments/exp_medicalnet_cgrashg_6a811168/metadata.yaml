@@ -1,0 +1,14 @@
+run_id: medicalnet_cgrashg_6a811168
+learning_curve_id: d16f54d9916aad05fe8a51104c4f617587f55a45
+experiment_hash: 6a811168
+model: medicalnet
+dataset: camcan
+tissue_type: gray
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-22T15:31:31.637999'
+hostname: margpu016
+job_id: '5039028'
+end_time: '2026-02-23T01:52:50.180124'

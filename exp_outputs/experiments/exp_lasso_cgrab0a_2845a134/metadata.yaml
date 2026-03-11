@@ -1,0 +1,14 @@
+run_id: lasso_cgrab0a_2845a134
+learning_curve_id: 844febff74cae746d4d1a454d46ff085d3fe5da8
+experiment_hash: 2845a134
+model: lasso
+dataset: camcan
+tissue_type: gray
+primary_metric: b0
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T19:33:05.045955'
+hostname: marg017
+job_id: '5038488'
+end_time: '2026-02-20T20:07:43.756065'

@@ -1,0 +1,14 @@
+run_id: lasso_hwhimka_81df00bb
+learning_curve_id: 296100b33336fc02a5c9cc4d82d68069f9d67ecf
+experiment_hash: 81df00bb
+model: lasso
+dataset: hcp
+tissue_type: white
+primary_metric: mk
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:40:05.592401'
+hostname: marg032
+job_id: '5035595'
+end_time: '2026-02-19T19:40:33.249221'

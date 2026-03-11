@@ -1,0 +1,6 @@
+name: simple_mesh
+
+backbone:
+  in_features: 1
+  hidden_dim: 128
+  dropout: 0.0

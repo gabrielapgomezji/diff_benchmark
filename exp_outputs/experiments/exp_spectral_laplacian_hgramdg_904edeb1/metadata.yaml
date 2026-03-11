@@ -1,0 +1,14 @@
+run_id: spectral_laplacian_hgramdg_904edeb1
+learning_curve_id: bc7f536cb1336c4420ff2c3accaee26ce3f3f4de
+experiment_hash: 904edeb1
+model: spectral_laplacian
+dataset: hcp
+tissue_type: gray
+primary_metric: md
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-03-06T21:58:56.415940'
+hostname: margpu002
+job_id: '5056807'
+end_time: '2026-03-07T03:10:32.997257'

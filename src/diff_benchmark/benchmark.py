@@ -6,11 +6,11 @@ from omegaconf import DictConfig, OmegaConf
 from diff_benchmark.cli.run import run_single_model
 from diff_benchmark.utils.job_manager import run_jobs
 
+RESULTS_DIR = Path("./exp_outputs")
+
 
 class Benchmark:
-    """
-    Programmatic API for running diff-benchmark experiments.
-    """
+    """Programmatic API for running diff-benchmark experiments."""
 
     def __init__(self, config: DictConfig | dict):
         if not isinstance(config, DictConfig):
@@ -18,23 +18,22 @@ class Benchmark:
 
         self.cfg = config
         self.logger = logging.getLogger(self.__class__.__name__)
-
-        # self.results_path = Path(
-        #     self.cfg.runtime.get("results_dir", "./exp_outputs")
-        # )
-        self.results_path = Path("./exp_outputs")
+        self.results_path = RESULTS_DIR
         self.results_path.mkdir(parents=True, exist_ok=True)
 
-    def run(self):
-        """
-        Run benchmark experiments.
-        """
+    def run(self) -> list:
+        """Execute benchmark experiments and return a list of :class:`JobResult` objects.
 
-        parallel_type = (
-            None
-            if self.cfg.cluster.conf.parallel_type not in ["slurm", "joblib"]
-            else self.cfg.cluster.conf.parallel_type
-        )
+        Execution mode (sequential, joblib, or SLURM) is determined by
+        ``cfg.cluster.conf.parallel_type``.
+
+        Returns:
+            List of :class:`~diff_benchmark.utils.job_manager.JobResult` objects,
+            one per submitted job.
+        """
+        parallel_type = self.cfg.cluster.conf.parallel_type
+        if parallel_type not in ("slurm", "joblib"):
+            parallel_type = None
 
         self.logger.info("Starting benchmark run")
         self.logger.debug(f"Parallel type: {parallel_type}")

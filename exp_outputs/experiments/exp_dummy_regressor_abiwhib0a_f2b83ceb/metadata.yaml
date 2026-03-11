@@ -1,0 +1,14 @@
+run_id: dummy_regressor_abiwhib0a_f2b83ceb
+learning_curve_id: e4cae9cd0a49b98b8c3161322ff528960a49fd49
+experiment_hash: f2b83ceb
+model: dummy_regressor
+dataset: abide
+tissue_type: white
+primary_metric: b0
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T19:29:25.604928'
+hostname: marg008
+job_id: '5038443'
+end_time: '2026-02-20T19:29:31.287152'

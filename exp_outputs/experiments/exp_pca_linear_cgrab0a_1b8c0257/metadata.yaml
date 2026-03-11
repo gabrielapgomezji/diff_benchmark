@@ -1,0 +1,14 @@
+run_id: pca_linear_cgrab0a_1b8c0257
+learning_curve_id: 433fee39daa6eae0fb9ac63ead48dd7a2ac82305
+experiment_hash: 1b8c0257
+model: pca_linear
+dataset: camcan
+tissue_type: gray
+primary_metric: b0
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T19:32:57.042345'
+hostname: marg005
+job_id: '5038494'
+end_time: '2026-02-20T20:17:10.594693'

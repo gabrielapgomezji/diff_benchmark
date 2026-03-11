@@ -6,16 +6,13 @@ from diff_benchmark.models.utils_models.trainer import SklearnModel
 
 
 class DummyRegressorModel(SklearnModel):
-    """
-    Unified dummy regressor compatible with the diff_benchmark pipeline.
-    """
+    """Dummy regressor baseline (predicts mean)."""
 
-    data_type = "array"  # so trainer knows it's array data
+    data_type = "array"
     prediction_task = "regression"
     output_dim = 1
 
     def _build_model(self, **kwargs):
-        # Wrap in a simple pipeline (optional: scaling)
         pipeline = Pipeline(
             [
                 ("scaler", StandardScaler()),
@@ -26,9 +23,7 @@ class DummyRegressorModel(SklearnModel):
 
 
 class DummyClassifierModel(SklearnModel):
-    """
-    Unified dummy classifier compatible with the diff_benchmark pipeline.
-    """
+    """Dummy classifier baseline (predicts most frequent class)."""
 
     data_type = "array"
     prediction_task = "binary_classification"

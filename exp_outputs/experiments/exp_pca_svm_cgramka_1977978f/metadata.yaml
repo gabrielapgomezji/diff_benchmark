@@ -1,0 +1,14 @@
+run_id: pca_svm_cgramka_1977978f
+learning_curve_id: de067300614ad6a27e83b623f966640fcea54378
+experiment_hash: 1977978f
+model: pca_svm
+dataset: camcan
+tissue_type: gray
+primary_metric: mk
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:39:30.340760'
+hostname: marg014
+job_id: '5035582'
+end_time: '2026-02-19T19:42:10.762166'

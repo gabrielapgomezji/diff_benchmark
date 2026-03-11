@@ -1,0 +1,14 @@
+run_id: pca_forest_hwhimkg_14878bd3
+learning_curve_id: 3c166f9c9ca54243cf83c28ac2802355641384c4
+experiment_hash: 14878bd3
+model: pca_forest
+dataset: hcp
+tissue_type: white
+primary_metric: mk
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:09:03.115005'
+hostname: marg033
+job_id: '5035154'
+end_time: '2026-02-19T19:10:05.270753'

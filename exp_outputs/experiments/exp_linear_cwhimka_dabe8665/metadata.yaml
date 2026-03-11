@@ -1,0 +1,14 @@
+run_id: linear_cwhimka_dabe8665
+learning_curve_id: 6fd252d43859e9b33420a06e652cf7a0032d6571
+experiment_hash: dabe8665
+model: linear
+dataset: camcan
+tissue_type: white
+primary_metric: mk
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:30:22.184500'
+hostname: margpu015
+job_id: '5035421'
+end_time: '2026-02-19T19:30:38.295591'

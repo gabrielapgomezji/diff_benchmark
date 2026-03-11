@@ -1,12 +1,13 @@
 defaults:
   - dataset: hcp
-  - model: 2dcnn
+  - model: dinov2
   - pred_head: binary_classification
   - backend: torch
   - data: default
   - target: gender
   - cluster: margaret
   - analysis: default
+  - mesh_pipeline: default
   - _self_
 
 random_state: 42
@@ -16,103 +17,24 @@ runtime:
   run_id: null
   learning_curve_id: null
   experiment_hash: null
-  # fold_idx: null
 
 
 choices:
-  # model: [dummy_classifier, linear, pca_linear, forest, pca_forest, svm, pca_svm, lasso]
-  # dataset: [camcan]
+  model: [spectral_laplacian]
+  dataset: [hcp]
   # backend: [sklearn]
-  # # pred_head: [regression]
-  # # target: [age]
-  # dataset.tissue_type: [white, gray]
+  # target: [age]
+  pred_head: [mesh_classification]
+  dataset.tissue_type: [gray]
+  dataset.metric_to_compute: [md]
   # cluster: [margaret_cpu]
-  # dataset.metric_to_compute: [b0] #, rtop] b0
-  # # data.data_partition.train_size: [0.1, 0.2, 0.35, 0.45, 0.5, 0.65, 0.75, 0.8, 0.9, 0.95, 1.0]
-  # # runtime.learning_curve_exp: [true]
-  # # cluster.conf.parallel_type: [None]
-  #########
-  # model: [vit]
-  # dataset.metric_to_compute: [md]
-  # dataset: [hcp]
-  # data.num_augmentations: [10]
-  # pred_head: [regression]
-  # target: [age]
-  # cluster.conf.parallel_type: [None]
-  # data.resize_shape: [null]
-  # # pred_head.dropout: [0.3, 0.2, 0.1]
-  # # pred_head.hidden_dims: ["[128]", "[512]", "[128, 64]", "[128, 8]"] 
-  # # backend.lr: [1e-4, 1e-5]
-  # # backend.weight_decay: [1e-3, 1e-5, 1e-1, 1e-2]
-  ##########
-  # model: [vit]
-  # dataset.metric_to_compute: [md]
-  # dataset: [camcan]
-  # data.num_augmentations: [10]
-  # pred_head: [regression]
-  # target: [age]
-  # cluster.conf.parallel_type: [None]
-  # pred_head.dropout: [0.3, 0.2, 0.1]
-  # pred_head.hidden_dims: ["[128]", "[512]", "[512, 512, 128, 64]", "[512, 128, 32, 8]"] 
-  # backend.lr: [1e-4, 1e-5]
-  # backend.weight_decay: [1e-3, 1e-5, 1e-1, 1e-2]
-  ###########
-  # model: [dinov2] #[pca_linear] #[2dcnn, medicalnet]
-  # dataset: [abide] #[camcan] #, hcp, wand] #
-  # # backend: [sklearn] #[torch]
-  # # cluster: [margaret_cpu]
-  # target: [dx_group]
-  # # pred_head: [regression]
-  # data.batch_size: [8]
-  # backend.epochs: [100]
-  # # data.data_partition.train_size: [1] #[0.1, 0.2, 0.35, 0.45, 0.5, 0.65, 0.75, 0.8, 0.9, 0.95, 1.0]
-  # data.num_augmentations: [10]
-  # # data.resize_shape: [null]
-  # # cluster.conf.parallel_type: [None]
-  # # runtime.learning_curve_exp: [true]
-  # dataset.metric_to_compute: [md, sh, mk] #, rtop]
-  # dataset.tissue_type: [gray, white]
-  # # model.backbone.depth: [10]
-  # pred_head.dropout: [0.1]
-  # # pred_head.hidden_dims: ["[512]"] 
-  # backend.learning_rate: [1e-4]
-  # backend.weight_decay: [1e-2]
-  ########### TESTING!!
-  model: [medicalnet] #[pca_linear] #[2dcnn, medicalnet]
-  dataset: [abide] #[camcan] #, hcp, wand] #
-  target: [dx_group]
-  # pred_head: [regression]
-  backend.epochs: [50]
-  data.batch_size: [32]
-  # data.resize_shape: [null]
-  model.backbone.depth: [34]
   cluster.conf.parallel_type: [None]
-  cluster.conf.n_jobs: [25]
-  dataset.metric_to_compute: [sh] #, rtop, b0]
-  dataset.tissue_type: [white, gray]
-  data.num_augmentations: [10]
-  pred_head.dropout: [0.2] #, 0.2, 0.3]
-  # pred_head.hidden_dims: ["[512, 512, 128, 16]"] 
-  backend.learning_rate: [1e-3] #, 1e-2]
-  backend.weight_decay: [1e-2] #, 1e-1, 1e-3, 1e-4]
-  # cluster.slurm_cfg.timeout_min: [30]
-  ########
-  # model: [linear, pca_linear, forest, pca_forest, svm, pca_svm]
-  # backend: [sklearn]
-  # dataset: [hcp]
-  # target: [ddisk, ER40_CR]
-  # pred_head: [regression]
-  # dataset.tissue_type: [gray]
-  # cluster: [margaret_cpu]
-  # dataset.metric_to_compute: [sh]
-  # cluster.conf.parallel_type: [None]
-  ######
-  # model: [dinov2]
-  # # cluster.conf.parallel_type: [None]
-  # cluster.slurm_cfg.timeout_min: [4920]
-  # dataset.metric_to_compute: [md]
-  # # model.backbone.depth: [10]
-  # data.batch_size: [4]
-  # dataset: [hcp]
-  # data.num_workers: [13]
-  
+  backend.learning_rate: [1e-4]
+  backend.weight_decay: [1e-2]
+  # pred_head: [mesh_classification]
+  # pred_head.lambda1: [0.01]
+  # pred_head.lambda2: [0.001]
+  # cluster.slurm_cfg.timeout_min: [120]
+  # pred_head: [mesh_classification]
+  # data.batch_size: [1]
+ 

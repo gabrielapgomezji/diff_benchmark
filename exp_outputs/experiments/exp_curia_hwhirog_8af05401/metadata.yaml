@@ -1,0 +1,13 @@
+run_id: curia_hwhirog_8af05401
+learning_curve_id: 988893e358ad1ff2126d7996a67f31384222f598
+experiment_hash: 8af05401
+model: curia
+dataset: hcp
+tissue_type: white
+primary_metric: rtop
+status: running
+n_folds_expected: 5
+n_folds_completed: 0
+start_time: '2026-02-19T20:37:00.712927'
+hostname: margpu012
+job_id: '5035762'

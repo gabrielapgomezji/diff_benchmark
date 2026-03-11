@@ -1,0 +1,14 @@
+run_id: region_pca_hgramdg_9228a900
+learning_curve_id: b95e54c01baaa1d8168f9d15129d469617e76581
+experiment_hash: 9228a900
+model: region_pca
+dataset: hcp
+tissue_type: gray
+primary_metric: md
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-03-10T19:42:13.175077'
+hostname: margpu004
+job_id: '5065789'
+end_time: '2026-03-10T20:24:23.168731'

@@ -1,0 +1,14 @@
+run_id: pca_forest_cgrashg_490c031f
+learning_curve_id: 673367d5ff038b4267c6bbbe73f25cae6708e5e1
+experiment_hash: 490c031f
+model: pca_forest
+dataset: camcan
+tissue_type: gray
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:09:36.692305'
+hostname: marg033
+job_id: '5035160'
+end_time: '2026-02-19T19:26:28.224256'

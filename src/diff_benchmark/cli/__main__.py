@@ -3,7 +3,9 @@ import sys
 
 def main():
     if len(sys.argv) < 2:
-        raise RuntimeError("Usage: diffbenchmark <features|run> [hydra overrides]")
+        raise RuntimeError(
+            "Usage: diffbenchmark <features|run|analysis|mesh|mesh-visualize> [hydra overrides]"
+        )
 
     command = sys.argv[1]
     sys.argv = [sys.argv[0]] + sys.argv[2:]
@@ -17,9 +19,24 @@ def main():
         from diff_benchmark.cli.run import main
 
         main()
+        
+    elif command == "run-jz":
+        from diff_benchmark.cli.run_jz import main
+
+        main()
 
     elif command == "analysis":
         from diff_benchmark.cli.analysis import main
+
+        main()
+
+    elif command == "mesh":
+        from diff_benchmark.cli.mesh import main
+
+        main()
+
+    elif command == "mesh-visualize":
+        from diff_benchmark.cli.mesh_visualize import main
 
         main()
 

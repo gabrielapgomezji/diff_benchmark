@@ -1,0 +1,14 @@
+run_id: medicalnet_hgrashg_29f932a9
+learning_curve_id: 8d9f10f4200b4a02cf27916d1cb7bf90d43117b0
+experiment_hash: 29f932a9
+model: medicalnet
+dataset: hcp
+tissue_type: gray
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T04:18:07.167901'
+hostname: margpu012
+job_id: '5036656'
+end_time: '2026-02-20T08:54:54.493015'

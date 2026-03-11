@@ -1,0 +1,14 @@
+run_id: curia_hwhimdg_3071ce99
+learning_curve_id: bf9680c5a6cc3028b1fa1b415b7f3f5ca9bacc58
+experiment_hash: 3071ce99
+model: curia
+dataset: hcp
+tissue_type: white
+primary_metric: md
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T20:16:36.006937'
+hostname: margpu012
+job_id: '5035716'
+end_time: '2026-02-19T20:19:41.023230'

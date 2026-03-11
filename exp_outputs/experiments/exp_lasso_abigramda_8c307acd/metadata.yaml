@@ -1,0 +1,14 @@
+run_id: lasso_abigramda_8c307acd
+learning_curve_id: 8f55e6f1e2e3db35515f74fdda36b1a6dd0cb3a1
+experiment_hash: 8c307acd
+model: lasso
+dataset: abide
+tissue_type: gray
+primary_metric: md
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T19:29:33.515499'
+hostname: marg035
+job_id: '5038486'
+end_time: '2026-02-20T19:39:02.093163'

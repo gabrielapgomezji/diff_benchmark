@@ -1,0 +1,14 @@
+run_id: curia_hgramda_fce92f2d
+learning_curve_id: f96f62c65e27308e10db24e0e9eb414f945eb318
+experiment_hash: fce92f2d
+model: curia
+dataset: hcp
+tissue_type: gray
+primary_metric: md
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T21:43:02.943302'
+hostname: margpu013
+job_id: '5035888'
+end_time: '2026-02-19T21:47:28.592629'

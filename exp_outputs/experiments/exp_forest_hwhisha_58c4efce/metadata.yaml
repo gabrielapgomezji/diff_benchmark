@@ -1,0 +1,14 @@
+run_id: forest_hwhisha_58c4efce
+learning_curve_id: 0d61a50ae9a6a0ef4c201be358ca046de077c923
+experiment_hash: 58c4efce
+model: forest
+dataset: hcp
+tissue_type: white
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:37:56.256790'
+hostname: marg033
+job_id: '5035542'
+end_time: '2026-02-19T19:38:36.342619'

@@ -1,0 +1,14 @@
+run_id: pca_forest_hgraroa_7e309233
+learning_curve_id: 95a9c301ecd0927311a7c2a7d850e40f7e048a41
+experiment_hash: '7e309233'
+model: pca_forest
+dataset: hcp
+tissue_type: gray
+primary_metric: rtop
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:40:21.613115'
+hostname: marg033
+job_id: '5035604'
+end_time: '2026-02-19T20:27:59.094595'

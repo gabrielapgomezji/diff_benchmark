@@ -1,0 +1,14 @@
+run_id: pca_forest_hgrashg_eb122ae4
+learning_curve_id: 4d00c2a9767eb511c58f9bc25285a369ea85427a
+experiment_hash: eb122ae4
+model: pca_forest
+dataset: hcp
+tissue_type: gray
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:08:16.911248'
+hostname: marg035
+job_id: '5035143'
+end_time: '2026-02-19T20:04:16.366972'

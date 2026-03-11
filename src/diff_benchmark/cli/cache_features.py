@@ -5,9 +5,12 @@ This command computes features from frozen backbone models and saves them to dis
 dramatically speeding up subsequent training runs.
 """
 
+import json
+import traceback
 from pathlib import Path
 
 import hydra
+import pandas as pd
 import torch
 from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader
@@ -52,8 +55,7 @@ def compute_features_for_dataset(
     """
     logger.info(f"Computing features for {model_name} on {dataset_config['name']}")
 
-    # Convert image_size to tuple if it's a list from config
-    # Handle Hydra's string "None" conversion issue
+    # Resolve image_size: handle Hydra's list-containing-None edge case
     if image_size is not None and isinstance(image_size, (list, tuple)):
         # Check if it's a list containing None or string "None"
         if len(image_size) == 1 and (image_size[0] is None or image_size[0] == "None"):
@@ -67,7 +69,6 @@ def compute_features_for_dataset(
         logger.info("Using original image sizes (no resizing)")
 
     logger.info(f"Normalization: mean={norm_mean}, std={norm_std}")
-    # Create dataset
     dataset_obj = DatasetConfig(
         **dataset_config,
         base_dir=Path(
@@ -89,7 +90,7 @@ def compute_features_for_dataset(
 
     # Create backbone model with frozen weights
     model_kwargs = model_config["model"]["backbone"].copy()
-    model_kwargs["freeze_backbone"] = True  # Ensure backbone is frozen
+    model_kwargs["freeze_backbone"] = True
 
     logger.info(f"Creating {model_name} backbone (frozen)...")
     model = create_model(
@@ -117,16 +118,14 @@ def compute_features_for_dataset(
         torch_dataset,
         batch_size=model_config["data"]["batch_size"],
         shuffle=False,
-        num_workers=0,  # No multiprocessing for feature computation
+        num_workers=0,
     )
 
-    # Determined cache model name (handle variants like medicalnet depth)
     cache_model_name = model_name
     if model_name == "medicalnet" and "depth" in model_config["model"]["backbone"]:
         depth = model_config["model"]["backbone"]["depth"]
         cache_model_name = f"{model_name}_depth{depth}"
 
-    # Get cache path
     cache_path = get_cache_path(
         model_name=cache_model_name,
         dataset_name=dataset_config["name"],
@@ -138,22 +137,17 @@ def compute_features_for_dataset(
 
     logger.info(f"Cache will be saved to: {cache_path}")
 
-    # Check if cache already exists
     if cache_path.exists() and not force_recompute:
         logger.info(f"Cache already exists at {cache_path}")
         logger.info("Use force_recompute=True to recompute")
 
         # Load metadata
-        import json
-
         metadata_path = cache_path.with_suffix(".meta.json")
         if metadata_path.exists():
             with open(metadata_path, "r") as f:
                 metadata = json.load(f)
         else:
             # Fallback: read from parquet
-            import pandas as pd
-
             df = pd.read_parquet(cache_path)
             metadata = {
                 "num_samples": len(df["subject_id"].unique()),
@@ -215,43 +209,30 @@ def compute_features_for_dataset(
 )
 def main(cfg: DictConfig) -> None:
     """
-    Main function for feature caching CLI.
+    CLI entrypoint:
+        diffbenchmark cache-features [hydra overrides]
 
-    Normalization parameters (mean, std) are read from data.normalization in config.
+    Reads normalization parameters from ``data.normalization`` in config.
 
-    Usage with Hydra multirun for cross products:
-        # Cache features for specific model and dataset
+    Examples::
+
+        # Single model/dataset
         python -m diff_benchmark.cli.cache_features model.name=vit datasets.name=abide
 
-        # Cache with custom normalization (override config defaults)
-        python -m diff_benchmark.cli.cache_features model.name=vit data.normalization.mean=0.5 data.normalization.std=0.5
-
-        # Cache with resizing (recommended for HCP with 145×174 slices)
-        python -m diff_benchmark.cli.cache_features model.name=vit datasets.name=hcp
-
-        # Multirun: cache for multiple models and datasets (cross product)
+        # Multirun cross-product
         python -m diff_benchmark.cli.cache_features -m model.name=vit,dinov2 datasets.name=abide,aomic
 
         # Force recompute
         python -m diff_benchmark.cli.cache_features model.name=vit force=true
-
-        # Custom cache directory and augmentations
-        python -m diff_benchmark.cli.cache_features cache_dir=my_cache num_augmentations=20
     """
-    # Get parameters from single configuration (Hydra handles cross products via multirun)
     model_name = cfg.model.name
     cache_dir = Path(cfg.cluster.paths.cache_dir) / "dl_features"
     num_augmentations = cfg.data.num_augmentations
     image_size = cfg.data.resize_shape
-    tissue_type = cfg.dataset.get(
-        "tissue_type", None
-    )  # Get tissue type from dataset config
-    metric_to_compute = cfg.dataset.get(
-        "metric_to_compute", None
-    )  # Get microstructure metric
+    tissue_type = cfg.dataset.get("tissue_type", None)
+    metric_to_compute = cfg.dataset.get("metric_to_compute", None)
     force = cfg.get("force", False)
 
-    # Get normalization parameters from config
     norm_mean = cfg.data.normalization.mean
     norm_std = cfg.data.normalization.std
 
@@ -272,11 +253,10 @@ def main(cfg: DictConfig) -> None:
     logger.info(f"Force recompute: {force}")
     logger.info("")
 
-    # Convert config to dict for compatibility
     config = OmegaConf.to_container(cfg, resolve=True)
 
-    # Workaround for learning_rate being a dict (e.g. from search space config)
-    # which causes TypeError in TorchTrainer/Adam initialization
+    # Workaround: learning_rate may be a dict/list from a search-space config,
+    # which causes TypeError in Adam initialization during feature caching.
     if "backend" in config and isinstance(
         config["backend"].get("learning_rate"), (dict, list)
     ):
@@ -285,7 +265,6 @@ def main(cfg: DictConfig) -> None:
         )
         config["backend"]["learning_rate"] = 1e-4
 
-    # Extract dataset config
     dataset_config = config.get("dataset", {})
     try:
         compute_features_for_dataset(
@@ -302,14 +281,10 @@ def main(cfg: DictConfig) -> None:
             force_recompute=force,
         )
 
-        # logger.info("\n" + "=" * 80)
         logger.info("Feature caching complete!")
-        # logger.info("=" * 80)
 
     except Exception as e:
         logger.error(f"Error computing features for {model_name}: {e}")
-        import traceback
-
         traceback.print_exc()
         raise
 

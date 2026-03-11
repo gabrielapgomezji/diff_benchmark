@@ -161,9 +161,7 @@ def compute_rtop(
         rtop_ventricles = map_model.fit(dwi_ventricles.T).rtop()
 
         nrtop = rtop / rtop_ventricles[~np.isnan(rtop_ventricles)].mean()
-        # nrtop = nrtop.clip(0, np.percentile(nrtop[~np.isnan(nrtop)], 99))
-        # NOTE: clipping is intentionally commented out here to preserve
-        # original behaviour (raw normalised RTOP without percentile clipping).
+        # Percentile clipping intentionally omitted to preserve raw normalised values.
         return masker.inverse_transform(nrtop.T)
 
     return masker.inverse_transform(rtop.T)
@@ -310,20 +308,15 @@ def compute_sh(
     delta_per_bvalue: dict | None = None,
     sh_order: int = 6,
 ) -> nib.nifti1.Nifti1Image:
-    """Compute spherical harmonic (SH) power of the raw diffusion signal.
+    """Compute the L2-norm of spherical harmonic coefficients fitted to the DWI signal.
 
-    Returns the L2-norm of SH coefficients fitted to the normalised DWI signal
-    as a scalar metric representing signal complexity / anisotropy.
-
-    Ventricular normalisation is intentionally left commented out: the SH
-    power has a different magnitude scale than RTOP/MD, making ventricular
-    normalisation questionable. The commented block is preserved for reference.
+    Ventricular normalisation is intentionally skipped: the SH-power scale
+    differs from RTOP/MD, making normalisation by ventricular mean unreliable.
 
     Args:
         dwi_nib: DWI NIfTI image.
         mask_img: Brain mask NIfTI image.
-        normalization_mask_img: Ventricular mask (unused here, kept for API
-            parity with the other ``compute_*`` functions).
+        normalization_mask_img: Ventricular mask (unused; kept for API parity).
         bvals: Array of b-values.
         bvecs: Array of b-vectors.
         big_delta: Big delta value (seconds).
@@ -354,10 +347,8 @@ def compute_sh(
     dwi_signal = dwi_data[gtab.bvals > 0, :]
     b0_data = dwi_data[0, :]
 
-    # Normalise signal by b0
     dwi_normalized = dwi_signal / (b0_data + 1e-6)
 
-    # Fit SH to the signal (not ODF); Sphere converts Cartesian → spherical
     sphere = Sphere(xyz=dwi_dirs)
     sh_coeffs = sf_to_sh(
         dwi_normalized.T,  # (n_voxels, n_gradients)
@@ -366,7 +357,7 @@ def compute_sh(
         basis_type="descoteaux07",
     )
 
-    # Power (L2 norm) — represents signal complexity / anisotropy
+    # Power (L2 norm) over SH coefficients
     scalar = np.linalg.norm(sh_coeffs, axis=1)
     scalar = np.nan_to_num(scalar)
 
@@ -385,38 +376,30 @@ def compute_b0(
     delta_per_bvalue: dict | None = None,
     b0_threshold: float = 50.0,
 ) -> nib.nifti1.Nifti1Image:
-    """Compute a T2-weighted baseline image by averaging all b0 volumes.
+    """Average all b0 volumes to produce a T2-weighted baseline image.
 
-    This provides a baseline "b0 metric" that captures T2-weighted tissue
-    contrast without any diffusion weighting. It can be used as a lower bound
-    in the benchmark to assess how much information is contained in the raw
-    diffusion signal beyond what is already encoded in T2.
-
-    The function signature deliberately mirrors all other ``compute_*``
-    functions so it plugs into ``compute_save_and_project_metric`` and
-    ``METRIC_COMPUTERS`` without any pipeline changes.
+    Signature mirrors other ``compute_*`` functions for drop-in compatibility
+    with :func:`compute_save_and_project_metric` and ``METRIC_COMPUTERS``.
 
     Args:
         dwi_nib: Full DWI 4-D NIfTI image.
-        mask_img: Brain / tissue mask NIfTI image.
-        normalization_mask_img: Ventricular mask used for intensity
-            normalisation (same convention as MD/RTOP). Pass ``None`` to skip.
-        bvals: 1-D array of b-values (one per volume).
-        bvecs: 2-D array of b-vectors ``(N, 3)``; kept for API consistency.
-        big_delta: Not used; kept for API consistency.
-        small_delta: Not used; kept for API consistency.
-        delta_per_bvalue: Not used; kept for API consistency.
-        b0_threshold: Volumes with ``bval <= b0_threshold`` are treated as b0.
-            Defaults to 50 s/mm².
+        mask_img: Brain / tissue mask.
+        normalization_mask_img: Ventricular mask for intensity normalisation.
+            Pass ``None`` to skip normalisation.
+        bvals: 1-D array of b-values.
+        bvecs: Array of b-vectors (unused; kept for API consistency).
+        big_delta: Unused; kept for API consistency.
+        small_delta: Unused; kept for API consistency.
+        delta_per_bvalue: Unused; kept for API consistency.
+        b0_threshold: Volumes with ``bval <= b0_threshold`` are treated as b0
+            (default 50 s/mm²).
 
     Returns:
-        3-D NIfTI image of the averaged (and optionally ventricular-normalised)
-        b0 signal, masked to ``mask_img``.
+        3-D NIfTI image of averaged (and optionally normalised) b0 signal.
 
     Raises:
         ValueError: If no b0 volumes are found within ``b0_threshold``.
     """
-    # 1. Identify b0 indices
     b0_indices = np.where(bvals <= b0_threshold)[0]
     if len(b0_indices) == 0:
         raise ValueError(
@@ -431,7 +414,6 @@ def compute_b0(
 
     ref_b0 = nimage.index_img(dwi_nib, int(b0_indices[0]))
 
-    # 2. Apply brain mask
     masker = maskers.NiftiMasker(mask_img)
     masker.fit(ref_b0)
 
@@ -440,11 +422,9 @@ def compute_b0(
         [masker.transform(img).squeeze() for img in b0_imgs], axis=0
     )  # (n_b0, n_voxels)
 
-    # 3. Average across b0 volumes
     mean_b0 = np.mean(b0_data, axis=0)
     mean_b0 = np.nan_to_num(mean_b0, nan=0.0)
 
-    # 4. Optional ventricular normalisation (same convention as MD/RTOP)
     if normalization_mask_img is not None:
         norm_masker = maskers.NiftiMasker(normalization_mask_img)
         norm_masker.fit(ref_b0)
@@ -470,7 +450,7 @@ def compute_b0(
             "returning un-normalised b0 signal."
         )
 
-    # 5. Clip to 99th percentile to remove outlier voxels
+    # Clip to 99th percentile to suppress outlier voxels
     valid = ~np.isnan(mean_b0)
     if valid.any():
         mean_b0 = mean_b0.clip(0, np.percentile(mean_b0[valid], 99))
@@ -517,43 +497,33 @@ def compute_save_and_project_metric(
 ) -> nib.nifti1.Nifti1Image:
     """Compute a diffusion metric, save to disk, and project to surface/skeleton.
 
-    For BIDS datasets, automatically resamples surface data from native space
+    For BIDS datasets, surface data is automatically resampled from native
     to template space during projection.
 
-    Parameters:
-        metric: Name of the diffusion metric to compute. Must be a key in
-            ``METRIC_COMPUTERS``.
-        dwi_nib: DWI data as a NIfTI image.
-        ctx_mask: Cortical/tissue mask as a NIfTI image.
-        vent_mask: Ventricular mask as a NIfTI image.
+    Args:
+        metric: Metric name; must be a key in ``METRIC_COMPUTERS``.
+        dwi_nib: DWI 4-D NIfTI image.
+        ctx_mask: Cortical/tissue mask NIfTI image.
+        vent_mask: Ventricular mask NIfTI image.
         bvals: Array of b-values.
         bvecs: Array of b-vectors.
-        big_delta: Big delta parameter for diffusion metric computation.
-        small_delta: Small delta parameter for diffusion metric computation.
-        big_delta_per_bvalue: Big delta per b-value for diffusion metric
-            computation.
-        surfaces: Dictionary containing cortical surface data for projection.
-        derivatives_dir: Directory where the computed metric image will be
-            saved.
-        subject_id: Identifier for the subject being processed.
-        layouts: List of BIDS layouts (needed for BIDS datasets to find sphere
-            files).
-        target_space: Target surface space for resampling (default:
-            ``"fslr_32k"``).
-        data_reading: Dataset format (``"hcp"``, ``"bids"``,
-            ``"multicenter-bids"``).
-        tissue_type: Tissue type string embedded in output filenames.
+        big_delta: Big delta (seconds).
+        small_delta: Small delta (seconds).
+        big_delta_per_bvalue: Per-b-value big delta mapping.
+        surfaces: Dict of cortical surface paths for projection.
+        derivatives_dir: Output directory; file is saved as
+            ``sub-{subject_id}_param-{metric}_tissue-{tissue_type}_dwimap.nii.gz``.
+        subject_id: Subject identifier.
+        layouts: BIDS layouts required for sphere-based resampling.
+        target_space: Target surface space (default ``"fslr_32k"``).
+        data_reading: Dataset format (``"hcp"``, ``"bids"``, ``"multicenter-bids"``).
+        tissue_type: Tissue type embedded in output filenames.
 
     Returns:
-        The computed diffusion metric as a NIfTI image.
+        Computed metric as a NIfTI image.
 
     Raises:
-        ValueError: If the specified metric is not found in ``METRIC_COMPUTERS``.
-
-    Notes:
-        The output image is saved as
-        ``sub-{subject_id}_param-{metric}_tissue-{tissue_type}_dwimap.nii.gz``
-        inside ``derivatives_dir``.
+        ValueError: If ``metric`` is not in ``METRIC_COMPUTERS``.
     """
     # Lazy import to avoid circular dependency (surface utils import from here)
     from diff_benchmark.preprocessing.utils.utils_surface_skeleton import project_to_surface
@@ -580,7 +550,6 @@ def compute_save_and_project_metric(
     nib.save(metric_img, out_file)
     logger.info(f"[{subject_id}] Saved raw {metric} image to {out_file}")
 
-    # Project to surface/skeleton and save hemisphere scalars
     _ = project_to_surface(
         metric_img,
         ctx_mask,

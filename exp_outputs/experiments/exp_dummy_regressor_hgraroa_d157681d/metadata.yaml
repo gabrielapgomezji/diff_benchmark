@@ -1,0 +1,14 @@
+run_id: dummy_regressor_hgraroa_d157681d
+learning_curve_id: b53bfef247dd15ae6cb0de6d4b2abe306d17cb84
+experiment_hash: d157681d
+model: dummy_regressor
+dataset: hcp
+tissue_type: gray
+primary_metric: rtop
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:39:53.582853'
+hostname: marg003
+job_id: '5035588'
+end_time: '2026-02-19T19:42:57.296699'

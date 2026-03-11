@@ -1,0 +1,14 @@
+run_id: dummy_regressor_cgramka_41bb72f0
+learning_curve_id: eef84a3842ed8043a783f50c8b0c0398487470e4
+experiment_hash: 41bb72f0
+model: dummy_regressor
+dataset: camcan
+tissue_type: gray
+primary_metric: mk
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:27:41.827843'
+hostname: marg034
+job_id: '5035379'
+end_time: '2026-02-19T19:28:38.214210'

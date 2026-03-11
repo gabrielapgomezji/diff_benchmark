@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import pandas as pd
 
 SPLIT_STYLE = {
@@ -7,45 +8,31 @@ SPLIT_STYLE = {
     "val": {"color": "tab:red"},
 }
 
-
 METRIC_LINESTYLE = {
     "solid": "-",
     "dashed": "--",
 }
 
-# def load_debug_logs(run_id: str, debug_dir: Path) -> pd.DataFrame:
-#     torch_path = debug_dir / f"torch_debug_{run_id}.parquet"
-#     lightning_path = debug_dir / f"lightning_debug_{run_id}.parquet"
-
-#     if torch_path.exists():
-#         df = pd.read_parquet(torch_path)
-#     elif lightning_path.exists():
-#         df = pd.read_parquet(lightning_path)
-#     else:
-#         raise FileNotFoundError(
-#             f"No debug logs found for run_id={run_id}"
-#         )
-#     breakpoint()
-#     # keep epoch-level rows only
-#     df = df[df["batch"].isna()].copy()
-#     return df
-
 
 def load_debug_logs(file_path: Path) -> pd.DataFrame:
-    df = pd.read_parquet(file_path)
-    df = df[df["batch"].isna()].copy()  # keep only epoch-level rows
+    """Load epoch-level debug logs from a Parquet file.
 
-    # Extract fold from filename
+    Batch-level rows are dropped; the fold index is parsed from the filename
+    (``…_fold<N>.parquet``).
+
+    Args:
+        file_path: Path to a debug Parquet file.
+
+    Returns:
+        DataFrame with epoch-level rows and a ``"fold"`` column.
+    """
+    df = pd.read_parquet(file_path)
+    df = df[df["batch"].isna()].copy()  # epoch-level rows only
+
     fold_str = file_path.stem.split("_")[-1]
-    if fold_str.startswith("fold"):
-        df["fold"] = int(fold_str.replace("fold", ""))
-    else:
-        df["fold"] = None
+    df["fold"] = int(fold_str.replace("fold", "")) if fold_str.startswith("fold") else None
 
     return df
-
-
-import matplotlib.pyplot as plt
 
 
 def plot_metric(ax, df, metric, title):

@@ -1,0 +1,13 @@
+run_id: dinov2_hgrab0g_83b93416
+learning_curve_id: f062e33095e319ee2787540da9544de3721c3e24
+experiment_hash: 83b93416
+model: dinov2
+dataset: hcp
+tissue_type: gray
+primary_metric: b0
+status: running
+n_folds_expected: 5
+n_folds_completed: 0
+start_time: '2026-02-20T23:43:06.351777'
+hostname: margpu012
+job_id: '5037870'

@@ -1,0 +1,14 @@
+run_id: linear_hwhib0g_fa20d1a2
+learning_curve_id: c2ee5e12110836351532545feeaccd36f1df6486
+experiment_hash: fa20d1a2
+model: linear
+dataset: hcp
+tissue_type: white
+primary_metric: b0
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T15:42:48.048187'
+hostname: marg005
+job_id: '5037732'
+end_time: '2026-02-20T15:44:20.331429'

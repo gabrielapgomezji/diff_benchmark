@@ -1,15 +1,14 @@
+import json
 from pathlib import Path
 
 import hydra
 import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from omegaconf import DictConfig, OmegaConf
 
-matplotlib.use("Agg")  # Non-interactive backend
-import json
-from typing import Any, Dict
+matplotlib.use("Agg")  # Use non-interactive backend before importing pyplot
+import matplotlib.pyplot as plt
 
 from skrub import TableReport
 
@@ -44,7 +43,7 @@ def generate_skrub_report(demographics_df: pd.DataFrame, output_dir: Path) -> No
         print(f"Error generating skrub report: {e}")
 
 
-def compute_variable_statistics(series: pd.Series) -> Dict[str, Any]:
+def compute_variable_statistics(series: pd.Series) -> dict[str, object]:
     """
     Compute comprehensive statistics for a variable.
 
@@ -433,12 +432,10 @@ def main(cfg: DictConfig) -> None:
 
     Computes data distribution information and generates plots for configured datasets.
     """
-    breakpoint()
     print("=" * 80)
     print("RUNNING DATA DISTRIBUTION ANALYSIS")
     print("=" * 80)
 
-    # Setup dataset configuration
     dataset_cfg = OmegaConf.to_container(cfg.dataset, resolve=True)
     cluster_cfg = cfg.cluster.paths[dataset_cfg["name"]]
 
@@ -448,41 +445,32 @@ def main(cfg: DictConfig) -> None:
         results_dir=Path(cluster_cfg.results_dir),
     )
 
-    # Prepare data
     print(f"\nDataset: {dataset_selected.name}")
     print(f"Target columns: {cfg.target.target_column}")
 
-    # Setup output directories early
     output_root = Path("./exp_outputs/datasets") / dataset_selected.name
     output_root.mkdir(parents=True, exist_ok=True)
     subjects_cache_path = output_root / "available_subjects.json"
     demographics_parquet_path = output_root / "full_demographics.parquet"
 
-    # Check if we can load demographics from parquet (fast path)
     if demographics_parquet_path.exists() and not cfg.runtime.get("force", False):
         print("\nLoading demographics from cached parquet file...")
         demographics_df = pd.read_parquet(demographics_parquet_path)
         print(f"Loaded demographics shape: {demographics_df.shape}")
         print(f"  (Skipping brain data loading - use runtime.force=true to recompute)")
-
-        # We still need to generate reports if they don't exist
         need_full_processing = False
     else:
-        # Need to do full processing: load brain data and demographics from source
         need_full_processing = True
 
-        # First, check if we have cached available_subjects to avoid recomputing brain data
         if subjects_cache_path.exists() and not cfg.runtime.get("force", False):
             print("\nLoading cached available subjects...")
             with open(subjects_cache_path, "r") as f:
                 available_subjects = json.load(f)
             print(f"Loaded {len(available_subjects)} subjects from cache")
 
-            # Still need to get demographics file path, but skip brain loading
             if dataset_selected.name == "hcp":
                 cog_file = cfg.cluster.paths[dataset_selected.name].csv_file
             else:
-                # We need layouts for non-HCP datasets
                 print(
                     "  Note: Loading brain preparator for file paths (not recomputing features)..."
                 )
@@ -500,13 +488,10 @@ def main(cfg: DictConfig) -> None:
                     brain_preparator.layouts
                 )
         else:
-            # First run or force recompute: get brain data to know which subjects have brain imaging available
             print("\nLoading brain data...")
             print(
                 "  (This may take a while on first run, but will be cached for future runs)"
             )
-            # We need to initialize the brain preparator without calling get_model
-            # For distribution analysis, we can use the default pipeline directly
             from diff_benchmark.preprocessing.brain_feature_extraction import (
                 DefaultPipeline,
             )
@@ -520,7 +505,6 @@ def main(cfg: DictConfig) -> None:
             if dataset_selected.name == "hcp":
                 cog_file = cfg.cluster.paths[dataset_selected.name].csv_file
             else:
-                # Extract from BIDS layouts
                 from diff_benchmark.data.prepare_data import DatasetPreparation
 
                 temp_preparator = DatasetPreparation(
@@ -529,12 +513,10 @@ def main(cfg: DictConfig) -> None:
                 cog_file = temp_preparator._extract_participants_files_from_layouts(
                     brain_preparator.layouts
                 )
-            # Save available_subjects for future reuse
             with open(subjects_cache_path, "w") as f:
                 json.dump(available_subjects, f, indent=2)
             print(f"Cached available subjects to: {subjects_cache_path}")
 
-        # Get FULL demographics dataframe (all columns) filtered by available subjects
         print("\nLoading full demographics data (all potential targets)...")
         from diff_benchmark.preprocessing.preparation_pipeline import (
             DemographicsPreparationPipeline,
@@ -546,11 +528,8 @@ def main(cfg: DictConfig) -> None:
         print(f"Available columns: {list(demographics_df.columns)}")
     plots_dir = output_root / "plots" / "targets"
 
-    # Only generate reports and summaries if doing full processing (first run or force)
     if need_full_processing:
         # Generate skrub TableReport
-        # Note: For large datasets with many columns, we create a simplified version
-        # to avoid compilation issues with too many distribution plots
         print("\nGenerating Skrub TableReport...")
         try:
             # For datasets with many columns, create a summary version
@@ -566,7 +545,7 @@ def main(cfg: DictConfig) -> None:
                 ]
                 report_df = demographics_df[
                     ["Subject"] + numeric_cols[:20]
-                ]  # Limit to 20 numeric columns
+                ]
                 print(f"  Using {len(report_df.columns)} columns for TableReport")
             else:
                 report_df = demographics_df
@@ -593,15 +572,13 @@ def main(cfg: DictConfig) -> None:
         # Generate summary report for ALL columns
         summary_df = generate_summary_report(
             demographics_df,
-            cfg.target.target_column,  # Mark which ones are currently configured as targets
+            cfg.target.target_column,
             output_root,
         )
     else:
         print("\nSkipping report generation (parquet already exists)")
         print("  To regenerate reports, use runtime.force=true")
 
-    # ALWAYS check and plot distributions for configured target variables
-    # This works efficiently on subsequent runs by loading from parquet
     print(f"\nChecking target variable plots...")
     plot_target_distributions(
         demographics_df, cfg.target.target_column, output_root, plots_dir

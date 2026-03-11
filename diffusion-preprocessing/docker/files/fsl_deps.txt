@@ -1,0 +1,7 @@
+fsl-ptx2-cuda-10.2<=2111.5
+fsl-ptx2=2111.5
+fsl-avwutils=2209.3
+fsl-bet2=2111.8
+fsl-eddy=2401.2
+fsl-fdt<=2202.11
+fsl-fdt-cuda-10.2<=2202.10

@@ -1,0 +1,14 @@
+run_id: linear_wgramdg_3f7a509a
+learning_curve_id: dafa49dddad4e1064b61508ae0651d4c6d45589b
+experiment_hash: 3f7a509a
+model: linear
+dataset: wand
+tissue_type: gray
+primary_metric: md
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-03-04T08:49:36.828527'
+hostname: marg001
+job_id: '5043207'
+end_time: '2026-03-04T08:54:11.657596'

@@ -1,0 +1,14 @@
+run_id: dummy_classifier_abiwhishdx__492c4752
+learning_curve_id: 685b9013501f5916ac83cd37a8964feebb7ef3a8
+experiment_hash: 492c4752
+model: dummy_classifier
+dataset: abide
+tissue_type: white
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T19:27:45.914484'
+hostname: marg026
+job_id: '5038346'
+end_time: '2026-02-20T19:27:53.228177'

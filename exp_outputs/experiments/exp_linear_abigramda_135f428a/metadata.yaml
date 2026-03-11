@@ -1,0 +1,14 @@
+run_id: linear_abigramda_135f428a
+learning_curve_id: ff380c576844e677c2e36e1120069b530f60a5be
+experiment_hash: 135f428a
+model: linear
+dataset: abide
+tissue_type: gray
+primary_metric: md
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T19:29:25.640699'
+hostname: marg021
+job_id: '5038450'
+end_time: '2026-02-20T19:30:49.405723'

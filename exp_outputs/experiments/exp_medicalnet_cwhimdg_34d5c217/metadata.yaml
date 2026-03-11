@@ -1,0 +1,15 @@
+run_id: medicalnet_cwhimdg_34d5c217
+learning_curve_id: cd5ec2422e42a838e1a53ad8db35d963b7cf0c41
+experiment_hash: 34d5c217
+model: medicalnet
+dataset: camcan
+tissue_type: white
+primary_metric: md
+status: crashed
+n_folds_expected: 5
+n_folds_completed: 4
+start_time: '2026-02-20T04:23:17.557495'
+hostname: margpu002
+job_id: '5036683'
+error: 'Job not requeued because: timed-out and not checkpointable.'
+end_time: '2026-02-20T17:41:23.065583'

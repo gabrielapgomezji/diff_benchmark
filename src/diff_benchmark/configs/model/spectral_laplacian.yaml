@@ -1,0 +1,5 @@
+name: spectral_laplacian
+
+backbone:
+  in_features: 1
+  n_spectral_components: 40

@@ -1,0 +1,14 @@
+run_id: svm_hwhimdg_4be33bea
+learning_curve_id: 2a2ce770cf6f40cbf4f91d5bc6c037c70bdeaa3f
+experiment_hash: 4be33bea
+model: svm
+dataset: hcp
+tissue_type: white
+primary_metric: md
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:13:20.532926'
+hostname: margpu009
+job_id: '5035214'
+end_time: '2026-02-19T19:13:51.014266'

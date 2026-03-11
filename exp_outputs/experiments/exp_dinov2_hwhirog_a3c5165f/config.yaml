@@ -1,0 +1,121 @@
+dataset:
+  name: hcp
+  data_reading: hcp
+  metric_to_compute: rtop
+  scale: 1000
+  big_delta: 0.0431
+  small_delta: 0.0106
+  dwi_desc: data.nii.gz
+  bvec_extensions: bvecs
+  bval_extensions: bvals
+  nodif_mask_extension: nodif_brain_mask.nii.gz
+  aparcaseg_extension: T1w/aparc+aseg.nii.gz
+  tissue_type: white
+  surface_space: fslr_32k
+model:
+  name: dinov2
+  backbone:
+    model_name: dinov2-base
+    pooling: mean
+    slice_axis: 0
+    freeze_backbone: true
+pred_head:
+  prediction_task: binary_classification
+  dropout: 0.3
+  hidden_dims:
+  - 512
+  - 128
+backend:
+  backend: torch
+  debug: true
+  epochs: 50
+  accelerator: gpu
+  devices: 1
+  learning_rate: 0.001
+  weight_decay: 0.001
+data:
+  batch_size: 8
+  num_workers: 13
+  resize_shape: None
+  num_augmentations: 10
+  normalization:
+    mean: 0.5
+    std: 0.5
+  data_partition:
+    train_size: 1
+    val_size: 0.1
+    n_splits: 5
+target:
+  target_column:
+  - Gender
+  prediction_task: binary_classification
+cluster:
+  name: margaret
+  paths:
+    cache_dir: /data/parietal/store3/work/ggomezji/benchmark
+    hcp:
+      base_dir: /data/parietal/store4/data/HCP
+      results_dir: /data/parietal/store3/work/ggomezji/benchmark/HCP900
+      csv_file: /data/parietal/store2/work/ggomezji/Merged_HCP_Demographics.csv
+    camcan:
+      base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/camcan
+      results_dir: /data/parietal/store3/work/ggomezji/benchmark/CamCAN
+      demographics_path: /data/parietal/store3/work/ggomezji/datasets/camcan/cc700-scored
+    wand:
+      base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/WAND-concat
+      results_dir: /data/parietal/store3/work/ggomezji/benchmark/WAND
+    abide:
+      base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/abide
+      results_dir: /data/parietal/store3/work/ggomezji/benchmark/abide
+  conf:
+    enabled: true
+    parallel_type: slurm
+    n_jobs: 50
+    wait_for_results: false
+  slurm_cfg:
+    slurm_partition: parietal,normal,gpu-best
+    tasks_per_node: 1
+    slurm_gpus_per_task: 1
+    slurm_cpus_per_gpu: 20
+    timeout_min: 800
+analysis:
+  tables: false
+  plots: true
+  force_plots: false
+  debug: false
+  run_ids: null
+random_state: 42
+runtime:
+  force: false
+  learning_curve_exp: false
+  run_id: dinov2_hwhirog_a3c5165f
+  learning_curve_id: f0408bfdde1e8a64e74bb375209f6e8a70675cba
+  experiment_hash: a3c5165f
+choices:
+  model:
+  - dinov2
+  dataset:
+  - hcp
+  backend.epochs:
+  - 50
+  data.batch_size:
+  - 8
+  data.resize_shape:
+  - null
+  dataset.metric_to_compute:
+  - md
+  - sh
+  - mk
+  - rtop
+  - b0
+  dataset.tissue_type:
+  - white
+  - gray
+  data.num_augmentations:
+  - 10
+  pred_head.dropout:
+  - 0.3
+  backend.learning_rate:
+  - 0.001
+  backend.weight_decay:
+  - 0.001

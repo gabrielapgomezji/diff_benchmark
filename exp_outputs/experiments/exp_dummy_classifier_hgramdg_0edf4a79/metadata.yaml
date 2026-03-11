@@ -1,0 +1,13 @@
+run_id: dummy_classifier_hgramdg_0edf4a79
+learning_curve_id: 5082fa67851202d996651e01ba9d63debde05ef0
+experiment_hash: 0edf4a79
+model: dummy_classifier
+dataset: hcp
+tissue_type: gray
+primary_metric: md
+status: running
+n_folds_expected: 5
+n_folds_completed: 0
+start_time: '2026-02-20T08:58:36.213898'
+hostname: marg003
+job_id: null

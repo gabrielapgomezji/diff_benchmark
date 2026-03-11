@@ -82,8 +82,6 @@ class DemographicsPreparationPipeline:
     ) -> pd.DataFrame:
         """Load, normalise, filter, and optionally binarize demographics.
 
-        This is the main entry point used by the benchmark.
-
         Args:
             target_columns: Demographic columns to retain (e.g. ``["Age"]``).
             binarize: When ``True``, columns with exactly 2 unique values are

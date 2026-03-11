@@ -1,0 +1,14 @@
+run_id: dummy_regressor_hwhib0a_53effa09
+learning_curve_id: 5fad587ac90a001fddf7a0133717200a695afc4c
+experiment_hash: 53effa09
+model: dummy_regressor
+dataset: hcp
+tissue_type: white
+primary_metric: b0
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T15:46:06.634561'
+hostname: marg005
+job_id: '5037747'
+end_time: '2026-02-20T15:46:16.333027'

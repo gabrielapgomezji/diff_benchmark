@@ -10,13 +10,7 @@ logger = setup_logger(__name__)
 
 
 class DinoViTBackbone(nn.Module):
-    """
-    Hugging Face DINO Vision Transformer backbone adapted for 3D volumes
-    via slice-wise processing.
-
-    Note: Expects input data normalized with mean=0.5, std=0.5 (from cache).
-    This will be unnormalized back to [0, 1] before passing to HuggingFace processor.
-    """
+    """HuggingFace DINOv2 ViT backbone adapted for 3D volumes via slice-wise processing."""
 
     data_type = "images"
 
@@ -26,6 +20,7 @@ class DinoViTBackbone(nn.Module):
         freeze_backbone: bool = False,
         slice_axis: int = 0,  # axial slices
         pooling: str = "mean",  # mean | max | cls
+        **kwargs
     ):
         super().__init__()
         self.slice_axis = slice_axis
@@ -61,9 +56,11 @@ class DinoViTBackbone(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:
-            x: Tensor of shape (B, D, H, W) or (B, 1, D, H, W) - normalized data from cache (mean=0.5, std=0.5)
+            x (torch.Tensor): Shape ``(B, D, H, W)`` or ``(B, 1, D, H, W)``,
+                normalised with mean=0.5, std=0.5.
+
         Returns:
-            Tensor of shape (B, embedding_dim)
+            torch.Tensor: Shape ``(B, embedding_dim)``.
         """
         # Check if input is already pre-computed features (from cache): (B, embedding_dim)
         # Must be checked BEFORE unnormalization — cached embeddings must not be rescaled.
@@ -79,9 +76,9 @@ class DinoViTBackbone(nn.Module):
             x = x.squeeze(1)  # (B, D, H, W)
 
         B, D, H, W = x.shape
-        # Reorder slices depending on axis
+
         if self.slice_axis == 0:
-            slices = x  # (B, D, H, W)
+            slices = x
         elif self.slice_axis == 1:
             slices = x.permute(0, 2, 1, 3)
         else:
@@ -112,7 +109,6 @@ class DinoViTBackbone(nn.Module):
         else:
             slice_embeds = tokens.mean(dim=1)
 
-        # (B, S, C)
         slice_embeds = slice_embeds.view(B, num_slices, -1)
 
         if self.pooling == "max":

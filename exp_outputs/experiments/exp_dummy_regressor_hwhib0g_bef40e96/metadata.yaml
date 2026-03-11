@@ -1,0 +1,15 @@
+run_id: dummy_regressor_hwhib0g_bef40e96
+learning_curve_id: f68beb239559f66e0b419859fcb723d4e97f6ede
+experiment_hash: bef40e96
+model: dummy_regressor
+dataset: hcp
+tissue_type: white
+primary_metric: b0
+status: crashed
+n_folds_expected: 5
+n_folds_completed: 0
+start_time: '2026-02-20T15:48:46.656348'
+hostname: marg001
+job_id: '5037730'
+error: Classification metrics can't handle a mix of binary and continuous targets
+end_time: '2026-02-20T15:49:47.572131'

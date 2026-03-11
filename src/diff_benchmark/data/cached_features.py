@@ -1,28 +1,17 @@
 """
 Feature caching system for frozen backbone models.
 
-This module provides functionality to pre-compute and cache features from frozen
-backbone models (like ViT and DinoV2) to dramatically speed up training.
+Pre-computes and caches embeddings from frozen backbones (ViT, DINOv2, CURIA) as
+Parquet files, dramatically speeding up repeated training runs.
 
-Storage format: Parquet files with flat table structure
-- subject_id: str - Unique identifier for each subject
-- augmentation_idx: int - Index of augmentation (0-9)
-- feature_0, feature_1, ..., feature_N: float - Embedding dimensions
+Storage format: ``subject_id``, ``augmentation_idx``, ``feature_0 … feature_N``.
 
-Data normalization architecture:
-1. Raw MRI data [0, 1] → Normalize(mean=0.5, std=0.5) → Apply augmentations → Cache
-2. At training/inference: Cached normalized data → Backbone unnormalizes in forward() → Model processes
-
-Each backbone handles its own input preprocessing in its forward() method:
-- ViT/DINOv2/CURIA: Unnormalize to [0, 1] (x = x * 0.5 + 0.5), then HuggingFace processor applies ImageNet normalization
-- Future models needing [0, 255]: Can add x = x * 0.5 + 0.5 then x = x * 255.0
-- Models working with normalized data: Can keep as-is
-
-This ensures:
-- Consistent cached data across all models (normalized with mean=0.5, std=0.5)
-- No PIL conversion errors (works on tensors)
-- Each backbone adapts input in its forward() method (2 lines of code)
-- Easy to add new models with different input requirements
+Normalization contract:
+- Data is cached as ``Normalize(mean=0.5, std=0.5)`` tensors.
+- Each backbone unnormalizes in its ``forward()`` (``x = x * 0.5 + 0.5``) before
+  passing to its HuggingFace processor, which applies ImageNet normalization.
+- This keeps cached data consistent across all models while letting each backbone
+  adapt its own input in two lines of code.
 """
 
 import hashlib
@@ -80,28 +69,20 @@ def get_deterministic_rotation_transforms(
     norm_std: float = 0.5,
 ) -> List:
     """
-    Create a list of deterministic transformation (rotations + flips) with normalization.
+    Create a list of deterministic augmentation transforms (normalize → resize → rotate/flip).
 
-    Pipeline for cached features:
-    1. Raw data [0, 1] → Normalize (mean, std) → Optional Resize → Rotation/Flip
-    2. Cache stores normalized data
-    3. At inference: Backbone unnormalizes in forward() (x = x * std + mean)
-    4. Finally → Features
-
-    This allows:
-    - Consistent cached data across all models (normalized)
-    - Each backbone adapts input by unnormalizing in its forward method
-    - No PIL conversion errors (works on tensors)
-    - Normalization parameters configurable via config file
+    The first transform is the identity (normalize + optional resize only).
+    Subsequent transforms add a deterministic rotation and optional flips seeded with 42.
+    Normalization parameters are configurable so cached data stays consistent with config.
 
     Args:
-        num_rotations: Number of augmentations to generate (including base)
-        image_size: Optional (H, W) to resize slices to. Useful for HCP (145×174→256×256)
-        norm_mean: Mean for normalization (default 0.5, from config)
-        norm_std: Std for normalization (default 0.5, from config)
+        num_rotations: Number of augmentations to generate (including base identity).
+        image_size: Optional (H, W) to resize slices to. Useful for HCP (145×174→256×256).
+        norm_mean: Mean for normalization (default 0.5, from config).
+        norm_std: Std for normalization (default 0.5, from config).
 
     Returns:
-        List of callable transforms (functions), each applying a different fixed transformation
+        List of callable transforms, each applying a different fixed augmentation.
     """
     transform_list = []
 
@@ -123,7 +104,6 @@ def get_deterministic_rotation_transforms(
     transform_list.append(make_base_transform())
 
     # Additional transforms with deterministic rotations and flips
-    # We use a fixed seed to ensure deterministic behavior across runs
     rng = np.random.RandomState(42)
 
     for _ in range(num_rotations - 1):
@@ -166,17 +146,11 @@ class CachedFeatureDataset(Dataset):
     """
     Dataset that caches backbone features with multiple augmentations.
 
-    On initialization:
-    1. Checks if cache_path exists
-    2. If YES: Loads features from disk (fast)
-    3. If NO: Runs backbone on source_dataloader, saves features to disk
+    On initialization, loads features from *cache_path* if it exists; otherwise
+    runs the backbone over *source_dataloader* and saves the result.
 
-    Storage format: Parquet file with flat table structure
-        - subject_id: str
-        - augmentation_idx: int (0 to num_augmentations-1)
-        - feature_0, feature_1, ..., feature_N: float (embedding dimensions)
-
-    Each subject will have num_augmentations rows (one per augmentation).
+    Storage format: Parquet file — columns ``subject_id``, ``augmentation_idx``,
+    ``feature_0 … feature_N``.  Each subject has *num_augmentations* rows.
     Labels and genders are fetched from the source dataset at runtime.
     """
 
@@ -295,12 +269,10 @@ class CachedFeatureDataset(Dataset):
         self.features = []
 
         # Create a dictionary for faster lookup if loading many subjects
-        # Group by subject_id first
         df_grouped = df.groupby("subject_id")
 
         for subject_id in unique_subjects:
             if subject_id not in df_grouped.groups:
-                # Should have been caught by missing_subjects check above
                 raise ValueError(f"Subject {subject_id} not found in cache group keys!")
 
             subject_df = df_grouped.get_group(subject_id).sort_values(
@@ -606,11 +578,7 @@ class CachedFeatureDataset(Dataset):
 
     @property
     def targets(self):
-        """
-        Targets/labels for the dataset.
-        Always returns torch tensors for consistency with CustomDataset.
-        Automatically converts numpy arrays to tensors if needed.
-        """
+        """Target labels as a float32 tensor (converts numpy arrays on access)."""
         if hasattr(self, "_targets"):
             # If it's a numpy array, convert to tensor
             if isinstance(self._targets, np.ndarray):
@@ -627,11 +595,7 @@ class CachedFeatureDataset(Dataset):
 
     @property
     def gender(self):
-        """
-        Gender labels for the dataset.
-        Always returns torch tensors for consistency with CustomDataset.
-        Automatically converts numpy arrays to tensors if needed.
-        """
+        """Gender labels as a long tensor (converts numpy arrays on access)."""
         if hasattr(self, "_genders"):
             # If it's a numpy array, convert to tensor
             if isinstance(self._genders, np.ndarray):
@@ -682,15 +646,10 @@ class CachedFeatureDataset(Dataset):
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
-        Get a sample with augmentation.
+        Return ``(features, label, gender)`` for sample *idx*.
 
-        If set_augmentation_indices() was called, uses the pre-selected augmentation.
-        Otherwise, randomly selects an augmentation (original behavior).
-
-        Returns:
-            features: (embedding_dim,)
-            label: scalar tensor
-            gender: scalar tensor
+        Uses the pre-selected augmentation index if :meth:`set_augmentation_indices`
+        was called, otherwise selects randomly.
         """
         # Use pre-selected augmentation index if available, otherwise random
         if hasattr(self, "aug_indices") and self.aug_indices is not None:
@@ -702,10 +661,7 @@ class CachedFeatureDataset(Dataset):
         features = self.features[idx][aug_idx]
 
         # Fetch label and gender - prefer stored attributes over source_dataloader
-        # Handle both numpy arrays (from DatasetPreparation) and tensors
         if hasattr(self, "_targets") and hasattr(self, "_genders"):
-            # Use pre-stored numpy arrays (set by DatasetPreparation)
-            # Convert to tensors lazily per-sample
             label = torch.tensor(self._targets[idx], dtype=torch.float32)
             gender = torch.tensor(self._genders[idx], dtype=torch.long)
         elif hasattr(self, "targets") and hasattr(self, "genders"):
@@ -870,7 +826,6 @@ def append_augmentations_to_cache(
     new_rows = []
     start_time = time.time()
     total_batches = len(source_dataloader)
-    # processed_sample_count = 0  # running offset, not batch_idx * batch_size
 
     with torch.no_grad():
         with torch.autocast(device_type=device.type, enabled=(device.type == "cuda")):
@@ -881,11 +836,6 @@ def append_augmentations_to_cache(
                         f"Processing batch {batch_idx}/{total_batches}... (elapsed: {elapsed:.1f}s)"
                     )
 
-                # # Skip None batches produced by safe_collate
-                # if batch is None:
-                #     logger.warning(f"Skipping empty batch at index {batch_idx}")
-                #     continue
-
                 # Unpack batch
                 if len(batch) >= 2:
                     x = batch[0]
@@ -895,7 +845,6 @@ def append_augmentations_to_cache(
                 # Get subject IDs using running counter
                 if hasattr(source_dataloader.dataset, "_subject_ids"):
                     batch_start = batch_idx * source_dataloader.batch_size
-                    # batch_start = processed_sample_count
                     batch_end = min(
                         batch_start + len(x),
                         len(source_dataloader.dataset._subject_ids),
@@ -908,11 +857,6 @@ def append_augmentations_to_cache(
                         f"sample_{batch_idx * source_dataloader.batch_size + i}"
                         for i in range(len(x))
                     ]
-                #     subject_ids = [f"sample_{processed_sample_count + i}" for i in range(len(x))]
-
-                # processed_sample_count += len(x)
-
-                # Process each sample
                 for sample_idx in range(len(x)):
                     sample_x = x[sample_idx : sample_idx + 1].to(device)
                     subject_id = subject_ids[sample_idx]
@@ -945,10 +889,9 @@ def append_augmentations_to_cache(
                                 slice_2d = sample_x[0, d, :, :].unsqueeze(
                                     0
                                 )  # (1, H, W)
-                                # Apply transform (includes normalization and optional resize/rotation)
                                 aug_slice = transform(
                                     slice_2d
-                                )  # Should output (1, H', W')
+                                )
                                 # Ensure it's 3D (1, H, W) not 4D
                                 if aug_slice.ndim == 4:
                                     aug_slice = aug_slice.squeeze(
@@ -966,7 +909,6 @@ def append_augmentations_to_cache(
                         features = backbone(augmented_x)
                         features_np = features.squeeze(0).cpu().numpy()
 
-                        # Create row
                         row = {
                             "subject_id": subject_id,
                             "augmentation_idx": aug_idx,

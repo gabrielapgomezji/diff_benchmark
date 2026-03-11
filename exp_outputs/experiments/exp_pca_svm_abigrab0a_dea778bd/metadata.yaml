@@ -1,0 +1,14 @@
+run_id: pca_svm_abigrab0a_dea778bd
+learning_curve_id: 6339543d296d857d8ed3a055ed89968609ebd3c2
+experiment_hash: dea778bd
+model: pca_svm
+dataset: abide
+tissue_type: gray
+primary_metric: b0
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T19:29:33.537273'
+hostname: marg035
+job_id: '5038482'
+end_time: '2026-02-20T19:30:32.771828'

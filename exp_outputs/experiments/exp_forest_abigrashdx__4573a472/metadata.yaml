@@ -1,0 +1,14 @@
+run_id: forest_abigrashdx__4573a472
+learning_curve_id: 14dfb0462e8f90f309a4729090ed5b43a63d3f30
+experiment_hash: 4573a472
+model: forest
+dataset: abide
+tissue_type: gray
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T19:28:06.243311'
+hostname: marg009
+job_id: '5038367'
+end_time: '2026-02-20T20:01:42.553319'

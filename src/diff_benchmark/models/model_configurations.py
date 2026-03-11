@@ -1,3 +1,4 @@
+import torch
 from omegaconf import OmegaConf
 from torch import nn
 
@@ -11,7 +12,7 @@ from diff_benchmark.models.sklearn_models.dummy import (
     DummyClassifierModel,
     DummyRegressorModel,
 )
-from diff_benchmark.models.sklearn_models.logistic_regression import (
+from diff_benchmark.models.sklearn_models.linear import (
     LassoModel,
     LinearModel,
     PCALinearModel,
@@ -27,19 +28,17 @@ from diff_benchmark.models.utils_models.trainer import (
     SklearnTrainer,
     TorchTrainer,
 )
+from diff_benchmark.models.mesh_models.simple_mesh_model import SimpleMeshModel
+from diff_benchmark.models.mesh_models.group_lasso import MeshGroupLassoModel
+from diff_benchmark.models.mesh_models.spectral_laplacian_model import SpectralLaplacianAdditiveModel
+from diff_benchmark.models.mesh_models.region_pca import RegionPCAModel
+from diff_benchmark.models.mesh_models.sklearn_group_lasso import RegionGroupLassoModel
+from diff_benchmark.models.utils_models.additive_parcel_head import build_additive_parcel_head as build_additive_head
+from diff_benchmark.models.utils_models.additive_parcel_head import build_simple_parcel_head
 
 
 class TaskModel(nn.Module):
-    """
-    A composite neural network model that combines a backbone and head architecture.
-    This class serves as a container for two-stage models where a backbone network
-    extracts features and a head network produces the final output. It provides a
-    unified interface for forward passes and exposes the backbone's data type.
-    Attributes:
-        backbone (nn.Module): The feature extraction network that processes input data.
-        head (nn.Module): The output network that processes backbone features to produce
-                          the final model output.
-    """
+    """Backbone + prediction head assembled into a single forward pass."""
 
     def __init__(self, backbone: nn.Module, head: nn.Module):
         super().__init__()
@@ -57,25 +56,18 @@ class TaskModel(nn.Module):
 
     @property
     def data_type(self) -> str:
-        """
-        Get the data type of the model's backbone.
-        Returns:
-            str: The data type used by the backbone model (e.g., 'float32', 'float16', etc.).
-        """
-
+        """Data type string from the backbone (e.g. ``'images'``, ``'array'``)."""
         return self.backbone.data_type
 
     def forward(self, x):
-        """
-        Forward pass through the model.
-        Args:
-            x: Input tensor to the model.
-        Returns:
-            Output tensor from the model head applied to backbone features.
-        """
-
         feats = self.backbone(x)
         return self.head(feats)
+
+    def regularization_loss(self) -> torch.Tensor:
+        """Forward the head's group regularisation penalty (if any)."""
+        if hasattr(self.head, "regularization_loss"):
+            return self.head.regularization_loss()
+        return torch.tensor(0.0)
 
 
 def create_model(
@@ -83,98 +75,104 @@ def create_model(
     model_kwargs: dict | None = None,
     pred_head: dict | None = None,
 ):
-    """Creates a model instance based on the specified type.
+    """Instantiate a model from its name and config dicts.
+
+    For sklearn-based models the prediction task is forwarded via
+    ``model_kwargs["prediction_task"]``.  For deep models a
+    :class:`TaskModel` wrapping backbone + head is returned.
+
     Args:
-        model_name (str): The type of model to create (e.g., "forest", "2dcnn", "vit").
-        model_kwargs (dict | None): Additional keyword arguments forwarded to the model constructor.
-        pred_head (dict | None): Prediction head configuration (prediction_task, num_classes, etc.).
+        model_name: Model identifier, e.g. ``"forest"``, ``"2dcnn"``,
+            ``"vit"``.
+        model_kwargs: Extra keyword arguments forwarded to the model
+            constructor.
+        pred_head: Prediction-head config (``prediction_task``,
+            ``num_classes``, etc.).
+
     Returns:
-        nn.Module | SklearnModel: Configured model instance.
+        Configured model or :class:`TaskModel` instance.
+
     Raises:
-        ValueError: If model_name is not recognised.
+        ValueError: If *model_name* is not recognised.
     """
     model_kwargs = model_kwargs or {}
     pred_head = pred_head or {}
+
+    # --- Dummy baselines (no prediction_task needed) ---
     if model_name == "dummy_classifier":
-        backbone = DummyClassifierModel(**model_kwargs)
-        return backbone
+        return DummyClassifierModel(**model_kwargs)
 
     if model_name == "dummy_regressor":
-        backbone = DummyRegressorModel(**model_kwargs)
-        return backbone
+        return DummyRegressorModel(**model_kwargs)
 
-    if model_name == "linear":
+    # --- sklearn models (prediction_task forwarded via kwargs) ---
+    _sklearn_models: dict[str, type] = {
+        "linear": LinearModel,
+        "pca_linear": PCALinearModel,
+        "forest": RandomForestModel,
+        "svm": SVMModel,
+        "pca_forest": PCARandomForestModel,
+        "pca_svm": PCASVMModel,
+        "lasso": LassoModel,
+        "region_pca": RegionPCAModel,
+        "region_group_lasso": RegionGroupLassoModel,
+    }
+    if model_name in _sklearn_models:
         model_kwargs["prediction_task"] = pred_head["prediction_task"]
-        backbone = LinearModel(**model_kwargs)
-        return backbone
+        return _sklearn_models[model_name](**model_kwargs)
 
-    if model_name == "pca_linear":
-        model_kwargs["prediction_task"] = pred_head["prediction_task"]
-        backbone = PCALinearModel(**model_kwargs)
-        return backbone
-
-    if model_name == "forest":
-        model_kwargs["prediction_task"] = pred_head["prediction_task"]
-        backbone = RandomForestModel(**model_kwargs)
-        return backbone
-
-    if model_name == "svm":
-        model_kwargs["prediction_task"] = pred_head["prediction_task"]
-        backbone = SVMModel(**model_kwargs)
-        return backbone
-
-    if model_name == "pca_forest":
-        model_kwargs["prediction_task"] = pred_head["prediction_task"]
-        backbone = PCARandomForestModel(**model_kwargs)
-        return backbone
-
-    if model_name == "pca_svm":
-        model_kwargs["prediction_task"] = pred_head["prediction_task"]
-        backbone = PCASVMModel(**model_kwargs)
-        return backbone
-
-    if model_name == "lasso":
-        model_kwargs["prediction_task"] = pred_head["prediction_task"]
-        backbone = LassoModel(**model_kwargs)
-        return backbone
-
-    if model_name == "2dcnn":
-        backbone = ResNet3SliceMultihead(**model_kwargs)
-        head = build_prediction_head(
-            embedding_dim=backbone.out_dim,
+    # --- Mesh group-lasso (deep/torch model, data_type="mesh") ---
+    if model_name == "group_lasso":
+        backbone = MeshGroupLassoModel(**model_kwargs)
+        head = build_additive_head(
+            embed_dim=backbone.parcel_embed_dim,
+            reg_type="group_lasso",
+            lambda1=model_kwargs.get("lambda_gl", 1e-3),
             **pred_head,
         )
+        return TaskModel(backbone, head)
+
+    # --- Deep models (backbone + head) ---
+    if model_name == "2dcnn":
+        backbone = ResNet3SliceMultihead(**model_kwargs)
+        head = build_prediction_head(embedding_dim=backbone.out_dim, **pred_head)
+        return TaskModel(backbone, head)
+    
+    if model_name == "simple_mesh":
+        backbone = SimpleMeshModel(**model_kwargs)
+        # regression_head is Linear(hidden_dim → 1); use hidden_dim as embedding_dim
+        head = build_prediction_head(embedding_dim=backbone.hidden_dim, **pred_head)
+        return TaskModel(backbone, head)
+
+    if model_name == "spectral_laplacian":
+        backbone = SpectralLaplacianAdditiveModel(**model_kwargs)
+        # AdditiveParcelHead: one weight vector per parcel, optional group regularisation.
+        # pred_head may carry reg_type / lambda1 / lambda2 in addition to prediction_task.
+        head = build_additive_head(
+            embed_dim=backbone.parcel_embed_dim,
+            **pred_head,
+        )
+        # head = build_simple_parcel_head(embed_dim=backbone.parcel_embed_dim, **pred_head)
         return TaskModel(backbone, head)
 
     if model_name == "medicalnet":
         backbone = MedicalNet(**model_kwargs)
-        head = build_prediction_head(
-            embedding_dim=backbone.out_dim,
-            **pred_head,
-        )
+        head = build_prediction_head(embedding_dim=backbone.out_dim, **pred_head)
         return TaskModel(backbone, head)
+
     if model_name == "dinov2":
         backbone = DinoViTBackbone(**model_kwargs)
-        head = build_prediction_head(
-            embedding_dim=backbone.embedding_dim,
-            **pred_head,
-        )
+        head = build_prediction_head(embedding_dim=backbone.embedding_dim, **pred_head)
         return TaskModel(backbone, head)
 
     if model_name == "vit":
         backbone = GoogleViTBackbone(**model_kwargs)
-        head = build_prediction_head(
-            embedding_dim=backbone.embedding_dim,
-            **pred_head,
-        )
+        head = build_prediction_head(embedding_dim=backbone.embedding_dim, **pred_head)
         return TaskModel(backbone, head)
 
     if model_name == "curia":
         backbone = CuriaBackbone(**model_kwargs)
-        head = build_prediction_head(
-            embedding_dim=backbone.embedding_dim,
-            **pred_head,
-        )
+        head = build_prediction_head(embedding_dim=backbone.embedding_dim, **pred_head)
         return TaskModel(backbone, head)
 
     raise ValueError(f"Unknown model type: {model_name}")
@@ -184,28 +182,18 @@ def create_backend_trainer(
     model,
     backend_kwargs: dict,
 ):
-    """
-    Create a backend trainer based on the specified backend type.
-    Parameters
-    ----------
-    model : object
-        The machine learning model to be trained.
-    backend : str
-        The backend framework to use for training. Supported options are:
-        - "sklearn": scikit-learn based trainer
-        - "torch": PyTorch based trainer
-        - "lightning": PyTorch Lightning based trainer
-        Case-insensitive.
-    backend_kwargs : dict
-        Additional keyword arguments to pass to the selected trainer class.
-    Returns
-    -------
-    SklearnTrainer | TorchTrainer | LightningTrainer
-        An instance of the appropriate trainer class based on the backend parameter.
-    Raises
-    ------
-    ValueError
-        If the backend string does not match any of the supported backends.
+    """Create a backend trainer for the given model.
+
+    Args:
+        model: The model to be trained.
+        backend_kwargs (dict): Keyword arguments forwarded to the trainer; must contain
+            ``backend`` (``"sklearn"``, ``"torch"``, or ``"lightning"``).
+
+    Returns:
+        SklearnTrainer | TorchTrainer | LightningTrainer: Configured trainer instance.
+
+    Raises:
+        ValueError: If ``backend_kwargs["backend"]`` is not a supported backend name.
     """
     backend = backend_kwargs["backend"].lower()
     if backend == "sklearn":
@@ -245,17 +233,15 @@ def create_trainer(
 
 
 def get_model(name: str, config: dict) -> object:
-    """
-    Assemble and return a trainer for the named model using a resolved config dict.
+    """Assemble and return a trainer for the named model using a resolved config dict.
 
-    Pulls backend, data-partition, and random-state settings out of the config,
-    injects them into the backend kwargs, then delegates to :func:`create_trainer`.
-
-    Parameters:
+    Args:
         name (str): Model name, e.g. ``"linear"``, ``"forest"``, ``"2dcnn"``.
         config (dict): Fully-resolved config dictionary produced by OmegaConf.
+
     Returns:
         BaseTrainer: Configured trainer wrapping the model.
+
     Raises:
         ValueError: If *name* is not a recognised model identifier.
     """

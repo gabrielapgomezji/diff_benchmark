@@ -1,0 +1,14 @@
+run_id: forest_hwhimka_642ecf7e
+learning_curve_id: 024e3dacb75d02bdd8ed55e2d9849a41cf1ccda9
+experiment_hash: 642ecf7e
+model: forest
+dataset: hcp
+tissue_type: white
+primary_metric: mk
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:37:56.256435'
+hostname: marg033
+job_id: '5035543'
+end_time: '2026-02-19T19:38:35.024093'

@@ -1,0 +1,14 @@
+run_id: svm_hwhisha_df686287
+learning_curve_id: e8392f0c1f32832a4d494202f46cf314e96d9edb
+experiment_hash: df686287
+model: svm
+dataset: hcp
+tissue_type: white
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:39:08.207916'
+hostname: marg015
+job_id: '5035566'
+end_time: '2026-02-19T19:39:41.464234'

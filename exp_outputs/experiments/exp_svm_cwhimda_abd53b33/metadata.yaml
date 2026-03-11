@@ -1,0 +1,14 @@
+run_id: svm_cwhimda_abd53b33
+learning_curve_id: 6b500737812873c8b90552b38b38c069fadaada4
+experiment_hash: abd53b33
+model: svm
+dataset: camcan
+tissue_type: white
+primary_metric: md
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:39:17.772190'
+hostname: marg022
+job_id: '5035571'
+end_time: '2026-02-19T19:39:44.846352'

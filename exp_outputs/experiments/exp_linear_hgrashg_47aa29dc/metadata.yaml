@@ -1,0 +1,14 @@
+run_id: linear_hgrashg_47aa29dc
+learning_curve_id: 9da1b44e3c18be61aff4f1563faa34169e43c821
+experiment_hash: 47aa29dc
+model: linear
+dataset: hcp
+tissue_type: gray
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:03:53.694971'
+hostname: marg035
+job_id: '5035059'
+end_time: '2026-02-19T19:12:26.102176'

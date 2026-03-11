@@ -1,0 +1,14 @@
+run_id: lasso_cwhishg_3d0bfa2e
+learning_curve_id: 53dd37f4770bc579e6a9adddbc043b87e74badb0
+experiment_hash: 3d0bfa2e
+model: lasso
+dataset: camcan
+tissue_type: white
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:23:51.788107'
+hostname: margpu009
+job_id: '5035347'
+end_time: '2026-02-19T19:24:19.515789'

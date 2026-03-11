@@ -1,0 +1,14 @@
+run_id: lasso_cwhimkg_4e47138d
+learning_curve_id: 1096106a0b6c27118bda23787d17b649a97f04c7
+experiment_hash: 4e47138d
+model: lasso
+dataset: camcan
+tissue_type: white
+primary_metric: mk
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:24:45.323802'
+hostname: marg034
+job_id: '5035044'
+end_time: '2026-02-19T19:25:06.405476'

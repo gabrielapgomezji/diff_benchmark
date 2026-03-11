@@ -1,0 +1,14 @@
+run_id: dinov2_hwhimda_a5d31cc5
+learning_curve_id: baa70ac5eba16b80e929a430bcc5d2896958fe67
+experiment_hash: a5d31cc5
+model: dinov2
+dataset: hcp
+tissue_type: white
+primary_metric: md
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T22:16:53.427933'
+hostname: margpu013
+job_id: '5035955'
+end_time: '2026-02-19T22:19:49.120439'

@@ -1,0 +1,14 @@
+run_id: medicalnet_cwhimka_cd496b9c
+learning_curve_id: c85f23d6c7c504cb53ad66d317feccbf8b8a1ff3
+experiment_hash: cd496b9c
+model: medicalnet
+dataset: camcan
+tissue_type: white
+primary_metric: mk
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-21T09:43:16.828049'
+hostname: margpu015
+job_id: '5037251'
+end_time: '2026-02-21T14:06:53.978217'

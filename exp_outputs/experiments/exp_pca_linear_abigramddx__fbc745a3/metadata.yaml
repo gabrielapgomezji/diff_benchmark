@@ -1,0 +1,14 @@
+run_id: pca_linear_abigramddx__fbc745a3
+learning_curve_id: 1e03085bf41c0ef99b208d6e60d68df638a7bf25
+experiment_hash: fbc745a3
+model: pca_linear
+dataset: abide
+tissue_type: gray
+primary_metric: md
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T19:27:45.913861'
+hostname: marg005
+job_id: '5038360'
+end_time: '2026-02-20T19:45:10.427269'

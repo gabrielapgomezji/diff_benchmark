@@ -1,0 +1,14 @@
+run_id: pca_linear_hwhimda_b7f4521d
+learning_curve_id: 79911b321be8d0c99c19050cb642c3f526640f0b
+experiment_hash: b7f4521d
+model: pca_linear
+dataset: hcp
+tissue_type: white
+primary_metric: md
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:32:01.072511'
+hostname: margpu016
+job_id: '5035440'
+end_time: '2026-02-19T19:32:33.732312'

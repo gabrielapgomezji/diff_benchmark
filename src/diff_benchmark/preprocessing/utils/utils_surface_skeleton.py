@@ -54,7 +54,6 @@ def download_fsl_skeleton(output_dir: Path = None) -> Path:
         logger.info(f"Skeleton already exists at {skeleton_file}")
         return skeleton_file
 
-    # Try TemplateFlow first (most reliable)
     try:
         logger.info("Downloading white matter skeleton from TemplateFlow...")
         skeleton_path = tflow.get(
@@ -181,21 +180,18 @@ def load_tbss_skeleton(
     skeleton_mask = nib.load(skeleton_path)
     logger.info(f"Loaded TBSS skeleton from {skeleton_path}")
 
-    # Step 2: Load JHU ICBM-DTI-81 atlas (48 tracts)
+    # Load JHU ICBM-DTI-81 atlas (48 tracts)
     jhu_labels_file = aux_dir / "JHU-ICBM-labels-1mm.nii.gz"
     tract_labels_img = nib.load(jhu_labels_file)
-    # Alternative via nilearn (commented out — requires network access):
-    # jhu_data = datasets.fetch_atlas_jhu()
-    # tract_labels_img = nib.load(jhu_data['maps'])
     tract_names = get_jhu_tract_names()
     logger.info(f"Loaded JHU ICBM-DTI-81 atlas with {len(tract_names)} tracts")
 
-    # Step 3: Resample atlas to skeleton space
+    # Resample atlas to skeleton space
     tract_labels_resampled = nimage.resample_to_img(
         tract_labels_img, skeleton_mask, interpolation="nearest"
     )
 
-    # Step 4: Mask tract labels to skeleton voxels only
+    # Restrict tract labels to skeleton voxels (FA > 0.2 threshold)
     skeleton_data = skeleton_mask.get_fdata() > 0.2
     tract_labels_on_skeleton = tract_labels_resampled.get_fdata() * skeleton_data
     tract_labels_skeleton_img = nimage.new_img_like(
@@ -298,13 +294,10 @@ def project_to_skeleton(
     logger.info(f"[{subject_id}] Projecting {metric_name} onto TBSS skeleton")
     skeleton_mask, tract_labels_skeleton_img, tract_names = load_tbss_skeleton()
 
-    logger.info(f"[{subject_id}] Transforming skeleton from MNI to subject space")
-
-    # Resample skeleton mask to subject metric space
+    # Resample skeleton and tract atlas to subject metric space
     skeleton_mask_subject = nimage.resample_to_img(
         skeleton_mask, metric_img, interpolation="linear"
     )
-    # Resample tract labels to subject metric space (nearest for label integrity)
     tract_labels_subject = nimage.resample_to_img(
         tract_labels_skeleton_img, metric_img, interpolation="nearest"
     )
@@ -336,9 +329,6 @@ def project_to_skeleton(
         if len(arr) > 0:
             _save_hemisphere_gifti(arr, hemi, subject_id, metric_name, output_dir)
 
-    # Return value intentionally None (results written to disk)
-    # tract_scalars_all is not returned to keep the original signature
-    # skeleton_img = nimage.new_img_like(metric_img, metric_on_skeleton)  # kept for reference
     return None
 
 
@@ -457,7 +447,6 @@ def project_to_surface(
         ``None`` (results are written to disk).
     """
     if tissue_type == "white":
-        logger.info(f"[{subject_id}] Skipping surface projection for white matter")
         logger.info(f"[{subject_id}] Projecting white matter to skeleton")
         project_to_skeleton(micr_img, output_dir, subject_id, micr_metric)
         return None
@@ -622,7 +611,6 @@ def resample_schaefer_onto_fs_lr(
         ``"left.sulc"``, ``"right.data"``, ``"right.labels"``,
         ``"right.sulc"``.
     """
-    # Load Schaefer atlases from TemplateFlow
     fsaverage_left_schaefer = nib.load(
         tflow.get(
             "fsaverage",
@@ -659,7 +647,6 @@ def resample_schaefer_onto_fs_lr(
     labels_left = labels[labels["hemi"] == "L"]
     labels_right = labels[labels["hemi"] == "R"]
 
-    # Return atlas directly for fsaverage (no resampling needed)
     if target_space == "fsaverage":
         fslr_left_sulc = (
             nib.load(
@@ -775,6 +762,126 @@ def average_per_parcel(
     return rtop_avg
 
 
+# ---------------------------------------------------------------------------
+# Surface-mesh helpers (used by MeshPipeline)
+# ---------------------------------------------------------------------------
+
+
+def load_template_surface(
+    hemi: str,
+    space: str = "fslr_32k",
+    surf_type: str = "midthickness",
+) -> tuple[np.ndarray, np.ndarray]:
+    """Load template-space surface vertices and faces from TemplateFlow.
+
+    Downloads the surface file if not already cached locally.
+
+    Args:
+        hemi: Hemisphere identifier — ``"L"`` or ``"R"``.
+        space: Template space.  Currently only ``"fslr_32k"`` is supported
+            (uses the HCP fsLR 32k surface from TemplateFlow).
+        surf_type: Surface type (``"midthickness"``, ``"inflated"``,
+            ``"pial"``, ``"white"``).
+
+    Returns:
+        ``(vertices, faces)`` as ``(N, 3)`` float32 and ``(M, 3)`` int32 arrays.
+
+    Raises:
+        ValueError: If *space* is not supported.
+        FileNotFoundError: If TemplateFlow cannot fetch the file.
+    """
+    if space != "fslr_32k":
+        raise ValueError(
+            f"load_template_surface: only 'fslr_32k' is currently supported, "
+            f"got '{space}'"
+        )
+
+    surf_path = tflow.get(
+        "fsLR",
+        hemi=hemi,
+        density="32k",
+        suffix=surf_type,
+        extension=".surf.gii",
+    )
+    if not surf_path:
+        raise FileNotFoundError(
+            f"TemplateFlow could not find {surf_type} surface for fsLR 32k "
+            f"hemisphere {hemi}"
+        )
+
+    img = nib.load(str(surf_path))
+    vertices = img.darrays[0].data.astype(np.float32)  # (N, 3)
+    faces = img.darrays[1].data.astype(np.int32)       # (M, 3)
+    logger.debug(
+        "Loaded template surface %s %s %s: %d vertices, %d faces",
+        space, hemi, surf_type, vertices.shape[0], faces.shape[0],
+    )
+    return vertices, faces
+
+
+def build_parcel_label_vector(
+    schaefer_resampled: dict,
+    n_left: int | None = None,
+    n_right: int | None = None,
+) -> np.ndarray:
+    """Build a combined vertex-wise parcel label vector for L+R hemispheres.
+
+    Concatenates the left and right parcel ID arrays from *schaefer_resampled*
+    into a single ``(N_L + N_R,)`` int32 vector.  Vertices on the medial wall
+    (parcel ID == 0) are left as 0.
+
+    .. important::
+        Right-hemisphere labels are **offset by the maximum left-hemisphere
+        label** so that every parcel has a globally unique ID.  For a
+        Schaefer-1000 atlas the left hemisphere uses labels 1–500 and the
+        right hemisphere labels are shifted to 501–1000 in the combined
+        vector.  Without this offset both hemispheres share the same 1–500
+        range, causing the model to collapse LH and RH parcels with the same
+        index into a single pooled region and producing only 500 parcels
+        instead of 1000.
+
+    Args:
+        schaefer_resampled: Dict returned by :func:`resample_schaefer_onto_fs_lr`.
+        n_left: Expected number of left-hemisphere vertices.  If given and the
+            label array length differs, a warning is emitted.
+        n_right: Expected number of right-hemisphere vertices.
+
+    Returns:
+        ``(N_L + N_R,)`` int32 array of parcel IDs where left labels are
+        1…K and right labels are K+1…2K (K = number of non-zero LH parcels).
+        Medial-wall vertices retain label 0.
+    """
+    left_labels = schaefer_resampled["left.data"].astype(np.int32)
+    right_labels = schaefer_resampled["right.data"].astype(np.int32)
+
+    if n_left is not None and len(left_labels) != n_left:
+        logger.warning(
+            "build_parcel_label_vector: left label count %d != expected %d",
+            len(left_labels), n_left,
+        )
+    if n_right is not None and len(right_labels) != n_right:
+        logger.warning(
+            "build_parcel_label_vector: right label count %d != expected %d",
+            len(right_labels), n_right,
+        )
+
+    # Offset right-hemisphere labels so they are globally unique.
+    # Label 0 (medial wall) is kept as 0 in both hemispheres.
+    max_left_label = int(left_labels.max()) if left_labels.size > 0 else 0
+    right_labels_offset = right_labels.copy()
+    right_labels_offset[right_labels_offset > 0] += max_left_label
+
+    logger.debug(
+        "build_parcel_label_vector: LH labels 1–%d, RH labels %d–%d (offset=%d)",
+        max_left_label,
+        max_left_label + 1,
+        max_left_label + int(right_labels[right_labels > 0].max()) if right_labels[right_labels > 0].size > 0 else max_left_label,
+        max_left_label,
+    )
+
+    return np.concatenate([left_labels, right_labels_offset])
+
+
 def extract_region_data(
     hem_left: np.ndarray,
     hem_right: np.ndarray,
@@ -833,5 +940,4 @@ def extract_region_data(
 
         region_values.append(np.nanmean(vals) if average else vals)
 
-    # return region_data  # dict version — kept as comment for reference
     return np.concatenate([np.atleast_1d(v) for v in region_values])

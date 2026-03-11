@@ -1,0 +1,13 @@
+run_id: group_lasso_hgramdg_827a6d2f
+learning_curve_id: ad96ef1ecf759e62355a88aeb8c727a5bd96b773
+experiment_hash: 827a6d2f
+model: group_lasso
+dataset: hcp
+tissue_type: gray
+primary_metric: md
+status: running
+n_folds_expected: 5
+n_folds_completed: 0
+start_time: '2026-03-09T08:19:09.079738'
+hostname: margpu009
+job_id: '5063153'

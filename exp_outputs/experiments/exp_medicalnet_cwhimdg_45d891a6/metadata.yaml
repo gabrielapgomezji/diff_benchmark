@@ -1,0 +1,14 @@
+run_id: medicalnet_cwhimdg_45d891a6
+learning_curve_id: 83c5c05cfb41490295fb6f45d2be9f653c483f4d
+experiment_hash: 45d891a6
+model: medicalnet
+dataset: camcan
+tissue_type: white
+primary_metric: md
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-22T18:58:28.304306'
+hostname: margpu013
+job_id: '5039021'
+end_time: '2026-02-22T23:52:22.580316'

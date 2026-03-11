@@ -1,0 +1,14 @@
+run_id: forest_hgramda_d44b5191
+learning_curve_id: 0512737416486f4e4e5b2a0147d483dc444f36ae
+experiment_hash: d44b5191
+model: forest
+dataset: hcp
+tissue_type: gray
+primary_metric: md
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:34:26.510502'
+hostname: marg007
+job_id: '5035469'
+end_time: '2026-02-20T00:07:09.065843'

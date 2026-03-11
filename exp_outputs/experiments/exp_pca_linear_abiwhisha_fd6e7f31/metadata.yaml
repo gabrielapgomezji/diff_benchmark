@@ -1,0 +1,14 @@
+run_id: pca_linear_abiwhisha_fd6e7f31
+learning_curve_id: 8d25ff0afa99002fd8b2cd8beeef0cf59a6bb64f
+experiment_hash: fd6e7f31
+model: pca_linear
+dataset: abide
+tissue_type: white
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-20T19:29:18.579844'
+hostname: marg023
+job_id: '5038454'
+end_time: '2026-02-20T19:29:44.832032'

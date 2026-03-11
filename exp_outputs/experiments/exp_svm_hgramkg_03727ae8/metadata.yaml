@@ -1,0 +1,14 @@
+run_id: svm_hgramkg_03727ae8
+learning_curve_id: 154252d1b03adf67518027ed705a7320fd614853
+experiment_hash: 03727ae8
+model: svm
+dataset: hcp
+tissue_type: gray
+primary_metric: mk
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:13:21.676808'
+hostname: marg035
+job_id: '5035213'
+end_time: '2026-02-19T19:16:49.053088'

@@ -1,0 +1,14 @@
+run_id: curia_cwhib0g_9d021008
+learning_curve_id: 52a5700f93e1229c5d72a7a7371967e352b878be
+experiment_hash: 9d021008
+model: curia
+dataset: camcan
+tissue_type: white
+primary_metric: b0
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-22T01:09:41.549801'
+hostname: margpu013
+job_id: '5039005'
+end_time: '2026-02-22T02:15:54.220812'

@@ -1,0 +1,14 @@
+run_id: linear_hgrasha_ad98fcbf
+learning_curve_id: 748096e501d4da5e59ec1319dfd922a3f2c2293b
+experiment_hash: ad98fcbf
+model: linear
+dataset: hcp
+tissue_type: gray
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:28:21.466362'
+hostname: marg035
+job_id: '5035396'
+end_time: '2026-02-19T19:33:18.620463'

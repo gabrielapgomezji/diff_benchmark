@@ -1,0 +1,14 @@
+run_id: forest_cgramdg_ef8b36d0
+learning_curve_id: ba14afc56e892d394ca8a0bce3a40151036f71fb
+experiment_hash: ef8b36d0
+model: forest
+dataset: camcan
+tissue_type: gray
+primary_metric: md
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:06:52.013602'
+hostname: marg035
+job_id: '5035123'
+end_time: '2026-02-19T21:23:52.166977'

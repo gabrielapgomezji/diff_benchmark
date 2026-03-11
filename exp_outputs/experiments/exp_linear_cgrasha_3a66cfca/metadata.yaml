@@ -1,0 +1,14 @@
+run_id: linear_cgrasha_3a66cfca
+learning_curve_id: 2c548a1d46fabe0305dc4b935362b11d9a98b433
+experiment_hash: 3a66cfca
+model: linear
+dataset: camcan
+tissue_type: gray
+primary_metric: sh
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:29:39.698630'
+hostname: marg033
+job_id: '5035413'
+end_time: '2026-02-19T19:31:33.538105'

@@ -1,0 +1,15 @@
+run_id: medicalnet_cgrasha_e8003c3d
+learning_curve_id: 0475c1b1fdc5c3a4983f86eea3ecd80d37bb4a0e
+experiment_hash: e8003c3d
+model: medicalnet
+dataset: camcan
+tissue_type: gray
+primary_metric: sh
+status: crashed
+n_folds_expected: 5
+n_folds_completed: 2
+start_time: '2026-02-22T12:31:51.374194'
+hostname: margpu002
+job_id: '5039080'
+error: 'Job not requeued because: timed-out and not checkpointable.'
+end_time: '2026-02-23T01:50:02.995322'

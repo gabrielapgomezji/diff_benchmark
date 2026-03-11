@@ -1,0 +1,11 @@
+numpy>=1.15
+scipy>=1.1.0
+nibabel>=2.4.0
+dipy>=1.0.0dev
+nilearn==0.11.1
+nipype==1.10.0
+pandas>=0.23.4
+scikit-image>=0.16.2
+niworkflows==1.12.1
+smriprep==0.17.0
+nimesh

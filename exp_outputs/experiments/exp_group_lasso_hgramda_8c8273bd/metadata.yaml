@@ -1,0 +1,27 @@
+run_id: group_lasso_hgramda_8c8273bd
+learning_curve_id: bc7da685b72e016a4b7d71b0ddf98412c81811dc
+experiment_hash: 8c8273bd
+model: group_lasso
+dataset: hcp
+tissue_type: gray
+primary_metric: md
+status: crashed
+n_folds_expected: 5
+n_folds_completed: 0
+start_time: '2026-03-09T08:21:06.529013'
+hostname: margpu009
+job_id: '5063153'
+error: "\nAll the 210 fits failed.\nIt is very likely that your model is misconfigured.\n\
+  You can try to debug the error by setting error_score='raise'.\n\nBelow are more\
+  \ details about the failures:\n--------------------------------------------------------------------------------\n\
+  210 fits failed with the following error:\nTraceback (most recent call last):\n\
+  \  File \"/data/parietal/store3/work/ggomezji/poetry_envs/venvs/diff-benchmark-gY5BuSCg-py3.12/lib/python3.12/site-packages/sklearn/model_selection/_validation.py\"\
+  , line 833, in _fit_and_score\n    estimator.fit(X_train, y_train, **fit_params)\n\
+  \  File \"/data/parietal/store3/work/ggomezji/poetry_envs/venvs/diff-benchmark-gY5BuSCg-py3.12/lib/python3.12/site-packages/sklearn/base.py\"\
+  , line 1336, in wrapper\n    return fit_method(estimator, *args, **kwargs)\n   \
+  \        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/data/parietal/store3/work/ggomezji/poetry_envs/venvs/diff-benchmark-gY5BuSCg-py3.12/lib/python3.12/site-packages/sklearn/pipeline.py\"\
+  , line 621, in fit\n    self._final_estimator.fit(Xt, y, **last_step_params[\"fit\"\
+  ])\n  File \"/data/parietal/store3/work/ggomezji/projects/diff_benchmark/src/diff_benchmark/models/mesh_models/group_lasso.py\"\
+  , line 98, in fit\n    if len(groups) != p:\n       ^^^^^^^^^^^\nTypeError: len()\
+  \ of unsized object\n"
+end_time: '2026-03-09T08:25:21.971772'

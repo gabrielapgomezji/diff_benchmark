@@ -1,0 +1,14 @@
+run_id: pca_linear_hwhimka_1d37e8ea
+learning_curve_id: c7a765028bc166c4b0a390db1a81ba51b71891b9
+experiment_hash: 1d37e8ea
+model: pca_linear
+dataset: hcp
+tissue_type: white
+primary_metric: mk
+status: success
+n_folds_expected: 5
+n_folds_completed: 5
+start_time: '2026-02-19T19:32:24.215943'
+hostname: margpu009
+job_id: '5035447'
+end_time: '2026-02-19T19:32:51.779063'
