@@ -315,10 +315,10 @@ def main():
     experiments_root.mkdir(parents=True, exist_ok=True)
 
     with hydra.initialize(version_base="1.3", config_path="pkg://diff_benchmark.configs"):
-        base = hydra.compose(config_name="main")
+        base = hydra.compose(config_name="main_jz")
         override_sets = _cartesian_overrides(base.choices)
         job_cfgs = [
-            hydra.compose(config_name="main", overrides=ovr) for ovr in override_sets
+            hydra.compose(config_name="main_jz", overrides=ovr) for ovr in override_sets
         ]
 
     # Expand any remaining sweep axes within each config.

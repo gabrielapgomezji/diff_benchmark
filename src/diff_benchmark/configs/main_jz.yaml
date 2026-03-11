@@ -5,7 +5,7 @@ defaults:
   - backend: torch
   - data: default
   - target: gender
-  - cluster: margaret
+  - cluster: jean_zay
   - analysis: default
   - mesh_pipeline: default
   - _self_
@@ -20,17 +20,16 @@ runtime:
 
 
 choices:
-  model: [spectral_laplacian]
+  model: [region_group_lasso]
   dataset: [hcp]
-  # backend: [sklearn]
+  backend: [sklearn]
   # target: [age]
-  pred_head: [mesh_classification]
+  # pred_head: [regression]
   dataset.tissue_type: [gray]
   dataset.metric_to_compute: [md]
-  # cluster: [margaret_cpu]
-  cluster.conf.parallel_type: [None]
-  backend.learning_rate: [1e-4]
-  backend.weight_decay: [1e-2]
+  # cluster.conf.parallel_type: [None]
+  # backend.learning_rate: [1e-3]
+  # backend.weight_decay: [0]
   # pred_head: [mesh_classification]
   # pred_head.lambda1: [0.01]
   # pred_head.lambda2: [0.001]

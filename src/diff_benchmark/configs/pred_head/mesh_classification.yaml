@@ -1,4 +1,4 @@
 prediction_task: binary_classification
 reg_type: group_lasso    # or group_elastic_net / none
-lambda1: 0.001
-lambda2: 0.0001          # only used for group_elastic_net
+lambda1: 0.00001
+lambda2: 0.000001          # only used for group_elastic_net

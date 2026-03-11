@@ -68,6 +68,10 @@ class SurfaceMeshData:
         subject_id: Optional string identifying the source subject.
         metric: Optional name of the microstructure metric stored in *features*.
         hemisphere: ``"L"`` (left), ``"R"`` (right), or ``"LR"`` (combined).
+        n_left_vertices: Number of left-hemisphere vertices when
+            ``hemisphere == "LR"``.  Vertices ``[0, n_left_vertices)`` belong
+            to LH; ``[n_left_vertices, N)`` to RH.  ``None`` if not a combined
+            mesh.
     """
 
     vertices: np.ndarray  # (N, 3) float32
@@ -77,6 +81,9 @@ class SurfaceMeshData:
     subject_id: Optional[str] = field(default=None)
     metric: Optional[str] = field(default=None)
     hemisphere: str = field(default="LR")
+    # Number of left-hemisphere vertices when hemisphere == "LR".
+    # Vertices [0, n_left_vertices) belong to LH; the rest to RH.
+    n_left_vertices: Optional[int] = field(default=None)
 
     # ------------------------------------------------------------------
     # Constructors

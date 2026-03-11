@@ -184,10 +184,52 @@ class SklearnTrainer(BaseTrainer):
         targets = np.concatenate(targets_list, axis=0)
         return features, targets
 
+    def _dataloader_to_mesh_list(
+        self, dataloader: DataLoader
+    ) -> tuple[list, np.ndarray]:
+        """Collect mesh dicts and targets from a mesh DataLoader.
+
+        Used when ``self.model.data_type == "mesh"``.  Each batch element
+        ``x`` is a list of mesh dicts; we accumulate all dicts into a single
+        flat list so that the sklearn transformer receives one entry per subject.
+
+        Args:
+            dataloader: Yields ``(x_batch, y_batch, ...)`` tuples where
+                ``x_batch`` is a list of mesh dicts.
+
+        Returns:
+            tuple[list, np.ndarray]: ``(mesh_list, targets)``
+        """
+        mesh_list: list = []
+        targets_list: list = []
+        for batch in dataloader:
+            x_batch, targets_batch = batch[0], batch[1]
+            # x_batch is a list of mesh dicts (one per subject in the batch)
+            mesh_list.extend(x_batch)
+            targets_list.append(targets_batch.numpy())
+        targets = np.concatenate(targets_list, axis=0)
+        return mesh_list, targets
+
     def _reshape_data(self, dataloader: DataLoader):
         features, targets = self._dataloader_to_numpy(dataloader)
         features_reshaped = features.reshape(features.shape[0], -1)
         return features_reshaped, targets.flatten()
+
+    def _load_data(self, dataloader: DataLoader):
+        """Load features and targets, dispatching on ``model.data_type``.
+
+        For ``data_type="mesh"`` the raw mesh list is returned so that the
+        model's internal :class:`RegionPCATransformer` can process it.
+        For ``data_type="array"`` the standard numpy reshape path is used.
+
+        Returns:
+            tuple: ``(X, y)`` where *X* is either a list of mesh dicts or a
+            reshaped ``np.ndarray``.
+        """
+        if getattr(self.model, "data_type", "array") == "mesh":
+            mesh_list, targets = self._dataloader_to_mesh_list(dataloader)
+            return mesh_list, targets.flatten()
+        return self._reshape_data(dataloader)
 
     def set_fold(self, fold_idx: int):
         super().set_fold(fold_idx)
@@ -198,7 +240,7 @@ class SklearnTrainer(BaseTrainer):
         Args:
             dataloader (DataLoader): PyTorch DataLoader with training data.
         """
-        features, targets = self._reshape_data(dataloader)
+        features, targets = self._load_data(dataloader)
         self.model.fit(features, targets)
 
     def predict(self, dataloader: DataLoader):
@@ -207,7 +249,7 @@ class SklearnTrainer(BaseTrainer):
         Args:
             dataloader (DataLoader): PyTorch DataLoader with data to predict.
         """
-        features, _ = self._reshape_data(dataloader)
+        features, _ = self._load_data(dataloader)
         preds = self.model.predict(features)
         if self.output_dim == 2:
             return preds.reshape(-1, 1)

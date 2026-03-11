@@ -1,0 +1,4 @@
+name: group_lasso
+
+backbone:
+  in_features: 1

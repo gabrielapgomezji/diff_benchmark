@@ -16,6 +16,7 @@ from diff_benchmark.preprocessing.utils.utils_brain_feature_extraction import (
     load_template_surface,
 )
 from diff_benchmark.preprocessing.utils.utils_graph_export import (
+    build_mesh_stem,
     export_mesh_graph,
     mesh_parquet_paths,
 )
@@ -365,6 +366,9 @@ class MeshPipeline(BrainDataPreparationPipeline):
         super().__init__(dataset_config)
         self.surface_type = surface_type
         self._template_mesh: dict | None = None  # lazily loaded
+        # Atlas identifier — always "schaefer" for the current pipeline;
+        # n_parcels comes from dataset_config.scale (e.g. 1000).
+        self.atlas_name: str = "schaefer"
         # Mesh pipeline keeps its own results root separate from "default/"
         self.results_root = Path(dataset_config.results_dir) / "mesh"
         # Root where microstructure (.scalar.gii / .nii.gz) files are stored
@@ -399,17 +403,20 @@ class MeshPipeline(BrainDataPreparationPipeline):
 
         Checks for BIDS-named files:
 
-        - ``sub-<id>_param-<metric>_tissue-<tissue_type>_nodes.parquet``
-        - ``sub-<id>_param-<metric>_tissue-<tissue_type>_edges.parquet``
-        - ``sub-<id>_param-<metric>_tissue-<tissue_type>_mesh.npz``
+        - ``sub-<id>_param-<metric>_tissue-<tissue_type>_atlas-<prefix><n_parcels>_nodes.parquet``
+        - ``sub-<id>_param-<metric>_tissue-<tissue_type>_atlas-<prefix><n_parcels>_edges.parquet``
+        - ``sub-<id>_param-<metric>_tissue-<tissue_type>_atlas-<prefix><n_parcels>_mesh.npz``
 
         all inside ``mesh/derivatives/sub-<id>/dwi/``.
         """
         d = self._mesh_dwi_dir(subject_id)
         nodes_path, edges_path = mesh_parquet_paths(
-            subject_id, d, self.metric, self.tissue_type
+            subject_id, d, self.metric, self.tissue_type,
+            self.atlas_name, self.scale,
         )
-        stem = f"sub-{subject_id}_param-{self.metric}_tissue-{self.tissue_type}"
+        stem = build_mesh_stem(
+            subject_id, self.metric, self.tissue_type, self.atlas_name, self.scale
+        )
         return (
             nodes_path.exists()
             and edges_path.exists()
@@ -503,10 +510,12 @@ class MeshPipeline(BrainDataPreparationPipeline):
         output_dir: Path,
         metric: str,
         tissue_type: str,
+        atlas_name: str = "schaefer",
+        n_parcels: int = 1000,
     ) -> Path:
         """Save mesh arrays to a compressed ``.npz`` for offline inspection.
 
-        Writes ``sub-{subject_id}_param-{metric}_tissue-{tissue_type}_mesh.npz``
+        Writes ``sub-{subject_id}_param-{metric}_tissue-{tissue_type}_atlas-<prefix>{n_parcels}_mesh.npz``
         containing arrays: ``vertices``, ``faces``, ``features``, ``parcel_labels``.
 
         Args:
@@ -515,13 +524,15 @@ class MeshPipeline(BrainDataPreparationPipeline):
             output_dir: Directory to write into (created if absent).
             metric: Microstructure metric name (e.g. ``"ndi"``).
             tissue_type: Tissue type (e.g. ``"white"`` or ``"gray"``).
+            atlas_name: Atlas name (e.g. ``"schaefer"``).
+            n_parcels: Number of parcels (e.g. ``1000``).
 
         Returns:
             Path to the written file.
         """
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
-        stem = f"sub-{subject_id}_param-{metric}_tissue-{tissue_type}"
+        stem = build_mesh_stem(subject_id, metric, tissue_type, atlas_name, n_parcels)
         npz_path = output_dir / f"{stem}_mesh.npz"
         np.savez_compressed(
             npz_path,
@@ -733,6 +744,8 @@ class MeshPipeline(BrainDataPreparationPipeline):
                         graph_dir=mesh_dir,
                         metric=self.metric,
                         tissue_type=tissue_type,
+                        atlas_name=self.atlas_name,
+                        n_parcels=self.scale,
                     )
                     self.results[subject_id] = mesh
                 except Exception as load_err:
@@ -824,6 +837,7 @@ class MeshPipeline(BrainDataPreparationPipeline):
                     subject_id=subject_id,
                     metric=self.metric,
                     hemisphere="LR",
+                    n_left_vertices=lv.shape[0],
                 )
 
                 # Validate before exporting
@@ -844,6 +858,8 @@ class MeshPipeline(BrainDataPreparationPipeline):
                             output_dir=mesh_dir,
                             metric=self.metric,
                             tissue_type=tissue_type,
+                            atlas_name=self.atlas_name,
+                            n_parcels=self.scale,
                             overwrite=False,
                         )
                     except Exception as export_err:
@@ -859,6 +875,8 @@ class MeshPipeline(BrainDataPreparationPipeline):
                             mesh, subject_id, mesh_dir,
                             metric=self.metric,
                             tissue_type=tissue_type,
+                            atlas_name=self.atlas_name,
+                            n_parcels=self.scale,
                         )
                     except Exception as npz_err:
                         logger.warning(
@@ -934,15 +952,12 @@ class MeshPipeline(BrainDataPreparationPipeline):
 
         Only subjects whose output files exist on disk are included.
         """
-        from diff_benchmark.preprocessing.utils.utils_graph_export import (
-            mesh_parquet_paths,
-        )
-
         paths: dict = {}
         for subject_id in self.results:
             mesh_dir = self._mesh_dwi_dir(subject_id)
             nodes_path, edges_path = mesh_parquet_paths(
-                subject_id, mesh_dir, self.metric, self.tissue_type
+                subject_id, mesh_dir, self.metric, self.tissue_type,
+                self.atlas_name, self.scale,
             )
             if nodes_path.exists() and edges_path.exists():
                 paths[subject_id] = {

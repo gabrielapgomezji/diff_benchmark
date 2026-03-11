@@ -13,18 +13,13 @@ from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
     config_name="main",
 )
 def main(cfg: DictConfig) -> None:
-    """CLI entry point for surface mesh feature extraction.
-
-    Computes microstructure maps for all subjects and projects them onto the
-    cortical surface mesh.  Outputs are stored under
-    ``<results_dir>/mesh/derivatives/sub-<id>/dwi/``.
-
-    Usage::
-
-        diffbenchmark-mesh
-        diffbenchmark-mesh dataset=camcan
     """
-    print("Running mesh feature extraction")
+    CLI entrypoint:
+        diffbenchmark features [hydra overrides]
+
+    Computes microstructure features for configured datasets.
+    """
+    print("Running feature extraction")
 
     dataset_cfg = OmegaConf.to_container(cfg.dataset, resolve=True)
     cluster_cfg = cfg.cluster.paths[dataset_cfg["name"]]
@@ -35,12 +30,10 @@ def main(cfg: DictConfig) -> None:
         results_dir=Path(cluster_cfg.results_dir),
     )
 
-    surface_type = getattr(dataset_selected, "mesh_surface_type", "midthickness")
-    pipeline = MeshPipeline(dataset_selected, surface_type=surface_type)
+    pipeline = MeshPipeline(dataset_selected, surface)
     pipeline.run_pipeline(
-        cluster_conf=cfg.cluster.conf, slurm_cfg=cfg.cluster.slurm_cfg, recompute=True
+        recompute=True, cluster_conf=cfg.cluster.conf, slurm_cfg=cfg.cluster.slurm_cfg
     )
-    pipeline.run_analysis(mesh_cfg=cfg.mesh_pipeline)
 
 
 if __name__ == "__main__":

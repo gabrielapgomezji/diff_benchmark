@@ -830,6 +830,16 @@ def build_parcel_label_vector(
     into a single ``(N_L + N_R,)`` int32 vector.  Vertices on the medial wall
     (parcel ID == 0) are left as 0.
 
+    .. important::
+        Right-hemisphere labels are **offset by the maximum left-hemisphere
+        label** so that every parcel has a globally unique ID.  For a
+        Schaefer-1000 atlas the left hemisphere uses labels 1–500 and the
+        right hemisphere labels are shifted to 501–1000 in the combined
+        vector.  Without this offset both hemispheres share the same 1–500
+        range, causing the model to collapse LH and RH parcels with the same
+        index into a single pooled region and producing only 500 parcels
+        instead of 1000.
+
     Args:
         schaefer_resampled: Dict returned by :func:`resample_schaefer_onto_fs_lr`.
         n_left: Expected number of left-hemisphere vertices.  If given and the
@@ -837,7 +847,9 @@ def build_parcel_label_vector(
         n_right: Expected number of right-hemisphere vertices.
 
     Returns:
-        ``(N_L + N_R,)`` int32 array of parcel IDs.
+        ``(N_L + N_R,)`` int32 array of parcel IDs where left labels are
+        1…K and right labels are K+1…2K (K = number of non-zero LH parcels).
+        Medial-wall vertices retain label 0.
     """
     left_labels = schaefer_resampled["left.data"].astype(np.int32)
     right_labels = schaefer_resampled["right.data"].astype(np.int32)
@@ -853,7 +865,21 @@ def build_parcel_label_vector(
             len(right_labels), n_right,
         )
 
-    return np.concatenate([left_labels, right_labels])
+    # Offset right-hemisphere labels so they are globally unique.
+    # Label 0 (medial wall) is kept as 0 in both hemispheres.
+    max_left_label = int(left_labels.max()) if left_labels.size > 0 else 0
+    right_labels_offset = right_labels.copy()
+    right_labels_offset[right_labels_offset > 0] += max_left_label
+
+    logger.debug(
+        "build_parcel_label_vector: LH labels 1–%d, RH labels %d–%d (offset=%d)",
+        max_left_label,
+        max_left_label + 1,
+        max_left_label + int(right_labels[right_labels > 0].max()) if right_labels[right_labels > 0].size > 0 else max_left_label,
+        max_left_label,
+    )
+
+    return np.concatenate([left_labels, right_labels_offset])
 
 
 def extract_region_data(

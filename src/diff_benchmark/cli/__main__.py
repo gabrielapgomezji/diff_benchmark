@@ -19,6 +19,11 @@ def main():
         from diff_benchmark.cli.run import main
 
         main()
+        
+    elif command == "run-jz":
+        from diff_benchmark.cli.run_jz import main
+
+        main()
 
     elif command == "analysis":
         from diff_benchmark.cli.analysis import main

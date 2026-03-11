@@ -17,6 +17,9 @@ For each subject two files are written inside *output_dir*:
     node_id       0-based vertex index (int32).
     x, y, z       Vertex coordinates in mm (float32).
     parcel_label  Schaefer parcel ID (int32); 0 = medial wall / unlabelled.
+                  Right-hemisphere labels are offset by the maximum LH label
+                  so all parcel IDs are globally unique across both hemispheres.
+    hemisphere    Hemisphere indicator (int8): 0 = left, 1 = right.
     feature_0 …   Per-vertex microstructure values (float32).  The column
                   name suffix matches the column index in ``features``.
     ============  ============================================================
@@ -58,6 +61,60 @@ logger = setup_logger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# Filename helpers
+# ---------------------------------------------------------------------------
+
+# Mapping from full atlas names to their short prefix used in filenames.
+_ATLAS_PREFIXES: dict[str, str] = {
+    "schaefer": "scha",
+    "scha": "scha",
+}
+
+
+def build_mesh_stem(
+    subject_id: str,
+    metric: str,
+    tissue_type: str,
+    atlas_name: str,
+    n_parcels: int,
+) -> str:
+    """Return the BIDS-style filename stem for mesh output files.
+
+    The stem follows the pattern::
+
+        sub-<subject_id>_param-<metric>_tissue-<tissue_type>_atlas-<prefix><n_parcels>
+
+    where ``<prefix>`` is the short identifier for *atlas_name* (e.g.
+    ``"scha"`` for Schaefer).
+
+    Args:
+        subject_id: Subject identifier (without ``sub-`` prefix).
+        metric: Microstructure metric (e.g. ``"md"``, ``"ndi"``).
+        tissue_type: Tissue type (e.g. ``"gray"``, ``"white"``).
+        atlas_name: Full or short atlas name (e.g. ``"schaefer"`` or
+            ``"scha"``).  Case-insensitive.
+        n_parcels: Number of parcels in the atlas (e.g. ``1000``).
+
+    Returns:
+        Filename stem string, e.g.
+        ``"sub-100206_param-md_tissue-gray_atlas-scha1000"``.
+
+    Raises:
+        ValueError: If *atlas_name* is not recognised.
+    """
+    prefix = _ATLAS_PREFIXES.get(atlas_name.lower())
+    if prefix is None:
+        raise ValueError(
+            f"Unknown atlas_name '{atlas_name}'. "
+            f"Recognised names: {list(_ATLAS_PREFIXES)}"
+        )
+    return (
+        f"sub-{subject_id}_param-{metric}_tissue-{tissue_type}"
+        f"_atlas-{prefix}{n_parcels}"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -69,14 +126,16 @@ def export_mesh_graph(
     *,
     metric: str,
     tissue_type: str,
+    atlas_name: str = "schaefer",
+    n_parcels: int,
     overwrite: bool = False,
 ) -> tuple[Path, Path]:
     """Serialise a :class:`~diff_benchmark.data.surface_mesh.SurfaceMeshData` to Parquet.
 
     Writes BIDS-named files inside *output_dir*:
 
-    - ``sub-<id>_param-<metric>_tissue-<tissue_type>_nodes.parquet``
-    - ``sub-<id>_param-<metric>_tissue-<tissue_type>_edges.parquet``
+    - ``sub-<id>_param-<metric>_tissue-<tissue_type>_atlas-<prefix><n_parcels>_nodes.parquet``
+    - ``sub-<id>_param-<metric>_tissue-<tissue_type>_atlas-<prefix><n_parcels>_edges.parquet``
 
     Skips serialisation (returns existing paths) when both files already exist
     and *overwrite* is ``False``.
@@ -89,6 +148,9 @@ def export_mesh_graph(
             automatically if it does not exist.
         metric: Microstructure metric name (e.g. ``"ndi"``).
         tissue_type: Tissue type (e.g. ``"white"`` or ``"gray"``).
+        atlas_name: Atlas name used for the filename identifier (e.g.
+            ``"schaefer"``).  Defaults to ``"schaefer"``.
+        n_parcels: Number of parcels in the atlas (e.g. ``1000``).
         overwrite: When ``True``, re-export even if the files already exist.
 
     Returns:
@@ -100,8 +162,9 @@ def export_mesh_graph(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    nodes_path = output_dir / f"sub-{subject_id}_param-{metric}_tissue-{tissue_type}_nodes.parquet"
-    edges_path = output_dir / f"sub-{subject_id}_param-{metric}_tissue-{tissue_type}_edges.parquet"
+    stem = build_mesh_stem(subject_id, metric, tissue_type, atlas_name, n_parcels)
+    nodes_path = output_dir / f"{stem}_nodes.parquet"
+    edges_path = output_dir / f"{stem}_edges.parquet"
 
     if nodes_path.exists() and edges_path.exists() and not overwrite:
         logger.debug(
@@ -134,6 +197,15 @@ def export_mesh_graph(
     n_feat = features.shape[1] if features.ndim == 2 else 1
     feat_2d = features if features.ndim == 2 else features[:, np.newaxis]
 
+    # Build hemisphere indicator: 0 = LH, 1 = RH.
+    # Use n_left_vertices stored on the mesh when available; fall back to
+    # splitting at the midpoint for legacy objects that lack the attribute.
+    n_left = getattr(mesh, "n_left_vertices", None)
+    if n_left is None:
+        n_left = n_nodes // 2
+    hemi_col = np.zeros(n_nodes, dtype=np.int8)
+    hemi_col[n_left:] = 1  # RH vertices
+
     node_dict: dict = {
         "subject_id": np.full(n_nodes, subject_id, dtype=object),
         "node_id": np.arange(n_nodes, dtype=np.int32),
@@ -141,6 +213,7 @@ def export_mesh_graph(
         "y": vertices[:, 1],
         "z": vertices[:, 2],
         "parcel_label": parcel_labels.astype(np.int32),
+        "hemisphere": hemi_col,
     }
     for f_idx in range(n_feat):
         node_dict[f"feature_{f_idx}"] = feat_2d[:, f_idx].astype(np.float32)
@@ -164,6 +237,8 @@ def mesh_parquet_paths(
     graph_dir: Path,
     metric: str,
     tissue_type: str,
+    atlas_name: str = "schaefer",
+    n_parcels: int = 1000,
 ) -> tuple[Path, Path]:
     """Return the expected BIDS-named Parquet paths for *subject_id*.
 
@@ -172,12 +247,16 @@ def mesh_parquet_paths(
         graph_dir: Directory containing the Parquet files.
         metric: Microstructure metric name.
         tissue_type: Tissue type.
+        atlas_name: Atlas name (e.g. ``"schaefer"``).  Defaults to
+            ``"schaefer"``.
+        n_parcels: Number of parcels (e.g. ``1000``).  Defaults to ``1000``.
 
     Returns:
         ``(nodes_path, edges_path)`` as :class:`Path` objects.
     """
     graph_dir = Path(graph_dir)
-    return graph_dir / f"sub-{subject_id}_param-{metric}_tissue-{tissue_type}_nodes.parquet", graph_dir / f"sub-{subject_id}_param-{metric}_tissue-{tissue_type}_edges.parquet"
+    stem = build_mesh_stem(subject_id, metric, tissue_type, atlas_name, n_parcels)
+    return graph_dir / f"{stem}_nodes.parquet", graph_dir / f"{stem}_edges.parquet"
 
 
 def load_graph_from_parquet(
@@ -185,13 +264,15 @@ def load_graph_from_parquet(
     graph_dir: Path,
     metric: str,
     tissue_type: str,
+    atlas_name: str = "schaefer",
+    n_parcels: int = 1000,
 ) -> "SurfaceMeshData":  # noqa: F821
     """Reconstruct a :class:`~diff_benchmark.data.surface_mesh.SurfaceMeshData` from Parquet files.
 
     Reads BIDS-named Parquet files:
 
-    - ``sub-<id>_param-<metric>_tissue-<tissue_type>_nodes.parquet``
-    - ``sub-<id>_param-<metric>_tissue-<tissue_type>_edges.parquet``
+    - ``sub-<id>_param-<metric>_tissue-<tissue_type>_atlas-<prefix><n_parcels>_nodes.parquet``
+    - ``sub-<id>_param-<metric>_tissue-<tissue_type>_atlas-<prefix><n_parcels>_edges.parquet``
 
     Because the edge list is stored without face connectivity, the ``faces``
     array is set to an empty ``(0, 3)`` array (faces are not needed for GNN or
@@ -202,6 +283,9 @@ def load_graph_from_parquet(
         graph_dir: Directory containing the Parquet files.
         metric: Microstructure metric name used in the filename.
         tissue_type: Tissue type used in the filename.
+        atlas_name: Atlas name (e.g. ``"schaefer"``).  Defaults to
+            ``"schaefer"``.
+        n_parcels: Number of parcels (e.g. ``1000``).  Defaults to ``1000``.
 
     Returns:
         :class:`~diff_benchmark.data.surface_mesh.SurfaceMeshData` with
@@ -213,7 +297,9 @@ def load_graph_from_parquet(
     # Lazy import to avoid circular dependency at module load time
     from diff_benchmark.data.surface_mesh import SurfaceMeshData
 
-    nodes_path, edges_path = mesh_parquet_paths(subject_id, graph_dir, metric, tissue_type)
+    nodes_path, edges_path = mesh_parquet_paths(
+        subject_id, graph_dir, metric, tissue_type, atlas_name, n_parcels
+    )
 
     if not nodes_path.exists():
         raise FileNotFoundError(f"Nodes file not found: {nodes_path}")
@@ -228,6 +314,16 @@ def load_graph_from_parquet(
 
     # Parcel labels
     parcel_labels = nodes_df["parcel_label"].to_numpy(dtype=np.int32)
+
+    # Hemisphere indicator (0=LH, 1=RH) — present in newly-exported files;
+    # fall back to a midpoint split for legacy parquets that lack the column.
+    if "hemisphere" in nodes_df.columns:
+        hemi_col = nodes_df["hemisphere"].to_numpy(dtype=np.int8)
+        n_left = int(np.sum(hemi_col == 0))
+    else:
+        n_left = len(nodes_df) // 2
+        hemi_col = np.zeros(len(nodes_df), dtype=np.int8)
+        hemi_col[n_left:] = 1
 
     # Features — all columns that start with "feature_"
     feat_cols = sorted(
@@ -260,6 +356,7 @@ def load_graph_from_parquet(
         subject_id=subject_id,
         metric=None,
         hemisphere="LR",
+        n_left_vertices=n_left,
     )
 
 

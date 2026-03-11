@@ -2,7 +2,7 @@ name: hcp
 data_reading: hcp
 
 metric_to_compute: md
-scale: 1000
+scale: 100
 
 big_delta: 0.0431
 small_delta: 0.0106

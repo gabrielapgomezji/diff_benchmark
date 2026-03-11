@@ -149,6 +149,8 @@ def _export_debug_npz(
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    # Use a simple subject-only stem since metric/atlas context is not
+    # available in this standalone visualisation helper.
     npz_path = output_dir / f"{subject_id}_mesh.npz"
     np.savez_compressed(
         npz_path,
@@ -329,7 +331,14 @@ def main(cfg: DictConfig) -> None:
         )
         # Load mesh from already-exported Parquet files
         try:
-            mesh = load_graph_from_parquet(subject_id=subject_id, graph_dir=graph_dir)
+            mesh = load_graph_from_parquet(
+                subject_id=subject_id,
+                graph_dir=graph_dir,
+                metric=pipeline.metric,
+                tissue_type=pipeline.tissue_type,
+                atlas_name=pipeline.atlas_name,
+                n_parcels=pipeline.scale,
+            )
         except FileNotFoundError as exc:
             raise SystemExit(
                 f"[mesh_visualize] Graph Parquet not found for subject '{subject_id}' "

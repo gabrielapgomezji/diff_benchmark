@@ -313,3 +313,166 @@ def build_additive_parcel_head(
         lambda2=lambda2,
         bias=bias,
     )
+
+class SimpleAdditiveParcelHead(nn.Module):
+    """
+    Simple additive parcel prediction head.
+
+    Model
+    -----
+    Given parcel embeddings (B, P, E):
+
+        z_{b,p} ∈ ℝ^E
+
+    The prediction is:
+
+        ŷ_b = Σ_p w_p (uᵀ z_{b,p}) + b
+
+    where
+
+        u ∈ ℝ^E    : shared embedding projection
+        w_p        : parcel weight
+        b          : bias
+
+    Advantages
+    ----------
+    • keeps parcels independent
+    • far fewer parameters than full parcel linear model
+    • very interpretable (parcel importance = w_p)
+    """
+
+    def __init__(
+        self,
+        embed_dim: int,
+        output_dim: int = 1,
+        bias: bool = True,
+    ):
+        super().__init__()
+
+        self.embed_dim = embed_dim
+        self.output_dim = output_dim
+
+        # shared embedding projection
+        self.u = nn.Parameter(torch.randn(output_dim, embed_dim))
+
+        # parcel weights (lazy because P unknown)
+        self.w: Optional[nn.Parameter] = None
+        self.n_parcels: Optional[int] = None
+
+        self.bias = nn.Parameter(torch.zeros(output_dim)) if bias else None
+
+    def _init_parcel_weights(self, P: int, device: torch.device):
+        if self.w is not None:
+            return
+
+        self.n_parcels = P
+        self.w = nn.Parameter(torch.ones(P, self.output_dim)).to(device)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Args
+        ----
+        x : Tensor (B, P, E)
+
+        Returns
+        -------
+        Tensor (B, C)
+        """
+
+        if x.dim() != 3:
+            raise ValueError(f"Expected (B,P,E), got {x.shape}")
+
+        B, P, E = x.shape
+
+        if E != self.embed_dim:
+            raise ValueError(
+                f"embed_dim mismatch: expected {self.embed_dim}, got {E}"
+            )
+
+        device = x.device
+        self._init_parcel_weights(P, device)
+
+        assert self.w is not None
+
+        # shared projection of embeddings
+        # (B,P,E) × (C,E) -> (B,P,C)
+        scores = torch.einsum("ce,bpe->bpc", self.u, x)
+
+        # apply parcel weights
+        # (B,P,C) * (P,C)
+        weighted = scores * self.w
+
+        # sum parcels
+        out = weighted.sum(dim=1)
+
+        if self.bias is not None:
+            out = out + self.bias
+
+        return out
+
+    def parcel_contributions(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Returns each parcel's contribution before summation.
+
+        Output shape
+        ------------
+        (B, P, C)
+        """
+
+        B, P, E = x.shape
+        device = x.device
+
+        self._init_parcel_weights(P, device)
+
+        scores = torch.einsum("ce,bpe->bpc", self.u, x)
+        contrib = scores * self.w
+
+        return contrib
+
+    def __repr__(self):
+
+        P = self.n_parcels if self.n_parcels is not None else "?"
+        return (
+            f"SimpleAdditiveParcelHead("
+            f"embed_dim={self.embed_dim}, "
+            f"output_dim={self.output_dim}, "
+            f"n_parcels={P})"
+        )
+
+def build_simple_parcel_head(
+    embed_dim: int,
+    prediction_task: str,
+    bias: bool = True,
+    **_kwargs,
+) -> AdditiveParcelHead:
+    """Build an :class:`AdditiveParcelHead` for the given task.
+
+    Args:
+        embed_dim: Dimensionality of each parcel embedding (``k * F`` from
+            the backbone).
+        prediction_task: ``"regression"`` or ``"binary_classification"``.
+        reg_type: One of ``"none"``, ``"group_lasso"``, ``"group_elastic_net"``.
+        lambda1: Group-norm penalty coefficient.
+        lambda2: Squared-norm penalty coefficient (elastic net only).
+        bias: Whether to include a global bias term.
+
+    Returns:
+        Configured :class:`AdditiveParcelHead`.
+
+    Raises:
+        ValueError: If *prediction_task* is unrecognised.
+    """
+    if prediction_task == "regression":
+        output_dim = 1
+    elif prediction_task == "binary_classification":
+        output_dim = 2
+    else:
+        raise ValueError(
+            f"Unknown prediction_task '{prediction_task}'. "
+            "Expected 'regression' or 'binary_classification'."
+        )
+
+    return SimpleAdditiveParcelHead(
+        embed_dim=embed_dim,
+        output_dim=output_dim,
+        bias=bias)

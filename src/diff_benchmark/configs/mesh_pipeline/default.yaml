@@ -1,0 +1,12 @@
+# Mesh pipeline output and visualisation configuration.
+#
+# export_graph        – write *_nodes.parquet and *_edges.parquet to
+#                       <results_dir>/mesh/derivatives/sub-<id>/dwi/
+# export_debug_mesh   – write sub-<id>_mesh.npz alongside the parquet files
+# run_visualization   – render and save a plot after building the mesh
+# visualization_method – "plotly" (interactive HTML) or "nilearn" (static PNG)
+
+export_graph: true
+export_debug_mesh: true
+run_visualization: false
+visualization_method: "plotly"   # "plotly" | "nilearn"

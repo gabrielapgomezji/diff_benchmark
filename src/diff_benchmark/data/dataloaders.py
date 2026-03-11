@@ -109,6 +109,11 @@ class PreprocessedData:
                   "node_features":  FloatTensor (N, F),
                   "vertices":       FloatTensor (N, 3),
                   "parcel_labels":  LongTensor  (N,),
+                  "hemisphere":     LongTensor  (N,),   # 0=LH, 1=RH
+                  "edge_index":     LongTensor  (2, E),
+              }
+                  "vertices":       FloatTensor (N, 3),
+                  "parcel_labels":  LongTensor  (N,),
                   "edge_index":     LongTensor  (2, E),
               }
 
@@ -156,6 +161,36 @@ class PreprocessedData:
                     dtype=torch.long,
                 )  # (N,)
 
+                # Hemisphere indicator: 0 = LH, 1 = RH.
+                # Present in newly-exported parquets; fall back to midpoint split
+                # for legacy files that pre-date the hemisphere column.
+                if "hemisphere" in nodes_df.columns:
+                    hemisphere = torch.tensor(
+                        nodes_df["hemisphere"].to_numpy(dtype="int8"),
+                        dtype=torch.long,
+                    )  # (N,)
+                else:
+                    n_total = len(nodes_df)
+                    hemi_np = np.zeros(n_total, dtype=np.int8)
+                    hemi_np[n_total // 2 :] = 1
+                    hemisphere = torch.from_numpy(hemi_np).long()  # (N,)
+
+                # --- Ensure RH parcel labels are globally unique --------
+                # Parquets written before the build_parcel_label_vector fix
+                # store RH labels in 1–K (same range as LH), causing _pool_parcels
+                # to collapse 1000 Schaefer parcels into 500.  Detect this by
+                # checking whether max(RH) > max(LH); if not, apply the offset
+                # here so the model always sees globally unique label IDs.
+                rh_mask = hemisphere == 1
+                lh_mask = hemisphere == 0
+                if rh_mask.any() and lh_mask.any():
+                    max_lh = int(parcel_labels[lh_mask].max())
+                    max_rh = int(parcel_labels[rh_mask & (parcel_labels > 0)].max()) if (rh_mask & (parcel_labels > 0)).any() else 0
+                    if max_rh > 0 and max_rh <= max_lh:
+                        # Old encoding — apply offset in-place on a clone
+                        parcel_labels = parcel_labels.clone()
+                        parcel_labels[rh_mask & (parcel_labels > 0)] += max_lh
+
                 # ---- edges parquet ----
                 edges_df = pd.read_parquet(paths["edges_path"], engine="pyarrow")
                 edge_index = torch.tensor(
@@ -167,6 +202,7 @@ class PreprocessedData:
                     "node_features": node_features,
                     "vertices":      vertices,
                     "parcel_labels": parcel_labels,
+                    "hemisphere":    hemisphere,
                     "edge_index":    edge_index,
                 })
 
