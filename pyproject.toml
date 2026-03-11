@@ -46,6 +46,7 @@ dependencies = [
 [project.scripts]
 diffbenchmark-features = "diff_benchmark.cli.features:main"
 diffbenchmark-run = "diff_benchmark.cli.run:main"
+diffbenchmark-run-jz = "diff_benchmark.cli.run-jz:main"
 diffbenchmark-analysis = "diff_benchmark.cli.analysis:main"
 diffbenchmark-resample = "diff_benchmark.cli.resample:main"
 diffbenchmark-distribution = "diff_benchmark.cli.data_distribution:main"
