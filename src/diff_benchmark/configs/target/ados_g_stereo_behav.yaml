@@ -1,0 +1,4 @@
+# abide
+target_column: 
+  - ados_g_stereo_behav
+prediction_task: regression

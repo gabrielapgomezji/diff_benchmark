@@ -1,0 +1,4 @@
+# abide
+target_column: 
+  - ados_g_total
+prediction_task: regression

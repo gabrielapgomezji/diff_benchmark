@@ -1,0 +1,4 @@
+#hcp
+target_column: 
+  - DDisc_AUC_40K
+prediction_task: regression
