@@ -363,7 +363,26 @@ class MeshPipeline(BrainDataPreparationPipeline):
         dataset_config: DatasetConfig,
         surface_type: str = "midthickness",
     ):
-        super().__init__(dataset_config)
+        # Temporarily patch data_reading so the base-class __init__ does NOT
+        # call _init_bids_layouts().  MeshPipeline only reads pre-computed
+        # Parquet/NPZ files and never needs the BIDS index — which may be
+        # absent or corrupt on inference-only clusters.
+        _original_data_reading = dataset_config.data_reading
+        try:
+            object.__setattr__(dataset_config, "data_reading", "hcp")
+        except (AttributeError, TypeError):
+            # dataclass / frozen — fall back to direct dict mutation
+            dataset_config.__dict__["data_reading"] = "hcp"
+        try:
+            super().__init__(dataset_config)
+        finally:
+            try:
+                object.__setattr__(dataset_config, "data_reading", _original_data_reading)
+            except (AttributeError, TypeError):
+                dataset_config.__dict__["data_reading"] = _original_data_reading
+        # Restore the real value so the rest of the pipeline logic is correct
+        self.data_reading = _original_data_reading
+        self.layouts: list = []  # empty — never used by MeshPipeline
         self.surface_type = surface_type
         self._template_mesh: dict | None = None  # lazily loaded
         # Atlas identifier — always "schaefer" for the current pipeline;
