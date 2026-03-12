@@ -44,16 +44,29 @@ Notes
 
 from __future__ import annotations
 
+import logging
+import os
 from typing import Dict, List, Optional
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.decomposition import PCA
+from sklearn.decomposition import IncrementalPCA
 from sklearn.linear_model import Ridge, LogisticRegression
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 
 from diff_benchmark.models.utils_models.trainer import SklearnModel
+
+
+def _rss_mb() -> float | None:
+    """Return the current process RSS in MB, or ``None`` if unavailable."""
+    try:
+        import resource
+        return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+    except Exception:
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -83,7 +96,7 @@ class RegionPCATransformer(BaseEstimator, TransformerMixin):
 
     Attributes
     ----------
-    pca_per_region_ : dict[int, PCA]
+    pca_per_region_ : dict[int, IncrementalPCA]
         Fitted PCA objects keyed by parcel label.  Set after ``fit``.
     region_order_ : list[int]
         Sorted list of parcel labels seen during ``fit``; defines the
@@ -121,7 +134,11 @@ class RegionPCATransformer(BaseEstimator, TransformerMixin):
     # ------------------------------------------------------------------
 
     def fit(self, X: List[Dict], y=None) -> "RegionPCATransformer":
-        """Fit one PCA per parcel on the concatenated training subjects.
+        """Fit one PCA per parcel using incremental updates (one subject at a time).
+
+        Uses :class:`~sklearn.decomposition.IncrementalPCA` so that at any
+        point only a single subject's node features are held in RAM, rather
+        than the full ``(n_subjects × nodes_per_parcel, F)`` matrix.
 
         Parameters
         ----------
@@ -136,32 +153,67 @@ class RegionPCATransformer(BaseEstimator, TransformerMixin):
         self
         """
         # ----------------------------------------------------------------
-        # 1. Collect all vertices per parcel across training subjects
+        # Pass 1 — lightweight scan: determine parcel labels, clamp k.
+        # No node features are stored; only per-parcel min-node counts.
         # ----------------------------------------------------------------
-        parcel_nodes: dict[int, list[np.ndarray]] = {}
+        parcel_min_nodes: dict[int, int] = {}
+        n_features: int = 0
 
         for mesh in X:
             nf, pl = self._extract_arrays(mesh)
-            unique_labels = np.unique(pl)
-            for label in unique_labels:
+            if n_features == 0:
+                n_features = nf.shape[1]
+            for label in np.unique(pl):
                 if label == 0:
-                    continue  # medial wall / background
-                mask = pl == label
-                parcel_nodes.setdefault(int(label), []).append(nf[mask])
+                    continue
+                n_nodes = int((pl == label).sum())
+                label = int(label)
+                if label not in parcel_min_nodes or n_nodes < parcel_min_nodes[label]:
+                    parcel_min_nodes[label] = n_nodes
 
         # ----------------------------------------------------------------
-        # 2. Fit PCA per parcel
+        # Initialise one IncrementalPCA per parcel with the correct k.
         # ----------------------------------------------------------------
-        self.pca_per_region_: dict[int, PCA] = {}
+        self.pca_per_region_: dict[int, IncrementalPCA] = {}
         self.n_components_per_region_: dict[int, int] = {}
 
-        for label, node_list in parcel_nodes.items():
-            region_matrix = np.concatenate(node_list, axis=0)  # (M_total, F)
-            k = min(self.n_components, region_matrix.shape[0], region_matrix.shape[1])
-            pca = PCA(n_components=k)
-            pca.fit(region_matrix)
-            self.pca_per_region_[label] = pca
+        for label, min_nodes in parcel_min_nodes.items():
+            k = min(self.n_components, min_nodes, n_features)
+            self.pca_per_region_[label] = IncrementalPCA(n_components=k)
             self.n_components_per_region_[label] = k
+
+        # ----------------------------------------------------------------
+        # Pass 2 — incremental fit: one subject at a time per parcel.
+        # Only one subject's mesh is in RAM at each step.
+        # ----------------------------------------------------------------
+        n_subjects = len(X)
+        n_parcels = len(self.pca_per_region_)
+        logger.info(
+            "IncrementalPCA fit starting: %d subjects, %d parcels, "
+            "n_components=%d, n_features=%d — approx. %.1f MB/subject.",
+            n_subjects, n_parcels, self.n_components, n_features,
+            # rough upper bound: full node-feature matrix for one subject
+            next(iter(X))["node_features"].shape[0] * n_features * 8 / 1e6
+            if hasattr(next(iter(X))["node_features"], "shape")
+            else float("nan"),
+        )
+        for subject_idx, mesh in enumerate(X):
+            nf, pl = self._extract_arrays(mesh)
+            skipped = 0
+            for label, pca in self.pca_per_region_.items():
+                mask = pl == label
+                if mask.sum() < pca.n_components:
+                    # Too few nodes in this subject to update this parcel.
+                    skipped += 1
+                    continue
+                pca.partial_fit(nf[mask])
+            mem_mb = _rss_mb()
+            logger.info(
+                "  subject %d/%d done — nf shape %s, parcels skipped: %d, "
+                "process RSS: %s",
+                subject_idx + 1, n_subjects, nf.shape, skipped,
+                f"{mem_mb:.1f} MB" if mem_mb is not None else "n/a",
+            )
 
         self.region_order_: list[int] = sorted(self.pca_per_region_.keys())
         self.n_features_out_: int = sum(
@@ -229,8 +281,12 @@ class RegionPCAModel(SklearnModel):
     Parameters forwarded to ``_build_model``
     -----------------------------------------
     prediction_task : str
-        ``"regression"`` or ``"binary_classification"``.  Only regression is
-        supported; a ``ValueError`` is raised for classification tasks.
+        ``"regression"`` or ``"binary_classification"``.
+    n_jobs : int
+        Passed to :class:`~sklearn.model_selection.GridSearchCV`.
+        Defaults to ``1`` so that per-subject logging from
+        :class:`RegionPCATransformer` is visible in the main process.
+        Set to ``-1`` to re-enable full parallelism once debugging is done.
     random_state : int
         Random seed (default: 42).
 
@@ -249,6 +305,10 @@ class RegionPCAModel(SklearnModel):
     def _build_model(self, **kwargs) -> BaseEstimator:
         self.prediction_task = kwargs.get("prediction_task", "regression")
         self.output_dim = 1
+        # Set n_jobs=1 to keep transformer logs visible (joblib worker
+        # processes swallow logging output). Switch back to -1 once the
+        # OOM investigation is complete.
+        n_jobs = kwargs.get("n_jobs", 1)
 
         if self.prediction_task == "regression":
             estimator = Ridge()
@@ -282,8 +342,8 @@ class RegionPCAModel(SklearnModel):
             param_grid=param_grid,
             scoring=scoring,
             cv=5,
-            n_jobs=-1,
-            verbose=1,
+            n_jobs=n_jobs,
+            verbose=3,
         )
 
     # ------------------------------------------------------------------

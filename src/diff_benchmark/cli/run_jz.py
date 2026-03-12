@@ -190,6 +190,8 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
 
             model = get_model(model_name, OmegaConf.to_container(cfg, resolve=True))
             model.set_fold(fold_idx)
+
+            logger.info(f"Fitting model on fold {fold_idx}...")
             model.fit(train_loader)
 
             # Training split
