@@ -104,6 +104,7 @@ class BrainDataPreparationPipeline(ABC):
     """
 
     def __init__(self, dataset_config: DatasetConfig):
+        breakpoint()
         self.tissue_type = dataset_config.tissue_type
         self.dataset_config = dataset_config
         self.data_reading = dataset_config.data_reading
