@@ -9,6 +9,41 @@
 - **Prediction tasks**: binary classification and regression of cognitive/demographic targets
 
 ---
+## Running on JZ
+
+Jean Zay provides the required Python and PyTorch environment through modules.
+
+```bash
+module load pytorch-gpu/py3/2.7.0
+pip install -e . --no-deps # -no-deps flag prevents reinstalling dependencies already provided by the module environment.
+```
+
+Check that Python imports the package from the repository:
+
+```bash
+python -c "import diff_benchmark; print(diff_benchmark.__file__)"
+# Output
+/lustre/fswork/projects/rech/qlr/commun/diff_benchmark/src/diff_benchmark/__init__.py
+```
+If the output instead points to a .local directory such as `/linkhome/rech/genini01/unc81ab/.local/lib/python3.12/site-packages/diff_benchmark/__init__.py` then an old installation is shadowing the editable version. Remove it, reinstall the package and verify again.
+
+```bash
+rm -rf /linkhome/rech/genini01/unc81ab/.local/lib/python3.12/site-packages/diff_benchmark
+rm -rf /linkhome/rech/genini01/unc81ab/.local/lib/python3.12/site-packages/diff_benchmark-*.dist-info
+pip install -e . --no-deps
+python -c "import diff_benchmark; print(diff_benchmark.__file__)"
+
+# Output
+/lustre/fswork/projects/rech/qlr/commun/diff_benchmark/src/diff_benchmark/__init__.py
+```
+
+Run the benchmark configuration:
+
+```bash
+python -m diff_benchmark.cli.run_jz model=region_pca backend=sklearn
+```
+
+---
 
 ## Installation
 
