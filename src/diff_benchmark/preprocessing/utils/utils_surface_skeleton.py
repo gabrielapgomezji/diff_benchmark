@@ -692,6 +692,7 @@ def resample_schaefer_onto_fs_lr(
         ("L", fsaverage_left_schaefer),
         ("R", fsaverage_right_schaefer),
     ]:
+        breakpoint()
         fslr_sphere = _load_sphere(
             "fsLR", hemi=hemi, density="32k", space="fsaverage"
         )
