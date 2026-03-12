@@ -35,7 +35,7 @@ from diff_benchmark.models.mesh_models.region_pca import RegionPCAModel
 from diff_benchmark.models.mesh_models.sklearn_group_lasso import RegionGroupLassoModel
 from diff_benchmark.models.mesh_models.sklearn_elasticnet import RegionElasticNetModel 
 from diff_benchmark.models.utils_models.additive_parcel_head import build_additive_parcel_head as build_additive_head
-from diff_benchmark.models.utils_models.additive_parcel_head import build_simple_parcel_head
+from diff_benchmark.models.utils_models.additive_parcel_head import build_new_parcel_head
 
 
 class TaskModel(nn.Module):
@@ -150,11 +150,11 @@ def create_model(
         backbone = SpectralLaplacianAdditiveModel(**model_kwargs)
         # AdditiveParcelHead: one weight vector per parcel, optional group regularisation.
         # pred_head may carry reg_type / lambda1 / lambda2 in addition to prediction_task.
-        head = build_additive_head(
-            embed_dim=backbone.parcel_embed_dim,
-            **pred_head,
-        )
-        # head = build_simple_parcel_head(embed_dim=backbone.parcel_embed_dim, **pred_head)
+        # head = build_additive_head(
+        #     embed_dim=backbone.parcel_embed_dim,
+        #     **pred_head,
+        # )
+        head = build_new_parcel_head(embed_dim=backbone.parcel_embed_dim, head_type="attention", **pred_head)
         return TaskModel(backbone, head)
 
     if model_name == "medicalnet":

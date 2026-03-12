@@ -20,17 +20,17 @@ runtime:
 
 
 choices:
-  model: [region_elasticnet]
+  model: [spectral_laplacian]
   dataset: [hcp]
-  backend: [sklearn]
+  # backend: [sklearn]
   # target: [age]
-  # pred_head: [mesh_classification]
+  pred_head: [mesh_classification]
   dataset.tissue_type: [gray]
   dataset.metric_to_compute: [md]
   # cluster: [margaret_cpu]
   cluster.conf.parallel_type: [None]
-  # backend.learning_rate: [1e-4]
-  # backend.weight_decay: [1e-2]
+  backend.learning_rate: [1e-3]
+  backend.weight_decay: [1e-3]
   # pred_head: [mesh_classification]
   # pred_head.lambda1: [0.01]
   # pred_head.lambda2: [0.001]
