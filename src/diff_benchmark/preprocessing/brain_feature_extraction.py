@@ -368,8 +368,7 @@ class MeshPipeline(BrainDataPreparationPipeline):
         dataset_config: DatasetConfig,
         surface_type: str = "midthickness",
     ):
-        super().__init__(dataset_config)
-        breakpoint()
+        super().__init__(dataset_config)        
         self.surface_type = surface_type
         self._template_mesh: dict | None = None  # lazily loaded
         # Atlas identifier — always "schaefer" for the current pipeline;

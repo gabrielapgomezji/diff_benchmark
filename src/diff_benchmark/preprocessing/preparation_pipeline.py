@@ -112,8 +112,7 @@ class BrainDataPreparationPipeline(ABC):
         self.results_dir = Path(dataset_config.results_dir)
         self.metric = dataset_config.metric_to_compute
         self.scale = dataset_config.scale
-        self.surface_space = dataset_config.surface_space
-        breakpoint()
+        self.surface_space = dataset_config.surface_space        
         self.schaefer_resampled = resample_schaefer_onto_fs_lr(
             self.scale, target_space=self.surface_space
         )
