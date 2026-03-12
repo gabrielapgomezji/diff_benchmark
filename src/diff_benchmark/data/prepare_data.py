@@ -82,7 +82,6 @@ def get_data_pipeline(
         logger.info("Using Mesh Pipeline (surface graph representation)")
         print("Using Mesh Pipeline (surface graph representation)")
         surface_type = getattr(dataset, "mesh_surface_type", "midthickness")
-        breakpoint()
         brain_preparator = MeshPipeline(dataset, surface_type=surface_type)
     else:
         raise ValueError(
