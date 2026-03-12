@@ -595,7 +595,7 @@ def resample_subject_to_template(
 
 
 def resample_schaefer_onto_fs_lr(
-    scale: int = 1000, target_space: str = "fslr_32k"
+    scale: int = 100, target_space: str = "fslr_32k"
 ) -> dict:
     """Resample the Schaefer 2018 parcellation onto fsLR or fsaverage space.
 

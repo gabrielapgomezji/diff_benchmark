@@ -1,6 +1,6 @@
 defaults:
   - dataset: hcp
-  - model: dinov2
+  - model: region_pca
   - pred_head: binary_classification
   - backend: torch
   - data: default

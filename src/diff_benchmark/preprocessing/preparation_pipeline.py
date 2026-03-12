@@ -104,7 +104,6 @@ class BrainDataPreparationPipeline(ABC):
     """
 
     def __init__(self, dataset_config: DatasetConfig):
-        breakpoint()
         self.tissue_type = dataset_config.tissue_type
         self.dataset_config = dataset_config
         self.data_reading = dataset_config.data_reading
@@ -114,6 +113,7 @@ class BrainDataPreparationPipeline(ABC):
         self.metric = dataset_config.metric_to_compute
         self.scale = dataset_config.scale
         self.surface_space = dataset_config.surface_space
+        breakpoint()
         self.schaefer_resampled = resample_schaefer_onto_fs_lr(
             self.scale, target_space=self.surface_space
         )
