@@ -3,7 +3,12 @@
 Architecture
 ------------
 For every sample the mesh is decomposed into a fixed set of parcels (brain
-regions identified by ``parcel_labels``).  For each parcel *p*:
+regions identified by ``parcel_labels``).  **Parcel id 0 is treated as
+background (medial wall) and is excluded from all spectral computation and
+embeddings.**  Background vertices remain in the mesh data but do not produce
+any spectral embedding or downstream coefficient.
+
+For each non-background parcel *p*:
 
 1. Extract the induced subgraph (nodes whose ``parcel_labels == p`` and
    edges whose both endpoints are in *p*).
@@ -16,7 +21,7 @@ regions identified by ``parcel_labels``).  For each parcel *p*:
    :math:`k \\cdot F`).
 
 The backbone returns ``(B, n_parcels, k·F)`` — one spectral projection per
-parcel per sample.  A downstream
+non-background parcel per sample.  A downstream
 :class:`~diff_benchmark.models.utils_models.additive_parcel_head.AdditiveParcelHead`
 applies a **per-parcel linear layer** and optionally group-regularises the
 weights, making each parcel's contribution to the scalar prediction directly
@@ -142,6 +147,13 @@ class SpectralLaplacianAdditiveModel(nn.Module):
     :class:`~diff_benchmark.models.utils_models.additive_parcel_head.AdditiveParcelHead`
     consumes this output and applies a linear, interpretable mapping.
 
+    .. note::
+        **Parcel id 0 (background / medial wall) is always excluded.**
+        Background vertices remain in the mesh data but are never processed:
+        no spectral basis is built for them, no embedding is produced, and
+        downstream heads (group lasso, coefficient extraction, contribution
+        visualisations) will not see a coefficient for the background.
+
     Parameters
     ----------
     in_features:
@@ -150,7 +162,8 @@ class SpectralLaplacianAdditiveModel(nn.Module):
         Number of Laplacian eigenvectors (``k``) per parcel.
     parcel_ids:
         Optional list of integer parcel IDs.  Inferred lazily from the
-        first batch if not provided.
+        first batch if not provided.  Parcel 0 is always removed even if
+        explicitly supplied here.
     """
 
     data_type: str = "mesh"
@@ -172,9 +185,10 @@ class SpectralLaplacianAdditiveModel(nn.Module):
         self._parcel_embed_dim: int = n_spectral_components * in_features
 
         # Sorted list of parcel IDs; set lazily if not provided.
+        # Parcel 0 (background / medial wall) is always excluded.
         self._parcel_ids: Optional[List[int]] = None
         if parcel_ids is not None:
-            self._parcel_ids = sorted(int(p) for p in parcel_ids)
+            self._parcel_ids = sorted(int(p) for p in parcel_ids if int(p) != 0)
 
         # Spectral basis cache: parcel_id → FloatTensor (N_p, k)
         self._spectral_cache: Dict[int, torch.Tensor] = {}
@@ -201,12 +215,16 @@ class SpectralLaplacianAdditiveModel(nn.Module):
     # ------------------------------------------------------------------
 
     def _maybe_init_from_batch(self, batch: List[Dict[str, torch.Tensor]]) -> None:
-        """Lazy initialisation: infer parcel IDs from the first batch."""
+        """Lazy initialisation: infer parcel IDs from the first batch.
+
+        Parcel 0 (background / medial wall) is always excluded.
+        """
         if self._parcel_ids is not None:
             return
         parcel_labels = batch[0]["parcel_labels"]
         unique_ids = parcel_labels.unique().tolist()
-        self._parcel_ids = sorted(int(p) for p in unique_ids)
+        self._parcel_ids = sorted(int(p) for p in unique_ids if int(p) != 0)
+        log.debug("Ignoring parcel 0 (background).")
         log.debug("Lazily initialised %d parcel IDs.", len(self._parcel_ids))
 
     # ------------------------------------------------------------------
@@ -232,6 +250,11 @@ class SpectralLaplacianAdditiveModel(nn.Module):
         Returns:
             FloatTensor (N_p, k) — the k smallest eigenvectors of L_p.
         """
+        if parcel_id == 0:
+            raise ValueError(
+                "Parcel id 0 corresponds to background (medial wall) and must "
+                "not be processed."
+            )
         if parcel_id not in self._spectral_cache:
             # Build subgraph edge index with local (zero-based) node indices
             global_ids = parcel_mask.nonzero(as_tuple=False).squeeze(1)  # (N_p,)
@@ -279,7 +302,9 @@ class SpectralLaplacianAdditiveModel(nn.Module):
         Returns:
             Dict mapping each parcel ID to a FloatTensor of shape
             ``(parcel_embed_dim,)`` = ``(k·F,)`` (zero-padded for small parcels).
+            Parcel 0 (background) is never included.
         """
+        # breakpoint()
         node_features = sample["node_features"].to(device)   # (N, F)
         parcel_labels = sample["parcel_labels"].to(device)   # (N,)
         edge_index    = sample["edge_index"].to(device)      # (2, E)
@@ -289,6 +314,10 @@ class SpectralLaplacianAdditiveModel(nn.Module):
                 f"Expected in_features={self.in_features}, "
                 f"got {node_features.shape[1]}."
             )
+
+        # Safety check: ensure at least some non-background vertices exist.
+        if (parcel_labels == 0).all():
+            raise ValueError("All vertices are background (parcel 0).")
 
         projections: Dict[int, torch.Tensor] = {}
 
