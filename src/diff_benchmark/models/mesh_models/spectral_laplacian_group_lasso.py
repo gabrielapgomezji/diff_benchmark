@@ -14,6 +14,11 @@ while keeping the graph embedding computation in the spectral mesh backbone.
 
 from __future__ import annotations
 
+import hashlib
+import json
+import os
+import tempfile
+from pathlib import Path
 from typing import List, Optional
 
 import numpy as np
@@ -30,9 +35,16 @@ from diff_benchmark.models.mesh_models.spectral_laplacian_model import (
 )
 from diff_benchmark.models.utils_models.trainer import SklearnModel
 
+_GLOBAL_EMBEDDING_CACHE: dict[str, np.ndarray] = {}
+
 
 class SpectralLaplacianEmbeddingTransformer(BaseEstimator, TransformerMixin):
-    """Convert mesh dicts into flattened spectral Laplacian embeddings."""
+    """Convert mesh dicts into flattened spectral Laplacian embeddings.
+
+    Embeddings are cached by ``(model-config, sample-content)`` so repeated
+    GridSearchCV folds/parameter combinations can reuse features instead of
+    recomputing them.
+    """
 
     def __init__(
         self,
@@ -40,6 +52,8 @@ class SpectralLaplacianEmbeddingTransformer(BaseEstimator, TransformerMixin):
         n_spectral_components: int = 16,
         parcel_ids: Optional[List[int]] = None,
         device: str = "cpu",
+        cache_embeddings: bool = True,
+        cache_dir: Optional[str] = None,
     ) -> None:
         self.in_features = in_features
         self.n_spectral_components = n_spectral_components
@@ -50,6 +64,112 @@ class SpectralLaplacianEmbeddingTransformer(BaseEstimator, TransformerMixin):
         else:
             self.parcel_ids = [int(p) for p in parcel_ids if int(p) != 0]
         self.device = device
+        self.cache_embeddings = cache_embeddings
+        self.cache_dir = cache_dir
+
+    def _cache_namespace(self) -> str:
+        payload = {
+            "version": 1,
+            "in_features": int(self.in_features),
+            "n_spectral_components": int(self.n_spectral_components),
+            "parcel_ids": self.parcel_ids,
+        }
+        return hashlib.md5(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _to_numpy(value) -> np.ndarray:
+        if isinstance(value, torch.Tensor):
+            return value.detach().cpu().contiguous().numpy()
+        return np.ascontiguousarray(np.asarray(value))
+
+    @classmethod
+    def _tensor_digest(cls, value) -> str:
+        arr = cls._to_numpy(value)
+        h = hashlib.md5()
+        h.update(str(arr.dtype).encode("utf-8"))
+        h.update(np.asarray(arr.shape, dtype=np.int64).tobytes())
+        h.update(arr.tobytes())
+        return h.hexdigest()
+
+    @classmethod
+    def _sample_digest(cls, sample: dict) -> str:
+        # Always compute a fresh content hash — no object-identity shortcut.
+        # Using Python id() or data_ptr() as a memoisation key is unsafe:
+        # the runtime may reuse the same address for a different object after
+        # the original is garbage-collected, causing a stale digest to be
+        # returned and the wrong embedding to be fetched from the cache.
+        required = ("node_features", "parcel_labels", "edge_index")
+        h = hashlib.md5()
+        for key in required:
+            h.update(cls._tensor_digest(sample[key]).encode("utf-8"))
+        return h.hexdigest()
+
+    def _cache_key(self, sample: dict) -> str:
+        return f"{self.cache_namespace_}_{self._sample_digest(sample)}"
+
+    def _cache_file(self, cache_key: str) -> Optional[Path]:
+        if getattr(self, "cache_dir_", None) is None:
+            return None
+        return self.cache_dir_ / f"{cache_key}.npy"
+
+    def _load_cached_embedding(self, cache_key: str) -> Optional[np.ndarray]:
+        cached = _GLOBAL_EMBEDDING_CACHE.get(cache_key)
+        if cached is not None:
+            return cached
+
+        cache_file = self._cache_file(cache_key)
+        if cache_file is not None and cache_file.exists():
+            try:
+                arr = np.load(cache_file, allow_pickle=False)
+                if arr.ndim == 2:
+                    arr = np.asarray(arr, dtype=np.float32)
+                    _GLOBAL_EMBEDDING_CACHE[cache_key] = arr
+                    return arr
+            except Exception:
+                pass
+        return None
+
+    def _store_cached_embedding(self, cache_key: str, embedding: np.ndarray) -> None:
+        embedding = np.asarray(embedding, dtype=np.float32)
+        _GLOBAL_EMBEDDING_CACHE[cache_key] = embedding
+
+        cache_file = self._cache_file(cache_key)
+        if cache_file is None or cache_file.exists():
+            return
+
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp_name = tempfile.mkstemp(
+            prefix=f"{cache_key}_",
+            suffix=".npy",
+            dir=str(cache_file.parent),
+        )
+        os.close(fd)
+        try:
+            np.save(tmp_name, embedding, allow_pickle=False)
+            os.replace(tmp_name, cache_file)
+        except Exception:
+            if os.path.exists(tmp_name):
+                os.remove(tmp_name)
+
+    def _postprocess_batch_embeddings(
+        self, emb: torch.Tensor
+    ) -> tuple[np.ndarray, list[int]]:
+        if emb.dim() != 3:
+            raise ValueError(f"Expected embeddings (B, P, E), got {tuple(emb.shape)}")
+
+        _, n_parcels, _ = emb.shape
+        parcel_ids = list(
+            self.backbone_._parcel_ids
+            if getattr(self.backbone_, "_parcel_ids", None) is not None
+            else range(n_parcels)
+        )
+
+        keep_idx = [i for i, pid in enumerate(parcel_ids) if int(pid) != 0]
+        if len(keep_idx) != n_parcels:
+            emb = emb[:, keep_idx, :]
+            parcel_ids = [parcel_ids[i] for i in keep_idx]
+
+        return emb.contiguous().numpy(), parcel_ids
 
     def _resolved_device(self) -> torch.device:
         if self.device == "auto":
@@ -72,6 +192,21 @@ class SpectralLaplacianEmbeddingTransformer(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
         self.device_ = self._resolved_device()
         self.backbone_ = self._build_backbone().to(self.device_)
+        self.cache_namespace_ = self._cache_namespace()
+
+        if self.cache_embeddings and self.cache_dir:
+            self.cache_dir_ = Path(self.cache_dir).expanduser() / self.cache_namespace_
+            self.cache_dir_.mkdir(parents=True, exist_ok=True)
+        else:
+            self.cache_dir_ = None
+
+        # Eagerly initialise parcel IDs so they are available even when every
+        # sample is a cache hit and backbone.forward() is never called during
+        # transform().  _maybe_init_from_batch only reads parcel_labels from
+        # the first sample — it does not run a model forward pass.
+        if isinstance(X, list) and len(X) > 0:
+            self.backbone_._maybe_init_from_batch(X)
+
         # Fit does not learn parameters, but we run one pass to infer output shape.
         _ = self.transform(X)
         return self
@@ -83,30 +218,64 @@ class SpectralLaplacianEmbeddingTransformer(BaseEstimator, TransformerMixin):
                 "SpectralLaplacianEmbeddingTransformer expects a list of mesh dicts."
             )
 
-        with torch.no_grad():
-            emb = self.backbone_(X).detach().cpu()  # (B, P, E)
+        if len(X) == 0:
+            n_features = int(
+                getattr(self, "n_parcels_", 0) * getattr(self, "parcel_embed_dim_", 0)
+            )
+            return np.zeros((0, n_features), dtype=np.float32)
 
-        if emb.dim() != 3:
-            raise ValueError(f"Expected embeddings (B, P, E), got {tuple(emb.shape)}")
+        if not self.cache_embeddings:
+            with torch.no_grad():
+                emb = self.backbone_(X).detach().cpu()  # (B, P, E)
+            emb_np, parcel_ids = self._postprocess_batch_embeddings(emb)
+        else:
+            sample_embeddings: list[Optional[np.ndarray]] = [None] * len(X)
+            missing_idx: list[int] = []
+            missing_samples: list[dict] = []
+            missing_keys: list[str] = []
 
-        n_subjects, n_parcels, parcel_embed_dim = emb.shape
-        parcel_ids = list(
-            self.backbone_._parcel_ids
-            if getattr(self.backbone_, "_parcel_ids", None) is not None
-            else range(n_parcels)
-        )
+            for idx, sample in enumerate(X):
+                cache_key = self._cache_key(sample)
+                cached = self._load_cached_embedding(cache_key)
+                if cached is None:
+                    missing_idx.append(idx)
+                    missing_samples.append(sample)
+                    missing_keys.append(cache_key)
+                else:
+                    sample_embeddings[idx] = cached
 
-        # Defensive parity with backbone behavior: drop parcel 0 if present.
-        keep_idx = [i for i, pid in enumerate(parcel_ids) if int(pid) != 0]
-        if len(keep_idx) != n_parcels:
-            emb = emb[:, keep_idx, :]
-            parcel_ids = [parcel_ids[i] for i in keep_idx]
-            n_subjects, n_parcels, parcel_embed_dim = emb.shape
+            parcel_ids = list(
+                self.backbone_._parcel_ids
+                if getattr(self.backbone_, "_parcel_ids", None) is not None
+                else []
+            )
+            parcel_ids = [pid for pid in parcel_ids if int(pid) != 0]
 
+            if missing_samples:
+                with torch.no_grad():
+                    missing_emb = self.backbone_(missing_samples).detach().cpu()
+                missing_emb_np, parcel_ids = self._postprocess_batch_embeddings(
+                    missing_emb
+                )
+                for local_i, global_i in enumerate(missing_idx):
+                    sample_emb = np.asarray(missing_emb_np[local_i], dtype=np.float32)
+                    sample_embeddings[global_i] = sample_emb
+                    self._store_cached_embedding(missing_keys[local_i], sample_emb)
+
+            # All samples must be resolved either from cache or new compute.
+            unresolved = [i for i, val in enumerate(sample_embeddings) if val is None]
+            if unresolved:
+                raise RuntimeError(
+                    f"Failed to resolve embeddings for sample indices: {unresolved[:5]}"
+                )
+
+            emb_np = np.stack(sample_embeddings, axis=0)
+
+        n_subjects, n_parcels, parcel_embed_dim = emb_np.shape
         self.n_parcels_ = int(n_parcels)
         self.parcel_embed_dim_ = int(parcel_embed_dim)
-        self.parcel_ids_ = parcel_ids
-        return emb.reshape(n_subjects, n_parcels * parcel_embed_dim).numpy()
+        self.parcel_ids_ = parcel_ids if parcel_ids else list(range(n_parcels))
+        return emb_np.reshape(n_subjects, n_parcels * parcel_embed_dim)
 
 
 class SpectralGroupLassoRegressor(BaseEstimator, RegressorMixin):
@@ -220,22 +389,32 @@ class SpectralLaplacianGroupLassoModel(SklearnModel):
     data_type: str = "mesh"
 
     def _build_model(self, **kwargs):
+        self.embedding_cache_warm_start = kwargs.get("embedding_cache_warm_start", True)
         prediction_task = kwargs.get("prediction_task", "regression")
         in_features = kwargs.get("in_features", 1)
         n_spectral_components = kwargs.get("n_spectral_components", 16)
-        n_spectral_components_grid = [16, 32, 64]
-        alpha_grid = np.logspace(-3, 3, 7)
+        n_spectral_components_grid = kwargs.get(
+            "n_spectral_components_grid", [16, 32, 64]
+        )
+        alpha_grid = np.logspace(-4, -2, 3)
         cv = kwargs.get("cv", 5)
         n_jobs = kwargs.get("n_jobs", 1)
         verbose = kwargs.get("verbose", 3)
         device = kwargs.get("device", "cpu")
         random_state = kwargs.get("random_state", 42)
+        cache_embeddings = kwargs.get("cache_embeddings", True)
+        cache_dir = kwargs.get(
+            "embedding_cache_dir",
+            os.path.join(tempfile.gettempdir(), "diff_benchmark", "spectral_embeddings"),
+        )
 
         spectral = SpectralLaplacianEmbeddingTransformer(
             in_features=in_features,
             n_spectral_components=n_spectral_components,
             parcel_ids=kwargs.get("parcel_ids"),
             device=device,
+            cache_embeddings=cache_embeddings,
+            cache_dir=cache_dir,
         )
         group_lasso = SpectralGroupLassoRegressor(
             max_iter=kwargs.get("group_lasso_max_iter", 100),
@@ -264,7 +443,7 @@ class SpectralLaplacianGroupLassoModel(SklearnModel):
             param_grid = {
                 "spectral__n_spectral_components": n_spectral_components_grid,
                 "group_lasso__alpha": alpha_grid,
-                "classifier__C": kwargs.get("classifier_c_grid", np.logspace(-3, 3, 7)),
+                "classifier__C": kwargs.get("classifier_c_grid", np.logspace(-2, 0, 3)),
             }
             scoring = "balanced_accuracy"
         else:
@@ -280,8 +459,44 @@ class SpectralLaplacianGroupLassoModel(SklearnModel):
         )
 
     def fit(self, X, y: np.ndarray):
+        if self.embedding_cache_warm_start:
+            self._warm_start_embedding_cache(X)
         self.model.fit(X, y)
         return self
 
     def predict(self, X) -> np.ndarray:
         return self.model.predict(X)
+
+    def _warm_start_embedding_cache(self, X) -> None:
+        if not isinstance(X, list) or len(X) == 0:
+            return
+        if not isinstance(getattr(self, "model", None), GridSearchCV):
+            return
+
+        pipeline = self.model.estimator
+        spectral = getattr(pipeline, "named_steps", {}).get("spectral")
+        if not isinstance(spectral, SpectralLaplacianEmbeddingTransformer):
+            return
+        if not spectral.cache_embeddings:
+            return
+
+        grid_values: set[int] = {int(spectral.n_spectral_components)}
+        param_grid = self.model.param_grid
+        if isinstance(param_grid, dict):
+            values = param_grid.get("spectral__n_spectral_components", [])
+            grid_values.update(int(v) for v in values)
+        elif isinstance(param_grid, list):
+            for grid in param_grid:
+                values = grid.get("spectral__n_spectral_components", [])
+                grid_values.update(int(v) for v in values)
+
+        for n_components in sorted(grid_values):
+            warm = SpectralLaplacianEmbeddingTransformer(
+                in_features=spectral.in_features,
+                n_spectral_components=n_components,
+                parcel_ids=spectral.parcel_ids,
+                device=spectral.device,
+                cache_embeddings=spectral.cache_embeddings,
+                cache_dir=spectral.cache_dir,
+            )
+            warm.fit(X)
