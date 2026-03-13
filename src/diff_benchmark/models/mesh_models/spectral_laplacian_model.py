@@ -351,7 +351,6 @@ class SpectralLaplacianAdditiveModel(nn.Module):
                 z_flat = torch.cat([z_flat, pad])
 
             projections[pid] = z_flat
-
         return projections
 
     # ------------------------------------------------------------------
