@@ -322,7 +322,6 @@ class SpectralLaplacianAdditiveModel(nn.Module):
         projections: Dict[int, torch.Tensor] = {}
 
         for pid in self._parcel_ids:  # type: ignore[union-attr]
-            breakpoint()
             mask = parcel_labels == pid
             n_nodes_p = int(mask.sum().item())
 
