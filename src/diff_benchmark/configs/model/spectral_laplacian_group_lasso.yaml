@@ -1,0 +1,7 @@
+name: spectral_laplacian_group_lasso
+
+backbone:
+  in_features: 1
+  n_spectral_components: 16
+  cv: 5
+  device: cpu
