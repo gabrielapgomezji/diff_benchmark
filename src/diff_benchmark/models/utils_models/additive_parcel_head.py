@@ -629,7 +629,7 @@ class ParcelMoEHead(nn.Module):
         self.bias = nn.Parameter(torch.zeros(output_dim))
 
     def forward(self, x):
-
+        # breakpoint()
         B, P, E = x.shape
 
         gate = torch.softmax(self.gate(x), dim=-1)  # (B,P,K)
