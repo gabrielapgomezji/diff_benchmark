@@ -254,7 +254,11 @@ def get_model(name: str, config: dict) -> object:
     config["backend"]["seed"] = config["random_state"]
     return create_trainer(
         model_name=name,
-        model_kwargs={**config["model"]["backbone"], "random_state": config["random_state"]},
+        model_kwargs={
+            **config["model"]["backbone"],
+            "random_state": config["random_state"],
+            "n_jobs": config["cluster"]["conf"]["n_jobs"],
+        },
         pred_head={**config["pred_head"]},
         backend_kwargs={**config["backend"]},
     )
