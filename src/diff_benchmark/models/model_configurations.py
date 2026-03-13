@@ -34,6 +34,7 @@ from diff_benchmark.models.mesh_models.spectral_laplacian_model import SpectralL
 from diff_benchmark.models.mesh_models.region_pca import RegionPCAModel
 from diff_benchmark.models.mesh_models.sklearn_group_lasso import RegionGroupLassoModel
 from diff_benchmark.models.mesh_models.sklearn_elasticnet import RegionElasticNetModel 
+from diff_benchmark.models.mesh_models.spectral_laplacian_group_lasso import SpectralLaplacianGroupLassoModel
 from diff_benchmark.models.utils_models.additive_parcel_head import build_additive_parcel_head as build_additive_head
 from diff_benchmark.models.utils_models.additive_parcel_head import build_simple_parcel_head
 
@@ -118,6 +119,7 @@ def create_model(
         "region_pca": RegionPCAModel,
         "region_group_lasso": RegionGroupLassoModel,
         "region_elasticnet": RegionElasticNetModel,
+        "spectral_laplacian_group_lasso": SpectralLaplacianGroupLassoModel,
     }
     if model_name in _sklearn_models:
         model_kwargs["prediction_task"] = pred_head["prediction_task"]
