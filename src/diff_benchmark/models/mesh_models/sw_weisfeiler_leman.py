@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-class SWWeisfeilerLeman(nn.Module):
+class SWWeisfeilerLemanModel(nn.Module):
     """
 
     .. note::
