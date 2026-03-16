@@ -59,6 +59,24 @@ class SWWeisfeilerLemanModel(nn.Module):
 
 
 
+    # ------------------------------------------------------------------
+    # Initialisation helpers
+    # ------------------------------------------------------------------
+
+    def _maybe_init_from_batch(self, batch: List[Dict[str, torch.Tensor]]) -> None:
+        """Lazy initialisation: infer parcel IDs from the first batch.
+
+        Parcel 0 (background / medial wall) is always excluded.
+        """
+        if self._parcel_ids is not None:
+            return
+        parcel_labels = batch[0]["parcel_labels"]
+        unique_ids = parcel_labels.unique().tolist()
+        self._parcel_ids = sorted(int(p) for p in unique_ids if int(p) != 0)
+        log.debug("Ignoring parcel 0 (background).")
+        log.debug("Lazily initialised %d parcel IDs.", len(self._parcel_ids))
+
+
 
     # ------------------------------------------------------------------
     # Forward
@@ -84,5 +102,10 @@ class SWWeisfeilerLemanModel(nn.Module):
             )
 
         device = self._dummy.device
+        self._maybe_init_from_batch(x)
+
+        for sample in x:
+            print(sample)
+            break
 
         return 0 # (B, n_parcels, k*F)
