@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import numpy as np
+from celer import ElasticNet
 from sklearn.base import BaseEstimator, RegressorMixin, TransformerMixin
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
 from sklearn.utils.validation import check_is_fitted
 
 from diff_benchmark.models.utils_models.trainer import SklearnModel
-
-from celer import ElasticNet
 
 # ---------------------------------------------------------------------------
 # Region Transformer
@@ -64,14 +64,14 @@ class RegionFeatureTransformer(BaseEstimator, TransformerMixin):
 
             for r in self.region_order_:
                 mask = pl == r
-                region_nodes = nf[mask]           # (n_nodes, n_features)
+                region_nodes = nf[mask]
 
                 subj_feat.append(region_nodes.flatten())
 
             features.append(np.concatenate(subj_feat))
 
         return np.vstack(features)
-    
+
     
 class ElasticNetRegressor(BaseEstimator, RegressorMixin):
     """
@@ -109,6 +109,12 @@ class ElasticNetRegressor(BaseEstimator, RegressorMixin):
         check_is_fitted(self, "estimator_")
         return self.estimator_.predict(X)
 
+    def transform(self, X):
+        check_is_fitted(self, "estimator_")
+        coef = self.estimator_.coef_
+        mask = coef != 0.0
+        return X * mask[np.newaxis, :]
+
     @property
     def coef_(self):
         check_is_fitted(self, "estimator_")
@@ -118,27 +124,47 @@ class ElasticNetRegressor(BaseEstimator, RegressorMixin):
     def intercept_(self):
         check_is_fitted(self, "estimator_")
         return self.estimator_.intercept_
-    
+
+
 class RegionElasticNetModel(SklearnModel):
 
     data_type: str = "mesh"
 
     def _build_model(self, **kwargs):
-
         self.prediction_task = kwargs.get("prediction_task", "regression")
+        self.output_dim = 1
+
+        cv = kwargs.get("cv", 5)
+        n_jobs = kwargs.get("n_jobs", 1)
+        verbose = kwargs.get("verbose", 1)
+
+        reg_alpha_grid = kwargs.get("elasticnet_alpha_grid", np.logspace(-5, 5, 10))
+        reg_l1_ratio_grid = kwargs.get(
+            "elasticnet_l1_ratio_grid",
+            [0.1, 0.3, 0.5, 0.7, 0.9],
+        )
+        cls_alpha_grid = kwargs.get(
+            "elasticnet_alpha_grid_classification",
+            np.logspace(-5, 5, 5),
+        )
+        cls_l1_ratio_grid = kwargs.get(
+            "elasticnet_l1_ratio_grid_classification",
+            [0.3, 0.5, 0.7],
+        )
 
         if self.prediction_task == "regression":
 
             pipeline = Pipeline(
                 [
                     ("region_features", RegionFeatureTransformer()),
+                    ("scaler", StandardScaler(copy=False)),
                     ("elastic_net", ElasticNetRegressor()),
                 ]
             )
 
             param_grid = {
-                "elastic_net__alpha": np.logspace(-4, 2, 10),
-                "elastic_net__l1_ratio": [0.1, 0.3, 0.5, 0.7, 0.9],
+                "elastic_net__alpha": reg_alpha_grid,
+                "elastic_net__l1_ratio": reg_l1_ratio_grid,
             }
 
             scoring = "neg_mean_absolute_error"
@@ -148,15 +174,16 @@ class RegionElasticNetModel(SklearnModel):
             pipeline = Pipeline(
                 [
                     ("region_features", RegionFeatureTransformer()),
+                    ("scaler", StandardScaler(copy=False)),
                     ("elastic_net", ElasticNetRegressor()),
                     ("classifier", LogisticRegression(max_iter=5000)),
                 ]
             )
 
             param_grid = {
-                "elastic_net__alpha": np.logspace(-4, 2, 8),
-                "elastic_net__l1_ratio": [0.3, 0.5, 0.7],
-                "classifier__C": np.logspace(-3, 3, 7),
+                "elastic_net__alpha": cls_alpha_grid,
+                "elastic_net__l1_ratio": cls_l1_ratio_grid,
+                "classifier__C": np.logspace(-5, 5, 10),
             }
 
             scoring = "balanced_accuracy"
@@ -168,7 +195,14 @@ class RegionElasticNetModel(SklearnModel):
             estimator=pipeline,
             param_grid=param_grid,
             scoring=scoring,
-            cv=5,
-            n_jobs=-1,
-            verbose=1,
+            cv=cv,
+            n_jobs=n_jobs,
+            verbose=verbose,
         )
+
+    def fit(self, X, y: np.ndarray):
+        self.model.fit(X, y)
+        return self
+
+    def predict(self, X) -> np.ndarray:
+        return self.model.predict(X)

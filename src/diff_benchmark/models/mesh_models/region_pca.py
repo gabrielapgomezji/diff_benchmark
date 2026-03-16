@@ -440,7 +440,8 @@ class RegionPCAModel(SklearnModel):
         # (Worker processes may buffer or drop stdout in some schedulers.)
         #
         # OOM investigation is complete.
-        n_jobs = kwargs.get("n_jobs", 1)
+        n_jobs = kwargs.get("n_jobs", -1)
+        verbose = kwargs.get("verbose", 1)
 
         if self.prediction_task == "regression":
             pipeline = _RegionPCAPipeline(
@@ -465,8 +466,8 @@ class RegionPCAModel(SklearnModel):
             )
             param_grid = {
                 "region_pca__n_components": [3, 5, 10],
-                "group_lasso__alpha": np.logspace(-5, 5, 10),
-                "classifier__C": np.logspace(-5, 5, 10),
+                "group_lasso__alpha": np.logspace(-5, -2, 5), #np.logspace(-5, 5, 10),
+                "classifier__C": np.logspace(-2, 2, 5), #np.logspace(-5, 5, 10),
             }
             scoring = "balanced_accuracy"
 
@@ -484,7 +485,7 @@ class RegionPCAModel(SklearnModel):
             cv=5,
             n_jobs=n_jobs,
             pre_dispatch="n_jobs",
-            verbose=3,
+            verbose=verbose,
         )
 
     # ------------------------------------------------------------------

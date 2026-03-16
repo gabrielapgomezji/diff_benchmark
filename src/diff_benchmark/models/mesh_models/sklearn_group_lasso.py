@@ -70,6 +70,9 @@ class RegionFeatureTransformer(BaseEstimator, TransformerMixin):
     region structure for Group Lasso.
     """
 
+    def __init__(self, region_representation: str = "flatten"):
+        self.region_representation = region_representation
+
     def fit(self, X, y=None):
 
         mesh = X[0]
@@ -83,6 +86,11 @@ class RegionFeatureTransformer(BaseEstimator, TransformerMixin):
         if hasattr(nf, "numpy"):
             nf = nf.numpy()
 
+        if self.region_representation not in {"flatten", "mean_std"}:
+            raise ValueError(
+                "region_representation must be 'flatten' or 'mean_std'"
+            )
+
         # number of node features per vertex
         self.n_node_features_ = nf.shape[1]
 
@@ -90,10 +98,17 @@ class RegionFeatureTransformer(BaseEstimator, TransformerMixin):
         self.region_order_ = [r for r in self.region_order_ if r != 0]
 
         self.region_sizes_ = {}
+        self.region_feature_widths_ = {}
 
         for r in self.region_order_:
             mask = pl == r
             self.region_sizes_[r] = mask.sum()
+            if self.region_representation == "flatten":
+                self.region_feature_widths_[r] = (
+                    self.region_sizes_[r] * self.n_node_features_
+                )
+            else:
+                self.region_feature_widths_[r] = 2 * self.n_node_features_
 
         return self
 
@@ -115,8 +130,12 @@ class RegionFeatureTransformer(BaseEstimator, TransformerMixin):
             for r in self.region_order_:
                 mask = pl == r
                 region_nodes = nf[mask]           # (n_nodes, n_features)
-
-                subj_feat.append(region_nodes.flatten())
+                if self.region_representation == "flatten":
+                    subj_feat.append(region_nodes.reshape(-1))
+                else:
+                    region_mean = region_nodes.mean(axis=0)
+                    region_std = region_nodes.std(axis=0)
+                    subj_feat.append(np.concatenate([region_mean, region_std]))
 
             features.append(np.concatenate(subj_feat))
 
@@ -182,10 +201,7 @@ class GroupLassoRegressor(BaseEstimator, RegressorMixin):
         col = 0
 
         for label in transformer.region_order_:
-            size = transformer.region_sizes_[label]
-
-            # nodes × features
-            k = size * transformer.n_node_features_
+            k = transformer.region_feature_widths_[label]
 
             groups.append(list(range(col, col + k)))
             col += k
@@ -393,18 +409,26 @@ class RegionGroupLassoModel(SklearnModel):
         self.prediction_task = kwargs.get("prediction_task", "regression")
         self.output_dim = 1
         cv = kwargs.get("cv", 5)
+        region_representation = kwargs.get("region_representation", "flatten")
+        # Keep CV in-process for mesh-list inputs to avoid heavy loky serialization.
         n_jobs = kwargs.get("n_jobs", 1)
         verbose = kwargs.get("verbose", 1)
-        reg_alpha_grid = kwargs.get("group_lasso_alpha_grid", np.logspace(-5, 5, 10))
+        reg_alpha_grid = kwargs.get("group_lasso_alpha_grid", np.logspace(-3, 5, 10))
         cls_alpha_grid = kwargs.get(
-            "group_lasso_alpha_grid_classification", np.logspace(-5, 5, 10)
+            "group_lasso_alpha_grid_classification", np.logspace(-3, 5, 10)
         )
-
+        cls_C_grid = kwargs.get("classifier_C_grid", np.logspace(-5,5,10))
+        
         if self.prediction_task == "regression":
 
             pipeline = _GroupLassoPipeline(
                 [
-                    ("region_features", RegionFeatureTransformer()),
+                    (
+                        "region_features",
+                        RegionFeatureTransformer(
+                            region_representation=region_representation,
+                        ),
+                    ),
                     ("scaler", StandardScaler(copy=False)),
                     ("group_lasso", GroupLassoRegressor()),
                 ]
@@ -420,7 +444,12 @@ class RegionGroupLassoModel(SklearnModel):
 
             pipeline = _GroupLassoPipeline(
                 [
-                    ("region_features", RegionFeatureTransformer()),
+                    (
+                        "region_features",
+                        RegionFeatureTransformer(
+                            region_representation=region_representation,
+                        ),
+                    ),
                     ("scaler", StandardScaler(copy=False)),
                     ("group_lasso", GroupLassoRegressor()),
                     ("classifier", LogisticRegression(max_iter=5000)),
@@ -429,20 +458,20 @@ class RegionGroupLassoModel(SklearnModel):
 
             param_grid = {
                 "group_lasso__alpha": cls_alpha_grid,
-                "classifier__C": np.logspace(-5, 5, 10),
+                "classifier__C": cls_C_grid,
             }
 
             scoring = "balanced_accuracy"
 
         else:
             raise ValueError(f"Unknown prediction_task '{self.prediction_task}'")
-
         return GridSearchCV(
             estimator=pipeline,
             param_grid=param_grid,
             scoring=scoring,
             cv=cv,
             n_jobs=n_jobs,
+            # pre_dispatch=1,
             verbose=verbose,
         )
 
