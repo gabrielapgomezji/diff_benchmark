@@ -1,0 +1,6 @@
+name: weisfeiler_leman
+
+backbone:
+  in_features: 1
+  cv: 5
+  device: cpu

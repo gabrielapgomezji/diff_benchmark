@@ -35,9 +35,9 @@ from diff_benchmark.models.mesh_models.region_pca import RegionPCAModel
 from diff_benchmark.models.mesh_models.sklearn_group_lasso import RegionGroupLassoModel
 from diff_benchmark.models.mesh_models.sklearn_elasticnet import RegionElasticNetModel 
 from diff_benchmark.models.mesh_models.spectral_laplacian_group_lasso import SpectralLaplacianGroupLassoModel
+from diff_benchmark.models.mesh_models.sw_weisfeiler_leman import SWWeisfeilerLemanModel
 from diff_benchmark.models.utils_models.additive_parcel_head import build_additive_parcel_head as build_additive_head
 from diff_benchmark.models.utils_models.additive_parcel_head import build_new_parcel_head
-
 
 class TaskModel(nn.Module):
     """Backbone + prediction head assembled into a single forward pass."""
@@ -177,6 +177,12 @@ def create_model(
     if model_name == "curia":
         backbone = CuriaBackbone(**model_kwargs)
         head = build_prediction_head(embedding_dim=backbone.embedding_dim, **pred_head)
+        return TaskModel(backbone, head)
+    
+    if model_name == "sw_weisfeiler_leman":
+        backbone = SWWeisfeilerLemanModel(**model_kwargs)
+        head = build_new_parcel_head(embed_dim=backbone.parcel_embed_dim, head_type="attention", **pred_head)
+        print("TEST ???")
         return TaskModel(backbone, head)
 
     raise ValueError(f"Unknown model type: {model_name}")
