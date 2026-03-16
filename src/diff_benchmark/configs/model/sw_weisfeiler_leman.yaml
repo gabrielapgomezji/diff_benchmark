@@ -1,4 +1,4 @@
-name: weisfeiler_leman
+name: sw_weisfeiler_leman
 
 backbone:
   in_features: 1
