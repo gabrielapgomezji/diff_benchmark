@@ -19,19 +19,19 @@ paths:
 conf:
   enabled: true
   parallel_type: slurm
-  n_jobs: 50
+  n_jobs: 6
   wait_for_results: false
 
 slurm_cfg:
   # log_folder: "./slurm_logs"
   # slurm_partition: "gpu"
   tasks_per_node: 1
-  slurm_gpus_per_task: 1
-  cpus_per_task: 20
-  timeout_min: 280 #1440   # 24 hours
+  # slurm_gpus_per_task: 1
+  cpus_per_task: 40
+  timeout_min: 90 #1440   # 24 hours
   slurm_additional_parameters:
-    account: "qlr@v100"
-    constraint: "v100-32g"
+    account: "qlr@cpu"
+    # constraint: "v100-32g"
   local_setup:
     - "module purge"
     - "module load pytorch-gpu/py3/2.7.0"
