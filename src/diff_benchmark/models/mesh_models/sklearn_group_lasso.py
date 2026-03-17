@@ -51,95 +51,24 @@ Notes
 from __future__ import annotations
 
 import numpy as np
-from celer import GroupLasso
-from sklearn.base import BaseEstimator, RegressorMixin, TransformerMixin
+from skglm import GeneralizedLinearEstimator
+from skglm.datafits import Quadratic
+from skglm.penalties import WeightedGroupL2
+from skglm.solvers import AndersonCD
+from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils.validation import check_is_fitted
 
+from diff_benchmark.models.mesh_models.region_feature_extractor import RegionFeatureExtractor
 from diff_benchmark.models.utils_models.trainer import SklearnModel
 
 # ---------------------------------------------------------------------------
 # Region Transformer
 # ---------------------------------------------------------------------------
-class RegionFeatureTransformer(BaseEstimator, TransformerMixin):
-    """
-    Convert mesh dicts into a flat feature matrix while preserving
-    region structure for Group Lasso.
-    """
-
-    def __init__(self, region_representation: str = "flatten"):
-        self.region_representation = region_representation
-
-    def fit(self, X, y=None):
-
-        mesh = X[0]
-
-        pl = mesh["parcel_labels"]
-        nf = mesh["node_features"]
-
-        if hasattr(pl, "numpy"):
-            pl = pl.numpy()
-
-        if hasattr(nf, "numpy"):
-            nf = nf.numpy()
-
-        if self.region_representation not in {"flatten", "mean_std"}:
-            raise ValueError(
-                "region_representation must be 'flatten' or 'mean_std'"
-            )
-
-        # number of node features per vertex
-        self.n_node_features_ = nf.shape[1]
-
-        self.region_order_ = sorted(np.unique(pl))
-        self.region_order_ = [r for r in self.region_order_ if r != 0]
-
-        self.region_sizes_ = {}
-        self.region_feature_widths_ = {}
-
-        for r in self.region_order_:
-            mask = pl == r
-            self.region_sizes_[r] = mask.sum()
-            if self.region_representation == "flatten":
-                self.region_feature_widths_[r] = (
-                    self.region_sizes_[r] * self.n_node_features_
-                )
-            else:
-                self.region_feature_widths_[r] = 2 * self.n_node_features_
-
-        return self
-
-    def transform(self, X):
-
-        features = []
-
-        for mesh in X:
-            nf = mesh["node_features"]
-            pl = mesh["parcel_labels"]
-
-            if hasattr(nf, "numpy"):
-                nf = nf.numpy()
-            if hasattr(pl, "numpy"):
-                pl = pl.numpy()
-
-            subj_feat = []
-
-            for r in self.region_order_:
-                mask = pl == r
-                region_nodes = nf[mask]           # (n_nodes, n_features)
-                if self.region_representation == "flatten":
-                    subj_feat.append(region_nodes.reshape(-1))
-                else:
-                    region_mean = region_nodes.mean(axis=0)
-                    region_std = region_nodes.std(axis=0)
-                    subj_feat.append(np.concatenate([region_mean, region_std]))
-
-            features.append(np.concatenate(subj_feat))
-
-        return np.vstack(features)
+RegionFeatureTransformer = RegionFeatureExtractor
     
 # ---------------------------------------------------------------------------
 # GroupLassoRegressor
@@ -236,12 +165,29 @@ class GroupLassoRegressor(BaseEstimator, RegressorMixin):
         else:
             self.groups_ = [[i] for i in range(X.shape[1])]
 
-        self.estimator_ = GroupLasso(
-            groups=self.groups_,
+        grp_indices = np.asarray(
+            [idx for group in self.groups_ for idx in group],
+            dtype=np.int32,
+        )
+        grp_sizes = np.asarray([len(group) for group in self.groups_], dtype=np.int32)
+        grp_ptr = np.zeros(len(grp_sizes) + 1, dtype=np.int32)
+        grp_ptr[1:] = np.cumsum(grp_sizes)
+
+        penalty = WeightedGroupL2(
             alpha=self.alpha,
+            weights=np.ones(len(self.groups_), dtype=float),
+            grp_ptr=grp_ptr,
+            grp_indices=grp_indices,
+        )
+        solver = AndersonCD(
             max_iter=self.max_iter,
             tol=self.tol,
             fit_intercept=self.fit_intercept,
+        )
+        self.estimator_ = GeneralizedLinearEstimator(
+            datafit=Quadratic(),
+            penalty=penalty,
+            solver=solver,
         )
         self.estimator_.fit(X, y)
         return self
@@ -410,6 +356,22 @@ class RegionGroupLassoModel(SklearnModel):
         self.output_dim = 1
         cv = kwargs.get("cv", 5)
         region_representation = kwargs.get("region_representation", "flatten")
+        representation_cfg = kwargs.get(region_representation, {})
+        if representation_cfg is None:
+            representation_cfg = {}
+        if not isinstance(representation_cfg, dict):
+            raise ValueError(
+                f"Expected kwargs['{region_representation}'] to be a dict, "
+                f"got {type(representation_cfg).__name__}."
+            )
+
+        pca_n_components = kwargs.get(
+            "pca_n_components",
+            representation_cfg.get(
+                "pca_n_components",
+                representation_cfg.get("n_components_per_region", 3),
+            ),
+        )
         # Keep CV in-process for mesh-list inputs to avoid heavy loky serialization.
         n_jobs = kwargs.get("n_jobs", 1)
         verbose = kwargs.get("verbose", 1)
@@ -417,7 +379,22 @@ class RegionGroupLassoModel(SklearnModel):
         cls_alpha_grid = kwargs.get(
             "group_lasso_alpha_grid_classification", np.logspace(-3, 5, 10)
         )
-        cls_C_grid = kwargs.get("classifier_C_grid", np.logspace(-5,5,10))
+        cls_C_grid = kwargs.get("classifier_C_grid", np.logspace(-5, 5, 10))
+
+        rep_alpha_reg = representation_cfg.get("group_lasso_alpha_grid", None)
+        rep_alpha_cls = representation_cfg.get(
+            "group_lasso_alpha_grid_classification",
+            None,
+        )
+        if rep_alpha_cls is not None:
+            cls_alpha_grid = rep_alpha_cls
+        if rep_alpha_reg is not None:
+            reg_alpha_grid = rep_alpha_reg
+        elif rep_alpha_cls is not None:
+            # Optional fallback when only one alpha grid is provided in config.
+            reg_alpha_grid = rep_alpha_cls
+
+        cls_C_grid = representation_cfg.get("classifier_C_grid", cls_C_grid)
         
         if self.prediction_task == "regression":
 
@@ -427,6 +404,7 @@ class RegionGroupLassoModel(SklearnModel):
                         "region_features",
                         RegionFeatureTransformer(
                             region_representation=region_representation,
+                            pca_n_components=pca_n_components,
                         ),
                     ),
                     ("scaler", StandardScaler(copy=False)),
@@ -448,6 +426,7 @@ class RegionGroupLassoModel(SklearnModel):
                         "region_features",
                         RegionFeatureTransformer(
                             region_representation=region_representation,
+                            pca_n_components=pca_n_components,
                         ),
                     ),
                     ("scaler", StandardScaler(copy=False)),

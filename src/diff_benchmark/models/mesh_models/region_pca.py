@@ -47,7 +47,10 @@ from __future__ import annotations
 from typing import Dict, List
 
 import numpy as np
-from celer import GroupLasso
+from skglm import GeneralizedLinearEstimator
+from skglm.datafits import Quadratic
+from skglm.penalties import WeightedGroupL2
+from skglm.solvers import AndersonCD
 
 from sklearn.base import BaseEstimator, RegressorMixin, TransformerMixin
 from sklearn.decomposition import IncrementalPCA
@@ -329,12 +332,29 @@ class GroupLassoRegressor(BaseEstimator, RegressorMixin):
         else:
             self.groups_ = [[i] for i in range(X.shape[1])]
 
-        self.estimator_ = GroupLasso(
-            groups=self.groups_,
+        grp_indices = np.asarray(
+            [idx for group in self.groups_ for idx in group],
+            dtype=np.int32,
+        )
+        grp_sizes = np.asarray([len(group) for group in self.groups_], dtype=np.int32)
+        grp_ptr = np.zeros(len(grp_sizes) + 1, dtype=np.int32)
+        grp_ptr[1:] = np.cumsum(grp_sizes)
+
+        penalty = WeightedGroupL2(
             alpha=self.alpha,
+            weights=np.ones(len(self.groups_), dtype=float),
+            grp_ptr=grp_ptr,
+            grp_indices=grp_indices,
+        )
+        solver = AndersonCD(
             max_iter=self.max_iter,
             tol=self.tol,
             fit_intercept=self.fit_intercept,
+        )
+        self.estimator_ = GeneralizedLinearEstimator(
+            datafit=Quadratic(),
+            penalty=penalty,
+            solver=solver,
         )
         self.estimator_.fit(X, y)
         return self
