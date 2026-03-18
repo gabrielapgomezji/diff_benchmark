@@ -47,9 +47,16 @@ from __future__ import annotations
 from typing import Dict, List
 
 import numpy as np
-from skglm import GeneralizedLinearEstimator
 from skglm.datafits import Quadratic
+try:
+    from skglm.datafits import QuadraticGroup
+except ImportError:  # skglm compatibility fallback
+    QuadraticGroup = None
 from skglm.penalties import WeightedGroupL2
+try:
+    from skglm.solvers import GroupBCD
+except ImportError:  # skglm compatibility fallback
+    GroupBCD = None
 from skglm.solvers import AndersonCD
 
 from sklearn.base import BaseEstimator, RegressorMixin, TransformerMixin
@@ -60,6 +67,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils.validation import check_is_fitted
 
+from diff_benchmark.models.mesh_models.skglm_compat import CompatGeneralizedLinearEstimator
 from diff_benchmark.models.utils_models.trainer import SklearnModel
 
 
@@ -346,13 +354,22 @@ class GroupLassoRegressor(BaseEstimator, RegressorMixin):
             grp_ptr=grp_ptr,
             grp_indices=grp_indices,
         )
-        solver = AndersonCD(
-            max_iter=self.max_iter,
-            tol=self.tol,
-            fit_intercept=self.fit_intercept,
-        )
-        self.estimator_ = GeneralizedLinearEstimator(
-            datafit=Quadratic(),
+        if GroupBCD is not None and QuadraticGroup is not None:
+            solver = GroupBCD(
+                max_iter=self.max_iter,
+                tol=self.tol,
+                fit_intercept=self.fit_intercept,
+            )
+            datafit = QuadraticGroup(grp_ptr=grp_ptr, grp_indices=grp_indices)
+        else:
+            solver = AndersonCD(
+                max_iter=self.max_iter,
+                tol=self.tol,
+                fit_intercept=self.fit_intercept,
+            )
+            datafit = Quadratic()
+        self.estimator_ = CompatGeneralizedLinearEstimator(
+            datafit=datafit,
             penalty=penalty,
             solver=solver,
         )

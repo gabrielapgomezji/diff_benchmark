@@ -20,7 +20,7 @@ runtime:
 
 
 choices:
-  model: [region_elasticnet]
+  model: [region_elasticnet, region_group_lasso]
   dataset: [hcp]
   backend: [sklearn]
   # target: [age]
@@ -30,7 +30,7 @@ choices:
   cluster: [margaret_cpu]
   # cluster.conf.parallel_type: [None]
   cluster.conf.n_jobs: [2]
-  model.backbone.region_representation: [flatten, mean_std, pca, summary_stats, percentiles]
+  model.backbone.region_representation: [percentiles] #[flatten, mean_std, pca, summary_stats, percentiles]
   # backend.learning_rate: [1e-4]
   # backend.weight_decay: [1e-2]
   # pred_head: [mesh_classification]

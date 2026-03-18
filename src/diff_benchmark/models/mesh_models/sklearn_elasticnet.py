@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import numpy as np
-from skglm import GeneralizedLinearEstimator
+from skglm.datafits import Quadratic
+from skglm.solvers import AndersonCD
 try:
-    from skglm.penalties import SparseGroupL1
-except ImportError:  # skglm<=0.5 compatibility
+    from skglm.penalties import L1_plus_L2, SparseGroupL1
+except ImportError:  # skglm compatibility
+    from skglm.penalties import L1_plus_L2
     SparseGroupL1 = None
-    from skglm.datafits import Quadratic
-    from skglm.penalties import WeightedL1GroupL2
-    from skglm.solvers import AndersonCD
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
@@ -17,6 +16,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.utils.validation import check_is_fitted
 
 from diff_benchmark.models.mesh_models.region_feature_extractor import RegionFeatureExtractor
+from diff_benchmark.models.mesh_models.skglm_compat import CompatGeneralizedLinearEstimator
 from diff_benchmark.models.utils_models.trainer import SklearnModel
 
     
@@ -63,39 +63,17 @@ class GroupElasticNetRegressor(BaseEstimator, RegressorMixin):
                 groups=self.groups_,
             )
         else:
-            grp_indices = np.asarray(
-                [idx for group in self.groups_ for idx in group],
-                dtype=np.int32,
-            )
-            grp_sizes = np.asarray([len(group) for group in self.groups_], dtype=np.int32)
-            grp_ptr = np.zeros(len(grp_sizes) + 1, dtype=np.int32)
-            grp_ptr[1:] = np.cumsum(grp_sizes)
-
-            weights_groups = np.full(
-                len(self.groups_),
-                fill_value=(1.0 - self.l1_ratio),
-                dtype=float,
-            )
-            weights_features = np.full(
-                X.shape[1],
-                fill_value=self.l1_ratio,
-                dtype=float,
-            )
-
-            penalty = WeightedL1GroupL2(
+            penalty = L1_plus_L2(
                 alpha=self.alpha,
-                weights_groups=weights_groups,
-                weights_features=weights_features,
-                grp_ptr=grp_ptr,
-                grp_indices=grp_indices,
+                l1_ratio=self.l1_ratio,
             )
 
         try:
-            self.estimator_ = GeneralizedLinearEstimator(
-                penalty=penalty,
-                fit_intercept=self.fit_intercept,
+            solver = AndersonCD(
                 max_iter=self.max_iter,
                 tol=self.tol,
+                fit_intercept=self.fit_intercept,
+                ws_strategy="fixpoint",
             )
         except TypeError:
             solver = AndersonCD(
@@ -103,12 +81,12 @@ class GroupElasticNetRegressor(BaseEstimator, RegressorMixin):
                 tol=self.tol,
                 fit_intercept=self.fit_intercept,
             )
-            self.estimator_ = GeneralizedLinearEstimator(
-                datafit=Quadratic(),
-                penalty=penalty,
-                solver=solver,
-            )
 
+        self.estimator_ = CompatGeneralizedLinearEstimator(
+            datafit=Quadratic(),
+            penalty=penalty,
+            solver=solver,
+        )
         self.estimator_.fit(X, y)
         return self
 
