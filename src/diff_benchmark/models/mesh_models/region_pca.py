@@ -20,7 +20,7 @@ Pipeline
           │
           ▼  (n_subjects, n_regions * n_components)
           │
-          ▼  Ridge regression  (GridSearchCV over alpha, n_components)
+          ▼  Group Lasso (GridSearchCV over alpha, n_components)
           │
           ▼  predictions (n_subjects,)
 
@@ -44,19 +44,30 @@ Notes
 
 from __future__ import annotations
 
-import logging
-import os
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import numpy as np
+from skglm.datafits import Quadratic
+try:
+    from skglm.datafits import QuadraticGroup
+except ImportError:  # skglm compatibility fallback
+    QuadraticGroup = None
+from skglm.penalties import WeightedGroupL2
+try:
+    from skglm.solvers import GroupBCD
+except ImportError:  # skglm compatibility fallback
+    GroupBCD = None
+from skglm.solvers import AndersonCD
 
-logger = logging.getLogger(__name__)
-from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.base import BaseEstimator, RegressorMixin, TransformerMixin
 from sklearn.decomposition import IncrementalPCA
-from sklearn.linear_model import Ridge, LogisticRegression
+from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.utils.validation import check_is_fitted
 
+from diff_benchmark.models.mesh_models.skglm_compat import CompatGeneralizedLinearEstimator
 from diff_benchmark.models.utils_models.trainer import SklearnModel
 
 
@@ -80,11 +91,12 @@ class RegionPCATransformer(BaseEstimator, TransformerMixin):
     For every subject a feature vector is produced by:
 
     1. Grouping vertices by ``parcel_labels`` (label 0 is skipped).
-    2. Fitting PCA inside each parcel on the **training** set and projecting
+    2. Standardising node features inside each parcel (fit on training only).
+    3. Fitting PCA inside each parcel on the **training** set and projecting
        all subjects onto the retained components.
-    3. Using the **explained variance** of each component as the scalar
+    4. Using the **explained variance** of each component as the scalar
        feature for that (parcel, component) pair.
-    4. Concatenating the per-parcel feature vectors into one vector per
+    5. Concatenating the per-parcel feature vectors into one vector per
        subject of length ``n_regions * n_components``.
 
     Parameters
@@ -98,6 +110,8 @@ class RegionPCATransformer(BaseEstimator, TransformerMixin):
     ----------
     pca_per_region_ : dict[int, IncrementalPCA]
         Fitted PCA objects keyed by parcel label.  Set after ``fit``.
+    scaler_per_region_ : dict[int, StandardScaler]
+        Fitted standard scalers keyed by parcel label. Set after ``fit``.
     region_order_ : list[int]
         Sorted list of parcel labels seen during ``fit``; defines the
         column order in the output matrix.
@@ -127,7 +141,7 @@ class RegionPCATransformer(BaseEstimator, TransformerMixin):
         # Ensure 2-D feature matrix  (N, F)
         if nf.ndim == 1:
             nf = nf[:, np.newaxis]
-        return nf.astype(np.float64), pl.astype(np.int64)
+        return nf.astype(np.float32, copy=False), pl.astype(np.int32, copy=False)
 
     # ------------------------------------------------------------------
     # sklearn API
@@ -172,31 +186,43 @@ class RegionPCATransformer(BaseEstimator, TransformerMixin):
                     parcel_min_nodes[label] = n_nodes
 
         # ----------------------------------------------------------------
-        # Initialise one IncrementalPCA per parcel with the correct k.
+        # Initialise one StandardScaler + IncrementalPCA per parcel.
         # ----------------------------------------------------------------
+        self.scaler_per_region_: dict[int, StandardScaler] = {}
         self.pca_per_region_: dict[int, IncrementalPCA] = {}
         self.n_components_per_region_: dict[int, int] = {}
 
         for label, min_nodes in parcel_min_nodes.items():
             k = min(self.n_components, min_nodes, n_features)
+            self.scaler_per_region_[label] = StandardScaler(copy=False)
             self.pca_per_region_[label] = IncrementalPCA(n_components=k)
             self.n_components_per_region_[label] = k
 
         # ----------------------------------------------------------------
-        # Pass 2 — incremental fit: one subject at a time per parcel.
-        # Only one subject's mesh is in RAM at each step.
+        # Pass 2 — fit per-parcel scalers incrementally.
         # ----------------------------------------------------------------
         n_subjects = len(X)
         n_parcels = len(self.pca_per_region_)
-        logger.info(
-            "IncrementalPCA fit starting: %d subjects, %d parcels, "
-            "n_components=%d, n_features=%d — approx. %.1f MB/subject.",
-            n_subjects, n_parcels, self.n_components, n_features,
-            # rough upper bound: full node-feature matrix for one subject
-            next(iter(X))["node_features"].shape[0] * n_features * 8 / 1e6
+        approx_mb = (
+            next(iter(X))["node_features"].shape[0] * n_features * 4 / 1e6
             if hasattr(next(iter(X))["node_features"], "shape")
-            else float("nan"),
+            else float("nan")
         )
+        for subject_idx, mesh in enumerate(X):
+            nf, pl = self._extract_arrays(mesh)
+            skipped = 0
+            for label, scaler in self.scaler_per_region_.items():
+                mask = pl == label
+                if mask.sum() == 0:
+                    skipped += 1
+                    continue
+                scaler.partial_fit(nf[mask])
+            mem_mb = _rss_mb()
+
+        # ----------------------------------------------------------------
+        # Pass 3 — incremental PCA fit: one subject at a time per parcel.
+        # Only one subject's mesh is in RAM at each step.
+        # ----------------------------------------------------------------
         for subject_idx, mesh in enumerate(X):
             nf, pl = self._extract_arrays(mesh)
             skipped = 0
@@ -206,14 +232,11 @@ class RegionPCATransformer(BaseEstimator, TransformerMixin):
                     # Too few nodes in this subject to update this parcel.
                     skipped += 1
                     continue
-                pca.partial_fit(nf[mask])
+                region_nodes = nf[mask]
+                scaler = self.scaler_per_region_[label]
+                region_nodes = scaler.transform(region_nodes)
+                pca.partial_fit(region_nodes)
             mem_mb = _rss_mb()
-            logger.info(
-                "  subject %d/%d done — nf shape %s, parcels skipped: %d, "
-                "process RSS: %s",
-                subject_idx + 1, n_subjects, nf.shape, skipped,
-                f"{mem_mb:.1f} MB" if mem_mb is not None else "n/a",
-            )
 
         self.region_order_: list[int] = sorted(self.pca_per_region_.keys())
         self.n_features_out_: int = sum(
@@ -239,7 +262,7 @@ class RegionPCATransformer(BaseEstimator, TransformerMixin):
         -------
         np.ndarray of shape ``(n_subjects, n_features_out_)``
         """
-        out = np.zeros((len(X), self.n_features_out_), dtype=np.float64)
+        out = np.zeros((len(X), self.n_features_out_), dtype=np.float32)
 
         for i, mesh in enumerate(X):
             nf, pl = self._extract_arrays(mesh)
@@ -253,11 +276,17 @@ class RegionPCATransformer(BaseEstimator, TransformerMixin):
                     col += k
                     continue
                 region_nodes = nf[mask]  # (M_r, F)
+                scaler = self.scaler_per_region_[label]
+                region_nodes = scaler.transform(region_nodes)
                 # Project onto PCA components → (M_r, k)
                 projected = pca.transform(region_nodes)
                 # Explained variance of each component for this subject
                 # = variance of projected scores along each PC axis
-                ev = projected.var(axis=0) if projected.shape[0] > 1 else np.abs(projected[0])
+                ev = (
+                    projected.var(axis=0).astype(np.float32, copy=False)
+                    if projected.shape[0] > 1
+                    else np.abs(projected[0]).astype(np.float32, copy=False)
+                )
                 # ev shape: (k,)
                 out[i, col : col + k] = ev
                 col += k
@@ -266,12 +295,149 @@ class RegionPCATransformer(BaseEstimator, TransformerMixin):
 
 
 # ---------------------------------------------------------------------------
+# Group Lasso on Region-PCA features
+# ---------------------------------------------------------------------------
+
+
+class GroupLassoRegressor(BaseEstimator, RegressorMixin):
+    """Sklearn-compatible Group Lasso regressor on Region-PCA features.
+
+    A fitted :class:`RegionPCATransformer` is injected into ``self._transformer``
+    by :class:`_RegionPCAPipeline` before this estimator is fit so that group
+    boundaries align with region-wise PCA blocks.
+    """
+
+    def __init__(
+        self,
+        alpha: float = 1.0,
+        max_iter: int = 100,
+        tol: float = 1e-4,
+        fit_intercept: bool = True,
+    ) -> None:
+        self.alpha = alpha
+        self.max_iter = max_iter
+        self.tol = tol
+        self.fit_intercept = fit_intercept
+
+    @staticmethod
+    def _groups_from_transformer(transformer) -> list[list[int]]:
+        groups: list[list[int]] = []
+        col = 0
+        for label in transformer.region_order_:
+            k = int(transformer.n_components_per_region_[label])
+            groups.append(list(range(col, col + k)))
+            col += k
+        return groups
+
+    def fit(self, X: np.ndarray, y: np.ndarray) -> "GroupLassoRegressor":
+        transformer = getattr(self, "_transformer", None)
+        if transformer is not None:
+            try:
+                check_is_fitted(transformer)
+                self.groups_ = self._groups_from_transformer(transformer)
+            except Exception:
+                self.groups_ = [[i] for i in range(X.shape[1])]
+        else:
+            self.groups_ = [[i] for i in range(X.shape[1])]
+
+        grp_indices = np.asarray(
+            [idx for group in self.groups_ for idx in group],
+            dtype=np.int32,
+        )
+        grp_sizes = np.asarray([len(group) for group in self.groups_], dtype=np.int32)
+        grp_ptr = np.zeros(len(grp_sizes) + 1, dtype=np.int32)
+        grp_ptr[1:] = np.cumsum(grp_sizes)
+
+        penalty = WeightedGroupL2(
+            alpha=self.alpha,
+            weights=np.ones(len(self.groups_), dtype=float),
+            grp_ptr=grp_ptr,
+            grp_indices=grp_indices,
+        )
+        if GroupBCD is not None and QuadraticGroup is not None:
+            solver = GroupBCD(
+                max_iter=self.max_iter,
+                tol=self.tol,
+                fit_intercept=self.fit_intercept,
+            )
+            datafit = QuadraticGroup(grp_ptr=grp_ptr, grp_indices=grp_indices)
+        else:
+            solver = AndersonCD(
+                max_iter=self.max_iter,
+                tol=self.tol,
+                fit_intercept=self.fit_intercept,
+            )
+            datafit = Quadratic()
+        self.estimator_ = CompatGeneralizedLinearEstimator(
+            datafit=datafit,
+            penalty=penalty,
+            solver=solver,
+        )
+        self.estimator_.fit(X, y)
+        return self
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        check_is_fitted(self, "estimator_")
+        return self.estimator_.predict(X)
+
+    def transform(self, X: np.ndarray) -> np.ndarray:
+        """Zero out inactive features (used before LogisticRegression)."""
+        check_is_fitted(self, "estimator_")
+        coef = self.estimator_.coef_
+        mask = coef != 0.0
+        return X * mask[np.newaxis, :]
+
+    @property
+    def coef_(self) -> np.ndarray:
+        check_is_fitted(self, "estimator_")
+        return self.estimator_.coef_
+
+    @property
+    def intercept_(self) -> float:
+        check_is_fitted(self, "estimator_")
+        return self.estimator_.intercept_
+
+
+class _RegionPCAPipeline(Pipeline):
+    """Pipeline that injects the fitted RegionPCATransformer into GroupLasso."""
+
+    def fit(self, X, y=None, **params):  # type: ignore[override]
+        region_pca = self.named_steps.get("region_pca")
+        Xt = X
+        for name, step in self.steps:
+            if step is None or step == "passthrough":
+                continue
+
+            if isinstance(step, GroupLassoRegressor) and region_pca is not None:
+                step._transformer = region_pca
+
+            is_last = name == self.steps[-1][0]
+            if is_last:
+                step.fit(Xt, y)
+            else:
+                if hasattr(step, "fit_transform"):
+                    Xt = step.fit_transform(Xt, y)
+                else:
+                    step.fit(Xt, y)
+                    Xt = step.transform(Xt)
+        return self
+
+    def predict(self, X, **predict_params):  # type: ignore[override]
+        Xt = X
+        for _, transformer in self.steps[:-1]:
+            if transformer is None or transformer == "passthrough":
+                continue
+            Xt = transformer.transform(Xt)
+        return self.steps[-1][1].predict(Xt)
+
+
+# ---------------------------------------------------------------------------
 # RegionPCAModel
 # ---------------------------------------------------------------------------
 
 
 class RegionPCAModel(SklearnModel):
-    """Region-PCA + Ridge regression model for surface-mesh data.
+    """Region-PCA + Group Lasso model for surface-mesh data.
 
     Extends :class:`~diff_benchmark.models.utils_models.trainer.SklearnModel`
     to accept ``data_type = "mesh"`` inputs.  The mesh-to-array conversion
@@ -284,7 +450,7 @@ class RegionPCAModel(SklearnModel):
         ``"regression"`` or ``"binary_classification"``.
     n_jobs : int
         Passed to :class:`~sklearn.model_selection.GridSearchCV`.
-        Defaults to ``1`` so that per-subject logging from
+        Defaults to ``1`` so that per-subject progress prints from
         :class:`RegionPCATransformer` is visible in the main process.
         Set to ``-1`` to re-enable full parallelism once debugging is done.
     random_state : int
@@ -292,12 +458,13 @@ class RegionPCAModel(SklearnModel):
 
     Pipeline
     --------
-    ``RegionPCATransformer`` → ``Ridge``
+    Regression: ``RegionPCATransformer`` → ``GroupLassoRegressor``
+    Classification: ``RegionPCATransformer`` → ``GroupLassoRegressor`` → ``LogisticRegression``
 
     Grid search
     -----------
-    ``region_pca__n_components``: [1, 2, 3, 5]
-    ``model__alpha``:             log-spaced grid [1e-3 … 1e3]
+    ``region_pca__n_components``: [3, 5, 10]
+    ``group_lasso__alpha``:       log-spaced grid [1e-5 … 1e5]
     """
 
     data_type: str = "mesh"
@@ -305,37 +472,48 @@ class RegionPCAModel(SklearnModel):
     def _build_model(self, **kwargs) -> BaseEstimator:
         self.prediction_task = kwargs.get("prediction_task", "regression")
         self.output_dim = 1
-        # Set n_jobs=1 to keep transformer logs visible (joblib worker
-        # processes swallow logging output). Switch back to -1 once the
+        # Set n_jobs=1 to keep transformer prints visible in the main process.
+        # Switch back to -1 once debugging is complete.
+        # (Worker processes may buffer or drop stdout in some schedulers.)
+        #
         # OOM investigation is complete.
-        n_jobs = kwargs.get("n_jobs", 1)
+        n_jobs = kwargs.get("n_jobs", -1)
+        verbose = kwargs.get("verbose", 1)
 
         if self.prediction_task == "regression":
-            estimator = Ridge()
+            pipeline = _RegionPCAPipeline(
+                [
+                    ("region_pca", RegionPCATransformer()),
+                    ("group_lasso", GroupLassoRegressor()),
+                ]
+            )
             param_grid = {
-                "region_pca__n_components": [1, 2, 3, 5],
-                "model__alpha": np.logspace(-3, 3, 13),
+                "region_pca__n_components": [3, 5, 10],
+                "group_lasso__alpha": np.logspace(-5, 5, 10),
             }
             scoring = "neg_mean_absolute_error"
+
         elif self.prediction_task == "binary_classification":
-            estimator = LogisticRegression(max_iter=5000)
+            pipeline = _RegionPCAPipeline(
+                [
+                    ("region_pca", RegionPCATransformer()),
+                    ("group_lasso", GroupLassoRegressor()),
+                    ("classifier", LogisticRegression(max_iter=5000)),
+                ]
+            )
             param_grid = {
-                "region_pca__n_components": [1, 2, 3, 5],
-                "model__C": np.logspace(-3, 3, 3), #13),
+                "region_pca__n_components": [3, 5, 10],
+                "group_lasso__alpha": np.logspace(-5, -2, 5), #np.logspace(-5, 5, 10),
+                "classifier__C": np.logspace(-2, 2, 5), #np.logspace(-5, 5, 10),
             }
             scoring = "balanced_accuracy"
-            
+
         else:
             raise ValueError(
                 f"Unknown prediction_task '{self.prediction_task}'."
             )
-
-        pipeline = Pipeline(
-            [
-                ("region_pca", RegionPCATransformer()),
-                ("model", estimator),
-            ]
-        )
+        
+        print(f"Jobs={n_jobs}, param_grid={param_grid}")
 
         return GridSearchCV(
             estimator=pipeline,
@@ -343,7 +521,8 @@ class RegionPCAModel(SklearnModel):
             scoring=scoring,
             cv=5,
             n_jobs=n_jobs,
-            verbose=3,
+            pre_dispatch="n_jobs",
+            verbose=verbose,
         )
 
     # ------------------------------------------------------------------

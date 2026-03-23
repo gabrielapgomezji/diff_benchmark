@@ -20,7 +20,7 @@ runtime:
 
 
 choices:
-  model: [spectral_laplacian]
+  model: [region_elasticnet] #[region_elasticnet, region_group_lasso]
   dataset: [hcp]
   # backend: [sklearn]
   # target: [age]
@@ -29,8 +29,11 @@ choices:
   dataset.metric_to_compute: [md]
   # cluster: [margaret_cpu]
   cluster.conf.parallel_type: [None]
-  backend.learning_rate: [1e-4]
-  backend.weight_decay: [1e-2]
+  cluster.conf.n_jobs: [2]
+  model.backbone.region_representation: [flatten] #[flatten, mean_std, pca, summary_stats, percentiles]
+  data.num_workers: [0]
+  # backend.learning_rate: [1e-4]
+  # backend.weight_decay: [1e-2]
   # pred_head: [mesh_classification]
   # pred_head.lambda1: [0.01]
   # pred_head.lambda2: [0.001]

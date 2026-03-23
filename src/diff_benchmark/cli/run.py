@@ -10,17 +10,120 @@ import numpy as np
 import pandas as pd
 from omegaconf import DictConfig, OmegaConf
 
+from diff_benchmark.analysis.region_coefficients import (
+    build_region_coefficient_records,
+    extract_subject_region_coefficients,
+    save_region_coefficients,
+)
 from diff_benchmark.analysis.save_results import save_model_results
 from diff_benchmark.analysis.true_vs_pred import plot_true_vs_pred
 from diff_benchmark.cli.utils import build_config_grid, cartesian_cfgs
 from diff_benchmark.data.prepare_data import DatasetPreparation
 from diff_benchmark.models.model_configurations import get_model
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
+from diff_benchmark.preprocessing.utils.utils_brain_feature_extraction import (
+    resample_schaefer_onto_fs_lr,
+)
 from diff_benchmark.utils.job_manager import run_jobs
 from diff_benchmark.utils.logger import configure_logging, setup_logger
 from diff_benchmark.utils.parquet_helper import ParquetSaver, metrics_to_rows
 from diff_benchmark.utils.run_id import get_learning_curve_id, is_cached, make_run_id
 from diff_benchmark.utils.scores import compute_metrics
+
+
+def _extract_inputs_for_coefficients(trainer, dataloader):
+    """Return ordered model inputs for coefficient extraction when available."""
+    if hasattr(trainer, "_load_data"):
+        try:
+            x_data, _ = trainer._load_data(dataloader)
+            return x_data
+        except Exception:
+            pass
+
+    x_data = []
+    for batch in dataloader:
+        x_batch = batch[0]
+        if isinstance(x_batch, list):
+            x_data.extend(x_batch)
+        else:
+            return None
+    return x_data if x_data else None
+
+
+def _save_split_region_coefficients(
+    *,
+    trainer,
+    dataloader,
+    subject_ids: np.ndarray,
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    model_name: str,
+    run_id: str,
+    dataset_name: str,
+    tissue_type: str,
+    primary_metric: str,
+    fold_idx: int,
+    split: str,
+    experiment_dir: Path,
+    prediction_task: str,
+    logger,
+) -> bool:
+    """Extract and persist per-region coefficients for a fold split."""
+    x_data = _extract_inputs_for_coefficients(trainer, dataloader)
+    metadata = {
+        "agg": "l2",
+        "class_index": 1 if prediction_task == "binary_classification" else None,
+    }
+
+    coeffs_by_subject, is_static = extract_subject_region_coefficients(
+        model=trainer,
+        X=x_data,
+        metadata=metadata,
+    )
+    if not coeffs_by_subject:
+        return False
+    if not is_static:
+        logger.info(
+            "Skipping subject-specific region coefficients for fold=%s split=%s (static-only mode)",
+            fold_idx,
+            split,
+        )
+        return False
+
+    records = build_region_coefficient_records(
+        subject_ids=subject_ids,
+        model_name=model_name,
+        region_coefficients=coeffs_by_subject,
+        y_true=y_true,
+        y_pred=y_pred,
+        fold=fold_idx,
+        split=split,
+        is_static=is_static,
+        metadata_fields={
+            "run_id": str(run_id),
+            "dataset": str(dataset_name),
+            "tissue_type": str(tissue_type),
+            "primary_metric": str(primary_metric),
+            "metric_to_compute": str(primary_metric),
+        },
+    )
+    parquet_path = save_region_coefficients(
+        records,
+        output_root=experiment_dir / "coefficients",
+        model_name=model_name,
+        run_id=run_id,
+        fold=fold_idx,
+        split=split,
+    )
+    logger.info(
+        "Saved region coefficients to %s for fold=%s split=%s (static=%s, records=%d)",
+        parquet_path,
+        fold_idx,
+        split,
+        is_static,
+        len(records),
+    )
+    return bool(is_static)
 
 
 def _build_prediction_rows(
@@ -132,6 +235,36 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
 
     logger.info("Data preparation completed.")
 
+    try:
+        schaefer = resample_schaefer_onto_fs_lr(
+            scale=int(cfg.dataset.scale),
+            target_space=str(cfg.dataset.surface_space),
+        )
+        atlas_meta = dict(schaefer.get("atlas_meta", {}) or {})
+        atlas_meta.update(
+            {
+                "atlas_type": atlas_meta.get("atlas_type", "surface_schaefer"),
+                "surface_space": str(cfg.dataset.surface_space),
+                "scale": int(cfg.dataset.scale),
+                "dataset": str(cfg.dataset.name),
+                "tissue_type": str(cfg.dataset.tissue_type),
+                "metric_to_compute": str(cfg.dataset.metric_to_compute),
+            }
+        )
+        metadata["atlas"] = atlas_meta
+    except Exception as atlas_err:
+        logger.warning("Atlas metadata inference failed: %s", atlas_err)
+        metadata["atlas"] = {
+            "atlas_type": "surface_schaefer",
+            "surface_space": str(cfg.dataset.surface_space),
+            "scale": int(cfg.dataset.scale),
+            "dataset": str(cfg.dataset.name),
+            "tissue_type": str(cfg.dataset.tissue_type),
+            "metric_to_compute": str(cfg.dataset.metric_to_compute),
+            "error": str(atlas_err),
+        }
+    OmegaConf.save(metadata, experiment_dir / "metadata.yaml")
+
     # Persist target values once (shared across folds).
     targets_path = experiment_dir / "predictions" / "targets.parquet"
     target_name = cfg.target.target_column[0]
@@ -205,6 +338,30 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
                     fold_idx, "train", target_name, train_subject_ids, train_pred,
                 )
             )
+            try:
+                _save_split_region_coefficients(
+                    trainer=model,
+                    dataloader=train_loader,
+                    subject_ids=train_subject_ids,
+                    y_true=y_train,
+                    y_pred=train_pred,
+                    model_name=model_name,
+                    run_id=run_id,
+                    dataset_name=dataset_selected.name,
+                    tissue_type=cfg.dataset.tissue_type,
+                    primary_metric=cfg.dataset.metric_to_compute,
+                    fold_idx=fold_idx,
+                    split="train",
+                    experiment_dir=experiment_dir,
+                    prediction_task=cfg.pred_head.prediction_task,
+                    logger=logger,
+                )
+            except Exception as coef_err:
+                logger.warning(
+                    "Region-coefficient extraction failed (fold=%s, split=train): %s",
+                    fold_idx,
+                    coef_err,
+                )
 
             # Test split
             test_pred = model.predict(test_loader)
@@ -221,6 +378,10 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
                     run_id, model_name, dataset_selected.name,
                     fold_idx, "test", target_name, test_subject_ids, test_pred,
                 )
+            )
+            logger.info(
+                "Region coefficients are extracted once per fold from train split (fold=%s)",
+                fold_idx,
             )
             pred_saver.save()
 

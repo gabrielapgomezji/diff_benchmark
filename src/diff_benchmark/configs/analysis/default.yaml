@@ -3,3 +3,14 @@ plots: true
 force_plots: false
 debug: false
 run_ids: null
+
+coefficients_plot:
+  enabled: false
+  run_id: null
+  atlas_path: null
+  atlas_img: null
+  label_map_path: null
+  fold: null
+  average_folds: true
+  cmap: coolwarm
+  threshold: null
