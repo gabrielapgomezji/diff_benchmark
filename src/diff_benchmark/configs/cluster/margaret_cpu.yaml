@@ -23,7 +23,7 @@ conf:
   wait_for_results: false
 
 slurm_cfg:
-  slurm_partition: parietal,normal
+  slurm_partition: normal #parietal,normal
   tasks_per_node: 1
   slurm_cpus_per_task: 20
   timeout_min: 900

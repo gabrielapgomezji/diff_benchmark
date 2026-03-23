@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import numpy as np
-from skglm.datafits import Quadratic
-from skglm.solvers import AndersonCD
-try:
-    from skglm.penalties import L1_plus_L2, SparseGroupL1
-except ImportError:  # skglm compatibility
-    from skglm.penalties import L1_plus_L2
-    SparseGroupL1 = None
+from skglm import GeneralizedLinearEstimator
+from skglm.datafits import QuadraticGroup
+from skglm.penalties import WeightedL1GroupL2
+from skglm.solvers import GroupBCD
+from skglm.utils.data import grp_converter
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
@@ -16,7 +14,6 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.utils.validation import check_is_fitted
 
 from diff_benchmark.models.mesh_models.region_feature_extractor import RegionFeatureExtractor
-from diff_benchmark.models.mesh_models.skglm_compat import CompatGeneralizedLinearEstimator
 from diff_benchmark.models.utils_models.trainer import SklearnModel
 
     
@@ -40,59 +37,119 @@ class GroupElasticNetRegressor(BaseEstimator, RegressorMixin):
         self.fit_intercept = fit_intercept
 
     def fit(self, X, y):
-        transformer = getattr(self, "_transformer", None)
-        if transformer is not None:
-            try:
-                check_is_fitted(transformer)
-                groups = []
-                col = 0
-                for label in transformer.region_order_:
-                    width = transformer.region_feature_widths_[label]
-                    groups.append(list(range(col, col + width)))
-                    col += width
-                self.groups_ = groups
-            except Exception:
-                self.groups_ = [[i] for i in range(X.shape[1])]
-        else:
-            self.groups_ = [[i] for i in range(X.shape[1])]
+        X = np.asarray(X)
+        y = np.asarray(y)
 
-        if SparseGroupL1 is not None:
-            penalty = SparseGroupL1(
-                alpha=self.alpha,
-                l1_ratio=self.l1_ratio,
-                groups=self.groups_,
+        transformer = getattr(self, "_transformer", None)
+        if not 0.0 <= self.l1_ratio <= 1.0:
+            raise ValueError(
+                f"l1_ratio must be in [0, 1], got {self.l1_ratio}."
             )
-        else:
-            penalty = L1_plus_L2(
-                alpha=self.alpha,
-                l1_ratio=self.l1_ratio,
+
+        if transformer is None:
+            raise RuntimeError(
+                "GroupElasticNetRegressor requires a fitted RegionFeatureExtractor "
+                "to define region groups; _transformer was not set."
             )
 
         try:
-            solver = AndersonCD(
-                max_iter=self.max_iter,
-                tol=self.tol,
-                fit_intercept=self.fit_intercept,
-                ws_strategy="fixpoint",
-            )
-        except TypeError:
-            solver = AndersonCD(
-                max_iter=self.max_iter,
-                tol=self.tol,
-                fit_intercept=self.fit_intercept,
+            if not hasattr(transformer, "region_order_"):
+                raise AttributeError("Missing required attribute 'region_order_'.")
+            if not hasattr(transformer, "region_feature_widths_"):
+                raise AttributeError(
+                    "Missing required attribute 'region_feature_widths_'."
+                )
+            groups = []
+            col = 0
+            for label in transformer.region_order_:
+                width = transformer.region_feature_widths_[label]
+                if width <= 0:
+                    raise ValueError(
+                        f"Region '{label}' has non-positive feature width {width}."
+                    )
+                groups.append(list(range(col, col + width)))
+                col += width
+        except Exception as exc:
+            raise RuntimeError(
+                "Failed to construct region-based groups from RegionFeatureExtractor."
+            ) from exc
+
+        n_features = X.shape[1]
+        if col != n_features:
+            raise ValueError(
+                "Mismatch between constructed grouped features and X columns: "
+                f"groups cover {col} features but X has {n_features}."
             )
 
-        self.estimator_ = CompatGeneralizedLinearEstimator(
-            datafit=Quadratic(),
+        grp_indices, grp_ptr = grp_converter(groups, n_features)
+        grp_ptr = np.asarray(grp_ptr, dtype=np.int32)
+        grp_indices = np.asarray(grp_indices, dtype=np.int32)
+
+        self.groups_ = groups
+        self.grp_ptr_ = grp_ptr
+        self.grp_indices_ = grp_indices
+
+        feature_strength = self.alpha * self.l1_ratio
+        group_strength = self.alpha * (1.0 - self.l1_ratio)
+
+        weights_features = np.full(n_features, feature_strength, dtype=np.float64)
+        weights_groups = np.full(len(groups), group_strength, dtype=np.float64)
+
+        penalty = WeightedL1GroupL2(
+            alpha=1.0,
+            weights_groups=weights_groups,
+            weights_features=weights_features,
+            grp_ptr=grp_ptr,
+            grp_indices=grp_indices,
+        )
+
+        if self.fit_intercept:
+            self._x_offset_ = X.mean(axis=0)
+            self._y_offset_ = float(y.mean())
+            X_fit = X - self._x_offset_
+            y_fit = y - self._y_offset_
+        else:
+            self._x_offset_ = np.zeros(n_features, dtype=X.dtype)
+            self._y_offset_ = 0.0
+            X_fit = X
+            y_fit = y
+
+        solver = GroupBCD(
+            max_iter=self.max_iter,
+            tol=self.tol,
+            fit_intercept=False,
+            ws_strategy="fixpoint",
+        )
+
+        self.estimator_ = GeneralizedLinearEstimator(
+            datafit=QuadraticGroup(grp_ptr, grp_indices),
             penalty=penalty,
             solver=solver,
         )
-        self.estimator_.fit(X, y)
+        self.estimator_.fit(X_fit, y_fit)
+
+        self.intercept_value_ = (
+            self._y_offset_ - float(self._x_offset_ @ self.estimator_.coef_)
+        )
+
+        coef = self.estimator_.coef_
+        self.zero_group_mask_ = np.array(
+            [np.all(coef[group] == 0.0) for group in self.groups_],
+            dtype=bool,
+        )
+        self.partial_zero_active_group_mask_ = np.array(
+            [
+                np.any(coef[group] == 0.0) and np.any(coef[group] != 0.0)
+                for group in self.groups_
+            ],
+            dtype=bool,
+        )
+
         return self
 
     def predict(self, X):
         check_is_fitted(self, "estimator_")
-        return self.estimator_.predict(X)
+        return np.asarray(X) @ self.estimator_.coef_ + self.intercept_value_
 
     def transform(self, X):
         check_is_fitted(self, "estimator_")
@@ -107,8 +164,8 @@ class GroupElasticNetRegressor(BaseEstimator, RegressorMixin):
 
     @property
     def intercept_(self):
-        check_is_fitted(self, "estimator_")
-        return self.estimator_.intercept_
+        check_is_fitted(self, "intercept_value_")
+        return self.intercept_value_
 
 
 class _GroupElasticNetPipeline(Pipeline):

@@ -691,12 +691,13 @@ def resample_schaefer_onto_fs_lr(
     # Load Schaefer fsaverage label GIFTIs (always needed as source)
     # ------------------------------------------------------------------
     schaefer_gii: dict[str, nib.gifti.GiftiImage] = {}
+    schaefer_label_paths: dict[str, str] = {}
     for hemi in ("L", "R"):
         filename = (
             f"tpl-fsaverage_hemi-{hemi}_den-164k_atlas-Schaefer2018"
             f"_seg-17n_scale-{scale}_dseg.label.gii"
         )
-        schaefer_gii[hemi] = _load_gii(
+        label_path = _local_or_tflow(
             "fsaverage",
             filename,
             hemi=hemi,
@@ -706,6 +707,8 @@ def resample_schaefer_onto_fs_lr(
             scale=str(scale),
             extension="label.gii",
         )
+        schaefer_label_paths[hemi] = str(label_path)
+        schaefer_gii[hemi] = nib.load(label_path)
 
     # ------------------------------------------------------------------
     # Load TSV label table
@@ -724,6 +727,18 @@ def resample_schaefer_onto_fs_lr(
     labels = pd.read_csv(tsv_path, sep="\t")
     labels_left = labels[labels["hemi"] == "L"]
     labels_right = labels[labels["hemi"] == "R"]
+    atlas_meta = {
+        "atlas_type": "surface_schaefer",
+        "atlas_name": "Schaefer2018",
+        "scale": int(scale),
+        "target_space": str(target_space),
+        "label_tsv_path": str(tsv_path),
+        "left_label_gii_path": schaefer_label_paths.get("L"),
+        "right_label_gii_path": schaefer_label_paths.get("R"),
+        "n_regions_total": int(len(labels)),
+        "n_regions_left": int(len(labels_left)),
+        "n_regions_right": int(len(labels_right)),
+    }
 
     # ------------------------------------------------------------------
     # fsaverage target space: load sulc and return directly
@@ -751,6 +766,7 @@ def resample_schaefer_onto_fs_lr(
             "right.data": schaefer_gii["R"].darrays[0].data,
             "right.labels": labels_right,
             "right.sulc": sulc["R"],
+            "atlas_meta": atlas_meta,
         }
 
     # ------------------------------------------------------------------
@@ -814,6 +830,7 @@ def resample_schaefer_onto_fs_lr(
         results[f"{h_key}.labels"] = lbl
         results[f"{h_key}.sulc"] = fslr_sulc
 
+    results["atlas_meta"] = atlas_meta
     return results
 
 
