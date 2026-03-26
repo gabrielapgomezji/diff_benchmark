@@ -412,7 +412,20 @@ class CachedFeatureDataset(Dataset):
                             for i in range(len(x))
                         ]
 
-                    # Process each sample in batch
+                    # Mesh mode: collate returns list[dict] and no 2D augmentation applies.
+                    is_mesh_batch = isinstance(x, list) and len(x) > 0 and isinstance(x[0], dict)
+                    if is_mesh_batch:
+                        mesh_batch = [{k: v.to(device) for k, v in d.items()} for d in x]
+                        # PointNet returns (B, P, E) parcel embeddings.
+                        batch_features = backbone(mesh_batch).detach().cpu()
+                        for sample_idx in range(batch_features.shape[0]):
+                            sample_feat = batch_features[sample_idx]
+                            # Keep API consistent with vision cache: one "augmentation" slot.
+                            all_features.append([sample_feat])
+                            all_subject_ids.append(subject_ids[sample_idx])
+                        continue
+
+                    # Non-mesh mode (vision backbones): keep existing augmentation flow.
                     for sample_idx in range(len(x)):
                         sample_x = x[sample_idx : sample_idx + 1].to(device)
 
@@ -420,59 +433,31 @@ class CachedFeatureDataset(Dataset):
                         if sample_x.ndim == 5 and sample_x.shape[1] == 1:
                             sample_x = sample_x.squeeze(1)
 
-                        # Apply each augmentation and compute features
                         sample_features = []
                         for aug_idx, transform in enumerate(aug_transforms):
                             if hasattr(backbone, "collate_with_augmentation"):
-                                # If backbone has custom collation (e.g., MedicalNet), use it
-                                # It expects a list of (x, y, g) tuples and handles transforms + stacking
-
-                                # We need to pass unwrapped tensor (D, H, W) not (1, D, H, W)
-                                x_input = (
-                                    sample_x[0] if sample_x.ndim == 4 else sample_x
-                                )
-
-                                # Create dummy batch with single sample
-                                dummy_batch = [
-                                    (x_input, torch.tensor(0), torch.tensor(0))
-                                ]
-
-                                # Use backbone's collate function
+                                x_input = sample_x[0] if sample_x.ndim == 4 else sample_x
+                                dummy_batch = [(x_input, torch.tensor(0), torch.tensor(0))]
                                 augmented_x, _, _ = backbone.collate_with_augmentation(
                                     dummy_batch, transform=transform
                                 )
                                 augmented_x = augmented_x.to(device)
-
                             else:
-                                # Apply transformation slice-wise for 3D volumes
                                 if sample_x.ndim == 4:  # (1, D, H, W)
                                     D, H, W = sample_x.shape[1:]
                                     augmented_slices = []
                                     for d in range(D):
-                                        slice_2d = sample_x[0, d, :, :].unsqueeze(
-                                            0
-                                        )  # (1, H, W)
-                                        aug_slice = transform(
-                                            slice_2d
-                                        )  # Should output (1, H', W')
-                                        # Ensure it's 3D (1, H, W) not 4D
+                                        slice_2d = sample_x[0, d, :, :].unsqueeze(0)
+                                        aug_slice = transform(slice_2d)
                                         if aug_slice.ndim == 4:
-                                            aug_slice = aug_slice.squeeze(
-                                                1
-                                            )  # Remove extra channel: (1, 1, H, W) -> (1, H, W)
+                                            aug_slice = aug_slice.squeeze(1)
                                         augmented_slices.append(aug_slice)
-                                    augmented_x = torch.stack(
-                                        augmented_slices, dim=1
-                                    )  # (1, D, H', W')
+                                    augmented_x = torch.stack(augmented_slices, dim=1)
                                 else:
-                                    # Fallback for other dimensions
                                     augmented_x = transform(sample_x)
 
-                            # Compute features with backbone (backbone handles normalization)
-                            features = backbone(augmented_x)  # (1, embedding_dim)
-                            sample_features.append(
-                                features.squeeze(0).cpu()
-                            )  # (embedding_dim,)
+                            features = backbone(augmented_x)
+                            sample_features.append(features.squeeze(0).cpu())
 
                         all_features.append(sample_features)
                         all_subject_ids.append(subject_ids[sample_idx])
@@ -508,7 +493,9 @@ class CachedFeatureDataset(Dataset):
         """Save features to parquet file (columnar format, compressed)."""
         # Flatten the structure into a table
         rows = []
-        embedding_dim = all_features[0][0].shape[0]
+        first_feat = all_features[0][0]
+        embedding_shape = list(first_feat.shape)
+        embedding_dim = int(first_feat.numel())
 
         for sample_idx, (sample_features, subject_id) in enumerate(
             zip(all_features, all_subject_ids)
@@ -518,8 +505,9 @@ class CachedFeatureDataset(Dataset):
                     "subject_id": subject_id,
                     "augmentation_idx": aug_idx,
                 }
-                # Add feature columns
-                for feat_idx, feat_val in enumerate(features.numpy()):
+                # Add feature columns (flatten for parquet storage)
+                flat_features = features.reshape(-1).numpy()
+                for feat_idx, feat_val in enumerate(flat_features):
                     row[f"feature_{feat_idx}"] = float(feat_val)
 
                 rows.append(row)
@@ -554,6 +542,7 @@ class CachedFeatureDataset(Dataset):
             "num_samples": len(all_features),
             "num_augmentations": self.num_augmentations,
             "embedding_dim": embedding_dim,
+            "embedding_shape": embedding_shape,
             "image_size": image_size_json,
             "timestamp": time.time(),
         }
@@ -756,8 +745,10 @@ def get_cache_path(
     cache_dir = Path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
 
-    # Build filename with tissue_type, metric_to_compute, image_size
+    # Build filename with tissue_type, metric_to_compute, and (for image backbones) image_size.
     parts = [model_name, dataset_name]
+    mesh_models = {"pointnet", "pointnet_pp", "region_pointnet"}
+    is_mesh_model = model_name in mesh_models
 
     # Add tissue type if specified
     if tissue_type is not None:
@@ -767,11 +758,13 @@ def get_cache_path(
     if metric_to_compute is not None:
         parts.append(metric_to_compute)
 
-    # Add image size
-    if image_size is not None:
-        parts.append(f"{image_size[0]}x{image_size[1]}")
-    else:
-        parts.append("original")
+    # Mesh backbones do not consume image resizing or 2D augmentation transforms,
+    # so keep cache filenames independent from resize_shape.
+    if not is_mesh_model:
+        if image_size is not None:
+            parts.append(f"{image_size[0]}x{image_size[1]}")
+        else:
+            parts.append("original")
 
     filename = "_".join(parts) + "_features.parquet"
     return cache_dir / filename

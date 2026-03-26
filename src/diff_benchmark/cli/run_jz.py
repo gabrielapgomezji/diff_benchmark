@@ -4,6 +4,9 @@ import socket
 from datetime import datetime
 from pathlib import Path
 
+# Reduce CUDA allocator fragmentation unless the user already configured it.
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
 import hydra
 import numpy as np
 import pandas as pd

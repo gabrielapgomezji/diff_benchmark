@@ -1,4 +1,27 @@
 prediction_task: regression
-reg_type: group_lasso    # or group_elastic_net / none
-lambda1: 0.001
-lambda2: 0.0001          # only used for group_elastic_net
+head_type: attention
+bias: true
+
+head:
+  simple: {}
+
+  additive:
+    reg_type: group_lasso    # or group_elastic_net / none
+    lambda1: 0.001
+    lambda2: 0.0001          # only used for group_elastic_net
+  attention:
+    hidden_dim: 32
+
+  transformer:
+    n_heads: 4
+    n_layers: 2
+    hidden_dim: 64
+    dropout: 0.1
+
+  # Optional extras (supported by factory)
+  gam:
+    hidden_dim: 32
+
+  moe:
+    n_experts: 4
+    hidden_dim: 32

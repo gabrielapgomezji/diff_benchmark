@@ -200,13 +200,49 @@ def _extract_additive_head_subject_coefficients(
 
     import torch
 
+    if not X:
+        return []
+
+    def _chunks(seq: Sequence[Any], size: int):
+        for i in range(0, len(seq), size):
+            yield seq[i : i + size]
+
+    def _forward_contrib(model_obj: Any, x_batch: Sequence[Any]):
+        feats = model_obj.backbone(x_batch)
+        return model_obj.head.parcel_contributions(feats)
+
+    # Coefficient extraction happens after training and can trigger OOM for
+    # large folds; process in chunks and transparently fall back to CPU.
+    batch_size = int(metadata.get("coef_batch_size", 8)) if metadata else 8
+    batch_size = max(1, batch_size)
+
     device = next(task_model.parameters()).device
     task_model.eval()
-    with torch.no_grad():
-        feats = task_model.backbone(X)
-        contrib = task_model.head.parcel_contributions(feats)
 
-    contrib_np = _as_numpy(contrib)  # (B, P, C)
+    contrib_blocks: list[np.ndarray] = []
+    try:
+        with torch.no_grad():
+            for x_batch in _chunks(X, batch_size):
+                contrib_blocks.append(_as_numpy(_forward_contrib(task_model, x_batch)))
+    except RuntimeError as err:
+        oom = "out of memory" in str(err).lower()
+        is_cuda = str(device).startswith("cuda")
+        if not (oom and is_cuda):
+            raise
+
+        logger.info(
+            "CUDA OOM during region coefficient extraction; retrying on CPU in chunks."
+        )
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        contrib_blocks = []
+        task_model_cpu = task_model.to("cpu")
+        with torch.no_grad():
+            for x_batch in _chunks(X, batch_size):
+                contrib_blocks.append(_as_numpy(_forward_contrib(task_model_cpu, x_batch)))
+
+    contrib_np = np.concatenate(contrib_blocks, axis=0)  # (B, P, C)
     if contrib_np.ndim != 3:
         return []
 

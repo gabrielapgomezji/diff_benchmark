@@ -96,7 +96,6 @@ class PredictionHead(nn.Module):
 def build_prediction_head(
     embedding_dim: int,
     prediction_task: str,
-    # num_classes: int | None = None,
     hidden_dims: list[int] | None = None,
     dropout: float = 0.0,
 ) -> nn.Module:
