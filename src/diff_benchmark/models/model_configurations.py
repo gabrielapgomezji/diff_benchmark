@@ -178,14 +178,12 @@ def create_model(
         backbone = CuriaBackbone(**model_kwargs)
         head = build_prediction_head(embedding_dim=backbone.embedding_dim, **pred_head)
         return TaskModel(backbone, head)
-    
-    print("!!!", model_name, model_name == "sw_weisfeiler_leman")
-    
+        
     if model_name == "sw_weisfeiler_leman":
         print("TEST ???")
 
         backbone = SWWeisfeilerLemanModel(**model_kwargs)
-        head = build_new_parcel_head(embed_dim=backbone.parcel_embed_dim, head_type="attention", **pred_head)
+        head = build_new_parcel_head(embed_dim=backbone._parcel_embed_dim, head_type="attention", **pred_head)
         return TaskModel(backbone, head)
 
     raise ValueError(f"Unknown model type: {model_name}")
