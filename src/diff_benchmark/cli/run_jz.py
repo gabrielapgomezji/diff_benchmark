@@ -243,6 +243,7 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
 
         except Exception as e:
             logger.exception(f"Crash in fold {fold_idx} of {run_id}: {e}")
+            print(f"Crash in fold {fold_idx} of {run_id}: {e}")
 
             metadata["status"] = "crashed"
             metadata["error"] = str(e)
