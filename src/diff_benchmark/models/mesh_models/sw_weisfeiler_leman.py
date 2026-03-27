@@ -57,6 +57,14 @@ class SWWeisfeilerLemanModel(nn.Module):
         # Fixed at construction time — used by downstream heads.
         self._parcel_embed_dim: int = n_spectral_components * in_features
 
+        # Sorted list of parcel IDs; set lazily if not provided.
+        # Parcel 0 (background / medial wall) is always excluded.
+        self._parcel_ids: Optional[List[int]] = None
+        if parcel_ids is not None:
+            self._parcel_ids = sorted(int(p) for p in parcel_ids if int(p) != 0)
+
+        # Dummy parameter so the module has a device and state_dict entry.
+        self._dummy = nn.Parameter(torch.zeros(1), requires_grad=False)
 
 
     # ------------------------------------------------------------------
@@ -70,6 +78,7 @@ class SWWeisfeilerLemanModel(nn.Module):
         """
         if self._parcel_ids is not None:
             return
+
         parcel_labels = batch[0]["parcel_labels"]
         unique_ids = parcel_labels.unique().tolist()
         self._parcel_ids = sorted(int(p) for p in unique_ids if int(p) != 0)
@@ -108,4 +117,7 @@ class SWWeisfeilerLemanModel(nn.Module):
             print(sample)
             break
 
-        return 0 # (B, n_parcels, k*F)
+        B, n_parcels, k, F = len(x), len(self._parcel_ids), self.k, self.in_features
+        tensor = torch.randn(B, n_parcels, k * F)
+
+        return tensor #0 # (B, n_parcels, k*F)

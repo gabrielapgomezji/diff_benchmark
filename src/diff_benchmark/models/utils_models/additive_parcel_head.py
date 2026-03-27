@@ -580,7 +580,10 @@ class AttentionAdditiveParcelHead(nn.Module):
     def forward(self, x):
 
         # x: (B,P,E)
-
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.value_net.to(device)
+        x = x.to(device)
+        
         values = self.value_net(x)        # (B,P,C)
 
         attn = self.attn_net(x).squeeze(-1)  # (B,P)
