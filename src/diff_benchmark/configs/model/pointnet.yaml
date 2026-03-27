@@ -8,3 +8,6 @@ backbone:
   radius: null
   max_neighbors: 16
   dropout: 0.0
+  region_encoder:
+    type: none  # none | anatomical | anatomical_relative
+    include_size: false

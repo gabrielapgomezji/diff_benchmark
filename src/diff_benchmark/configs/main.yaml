@@ -21,6 +21,8 @@ runtime:
 
 choices:
   model: [pointnet] #[region_elasticnet, region_group_lasso]
+  model.backbone.region_encoder.type: [anatomical_relative] #anatomical_relative, none, anatomical
+  model.backbone.region_encoder.include_size: [false]
   model.backbone.freeze_backbone: [false]
   dataset: [hcp]
   # backend: [sklearn]
@@ -41,5 +43,5 @@ choices:
   pred_head.head.additive.lambda1: [0.0001]
   pred_head.head.additive.lambda2: [0.00001]
   # cluster.slurm_cfg.timeout_min: [120]
-  data.batch_size: [1]
+  data.batch_size: [2]
  

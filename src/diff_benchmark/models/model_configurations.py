@@ -134,7 +134,7 @@ def create_model(
         head = build_prediction_head(embedding_dim=backbone.hidden_dim, **pred_head)
         return TaskModel(backbone, head)
 
-    if model_name in {"pointnet", "pointnet_pp", "region_pointnet"}:
+    if model_name in {"pointnet"}:
         backbone = RegionConstrainedPointNetPP(**model_kwargs)
         head = build_new_parcel_head(
             embed_dim=backbone.out_dim,

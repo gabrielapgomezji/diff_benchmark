@@ -1,9 +1,14 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Mapping, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
+
+from diff_benchmark.models.utils_models.region_positional_encoding import (
+	BaseRegionPositionalEncoding,
+	build_region_encoder,
+)
 
 
 def _chunked_region_knn(
@@ -262,6 +267,8 @@ class RegionConstrainedPointNetPP(nn.Module):
 		radius: Optional[float] = None,
 		max_neighbors: int = 16,
 		dropout: float = 0.0,
+		region_encoder: Optional[BaseRegionPositionalEncoding] = None,
+		region_encoder_config: Optional[Dict[str, object]] = None,
 		**kwargs,
 	) -> None:
 		super().__init__()
@@ -273,8 +280,19 @@ class RegionConstrainedPointNetPP(nn.Module):
 		self.max_neighbors = max_neighbors
 		self.out_dim = hidden_dim
 		self.query_chunk_size = int(kwargs.get("query_chunk_size", 2048))
+		self.region_encoder = region_encoder
+		if isinstance(self.region_encoder, Mapping):
+			self.region_encoder = build_region_encoder(self.region_encoder)
+		elif self.region_encoder is None:
+			cfg = region_encoder_config if region_encoder_config is not None else kwargs.get("region_encoder", None)
+			if isinstance(cfg, Mapping):
+				self.region_encoder = build_region_encoder(cfg)
 
-		local_in_dim = 3 + max(0, in_features)
+		self.region_encoding_dim = 0
+		if self.region_encoder is not None:
+			self.region_encoding_dim = int(self.region_encoder.out_dim)
+
+		local_in_dim = 3 + max(0, in_features) + self.region_encoding_dim
 		self.local_mlp = nn.Sequential(
 			nn.Linear(local_in_dim, hidden_dim),
 			nn.ReLU(),
@@ -411,6 +429,14 @@ class RegionConstrainedPointNetPP(nn.Module):
 
 		device = next(self.parameters()).device
 		points, features, regions, neighbor_idx, neighbor_mask = self._to_batched_tensors(x, device)
+	
+		if self.region_encoder is not None:
+			region_features = self.region_encoder(points, regions)
+			if features is None:
+				features = region_features
+			else:
+				features = torch.cat([features, region_features], dim=-1)
+
 		if neighbor_idx is None or neighbor_mask is None:
 			neighbor_idx, neighbor_mask, _, _ = region_constrained_grouping(
 				points=points,
