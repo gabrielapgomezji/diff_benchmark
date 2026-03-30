@@ -16,6 +16,7 @@ import pandas as pd
 from omegaconf import OmegaConf
 
 from diff_benchmark.analysis.region_coefficients import (
+    aggregate_subject_region_coefficients,
     build_region_coefficient_records,
     extract_subject_region_coefficients,
     save_region_coefficients,
@@ -79,6 +80,10 @@ def _extract_inputs_for_coefficients(trainer, dataloader):
         x_batch = batch[0]
         if isinstance(x_batch, list):
             x_data.extend(x_batch)
+        elif hasattr(x_batch, "unbind"):
+            x_data.extend(list(x_batch.unbind(0)))
+        elif isinstance(x_batch, np.ndarray) and x_batch.ndim >= 1:
+            x_data.extend([x_batch[i] for i in range(x_batch.shape[0])])
         else:
             return None
     return x_data if x_data else None
@@ -116,13 +121,22 @@ def _save_split_region_coefficients(
     )
     if not coeffs_by_subject:
         return False
+
+    coefficient_mode = "static_model_coefficients"
     if not is_static:
         logger.info(
-            "Skipping subject-specific region coefficients for fold=%s split=%s (static-only mode)",
+            "Aggregating subject-specific region contributions into static coefficients for fold=%s split=%s",
             fold_idx,
             split,
         )
-        return False
+        coeffs_by_subject = [
+            aggregate_subject_region_coefficients(
+                coeffs_by_subject,
+                mode="mean_abs",
+            )
+        ]
+        is_static = True
+        coefficient_mode = "subject_contribution_mean_abs"
 
     records = build_region_coefficient_records(
         subject_ids=subject_ids,
@@ -139,6 +153,7 @@ def _save_split_region_coefficients(
             "tissue_type": str(tissue_type),
             "primary_metric": str(primary_metric),
             "metric_to_compute": str(primary_metric),
+            "coefficient_mode": coefficient_mode,
         },
     )
     parquet_path = save_region_coefficients(

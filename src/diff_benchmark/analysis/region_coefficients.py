@@ -200,7 +200,14 @@ def _extract_additive_head_subject_coefficients(
 
     import torch
 
-    if not X:
+    if X is None:
+        return []
+
+    if isinstance(X, torch.Tensor):
+        X_seq: list[Any] = [sample for sample in X]
+    else:
+        X_seq = list(X)
+    if len(X_seq) == 0:
         return []
 
     def _chunks(seq: Sequence[Any], size: int):
@@ -208,7 +215,14 @@ def _extract_additive_head_subject_coefficients(
             yield seq[i : i + size]
 
     def _forward_contrib(model_obj: Any, x_batch: Sequence[Any]):
-        feats = model_obj.backbone(x_batch)
+        x_input: Any = x_batch
+        if x_batch:
+            first = x_batch[0]
+            if isinstance(first, torch.Tensor):
+                x_input = torch.stack(list(x_batch), dim=0)
+            elif isinstance(first, np.ndarray):
+                x_input = torch.as_tensor(np.stack(x_batch, axis=0))
+        feats = model_obj.backbone(x_input)
         return model_obj.head.parcel_contributions(feats)
 
     # Coefficient extraction happens after training and can trigger OOM for
@@ -222,7 +236,7 @@ def _extract_additive_head_subject_coefficients(
     contrib_blocks: list[np.ndarray] = []
     try:
         with torch.no_grad():
-            for x_batch in _chunks(X, batch_size):
+            for x_batch in _chunks(X_seq, batch_size):
                 contrib_blocks.append(_as_numpy(_forward_contrib(task_model, x_batch)))
     except RuntimeError as err:
         oom = "out of memory" in str(err).lower()
@@ -239,7 +253,7 @@ def _extract_additive_head_subject_coefficients(
         contrib_blocks = []
         task_model_cpu = task_model.to("cpu")
         with torch.no_grad():
-            for x_batch in _chunks(X, batch_size):
+            for x_batch in _chunks(X_seq, batch_size):
                 contrib_blocks.append(_as_numpy(_forward_contrib(task_model_cpu, x_batch)))
 
     contrib_np = np.concatenate(contrib_blocks, axis=0)  # (B, P, C)
@@ -316,6 +330,48 @@ def extract_subject_region_coefficients(
         static = {}
 
     return [dict(static)], True
+
+
+def aggregate_subject_region_coefficients(
+    region_coefficients: Sequence[Mapping[str, float]],
+    *,
+    mode: str = "mean_abs",
+) -> dict[str, float]:
+    """Aggregate subject-specific region maps into one static coefficient map.
+
+    Args:
+        region_coefficients: Sequence of per-subject ``{region: value}`` mappings.
+        mode: Aggregation mode, one of ``"mean_abs"``, ``"mean"``, ``"median_abs"``.
+
+    Returns:
+        ``{region: aggregated_value}``.
+    """
+    if not region_coefficients:
+        return {}
+
+    keys: list[str] = []
+    seen: set[str] = set()
+    for row in region_coefficients:
+        for key in row.keys():
+            key_str = str(key)
+            if key_str not in seen:
+                seen.add(key_str)
+                keys.append(key_str)
+
+    out: dict[str, float] = {}
+    for key in keys:
+        values = np.asarray(
+            [float(row.get(key, 0.0)) for row in region_coefficients],
+            dtype=np.float64,
+        )
+        if mode == "mean":
+            agg_val = float(np.mean(values))
+        elif mode == "median_abs":
+            agg_val = float(np.median(np.abs(values)))
+        else:
+            agg_val = float(np.mean(np.abs(values)))
+        out[key] = agg_val
+    return out
 
 
 def build_region_coefficient_records(
@@ -566,7 +622,8 @@ def plot_experiment_coefficients(
     """Load experiment coefficients and produce a nilearn figure.
 
     Saves by default to:
-        ``<experiment_dir>/plots/coefficients/``
+        ``exp_outputs/plots/<run_id>/coefficients/`` when *experiment_dir*
+        is an ``exp_outputs/experiments/exp_<run_id>`` path.
     """
     exp_dir = Path(experiment_dir)
     coeff_df = load_region_coefficients_table(
@@ -596,7 +653,11 @@ def plot_experiment_coefficients(
     )
 
     if output_file is None:
-        out_dir = exp_dir / "plots" / "coefficients"
+        run_token = str(run_id) if run_id is not None else exp_dir.name.replace("exp_", "")
+        if exp_dir.parent.name == "experiments" and exp_dir.name.startswith("exp_"):
+            out_dir = exp_dir.parent.parent / "plots" / run_token / "coefficients"
+        else:
+            out_dir = exp_dir / "plots" / "coefficients"
         out_dir.mkdir(parents=True, exist_ok=True)
         suffix = f"fold{fold}" if fold is not None else "mean_folds"
         safe_model = str(resolved_model_name).replace("/", "_")
