@@ -31,7 +31,7 @@ choices:
   dataset.tissue_type: [gray]
   dataset.metric_to_compute: [md]
   # cluster: [margaret_cpu]
-  cluster.conf.parallel_type: [None]
+  # cluster.conf.parallel_type: [None]
   cluster.conf.n_jobs: [2]
   # model.backbone.region_representation: [flatten] #[flatten, mean_std, pca, summary_stats, percentiles]
   data.num_workers: [0]
@@ -40,8 +40,8 @@ choices:
   # pred_head: [mesh_classification]
   pred_head.head_type: [additive]  # [simple, additive, attention, transformer]
   pred_head.head.additive.reg_type: [group_lasso]    # or group_elastic_net / none
-  pred_head.head.additive.lambda1: [0.0001]
-  pred_head.head.additive.lambda2: [0.00001]
+  pred_head.head.additive.lambda1: [0.001]
+  pred_head.head.additive.lambda2: [0.0001]
   # cluster.slurm_cfg.timeout_min: [120]
   data.batch_size: [2]
  

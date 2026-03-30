@@ -1,6 +1,9 @@
 import logging
+import faulthandler
 import os
 import socket
+import sys
+import traceback
 from datetime import datetime
 from pathlib import Path
 
@@ -33,6 +36,32 @@ from diff_benchmark.utils.run_id import get_learning_curve_id, is_cached, make_r
 from diff_benchmark.utils.scores import compute_metrics
 
 
+def _enable_failure_visibility() -> None:
+    """Enable robust logging/traceback behavior for local and SLURM runs."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[logging.StreamHandler(sys.stdout)],
+        force=False,
+    )
+    try:
+        faulthandler.enable()
+    except Exception:
+        logging.getLogger(__name__).exception("Failed to enable faulthandler")
+
+
+def _flush_streams() -> None:
+    """Best-effort flush of stdout/stderr to avoid buffered log loss."""
+    try:
+        sys.stdout.flush()
+    except Exception:
+        logging.getLogger(__name__).debug("Failed to flush stdout", exc_info=True)
+    try:
+        sys.stderr.flush()
+    except Exception:
+        logging.getLogger(__name__).debug("Failed to flush stderr", exc_info=True)
+
+
 def _extract_inputs_for_coefficients(trainer, dataloader):
     """Return ordered model inputs for coefficient extraction when available."""
     if hasattr(trainer, "_load_data"):
@@ -40,7 +69,10 @@ def _extract_inputs_for_coefficients(trainer, dataloader):
             x_data, _ = trainer._load_data(dataloader)
             return x_data
         except Exception:
-            pass
+            logging.getLogger(__name__).debug(
+                "Trainer._load_data failed; falling back to batch-wise extraction",
+                exc_info=True,
+            )
 
     x_data = []
     for batch in dataloader:
@@ -416,8 +448,8 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
             # Persist any metrics collected before the crash.
             if metrics_rows:
                 _save_fold_metrics(metrics_rows, experiment_dir)
-
-            break
+            _flush_streams()
+            raise
 
     # ------------------------------------------------------------------ #
     # Final metadata and metrics save                                     #
@@ -461,9 +493,9 @@ def main():
     sweep axes defined in the config's ``choices`` block are expanded into a
     cartesian product of individual experiment configs.
     """
-    import sys
-
+    _enable_failure_visibility()
     configure_logging(logging.DEBUG)
+    logger = setup_logger(__name__)
 
     results_path = Path("./exp_outputs")
     experiments_root = results_path / "experiments"
@@ -513,14 +545,22 @@ def main():
     if parallel_type not in ("slurm", "joblib"):
         parallel_type = None
 
-    run_jobs(
-        run_fn=run_single_model,
-        fn_kwargs_list=fn_kwargs_list,
-        parallel_type=parallel_type,
-        slurm_cfg=cluster_cfg.slurm_cfg,
-        n_jobs=cluster_cfg.conf.n_jobs,
-        wait_for_results=cluster_cfg.conf.wait_for_results,
-    )
+    logger.info("Starting benchmark job dispatch (%d jobs)", len(fn_kwargs_list))
+    try:
+        run_jobs(
+            run_fn=run_single_model,
+            fn_kwargs_list=fn_kwargs_list,
+            parallel_type=parallel_type,
+            slurm_cfg=cluster_cfg.slurm_cfg,
+            n_jobs=cluster_cfg.conf.n_jobs,
+            wait_for_results=cluster_cfg.conf.wait_for_results,
+        )
+        logger.info("Benchmark job dispatch completed")
+    except Exception:
+        logger.exception("Top-level failure in CLI run_jz entrypoint")
+        traceback.print_exc()
+        _flush_streams()
+        raise
 
 
 if __name__ == "__main__":

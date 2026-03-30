@@ -702,17 +702,11 @@ def _render_report_group(
     col_widths = [min(max(len(h), max((len(r[i]) for r in table_data), default=0)) + 2, 50) for i, h in enumerate(headers)]
     fmt = "".join([f"{{:<{w}}}" for w in col_widths])
 
-    try:
-        report_lines.append(fmt.format(*headers))
-        report_lines.append("-" * sum(col_widths))
-    except Exception as e:
-        report_lines.append(f"Error formatting table: {e}")
+    report_lines.append(fmt.format(*headers))
+    report_lines.append("-" * sum(col_widths))
 
     for row in table_data:
-        try:
-            report_lines.append(fmt.format(*row))
-        except Exception:
-            pass
+        report_lines.append(fmt.format(*row))
 
     report_lines.append("\n" + "=" * 40 + "\n")
     return report_lines
