@@ -139,6 +139,7 @@ class PreprocessedData:
         if isinstance(first_x, dict):
             # Mesh mode — load both parquets and build a rich dict per sample
             mesh_batch: List[dict] = []
+
             for sample in batch:
                 paths = sample[0]
 

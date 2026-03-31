@@ -1,9 +1,15 @@
 import itertools
+import faulthandler
 import logging
 import os
 import socket
+import sys
+import traceback
 from datetime import datetime
 from pathlib import Path
+
+# Reduce CUDA allocator fragmentation unless the user already configured it.
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 import hydra
 import numpy as np
@@ -11,6 +17,7 @@ import pandas as pd
 from omegaconf import DictConfig, OmegaConf
 
 from diff_benchmark.analysis.region_coefficients import (
+    aggregate_subject_region_coefficients,
     build_region_coefficient_records,
     extract_subject_region_coefficients,
     save_region_coefficients,
@@ -31,6 +38,32 @@ from diff_benchmark.utils.run_id import get_learning_curve_id, is_cached, make_r
 from diff_benchmark.utils.scores import compute_metrics
 
 
+def _enable_failure_visibility() -> None:
+    """Enable robust logging/traceback behavior for local and SLURM runs."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[logging.StreamHandler(sys.stdout)],
+        force=False,
+    )
+    try:
+        faulthandler.enable()
+    except Exception:
+        logging.getLogger(__name__).exception("Failed to enable faulthandler")
+
+
+def _flush_streams() -> None:
+    """Best-effort flush of stdout/stderr to avoid buffered log loss."""
+    try:
+        sys.stdout.flush()
+    except Exception:
+        logging.getLogger(__name__).debug("Failed to flush stdout", exc_info=True)
+    try:
+        sys.stderr.flush()
+    except Exception:
+        logging.getLogger(__name__).debug("Failed to flush stderr", exc_info=True)
+
+
 def _extract_inputs_for_coefficients(trainer, dataloader):
     """Return ordered model inputs for coefficient extraction when available."""
     if hasattr(trainer, "_load_data"):
@@ -38,13 +71,20 @@ def _extract_inputs_for_coefficients(trainer, dataloader):
             x_data, _ = trainer._load_data(dataloader)
             return x_data
         except Exception:
-            pass
+            logging.getLogger(__name__).debug(
+                "Trainer._load_data failed; falling back to batch-wise extraction",
+                exc_info=True,
+            )
 
     x_data = []
     for batch in dataloader:
         x_batch = batch[0]
         if isinstance(x_batch, list):
             x_data.extend(x_batch)
+        elif hasattr(x_batch, "unbind"):
+            x_data.extend(list(x_batch.unbind(0)))
+        elif isinstance(x_batch, np.ndarray) and x_batch.ndim >= 1:
+            x_data.extend([x_batch[i] for i in range(x_batch.shape[0])])
         else:
             return None
     return x_data if x_data else None
@@ -82,13 +122,22 @@ def _save_split_region_coefficients(
     )
     if not coeffs_by_subject:
         return False
+
+    coefficient_mode = "static_model_coefficients"
     if not is_static:
         logger.info(
-            "Skipping subject-specific region coefficients for fold=%s split=%s (static-only mode)",
+            "Aggregating subject-specific region contributions into static coefficients for fold=%s split=%s",
             fold_idx,
             split,
         )
-        return False
+        coeffs_by_subject = [
+            aggregate_subject_region_coefficients(
+                coeffs_by_subject,
+                mode="mean_abs",
+            )
+        ]
+        is_static = True
+        coefficient_mode = "subject_contribution_mean_abs"
 
     records = build_region_coefficient_records(
         subject_ids=subject_ids,
@@ -105,6 +154,7 @@ def _save_split_region_coefficients(
             "tissue_type": str(tissue_type),
             "primary_metric": str(primary_metric),
             "metric_to_compute": str(primary_metric),
+            "coefficient_mode": coefficient_mode,
         },
     )
     parquet_path = save_region_coefficients(
@@ -412,8 +462,8 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
             # Persist any metrics collected before the crash.
             if metrics_rows:
                 _save_fold_metrics(metrics_rows, experiment_dir)
-
-            break
+            _flush_streams()
+            raise
 
     # ------------------------------------------------------------------ #
     # Final metadata and metrics save                                     #
@@ -469,7 +519,9 @@ def main():
     Reads a Hydra config, expands sweep axes into individual experiment configs,
     skips already-cached runs, and dispatches jobs in the configured mode.
     """
+    _enable_failure_visibility()
     configure_logging(logging.DEBUG)
+    logger = setup_logger(__name__)
 
     results_path = Path("./exp_outputs")
     experiments_root = results_path / "experiments"
@@ -521,14 +573,22 @@ def main():
     if parallel_type not in ("slurm", "joblib"):
         parallel_type = None
 
-    run_jobs(
-        run_fn=run_single_model,
-        fn_kwargs_list=fn_kwargs_list,
-        parallel_type=parallel_type,
-        slurm_cfg=cluster_cfg.slurm_cfg,
-        n_jobs=cluster_cfg.conf.n_jobs,
-        wait_for_results=cluster_cfg.conf.wait_for_results,
-    )
+    logger.info("Starting benchmark job dispatch (%d jobs)", len(fn_kwargs_list))
+    try:
+        run_jobs(
+            run_fn=run_single_model,
+            fn_kwargs_list=fn_kwargs_list,
+            parallel_type=parallel_type,
+            slurm_cfg=cluster_cfg.slurm_cfg,
+            n_jobs=cluster_cfg.conf.n_jobs,
+            wait_for_results=cluster_cfg.conf.wait_for_results,
+        )
+        logger.info("Benchmark job dispatch completed")
+    except Exception:
+        logger.exception("Top-level failure in CLI run entrypoint")
+        traceback.print_exc()
+        _flush_streams()
+        raise
 
 
 if __name__ == "__main__":

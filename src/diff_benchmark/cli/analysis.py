@@ -702,17 +702,11 @@ def _render_report_group(
     col_widths = [min(max(len(h), max((len(r[i]) for r in table_data), default=0)) + 2, 50) for i, h in enumerate(headers)]
     fmt = "".join([f"{{:<{w}}}" for w in col_widths])
 
-    try:
-        report_lines.append(fmt.format(*headers))
-        report_lines.append("-" * sum(col_widths))
-    except Exception as e:
-        report_lines.append(f"Error formatting table: {e}")
+    report_lines.append(fmt.format(*headers))
+    report_lines.append("-" * sum(col_widths))
 
     for row in table_data:
-        try:
-            report_lines.append(fmt.format(*row))
-        except Exception:
-            pass
+        report_lines.append(fmt.format(*row))
 
     report_lines.append("\n" + "=" * 40 + "\n")
     return report_lines
@@ -1136,6 +1130,20 @@ def _plot_region_coefficients_from_config(cfg: DictConfig, experiments_root: Pat
     atlas_img = atlas_info.get("atlas_path", None) if atlas_type == "volume" else None
     atlas_surface = atlas_info if atlas_type != "volume" else None
 
+    plots_root = experiments_root.parent / "plots"
+    suffix = f"fold{fold}" if fold is not None else "mean_folds"
+    safe_model = (
+        str(model_name).replace("/", "_")
+        if not _is_missing(model_name)
+        else "auto"
+    )
+    coef_plot_output = (
+        plots_root
+        / str(run_id)
+        / "coefficients"
+        / f"coefficients_{safe_model}_{suffix}.png"
+    )
+
     _, output_file = plot_experiment_coefficients(
         experiment_dir=experiment_dir,
         model_name=None if _is_missing(model_name) else str(model_name),
@@ -1147,6 +1155,7 @@ def _plot_region_coefficients_from_config(cfg: DictConfig, experiments_root: Pat
         label_map=label_map,
         cmap=str(coef_cfg.get("cmap", "coolwarm")),
         threshold=coef_cfg.get("threshold", None),
+        output_file=coef_plot_output,
     )
     print(f"✓ Coefficient plot saved to: {output_file}")
 
