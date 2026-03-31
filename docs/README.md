@@ -33,6 +33,7 @@ Raw dMRI data
 | [03 — Main Run](pipeline/03_main_run.md) | Orchestration, cross-validation loop | `diffbenchmark-run` |
 | [04 — Analysis](pipeline/04_analysis.md) | Aggregation, reports, plots | `diffbenchmark-analysis` |
 | [05 — Utilities](pipeline/05_utilities.md) | Feature caching, job manager, run ID | `diffbenchmark-cache` |
+| [Tutorial — Add a Model](Tutorials/01_model_integration_template.md) | How to integrate sklearn/deep models | `diffbenchmark-run` |
 
 
 ## Metrics Reference

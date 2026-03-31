@@ -25,7 +25,7 @@ choices:
   model.backbone.region_encoder.include_size: [false]
   model.backbone.freeze_backbone: [false]
   dataset: [hcp]
-  backend.epochs: [2]
+  # backend.epochs: [2]
   # backend: [sklearn]
   # target: [age]
   pred_head: [mesh_classification]
@@ -44,5 +44,5 @@ choices:
   pred_head.head.additive.lambda1: [0.001]
   pred_head.head.additive.lambda2: [0.0001]
   # cluster.slurm_cfg.timeout_min: [120]
-  # data.batch_size: [2]
+  data.batch_size: [2]
  
