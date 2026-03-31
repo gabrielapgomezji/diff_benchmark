@@ -33,7 +33,7 @@ choices:
   dataset.metric_to_compute: [md]
   # cluster: [margaret_cpu]
   cluster.conf.parallel_type: [None]
-  cluster.conf.n_jobs: [2]
+  cluster.conf.n_jobs: [1]
   # model.backbone.region_representation: [flatten] #[flatten, mean_std, pca, summary_stats, percentiles]
   data.num_workers: [0]
   backend.learning_rate: [1e-3]
@@ -44,5 +44,5 @@ choices:
   pred_head.head.additive.lambda1: [0.001]
   pred_head.head.additive.lambda2: [0.0001]
   # cluster.slurm_cfg.timeout_min: [120]
-  data.batch_size: [2]
+  # data.batch_size: [2]
  
