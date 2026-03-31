@@ -1,0 +1,4 @@
+# abide
+target_column: 
+  - fiq
+prediction_task: regression

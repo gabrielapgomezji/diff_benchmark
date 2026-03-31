@@ -93,7 +93,6 @@ docs/_build/
 # PyBuilder
 .pybuilder/
 target/
-
 # Jupyter Notebook
 .ipynb_checkpoints
 
@@ -210,4 +209,5 @@ cython_debug/
 #  exclude from AI features like autocomplete and code analysis. Recommended for sensitive data
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
-.cursorindexingignore
+.cursorindexingignoreexp_outputs/
+exp_outputs/

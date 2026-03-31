@@ -1,0 +1,72 @@
+name: region_elasticnet
+
+backbone:
+  classifier__C:
+    - 0.01
+    # - 0.1
+    # - 1
+    # - 10
+    # - 100
+  # options: "flatten", "mean_std", "pca", "summary_stats", "percentiles"
+  region_representation: flatten
+  
+  flatten:
+    elasticnet_alpha_grid_classification:
+      - 1e-4
+      # - 3e-4
+      # - 1e-3
+      # - 3e-3
+      # - 1e-2
+    elasticnet_l1_ratio_grid_classification:
+      - 0.3
+      # - 0.5
+      # - 0.7
+
+  mean_std:
+    elasticnet_alpha_grid_classification:
+      - 1e-6
+      # - 3e-6
+      # - 1e-5
+      # - 3e-5
+      # - 1e-4
+    elasticnet_l1_ratio_grid_classification:
+      - 0.3
+      # - 0.5
+      # - 0.7
+
+  pca:
+    n_components_per_region: 10
+    elasticnet_alpha_grid_classification:
+      - 1e-5
+      - 3e-5
+      - 1e-4
+      - 3e-4
+      - 1e-3
+    elasticnet_l1_ratio_grid_classification:
+      - 0.3
+      - 0.5
+      - 0.7
+
+  summary_stats:
+    elasticnet_alpha_grid_classification:
+      - 1e-6
+      - 3e-6
+      - 1e-5
+      - 3e-5
+      - 1e-4
+    elasticnet_l1_ratio_grid_classification:
+      - 0.3
+      - 0.5
+      - 0.7
+
+  percentiles:
+    elasticnet_alpha_grid_classification:
+      - 1e-6
+      - 3e-6
+      - 1e-5
+      - 3e-5
+      - 1e-4
+    elasticnet_l1_ratio_grid_classification:
+      - 0.3
+      - 0.5
+      - 0.7

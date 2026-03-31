@@ -1,0 +1,4 @@
+# abide
+target_column: 
+  - piq
+prediction_task: regression

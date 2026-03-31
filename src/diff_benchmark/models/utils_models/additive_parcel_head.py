@@ -476,3 +476,402 @@ def build_simple_parcel_head(
         embed_dim=embed_dim,
         output_dim=output_dim,
         bias=bias)
+
+
+class GAMParcelHead(nn.Module):
+    """
+    Nonlinear additive parcel head (GAM-style).
+
+    ŷ = Σ_p f_p(z_p)
+
+    where each f_p is a small MLP.
+    """
+
+    def __init__(
+        self,
+        embed_dim: int,
+        hidden_dim: int = 32,
+        output_dim: int = 1,
+    ):
+        super().__init__()
+
+        self.embed_dim = embed_dim
+        self.hidden_dim = hidden_dim
+        self.output_dim = output_dim
+
+        self.mlps = None
+        self.bias = nn.Parameter(torch.zeros(output_dim))
+
+    def _init_mlps(self, P, device):
+
+        if self.mlps is not None:
+            return
+
+        self.mlps = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Linear(self.embed_dim, self.hidden_dim),
+                    nn.ReLU(),
+                    nn.Linear(self.hidden_dim, self.output_dim),
+                )
+                for _ in range(P)
+            ]
+        ).to(device)
+
+    def forward(self, x):
+
+        B, P, E = x.shape
+        device = x.device
+
+        self._init_mlps(P, device)
+
+        contribs = []
+
+        for p in range(P):
+            contribs.append(self.mlps[p](x[:, p]))
+
+        contribs = torch.stack(contribs, dim=1)  # (B,P,C)
+
+        out = contribs.sum(dim=1) + self.bias
+
+        return out
+
+    def parcel_contributions(self, x):
+
+        B, P, E = x.shape
+        device = x.device
+
+        self._init_mlps(P, device)
+
+        contribs = []
+
+        for p in range(P):
+            contribs.append(self.mlps[p](x[:, p]))
+
+        return torch.stack(contribs, dim=1)
+    
+class AttentionAdditiveParcelHead(nn.Module):
+
+    """
+    Additive head with learned parcel attention.
+    """
+
+    def __init__(self, embed_dim, hidden_dim=32, output_dim=1, **kwargs):
+
+        super().__init__()
+
+        self.embed_dim = embed_dim
+        self.output_dim = output_dim
+
+        self.value_net = nn.Sequential(
+            nn.Linear(embed_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, output_dim),
+        )
+
+        self.attn_net = nn.Sequential(
+            nn.Linear(embed_dim, hidden_dim),
+            nn.Tanh(),
+            nn.Linear(hidden_dim, 1),
+        )
+
+        self.bias = nn.Parameter(torch.zeros(output_dim))
+
+    def forward(self, x):
+        # x: (B,P,E)
+
+        values = self.value_net(x)        # (B,P,C)
+
+        attn = self.attn_net(x).squeeze(-1)  # (B,P)
+        attn = torch.softmax(attn, dim=1)
+
+        out = (values * attn.unsqueeze(-1)).sum(dim=1)
+
+        return out + self.bias
+
+    def parcel_contributions(self, x):
+
+        values = self.value_net(x)
+
+        attn = self.attn_net(x).squeeze(-1)
+        attn = torch.softmax(attn, dim=1)
+
+        return values * attn.unsqueeze(-1)
+    
+class ParcelMoEHead(nn.Module):
+
+    """
+    Mixture-of-experts per parcel.
+    """
+
+    def __init__(self, embed_dim, n_experts=4, hidden_dim=32, output_dim=1):
+
+        super().__init__()
+
+        self.embed_dim = embed_dim
+        self.n_experts = n_experts
+        self.output_dim = output_dim
+
+        self.experts = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Linear(embed_dim, hidden_dim),
+                    nn.ReLU(),
+                    nn.Linear(hidden_dim, output_dim),
+                )
+                for _ in range(n_experts)
+            ]
+        )
+
+        self.gate = nn.Linear(embed_dim, n_experts)
+
+        self.bias = nn.Parameter(torch.zeros(output_dim))
+
+    def forward(self, x):
+        B, P, E = x.shape
+
+        gate = torch.softmax(self.gate(x), dim=-1)  # (B,P,K)
+
+        expert_outs = torch.stack(
+            [expert(x) for expert in self.experts], dim=-1
+        )  # (B,P,C,K)
+
+        contrib = (expert_outs * gate.unsqueeze(2)).sum(-1)
+
+        return contrib.sum(dim=1) + self.bias
+
+    def parcel_contributions(self, x):
+
+        gate = torch.softmax(self.gate(x), dim=-1)
+
+        expert_outs = torch.stack(
+            [expert(x) for expert in self.experts], dim=-1
+        )
+
+        return (expert_outs * gate.unsqueeze(2)).sum(-1)
+    
+
+import torch
+import torch.nn as nn
+
+
+class TransformerParcelHead(nn.Module):
+    """
+    Transformer-based parcel prediction head.
+
+    Allows parcel interactions while keeping additive parcel contributions.
+
+    Model
+    -----
+        Z' = Transformer(Z)
+
+        contribution_p = f(Z'_p)
+
+        ŷ = Σ_p contribution_p + bias
+    """
+
+    def __init__(
+        self,
+        embed_dim: int,
+        output_dim: int = 1,
+        n_heads: int = 4,
+        n_layers: int = 2,
+        hidden_dim: int = 64,
+        dropout: float = 0.1,
+        bias: bool = True,
+    ):
+        super().__init__()
+
+        self.embed_dim = embed_dim
+        self.output_dim = output_dim
+
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=embed_dim,
+            nhead=n_heads,
+            dim_feedforward=hidden_dim,
+            dropout=dropout,
+            batch_first=True,
+        )
+
+        self.transformer = nn.TransformerEncoder(
+            encoder_layer,
+            num_layers=n_layers,
+        )
+
+        # parcel-level predictor
+        self.parcel_mlp = nn.Sequential(
+            nn.Linear(embed_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, output_dim),
+        )
+
+        self.bias = nn.Parameter(torch.zeros(output_dim)) if bias else None
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        x : (B, P, E)
+        """
+
+        if x.dim() != 3:
+            raise ValueError(f"Expected (B,P,E), got {x.shape}")
+
+        # parcel interactions
+        z = self.transformer(x)  # (B,P,E)
+
+        # parcel contributions
+        contrib = self.parcel_mlp(z)  # (B,P,C)
+
+        out = contrib.sum(dim=1)
+
+        if self.bias is not None:
+            out = out + self.bias
+
+        return out
+
+    def parcel_contributions(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Returns:
+            (B,P,C) parcel contributions
+        """
+
+        z = self.transformer(x)
+        return self.parcel_mlp(z)
+    
+    
+def build_new_parcel_head(
+    embed_dim: int,
+    prediction_task: str,
+    head_type: str = "attention",
+    bias: bool = True,
+    head: Optional[dict] = None,
+    **kwargs,
+):
+    """
+    Generic parcel-head factory.
+
+    Allows easy experimentation with different heads.
+
+        Supported heads
+    ---------------
+    "simple"
+    "additive"
+    "attention"
+    "transformer"
+        "gam"
+        "moe"
+
+        Hydra config patterns
+        ---------------------
+        New structured style (recommended):
+
+                pred_head:
+                    prediction_task: binary_classification
+                    head_type: attention
+                    head:
+                        attention:
+                            hidden_dim: 64
+
+        Legacy flat style (still supported):
+
+                pred_head:
+                    prediction_task: binary_classification
+                    head_type: additive
+                    reg_type: group_lasso
+                    lambda1: 1e-3
+
+        Only parameters relevant to the selected head are forwarded.
+    """
+
+    if prediction_task == "regression":
+        output_dim = 1
+
+    elif prediction_task == "binary_classification":
+        output_dim = 2
+
+    else:
+        raise ValueError(
+            f"Unknown prediction_task '{prediction_task}'. "
+            "Expected 'regression' or 'binary_classification'."
+        )
+
+    head_type = head_type.lower()
+
+    # Per-head allowlists prevent unused parameters from being passed to
+    # constructors that don't accept them.
+    allowed_by_head = {
+        "simple": set(),
+        "additive": {"reg_type", "lambda1", "lambda2"},
+        "attention": {"hidden_dim"},
+        "transformer": {"n_heads", "n_layers", "hidden_dim", "dropout"},
+        "gam": {"hidden_dim"},
+        "moe": {"n_experts", "hidden_dim"},
+    }
+
+    if head_type not in allowed_by_head:
+        raise ValueError(
+            f"Unknown head_type '{head_type}'. "
+            "Supported: simple, additive, attention, transformer, gam, moe"
+        )
+
+    selected_params = {}
+
+    # New structured config path: head.<head_type>.*
+    if isinstance(head, dict):
+        selected_params.update(head.get(head_type, {}))
+
+    # Legacy compatibility: consume flat kwargs only if relevant to chosen head.
+    for k, v in kwargs.items():
+        if k in allowed_by_head[head_type]:
+            selected_params[k] = v
+
+    if head_type == "simple":
+        return SimpleAdditiveParcelHead(
+            embed_dim=embed_dim,
+            output_dim=output_dim,
+            bias=bias,
+            **selected_params,
+        )
+
+    elif head_type == "additive":
+        return AdditiveParcelHead(
+            embed_dim=embed_dim,
+            output_dim=output_dim,
+            bias=bias,
+            **selected_params,
+        )
+
+    elif head_type == "attention":
+        return AttentionAdditiveParcelHead(
+            embed_dim=embed_dim,
+            output_dim=output_dim,
+            bias=bias,
+            **selected_params,
+        )
+
+    elif head_type == "transformer":
+        return TransformerParcelHead(
+            embed_dim=embed_dim,
+            output_dim=output_dim,
+            bias=bias,
+            **selected_params,
+        )
+
+    elif head_type == "gam":
+        return GAMParcelHead(
+            embed_dim=embed_dim,
+            output_dim=output_dim,
+            **selected_params,
+        )
+
+    elif head_type == "moe":
+        return ParcelMoEHead(
+            embed_dim=embed_dim,
+            output_dim=output_dim,
+            **selected_params,
+        )
+
+    else:
+        raise ValueError(
+            f"Unknown head_type '{head_type}'. "
+            "Supported: simple, additive, attention, transformer, gam, moe"
+        )

@@ -24,7 +24,7 @@ conf:
   wait_for_results: false
 
 slurm_cfg:
-  slurm_partition: parietal,normal,gpu-best #gpu
+  slurm_partition: normal,gpu-best #parietal,normal,gpu-best #gpu
   tasks_per_node: 1
   slurm_gpus_per_task: 1
   slurm_cpus_per_gpu: 20

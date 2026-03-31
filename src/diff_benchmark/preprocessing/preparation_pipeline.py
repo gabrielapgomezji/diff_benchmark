@@ -112,7 +112,7 @@ class BrainDataPreparationPipeline(ABC):
         self.results_dir = Path(dataset_config.results_dir)
         self.metric = dataset_config.metric_to_compute
         self.scale = dataset_config.scale
-        self.surface_space = dataset_config.surface_space
+        self.surface_space = dataset_config.surface_space        
         self.schaefer_resampled = resample_schaefer_onto_fs_lr(
             self.scale, target_space=self.surface_space
         )
@@ -498,7 +498,8 @@ class BrainDataPreparationPipeline(ABC):
             IndexError,
         ) as e:
             print(f"[{subject_id}] Expected error during microstructure: {e}")
-            logger.error("[%s] Expected error during microstructure: %s", subject_id, e)
+            logger.exception("[%s] Expected error during microstructure: %s", subject_id, e)
+            raise
 
     # ------------------------------------------------------------------
     # Analysis hooks (subclass responsibility)

@@ -1,3 +1,4 @@
+#hcp
 target_column: 
-  - Age
+  - DDisc_AUC_40K
 prediction_task: regression

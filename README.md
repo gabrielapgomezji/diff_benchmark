@@ -9,6 +9,69 @@
 - **Prediction tasks**: binary classification and regression of cognitive/demographic targets
 
 ---
+## Running on JZ
+
+Jean Zay provides the required Python and PyTorch environment through modules.
+
+### 1. Installation
+
+```bash
+module load pytorch-gpu/py3/2.7.0
+pip install -e . --no-deps # -no-deps flag prevents reinstalling dependencies already provided by the module environment.
+```
+
+Check that Python imports the package from the repository:
+
+```bash
+python -c "import diff_benchmark; print(diff_benchmark.__file__)"
+# Output
+/lustre/fswork/projects/rech/qlr/commun/diff_benchmark/src/diff_benchmark/__init__.py
+```
+If the output instead points to a .local directory such as `/linkhome/rech/genini01/unc81ab/.local/lib/python3.12/site-packages/diff_benchmark/__init__.py` then an old installation is shadowing the editable version. Remove it, reinstall the package and verify again.
+
+```bash
+rm -rf /linkhome/rech/genini01/unc81ab/.local/lib/python3.12/site-packages/diff_benchmark
+rm -rf /linkhome/rech/genini01/unc81ab/.local/lib/python3.12/site-packages/diff_benchmark-*.dist-info
+pip install -e . --no-deps
+python -c "import diff_benchmark; print(diff_benchmark.__file__)"
+
+# Output
+/lustre/fswork/projects/rech/qlr/commun/diff_benchmark/src/diff_benchmark/__init__.py
+```
+
+### 2. Running the configuration
+Run the benchmark configuration:
+
+```bash
+python -m diff_benchmark.cli.run_jz model=region_pca backend=sklearn
+```
+
+### 3. Important files
+
+To run experiments on JZ we only care about the `src/diff_benchmark/configs/main_jz.yaml` configuration file and the rest of configuration files that are in the folders inside `src/diff_benchmark/configs/`, those will control the experiment.
+
+`src/diff_benchmark/configs/main_jz.yaml` set the default files that are going to be read
+
+Example:
+```yaml
+defaults:
+  - dataset: hcp
+  - model: dinov2
+  - pred_head: binary_classification
+```
+dataset, model, pred_head are the directories inside `src/diff_benchmark/configs/` and hcp, dinov2, binary_classification are `.yaml` configuration files inside their respective directories that control the parameters of each section (`hcp` has variables relative to the `dataset` information, `dinov2` controls the hyperparameters of the `model` and `binary_classification` those of the `pred_head` used)
+
+It's possible to configure all those files and hyperparameters from the command line by defining the directory and the new file we want to read:
+```bash
+python -m diff_benchmark.cli.run_jz dataset=camcan
+```
+
+or specific parameters of certain configuration
+```bash
+python -m diff_benchmark.cli.run_jz dataset=camcan dataset.metric_to_compute=rtop
+``` 
+
+---
 
 ## Installation
 
@@ -186,4 +249,4 @@ Summary tables and plots from `diffbenchmark-analysis` are saved under `exp_outp
    - `TorchAbstractModel` — for PyTorch models with a custom training loop
 3. Implement the required methods: `fit`, `predict`, and `_dataloader_to_numpy`.
 4. Register your model in `src/diff_benchmark/models/model_configurations.py`.
-5. Add a corresponding YAML config in `src/diff_benchmark/configs/model/`.
+5. Add a corresponding YAML config in `src/diff_benchmark/configs/model/`. 

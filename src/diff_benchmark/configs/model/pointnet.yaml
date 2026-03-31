@@ -1,0 +1,13 @@
+name: pointnet
+
+backbone:
+  freeze_backbone: true
+  in_features: 1
+  hidden_dim: 128
+  k_neighbors: 16
+  radius: null
+  max_neighbors: 16
+  dropout: 0.0
+  region_encoder:
+    type: none  # none | anatomical | anatomical_relative
+    include_size: false

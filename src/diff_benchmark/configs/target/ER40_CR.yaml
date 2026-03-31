@@ -1,0 +1,4 @@
+#hcp
+target_column:
+  - ER40_CR
+prediction_task: regression

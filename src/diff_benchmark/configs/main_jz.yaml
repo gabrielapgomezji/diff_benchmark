@@ -1,6 +1,6 @@
 defaults:
   - dataset: hcp
-  - model: dinov2
+  - model: region_pca
   - pred_head: binary_classification
   - backend: torch
   - data: default
@@ -18,22 +18,4 @@ runtime:
   learning_curve_id: null
   experiment_hash: null
 
-
-choices:
-  model: [region_group_lasso]
-  dataset: [hcp]
-  backend: [sklearn]
-  # target: [age]
-  # pred_head: [regression]
-  dataset.tissue_type: [gray]
-  dataset.metric_to_compute: [md]
-  # cluster.conf.parallel_type: [None]
-  # backend.learning_rate: [1e-3]
-  # backend.weight_decay: [0]
-  # pred_head: [mesh_classification]
-  # pred_head.lambda1: [0.01]
-  # pred_head.lambda2: [0.001]
-  # cluster.slurm_cfg.timeout_min: [120]
-  # pred_head: [mesh_classification]
-  # data.batch_size: [1]
  
