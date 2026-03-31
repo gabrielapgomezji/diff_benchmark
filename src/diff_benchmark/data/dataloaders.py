@@ -41,11 +41,6 @@ class PreprocessedData:
         self.targets = targets
         self.genders = genders
         self.config = config
-        self.skf = StratifiedKFold(
-            n_splits=config.data.data_partition["n_splits"],
-            shuffle=True,
-            random_state=config.random_state,
-        )
 
     def get_fold_indices(self) -> list[tuple[np.ndarray, np.ndarray]]:
         """Return stratified K-fold split indices, optionally subsampling training sets.

@@ -850,7 +850,6 @@ def append_augmentations_to_cache(
                         f"sample_{batch_idx * source_dataloader.batch_size + i}"
                         for i in range(len(x))
                     ]
-
                 for sample_idx in range(len(x)):
                     sample_x = x[sample_idx : sample_idx + 1].to(device)
                     subject_id = subject_ids[sample_idx]
