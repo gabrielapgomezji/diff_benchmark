@@ -54,6 +54,7 @@ def compute_features_for_dataset(
         force_recompute: If True, recompute even if cache exists
     """
     logger.info(f"Computing features for {model_name} on {dataset_config['name']}")
+    is_mesh_model = model_name in ["pointnet", "pointnet_pp", "region_pointnet"]
 
     # Resolve image_size: handle Hydra's list-containing-None edge case
     if image_size is not None and isinstance(image_size, (list, tuple)):
@@ -63,7 +64,12 @@ def compute_features_for_dataset(
         else:
             image_size = tuple(image_size)
 
-    if image_size is not None:
+    if is_mesh_model:
+        image_size = None
+        logger.info(
+            "Mesh backbone detected; ignoring resize_shape for cache naming and feature transforms."
+        )
+    elif image_size is not None:
         logger.info(f"Will resize slices to {image_size}")
     else:
         logger.info("Using original image sizes (no resizing)")
@@ -88,6 +94,26 @@ def compute_features_for_dataset(
 
     logger.info(f"Dataset loaded: {len(torch_dataset)} samples")
 
+    if is_mesh_model and num_augmentations != 1:
+        logger.info(
+            "Mesh backbone detected; forcing num_augmentations=1 "
+            "(static meshes do not use rotation augmentation cache)."
+        )
+        num_augmentations = 1
+
+    cache_batch_size = model_config["data"].get(
+        "cache_batch_size", model_config["data"]["batch_size"]
+    )
+    if is_mesh_model:
+        mesh_cache_batch_size = model_config["data"].get("mesh_cache_batch_size", 1)
+        if cache_batch_size != mesh_cache_batch_size:
+            logger.info(
+                "Mesh backbone detected; using mesh cache batch size %s (instead of training batch size %s).",
+                mesh_cache_batch_size,
+                model_config["data"]["batch_size"],
+            )
+        cache_batch_size = mesh_cache_batch_size
+
     # Create backbone model with frozen weights
     model_kwargs = model_config["model"]["backbone"].copy()
     model_kwargs["freeze_backbone"] = True
@@ -100,8 +126,11 @@ def compute_features_for_dataset(
     )
 
     # Extract just the backbone if it's a TaskModel
-    if hasattr(model, "backbone"):
-        backbone = model.backbone
+    backbone = model.backbone if hasattr(model, "backbone") else model
+
+    # Force freeze for cache generation regardless of model factory behavior.
+    for p in backbone.parameters():
+        p.requires_grad = False
 
     # Verify backbone is frozen
     trainable_params = sum(p.numel() for p in backbone.parameters() if p.requires_grad)
@@ -116,9 +145,10 @@ def compute_features_for_dataset(
     # Create dataloader
     dataloader = DataLoader(
         torch_dataset,
-        batch_size=model_config["data"]["batch_size"],
+        batch_size=cache_batch_size,
         shuffle=False,
         num_workers=0,
+        collate_fn=preprocessed.safe_collate,
     )
 
     cache_model_name = model_name
@@ -237,7 +267,7 @@ def main(cfg: DictConfig) -> None:
     norm_std = cfg.data.normalization.std
 
     # Only cache for models that benefit from caching (frozen backbones)
-    if model_name not in ["vit", "dinov2", "curia", "medicalnet"]:
+    if model_name not in ["vit", "dinov2", "curia", "medicalnet", "pointnet"]:
         logger.info(f"Skipping {model_name} (not a frozen backbone model)")
         return
 

@@ -22,14 +22,13 @@ class Benchmark:
         self.results_path.mkdir(parents=True, exist_ok=True)
 
     def run(self) -> list:
-        """Execute benchmark experiments and return a list of :class:`JobResult` objects.
+        """Execute benchmark experiments and return a list of job return values.
 
         Execution mode (sequential, joblib, or SLURM) is determined by
         ``cfg.cluster.conf.parallel_type``.
 
         Returns:
-            List of :class:`~diff_benchmark.utils.job_manager.JobResult` objects,
-            one per submitted job.
+            List of return values, one per submitted job.
         """
         parallel_type = self.cfg.cluster.conf.parallel_type
         if parallel_type not in ("slurm", "joblib"):

@@ -1,25 +1,178 @@
 import logging
+import faulthandler
 import os
 import socket
+import sys
+import traceback
 from datetime import datetime
 from pathlib import Path
+
+# Reduce CUDA allocator fragmentation unless the user already configured it.
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 import hydra
 import numpy as np
 import pandas as pd
 from omegaconf import OmegaConf
 
+from diff_benchmark.analysis.region_coefficients import (
+    aggregate_subject_region_coefficients,
+    build_region_coefficient_records,
+    extract_subject_region_coefficients,
+    save_region_coefficients,
+)
 from diff_benchmark.analysis.save_results import save_model_results
 from diff_benchmark.analysis.true_vs_pred import plot_true_vs_pred
 from diff_benchmark.cli.utils import build_config_grid, cartesian_cfgs
 from diff_benchmark.data.prepare_data import DatasetPreparation
 from diff_benchmark.models.model_configurations import get_model
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
+from diff_benchmark.preprocessing.utils.utils_brain_feature_extraction import (
+    resample_schaefer_onto_fs_lr,
+)
 from diff_benchmark.utils.job_manager import run_jobs
 from diff_benchmark.utils.logger import configure_logging, setup_logger
 from diff_benchmark.utils.parquet_helper import ParquetSaver, metrics_to_rows
 from diff_benchmark.utils.run_id import get_learning_curve_id, is_cached, make_run_id
 from diff_benchmark.utils.scores import compute_metrics
+
+
+def _enable_failure_visibility() -> None:
+    """Enable robust logging/traceback behavior for local and SLURM runs."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[logging.StreamHandler(sys.stdout)],
+        force=False,
+    )
+    try:
+        faulthandler.enable()
+    except Exception:
+        logging.getLogger(__name__).exception("Failed to enable faulthandler")
+
+
+def _flush_streams() -> None:
+    """Best-effort flush of stdout/stderr to avoid buffered log loss."""
+    try:
+        sys.stdout.flush()
+    except Exception:
+        logging.getLogger(__name__).debug("Failed to flush stdout", exc_info=True)
+    try:
+        sys.stderr.flush()
+    except Exception:
+        logging.getLogger(__name__).debug("Failed to flush stderr", exc_info=True)
+
+
+def _extract_inputs_for_coefficients(trainer, dataloader):
+    """Return ordered model inputs for coefficient extraction when available."""
+    if hasattr(trainer, "_load_data"):
+        try:
+            x_data, _ = trainer._load_data(dataloader)
+            return x_data
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "Trainer._load_data failed; falling back to batch-wise extraction",
+                exc_info=True,
+            )
+
+    x_data = []
+    for batch in dataloader:
+        x_batch = batch[0]
+        if isinstance(x_batch, list):
+            x_data.extend(x_batch)
+        elif hasattr(x_batch, "unbind"):
+            x_data.extend(list(x_batch.unbind(0)))
+        elif isinstance(x_batch, np.ndarray) and x_batch.ndim >= 1:
+            x_data.extend([x_batch[i] for i in range(x_batch.shape[0])])
+        else:
+            return None
+    return x_data if x_data else None
+
+
+def _save_split_region_coefficients(
+    *,
+    trainer,
+    dataloader,
+    subject_ids: np.ndarray,
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    model_name: str,
+    run_id: str,
+    dataset_name: str,
+    tissue_type: str,
+    primary_metric: str,
+    fold_idx: int,
+    split: str,
+    experiment_dir: Path,
+    prediction_task: str,
+    logger,
+) -> bool:
+    """Extract and persist per-region coefficients for a fold split."""
+    x_data = _extract_inputs_for_coefficients(trainer, dataloader)
+    metadata = {
+        "agg": "l2",
+        "class_index": 1 if prediction_task == "binary_classification" else None,
+    }
+
+    coeffs_by_subject, is_static = extract_subject_region_coefficients(
+        model=trainer,
+        X=x_data,
+        metadata=metadata,
+    )
+    if not coeffs_by_subject:
+        return False
+
+    coefficient_mode = "static_model_coefficients"
+    if not is_static:
+        logger.info(
+            "Aggregating subject-specific region contributions into static coefficients for fold=%s split=%s",
+            fold_idx,
+            split,
+        )
+        coeffs_by_subject = [
+            aggregate_subject_region_coefficients(
+                coeffs_by_subject,
+                mode="mean_abs",
+            )
+        ]
+        is_static = True
+        coefficient_mode = "subject_contribution_mean_abs"
+
+    records = build_region_coefficient_records(
+        subject_ids=subject_ids,
+        model_name=model_name,
+        region_coefficients=coeffs_by_subject,
+        y_true=y_true,
+        y_pred=y_pred,
+        fold=fold_idx,
+        split=split,
+        is_static=is_static,
+        metadata_fields={
+            "run_id": str(run_id),
+            "dataset": str(dataset_name),
+            "tissue_type": str(tissue_type),
+            "primary_metric": str(primary_metric),
+            "metric_to_compute": str(primary_metric),
+            "coefficient_mode": coefficient_mode,
+        },
+    )
+    parquet_path = save_region_coefficients(
+        records,
+        output_root=experiment_dir / "coefficients",
+        model_name=model_name,
+        run_id=run_id,
+        fold=fold_idx,
+        split=split,
+    )
+    logger.info(
+        "Saved region coefficients to %s for fold=%s split=%s (static=%s, records=%d)",
+        parquet_path,
+        fold_idx,
+        split,
+        is_static,
+        len(records),
+    )
+    return bool(is_static)
 
 
 def _build_prediction_rows(
@@ -131,6 +284,36 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
 
     logger.info("Data preparation completed.")
 
+    try:
+        schaefer = resample_schaefer_onto_fs_lr(
+            scale=int(cfg.dataset.scale),
+            target_space=str(cfg.dataset.surface_space),
+        )
+        atlas_meta = dict(schaefer.get("atlas_meta", {}) or {})
+        atlas_meta.update(
+            {
+                "atlas_type": atlas_meta.get("atlas_type", "surface_schaefer"),
+                "surface_space": str(cfg.dataset.surface_space),
+                "scale": int(cfg.dataset.scale),
+                "dataset": str(cfg.dataset.name),
+                "tissue_type": str(cfg.dataset.tissue_type),
+                "metric_to_compute": str(cfg.dataset.metric_to_compute),
+            }
+        )
+        metadata["atlas"] = atlas_meta
+    except Exception as atlas_err:
+        logger.warning("Atlas metadata inference failed: %s", atlas_err)
+        metadata["atlas"] = {
+            "atlas_type": "surface_schaefer",
+            "surface_space": str(cfg.dataset.surface_space),
+            "scale": int(cfg.dataset.scale),
+            "dataset": str(cfg.dataset.name),
+            "tissue_type": str(cfg.dataset.tissue_type),
+            "metric_to_compute": str(cfg.dataset.metric_to_compute),
+            "error": str(atlas_err),
+        }
+    OmegaConf.save(metadata, experiment_dir / "metadata.yaml")
+
     # Persist target values once (shared across folds).
     targets_path = experiment_dir / "predictions" / "targets.parquet"
     target_name = cfg.target.target_column[0]
@@ -206,6 +389,30 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
                     fold_idx, "train", target_name, train_subject_ids, train_pred,
                 )
             )
+            try:
+                _save_split_region_coefficients(
+                    trainer=model,
+                    dataloader=train_loader,
+                    subject_ids=train_subject_ids,
+                    y_true=y_train,
+                    y_pred=train_pred,
+                    model_name=model_name,
+                    run_id=run_id,
+                    dataset_name=dataset_selected.name,
+                    tissue_type=cfg.dataset.tissue_type,
+                    primary_metric=cfg.dataset.metric_to_compute,
+                    fold_idx=fold_idx,
+                    split="train",
+                    experiment_dir=experiment_dir,
+                    prediction_task=cfg.pred_head.prediction_task,
+                    logger=logger,
+                )
+            except Exception as coef_err:
+                logger.warning(
+                    "Region-coefficient extraction failed (fold=%s, split=train): %s",
+                    fold_idx,
+                    coef_err,
+                )
 
             # Test split
             test_pred = model.predict(test_loader)
@@ -222,6 +429,10 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
                     run_id, model_name, dataset_selected.name,
                     fold_idx, "test", target_name, test_subject_ids, test_pred,
                 )
+            )
+            logger.info(
+                "Region coefficients are extracted once per fold from train split (fold=%s)",
+                fold_idx,
             )
             pred_saver.save()
 
@@ -252,8 +463,8 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
             # Persist any metrics collected before the crash.
             if metrics_rows:
                 _save_fold_metrics(metrics_rows, experiment_dir)
-
-            break
+            _flush_streams()
+            raise
 
     # ------------------------------------------------------------------ #
     # Final metadata and metrics save                                     #
@@ -297,9 +508,9 @@ def main():
     sweep axes defined in the config's ``choices`` block are expanded into a
     cartesian product of individual experiment configs.
     """
-    import sys
-
+    _enable_failure_visibility()
     configure_logging(logging.DEBUG)
+    logger = setup_logger(__name__)
 
     results_path = Path("./exp_outputs")
     experiments_root = results_path / "experiments"
@@ -349,14 +560,22 @@ def main():
     if parallel_type not in ("slurm", "joblib"):
         parallel_type = None
 
-    run_jobs(
-        run_fn=run_single_model,
-        fn_kwargs_list=fn_kwargs_list,
-        parallel_type=parallel_type,
-        slurm_cfg=cluster_cfg.slurm_cfg,
-        n_jobs=cluster_cfg.conf.n_jobs,
-        wait_for_results=cluster_cfg.conf.wait_for_results,
-    )
+    logger.info("Starting benchmark job dispatch (%d jobs)", len(fn_kwargs_list))
+    try:
+        run_jobs(
+            run_fn=run_single_model,
+            fn_kwargs_list=fn_kwargs_list,
+            parallel_type=parallel_type,
+            slurm_cfg=cluster_cfg.slurm_cfg,
+            n_jobs=cluster_cfg.conf.n_jobs,
+            wait_for_results=cluster_cfg.conf.wait_for_results,
+        )
+        logger.info("Benchmark job dispatch completed")
+    except Exception:
+        logger.exception("Top-level failure in CLI run_jz entrypoint")
+        traceback.print_exc()
+        _flush_streams()
+        raise
 
 
 if __name__ == "__main__":

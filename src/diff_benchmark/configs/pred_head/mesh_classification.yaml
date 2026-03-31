@@ -1,5 +1,29 @@
 prediction_task: binary_classification
-reg_type: group_lasso    # or group_elastic_net / none
-lambda1: 0.00001
-lambda2: 0.000001          # only used for group_elastic_net
-hidden_dim: 32
+head_type: additive
+bias: true
+
+# Per-head parameter blocks. Only head.<head_type>.* is forwarded.
+head:
+  simple: {}
+
+  additive:
+    reg_type: group_lasso    # or group_elastic_net / none
+    lambda1: 0.00001
+    lambda2: 0.000001        # only used for group_elastic_net
+
+  attention:
+    hidden_dim: 32
+
+  transformer:
+    n_heads: 4
+    n_layers: 2
+    hidden_dim: 64
+    dropout: 0.1
+
+  # Optional extras (supported by factory)
+  gam:
+    hidden_dim: 32
+
+  moe:
+    n_experts: 4
+    hidden_dim: 32

@@ -498,7 +498,8 @@ class BrainDataPreparationPipeline(ABC):
             IndexError,
         ) as e:
             print(f"[{subject_id}] Expected error during microstructure: {e}")
-            logger.error("[%s] Expected error during microstructure: %s", subject_id, e)
+            logger.exception("[%s] Expected error during microstructure: %s", subject_id, e)
+            raise
 
     # ------------------------------------------------------------------
     # Analysis hooks (subclass responsibility)

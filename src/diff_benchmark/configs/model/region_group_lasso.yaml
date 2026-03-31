@@ -1,3 +1,57 @@
 name: region_group_lasso
 
-backbone: {}
+backbone:
+  classifier__C:
+    - 0.01
+    # - 0.1
+    # - 1
+    # - 10
+    # - 100
+  # options: "mean_std", "flatten" "pca", "summary_stats", "percentiles",
+  region_representation: flatten
+  flatten:
+    group_lasso_alpha_grid_classification:
+      - 0.0001
+      - 0.0003
+      - 0.001
+      - 0.003
+      - 0.01
+      - 0.03
+      - 0.1
+  mean_std:
+    group_lasso_alpha_grid_classification:
+      - 1e-6
+      # - 3e-6
+      # - 1e-5
+      # - 3e-5
+      # - 1e-4
+      # - 3e-4
+      # - 1e-3
+  pca:
+    n_components_per_region: 10
+    group_lasso_alpha_grid_classification:
+      - 1e-5
+      - 3e-5
+      - 1e-4
+      - 3e-4
+      - 1e-3
+      - 3e-3
+  summary_stats:
+    group_lasso_alpha_grid_classification:
+      - 1e-6
+      - 3e-6
+      - 1e-5
+      - 3e-5
+      - 1e-4
+      - 3e-4
+      - 1e-3
+      - 3e-3
+  percentiles:
+    group_lasso_alpha_grid_classification:
+      - 1e-6
+      - 3e-6
+      - 1e-5
+      - 3e-5
+      - 1e-4
+      - 3e-4
+      - 1e-3

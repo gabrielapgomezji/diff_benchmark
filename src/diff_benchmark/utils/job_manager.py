@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-import traceback as tb
+import logging
+import sys
 import warnings
 from dataclasses import dataclass
 from functools import wraps
@@ -18,29 +19,29 @@ class JobResult:
     traceback: str | None = None
 
 
-def fn_error_catcher(fn: Callable[..., Any]) -> Callable[..., JobResult]:
+def fn_error_catcher(fn: Callable[..., Any]) -> Callable[..., Any]:
     """
-    Decorator that wraps a function to catch exceptions and return a JobResult.
-    This decorator executes the wrapped function and captures its return value or any
-    exceptions that occur during execution. The result is returned as a JobResult object
-    that indicates success or failure along with relevant error information.
+    Decorator that wraps a function to ensure exceptions are logged and re-raised.
+    This preserves full traceback visibility in local runs and SLURM/Submitit logs,
+    and avoids silent failures that would otherwise look like successful jobs.
     Args:
         fn: A callable function to be wrapped.
     Returns:
         A wrapped function that takes a dictionary of keyword arguments and returns
-        a JobResult object. On successful execution, returns JobResult with ok=True
-        and the function's return value. On exception, returns JobResult with ok=False,
-        the error message as a string, and a formatted traceback.
+        the wrapped function value on success.
     Raises:
-        None - All exceptions are caught and returned in the JobResult object.
+        Re-raises any exception from the wrapped function after logging it.
     """
 
     @wraps(fn)
-    def wrapped(kwargs) -> JobResult:
+    def wrapped(kwargs):
         try:
-            return JobResult(ok=True, value=fn(**kwargs))
-        except Exception as e:
-            return JobResult(ok=False, error=str(e), traceback=tb.format_exc())
+            return fn(**kwargs)
+        except Exception:
+            logging.getLogger(__name__).exception("Job execution failed for kwargs=%s", kwargs)
+            sys.stdout.flush()
+            sys.stderr.flush()
+            raise
 
     return wrapped
 
@@ -52,7 +53,7 @@ def run_jobs(
     n_jobs: int = 1,
     slurm_cfg: dict[str, Any] | None = None,
     wait_for_results: bool = True,
-) -> list[JobResult]:
+) -> list[Any]:
     """Execute a function multiple times with different keyword arguments.
     Supports sequential, joblib-based parallel, and SLURM-based distributed execution.
     Args:
@@ -68,7 +69,7 @@ def run_jobs(
         slurm_cfg: Configuration dictionary for SLURM execution. Required if parallel_type="slurm".
             Can contain "log_folder" (default "./slurm_logs") and other SLURM parameters.
     Returns:
-        List of JobResult objects containing the results of all function executions.
+        List of function return values for completed jobs.
     Raises:
         ValueError: If parallel_type is "slurm" but slurm_cfg is None, or if parallel_type is unknown.
     Warns:
