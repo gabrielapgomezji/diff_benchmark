@@ -123,7 +123,6 @@ class SWWeisfeilerLemanModel(nn.Module):
 
         # Padded feature distributions: (B, n_parcels, max_points)
         emb_distributions = torch.zeros(B, n_parcels, max_points_per_parcel, device=device)
-        mask_distributions = torch.zeros(B, n_parcels, max_points_per_parcel, dtype=torch.bool, device=device)
 
         for b, sample in enumerate(x):
             node_features = sample["node_features"][:, 0].to(device)   # (N,)
@@ -133,6 +132,5 @@ class SWWeisfeilerLemanModel(nn.Module):
                 n_p = int(mask.sum().item())
                 if n_p > 0:
                     emb_distributions[b, p_idx, :n_p] = node_features[mask]
-                    mask_distributions[b, p_idx, :n_p] = mask
 
-        return emb_distributions, mask_distributions  # (B, n_parcels, max_points_per_parcel)
+        return emb_distributions  # (B, n_parcels, max_points_per_parcel)

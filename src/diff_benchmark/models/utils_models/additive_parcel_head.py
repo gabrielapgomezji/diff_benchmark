@@ -632,8 +632,8 @@ class AttentionProbaAdditiveParcelHead(nn.Module):
         self.bias = nn.Parameter(torch.zeros(output_dim))
 
     def forward(self, x):
-        z, mask = x
-        print("???", z.shape, mask.shape)
+        mask = (x!=0)
+        print("???", x.shape, mask.shape, torch.nonzero(mask).shape)
 
         # x: (B,P,E)
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
