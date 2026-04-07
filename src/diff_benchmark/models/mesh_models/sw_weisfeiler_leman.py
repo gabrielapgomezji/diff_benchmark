@@ -45,17 +45,15 @@ class SWWeisfeilerLemanModel(nn.Module):
     def __init__(
         self,
         in_features: int = 1,
-        n_spectral_components: int = 16,
         parcel_ids: Optional[List[int]] = None,
         **kwargs,
     ) -> None:
         super().__init__()
 
         self.in_features = in_features
-        self.k = n_spectral_components
 
         # Fixed at construction time — used by downstream heads.
-        self._parcel_embed_dim: int = n_spectral_components * in_features
+        self._parcel_embed_dim: int = in_features
 
         # Sorted list of parcel IDs; set lazily if not provided.
         # Parcel 0 (background / medial wall) is always excluded.
@@ -113,7 +111,7 @@ class SWWeisfeilerLemanModel(nn.Module):
         device = self._dummy.device
         self._maybe_init_from_batch(x)
 
-        B, n_parcels, k, F = len(x), len(self._parcel_ids), self.k, self.in_features
+        B, n_parcels, F = len(x), len(self._parcel_ids), self.in_features
 
         # Max number of vertices assigned to any single parcel across the whole batch
         max_points_per_parcel = max(

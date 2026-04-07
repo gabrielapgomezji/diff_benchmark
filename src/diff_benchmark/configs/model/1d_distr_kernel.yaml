@@ -1,0 +1,6 @@
+name: 1d_distr_kernel
+
+backbone:
+  in_features: 1
+  cv: 5
+  device: cpu

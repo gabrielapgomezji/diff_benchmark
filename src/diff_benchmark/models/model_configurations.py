@@ -180,9 +180,18 @@ def create_model(
         return TaskModel(backbone, head)
         
     if model_name == "sw_weisfeiler_leman":
+        ## Not a good idea to do Attention for a 1D distribution
+        ## Maybe greater dim would be ok (e.g. with true Weisfeiler-Leman embedding)
         backbone = SWWeisfeilerLemanModel(**model_kwargs)
         head = build_new_parcel_head(embed_dim=backbone._parcel_embed_dim, head_type="attention_proba", **pred_head)
         return TaskModel(backbone, head)
+    
+    if model_name == "1d_distr_kernel":
+        backbone = SWWeisfeilerLemanModel(**model_kwargs)
+        # head = build_new_parcel_head(embed_dim=backbone._parcel_embed_dim, head_type="kernel_regression", **pred_head)
+        # return TaskModel(backbone, head)
+        print("???", backbone._parcel_embed_dim)
+        return
 
     raise ValueError(f"Unknown model type: {model_name}")
 
