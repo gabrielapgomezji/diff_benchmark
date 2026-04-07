@@ -36,6 +36,7 @@ from diff_benchmark.models.mesh_models.sklearn_group_lasso import RegionGroupLas
 from diff_benchmark.models.mesh_models.sklearn_elasticnet import RegionElasticNetModel 
 from diff_benchmark.models.mesh_models.spectral_laplacian_group_lasso import SpectralLaplacianGroupLassoModel
 from diff_benchmark.models.mesh_models.sw_weisfeiler_leman import SWWeisfeilerLemanModel
+from diff_benchmark.models.mesh_models.distr_kernel import Distr1D_kernel
 from diff_benchmark.models.utils_models.additive_parcel_head import build_additive_parcel_head as build_additive_head
 from diff_benchmark.models.utils_models.additive_parcel_head import build_new_parcel_head
 
@@ -187,11 +188,10 @@ def create_model(
         return TaskModel(backbone, head)
     
     if model_name == "1d_distr_kernel":
-        backbone = SWWeisfeilerLemanModel(**model_kwargs)
-        # head = build_new_parcel_head(embed_dim=backbone._parcel_embed_dim, head_type="kernel_regression", **pred_head)
-        # return TaskModel(backbone, head)
+        backbone = Distr1D_kernel(**model_kwargs)
+        head = build_new_parcel_head(embed_dim=backbone._parcel_embed_dim, head_type="attention_proba", **pred_head)
         print("???", backbone._parcel_embed_dim)
-        return
+        return TaskModel(backbone, head)
 
     raise ValueError(f"Unknown model type: {model_name}")
 
