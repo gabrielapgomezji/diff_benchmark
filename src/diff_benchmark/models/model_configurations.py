@@ -27,6 +27,7 @@ from diff_benchmark.models.utils_models.trainer import (
     LightningTrainer,
     SklearnTrainer,
     TorchTrainer,
+    TorchKernelTrainer,
 )
 from diff_benchmark.models.mesh_models.simple_mesh_model import SimpleMeshModel
 from diff_benchmark.models.mesh_models.group_lasso import MeshGroupLassoModel
@@ -38,7 +39,7 @@ from diff_benchmark.models.mesh_models.spectral_laplacian_group_lasso import Spe
 from diff_benchmark.models.mesh_models.sw_weisfeiler_leman import SWWeisfeilerLemanModel
 from diff_benchmark.models.mesh_models.distr_kernel import Distr1D_kernel
 from diff_benchmark.models.utils_models.additive_parcel_head import build_additive_parcel_head as build_additive_head
-from diff_benchmark.models.utils_models.additive_parcel_head import build_new_parcel_head
+from diff_benchmark.models.utils_models.additive_parcel_head import build_new_parcel_head, KernelLogisticRegression
 
 class TaskModel(nn.Module):
     """Backbone + prediction head assembled into a single forward pass."""
@@ -222,6 +223,9 @@ def create_backend_trainer(
 
     if backend == "lightning":
         return LightningTrainer(model=model, **backend_kwargs)
+    
+    if backend =="torch_kernel":
+        return TorchKernelTrainer(model=model, **backend_kwargs)
 
     raise ValueError(f"Unknown backend: {backend}")
 

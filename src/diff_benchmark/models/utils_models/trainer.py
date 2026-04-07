@@ -833,3 +833,19 @@ class LightningTrainer(BaseTrainer):
             )
 
         return preds.numpy()
+
+
+class TorchKernelTrainer(BaseTrainer):
+    """
+    Trainer for PyTorch-based kernel models.
+    """
+
+    def __init__(self, model: nn.Module, **kwargs):
+        super().__init__(model)
+        self.run_id = kwargs.get("run_id", "default_run")
+        self.logger = TorchDebugLogger(
+            enabled=kwargs.get("debug", False),
+            run_id=self.run_id,
+            output_dir=f"exp_outputs/experiments/exp_{self.run_id}/debug/",
+            prediction_task="regression",
+        )

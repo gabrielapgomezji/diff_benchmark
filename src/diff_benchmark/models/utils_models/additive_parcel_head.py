@@ -262,6 +262,200 @@ class AdditiveParcelHead(nn.Module):
             f"n_parcels={P}, "
             f"reg={self.reg_type})"
         )
+    
+
+class KernelLogisticRegression(nn.Module):
+    """Linear prediction head with per-parcel weights and group regularisation.
+
+    Parameters
+    ----------
+    embed_dim:
+        Dimensionality of each parcel's input embedding ``E``
+        (= ``k * in_features`` from the backbone).
+    output_dim:
+        Number of output units: ``1`` for regression, ``n_classes`` for
+        classification.
+    reg_type:
+        Regularisation strategy applied to the parcel weight groups.
+        One of ``"none"``, ``"group_lasso"``, ``"group_elastic_net"``.
+    lambda1:
+        Coefficient for the group-norm penalty (group lasso / elastic net).
+    lambda2:
+        Coefficient for the squared Frobenius penalty (elastic net only).
+    bias:
+        Whether to include a global output bias ``b \\in \\mathbb{R}^C``.
+    """
+
+    def __init__(
+        self,
+        embed_dim: int,
+        output_dim: int,
+        reg_type: RegType = "none",
+        lambda1: float = 1e-3,
+        lambda2: float = 1e-4,
+        bias: bool = True,
+    ) -> None:
+        super().__init__()
+
+        self.embed_dim = embed_dim
+        self.output_dim = output_dim
+        self.reg_type = reg_type
+        self.lambda1 = lambda1
+        self.lambda2 = lambda2
+
+        # Lazily allocated when n_parcels becomes known.
+        # self._W: Optional[nn.Parameter] = None   # (P, C, E)
+        # self._n_parcels: Optional[int] = None
+
+        # self._bias: Optional[nn.Parameter] = (
+        #     nn.Parameter(torch.zeros(output_dim)) if bias else None
+        # )
+
+    # ------------------------------------------------------------------
+    # Lazy initialisation
+    # ------------------------------------------------------------------
+
+    # def _maybe_init_weights(self, n_parcels: int, device: torch.device) -> None:
+    #     """Allocate weight matrix on first call once P is known."""
+    #     if self._W is not None:
+    #         return
+    #     self._n_parcels = n_parcels
+    #     W = torch.empty(n_parcels, self.output_dim, self.embed_dim)
+    #     nn.init.xavier_uniform_(W.view(n_parcels * self.output_dim, self.embed_dim))
+    #     self._W = nn.Parameter(W)
+    #     if self._bias is not None:
+    #         self._bias = self._bias.to(device)
+    #     log.debug(
+    #         "AdditiveParcelHead: allocated W (%d, %d, %d).",
+    #         n_parcels, self.output_dim, self.embed_dim,
+    #     )
+
+    # ------------------------------------------------------------------
+    # Forward
+    # ------------------------------------------------------------------
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Compute the additive linear prediction.
+
+        Args:
+            x: FloatTensor ``(B, B, P)`` — batched kernel.
+
+        Returns:
+            FloatTensor ``(B, C)`` — raw logits or regression values.
+        """
+        # if x.dim() != 3:
+        #     raise ValueError(
+        #         f"AdditiveParcelHead expects input of shape (B, P, E), got {x.shape}."
+        #     )
+        # B, P, E = x.shape
+        # if E != self.embed_dim:
+        #     raise ValueError(
+        #         f"embed_dim mismatch: expected {self.embed_dim}, got {E}."
+        #     )
+
+        # device = x.device
+        # self._maybe_init_weights(P, device)
+
+        # assert self._W is not None  # mypy / type checkers
+        # W = self._W.to(device)     # (P, C, E)
+
+        # # out[b, c] = sum_p  W[p, c, :] · x[b, p, :]
+        # out = torch.einsum("pce,bpe->bc", W, x)  # (B, C)
+
+        # if self._bias is not None:
+        #     out = out + self._bias.to(device)
+
+        # return out
+
+    # ------------------------------------------------------------------
+    # Regularisation
+    # ------------------------------------------------------------------
+
+    def regularization_loss(self) -> torch.Tensor:
+        """Compute the group-structured penalty on the parcel weights.
+
+        Returns:
+            Scalar tensor (zero when ``reg_type="none"`` or weights not yet
+            initialised).
+        """
+        # if self._W is None or self.reg_type == "none":
+        #     return torch.tensor(0.0, dtype=torch.float32)
+
+        # W = self._W  # (P, C, E)
+
+        # # Per-parcel Frobenius norms: (P,)
+        # group_norms = W.norm(dim=(1, 2))
+
+        # if self.reg_type == "group_lasso":
+        #     return self.lambda1 * group_norms.sum()
+
+        # if self.reg_type == "group_elastic_net":
+        #     return (
+        #         self.lambda1 * group_norms.sum()
+        #         + self.lambda2 * W.pow(2).sum()
+        #     )
+
+        # return torch.tensor(0.0, device=W.device, dtype=W.dtype)
+
+    # ------------------------------------------------------------------
+    # Interpretability
+    # ------------------------------------------------------------------
+
+    def parcel_contributions(
+        self, x: torch.Tensor
+    ) -> torch.Tensor:
+        """Return per-parcel linear contributions before summation.
+
+        Args:
+            x: FloatTensor ``(B, P, E)``.
+
+        Returns:
+            FloatTensor ``(B, P, C)`` — each parcel's contribution
+            :math:`W_p z_{b,p}` (bias excluded).  Summing over ``dim=1``
+            and adding the bias recovers :meth:`forward` exactly.
+        """
+        # if x.dim() != 3:
+        #     raise ValueError(f"Expected (B, P, E), got {x.shape}.")
+        # device = x.device
+        # self._maybe_init_weights(x.shape[1], device)
+        # assert self._W is not None
+        # W = self._W.to(device)  # (P, C, E)
+        # # contributions[b, p, c] = W[p, c, :] · x[b, p, :]
+        # return torch.einsum("pce,bpe->bpc", W, x)  # (B, P, C)
+
+    def parcel_scalar_contributions(
+        self, x: torch.Tensor, parcel_ids: Optional[List[int]] = None
+    ) -> Dict[int, torch.Tensor]:
+        """Return per-parcel contributions as a dict keyed by parcel index.
+
+        Args:
+            x: FloatTensor ``(B, P, E)``.
+            parcel_ids: Optional list of length P giving the integer parcel
+                IDs corresponding to each slice of the parcel axis.  If
+                ``None``, uses ``[0, 1, ..., P-1]``.
+
+        Returns:
+            Dict ``{parcel_id: FloatTensor(B, C)}`` with one entry per parcel.
+        """
+        # contribs = self.parcel_contributions(x)  # (B, P, C)
+        # P = contribs.shape[1]
+        # ids = parcel_ids if parcel_ids is not None else list(range(P))
+        # return {ids[p]: contribs[:, p, :] for p in range(P)}
+
+    # ------------------------------------------------------------------
+    # Repr
+    # ------------------------------------------------------------------
+
+    # def __repr__(self) -> str:  # pragma: no cover
+    #     P = self._n_parcels if self._n_parcels is not None else "?"
+    #     return (
+    #         f"AdditiveParcelHead("
+    #         f"embed_dim={self.embed_dim}, "
+    #         f"output_dim={self.output_dim}, "
+    #         f"n_parcels={P}, "
+    #         f"reg={self.reg_type})"
+    #     )
+
 
 
 # ---------------------------------------------------------------------------
