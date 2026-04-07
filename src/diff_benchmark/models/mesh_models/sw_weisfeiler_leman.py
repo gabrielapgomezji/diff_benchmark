@@ -125,7 +125,7 @@ class SWWeisfeilerLemanModel(nn.Module):
         emb_distributions = torch.zeros(B, n_parcels, max_points_per_parcel, device=device)
 
         for b, sample in enumerate(x):
-            node_features = sample["node_features"].to(device)   # (N,)
+            node_features = sample["node_features"][:, 0].to(device)   # (N,)
             parcel_labels = sample["parcel_labels"].to(device)    # (N,)
             for p_idx, pid in enumerate(self._parcel_ids):
                 mask = parcel_labels == pid
