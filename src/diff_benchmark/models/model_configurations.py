@@ -180,10 +180,8 @@ def create_model(
         return TaskModel(backbone, head)
         
     if model_name == "sw_weisfeiler_leman":
-        print("TEST ???")
-
         backbone = SWWeisfeilerLemanModel(**model_kwargs)
-        head = build_new_parcel_head(embed_dim=backbone._parcel_embed_dim, head_type="attention", **pred_head)
+        head = build_new_parcel_head(embed_dim=backbone._parcel_embed_dim, head_type="attention_proba", **pred_head)
         return TaskModel(backbone, head)
 
     raise ValueError(f"Unknown model type: {model_name}")

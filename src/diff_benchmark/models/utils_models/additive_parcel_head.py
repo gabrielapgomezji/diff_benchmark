@@ -550,6 +550,7 @@ class GAMParcelHead(nn.Module):
 
         return torch.stack(contribs, dim=1)
     
+
 class AttentionAdditiveParcelHead(nn.Module):
 
     """
@@ -602,6 +603,62 @@ class AttentionAdditiveParcelHead(nn.Module):
 
         return values * attn.unsqueeze(-1)
     
+
+class AttentionProbaAdditiveParcelHead(nn.Module):
+
+    """
+    Additive head with learned parcel attention.
+    """
+
+    def __init__(self, embed_dim, hidden_dim=32, output_dim=1, **kwargs):
+
+        super().__init__()
+
+        self.embed_dim = embed_dim
+        self.output_dim = output_dim
+
+        self.value_net = nn.Sequential(
+            nn.Linear(embed_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, output_dim),
+        )
+
+        self.attn_net = nn.Sequential(
+            nn.Linear(embed_dim, hidden_dim),
+            nn.Tanh(),
+            nn.Linear(hidden_dim, 1),
+        )
+
+        self.bias = nn.Parameter(torch.zeros(output_dim))
+
+    def forward(self, x):
+        z, mask = x
+        print("???", z.shape, mask.shape)
+
+        # x: (B,P,E)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.value_net.to(device)
+        x = x.to(device)
+        
+        values = self.value_net(x)        # (B,P,C)
+
+        attn = self.attn_net(x).squeeze(-1)  # (B,P)
+        attn = torch.softmax(attn, dim=1)
+
+        out = (values * attn.unsqueeze(-1)).sum(dim=1)
+
+        return out + self.bias
+
+    def parcel_contributions(self, x):
+
+        values = self.value_net(x)
+
+        attn = self.attn_net(x).squeeze(-1)
+        attn = torch.softmax(attn, dim=1)
+
+        return values * attn.unsqueeze(-1)
+
+
 class ParcelMoEHead(nn.Module):
 
     """
@@ -795,6 +852,14 @@ def build_new_parcel_head(
 
     elif head_type == "attention":
         return AttentionAdditiveParcelHead(
+            embed_dim=embed_dim,
+            output_dim=output_dim,
+            bias=bias,
+            **kwargs,
+        )
+    
+    elif head_type == "attention_proba":
+        return AttentionProbaAdditiveParcelHead(
             embed_dim=embed_dim,
             output_dim=output_dim,
             bias=bias,
