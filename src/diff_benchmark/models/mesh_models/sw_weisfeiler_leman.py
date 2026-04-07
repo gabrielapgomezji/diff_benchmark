@@ -113,11 +113,24 @@ class SWWeisfeilerLemanModel(nn.Module):
         device = self._dummy.device
         self._maybe_init_from_batch(x)
 
-        for sample in x:
-            print(sample)
-            break
-
         B, n_parcels, k, F = len(x), len(self._parcel_ids), self.k, self.in_features
-        tensor = torch.randn(B, n_parcels, k * F)
 
-        return tensor #0 # (B, n_parcels, k*F)
+        # Max number of vertices assigned to any single parcel across the whole batch
+        max_points_per_parcel = max(
+            int((x[0]["parcel_labels"] == pid).sum().item())
+            for pid in self._parcel_ids
+        )
+
+        # Padded feature distributions: (B, n_parcels, max_points)
+        emb_distributions = torch.zeros(B, n_parcels, max_points_per_parcel, device=device)
+
+        for b, sample in enumerate(x):
+            node_features = sample["node_features"].to(device)   # (N,)
+            parcel_labels = sample["parcel_labels"].to(device)    # (N,)
+            for p_idx, pid in enumerate(self._parcel_ids):
+                mask = parcel_labels == pid
+                n_p = int(mask.sum().item())
+                if n_p > 0:
+                    emb_distributions[b, p_idx, :n_p] = node_features[mask]
+
+        return emb_distributions  # (B, n_parcels, max_points_per_parcel)
