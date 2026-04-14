@@ -16,6 +16,7 @@ paths:
     base_dir: /lustre/fswork/projects/rech/qlr/commun/abide
     results_dir: /lustre/fswork/projects/rech/qlr/commun/abide
 
+
 conf:
   enabled: true
   parallel_type: slurm
