@@ -6,15 +6,15 @@ paths:
     base_dir: /lustre/fswork/projects/rech/qlr/commun/HCP900
     results_dir: /lustre/fswork/projects/rech/qlr/commun/HCP900
     csv_file: /lustre/fswork/projects/rech/qlr/commun/HCP900/Merged_HCP_Demographics.csv
-  # camcan:
-  #   base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/camcan
-  #   results_dir: /data/parietal/store3/work/ggomezji/benchmark/CamCAN
+  camcan:
+    base_dir: /lustre/fswork/projects/rech/qlr/commun/camcan
+    results_dir: /lustre/fswork/projects/rech/qlr/commun/CamCAN
   # wand:
   #   base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/WAND-concat
   #   results_dir: /data/parietal/store3/work/ggomezji/benchmark/WAND
-  # abide:
-  #   base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/abide
-  #   results_dir: /data/parietal/store3/work/ggomezji/benchmark/abide
+  abide:
+    base_dir: /lustre/fswork/projects/rech/qlr/commun/abide
+    results_dir: /lustre/fswork/projects/rech/qlr/commun/abide
 
 conf:
   enabled: true
