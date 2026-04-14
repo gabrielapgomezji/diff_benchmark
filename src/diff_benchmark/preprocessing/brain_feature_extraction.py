@@ -359,9 +359,14 @@ class MeshPipeline(BrainDataPreparationPipeline):
     """
 
     def _init_bids_layouts(self) -> None:
-        """No-op override: MeshPipeline reads pre-computed Parquet/NPZ files
-        and never accesses raw BIDS data, so no layout index is needed."""
-        self.layouts = []
+        """Initialize BIDS layouts for multicentre/unicentre BIDS datasets.
+
+        Mesh pipeline still relies on raw-file verification and microstructure
+        computation from :class:`BrainDataPreparationPipeline`, both of which
+        query BIDS by subject. A no-op here leaves ``self.layouts`` empty and
+        causes ``get_layout_for_subject`` to fail for every BIDS subject.
+        """
+        super()._init_bids_layouts()
 
     def __init__(
         self,
@@ -453,13 +458,13 @@ class MeshPipeline(BrainDataPreparationPipeline):
     def verify_subject_files(
         self, subject_id: str, metric: str, tissue_type: str
     ) -> bool:
-        """Return True if all mesh output files exist for *subject_id*.
+        """Return True when subject has cached data usable by mesh pipeline.
 
-        The mesh pipeline considers a subject "done" when the Parquet graph
-        files **and** the debug NPZ are all present under
-        ``mesh/derivatives/sub-<id>/dwi/``.  This is what
-        :meth:`~diff_benchmark.preprocessing.preparation_pipeline.BrainDataPreparationPipeline._process_subject`
-        consults to decide whether to skip computation.
+        A subject is considered ready when either:
+        - mesh outputs are already present, or
+        - scalar microstructure outputs are already present.
+
+        This avoids recomputing microstructure when only mesh export is missing.
 
         Args:
             subject_id: Subject identifier.
@@ -467,9 +472,9 @@ class MeshPipeline(BrainDataPreparationPipeline):
             tissue_type: Unused (kept for signature compatibility).
 
         Returns:
-            True when nodes.parquet, edges.parquet and sub-<id>_mesh.npz all exist.
+            True when either mesh outputs or scalar microstructure outputs exist.
         """
-        return self._mesh_outputs_exist(subject_id)
+        return self._mesh_outputs_exist(subject_id) or self._microstructure_outputs_exist(subject_id)
 
     # ------------------------------------------------------------------
     # Mesh validation
@@ -723,27 +728,34 @@ class MeshPipeline(BrainDataPreparationPipeline):
         if subject_filter is not None:
             subject_ids = [subject_filter]
         else:
-            # Preferred: discover subjects from existing mesh output directories.
-            # This allows mesh-only execution (e.g. on a cluster) where the
-            # default/ tree is absent but parquet/npz files are already present.
+            # Discover from both mesh outputs and default scalar derivatives.
+            # Using the union avoids dropping subjects when mesh/derivatives
+            # exists but is only partially populated from a previous run.
             mesh_subject_dirs = sorted(
                 self.results_root.glob("derivatives/sub-*")
             )
-            if mesh_subject_dirs:
-                subject_ids = [
-                    d.name.replace("sub-", "") for d in mesh_subject_dirs if d.is_dir()
-                ]
-            else:
-                # Fallback: discover subjects from default derivatives (scalar.gii glob)
-                scalar_glob = sorted(
-                    self._default_root.glob(
-                        f"derivatives/sub-*/dwi/"
-                        f"*_hemi-L_param-{self.metric}_tissue-{tissue_type}.scalar.gii"
-                    )
+            mesh_subject_ids = {
+                d.name.replace("sub-", "") for d in mesh_subject_dirs if d.is_dir()
+            }
+
+            scalar_glob = sorted(
+                self._default_root.glob(
+                    f"derivatives/sub-*/dwi/"
+                    f"*_hemi-L_param-{self.metric}_tissue-{tissue_type}.scalar.gii"
                 )
-                subject_ids = [
-                    p.stem.split("_")[0].replace("sub-", "") for p in scalar_glob
-                ]
+            )
+            scalar_subject_ids = {
+                p.stem.split("_")[0].replace("sub-", "") for p in scalar_glob
+            }
+
+            subject_ids = sorted(mesh_subject_ids | scalar_subject_ids)
+
+            logger.info(
+                "[MeshPipeline] Subject discovery: %d from mesh + %d from default -> %d total",
+                len(mesh_subject_ids),
+                len(scalar_subject_ids),
+                len(subject_ids),
+            )
 
         # ------------------------------------------------------------------
         # Per-subject loop

@@ -453,23 +453,20 @@ def build_comprehensive_table(
                     exp_info[f"{metric}_{split}_mean"] = np.mean(values)
                     exp_info[f"{metric}_{split}_std"] = np.std(values)
 
-        sections_to_include = [
-            "model",
-            "backend",
-            "pred_head",
-            "data",
-            "target",
-            "runtime",
-        ]
+        # Keep all available config sections so newly added model families and
+        # their parameters are always represented in the comprehensive table.
+        for section, section_cfg in cfg.items():
+            if section == "hydra":
+                continue
 
-        for section in sections_to_include:
-            if section in cfg:
-                section_cfg = cfg[section]
+            if isinstance(section_cfg, DictConfig):
                 flat_params = flatten_config(section_cfg, prefix=f"config.{section}.")
 
-                # Add all parameters, will be NaN for models that don't have them
+                # Add all parameters, will be NaN for experiments that don't use them.
                 for param_key, param_value in flat_params.items():
                     exp_info[param_key] = param_value
+            else:
+                exp_info[f"config.{section}"] = section_cfg
 
         # Older experiments may not have runtime or learning-curve params;
         # ensure these columns always exist for downstream analysis.
@@ -1201,18 +1198,25 @@ def main(cfg: DictConfig) -> None:
     metrics_folds_path = summary_root / "metrics_folds.parquet"
     summary_metrics_path = summary_root / "metrics_summary.parquet"
 
-    # -----------------------------------------------------------------
-    # 3) Print tables and reports
-    # -----------------------------------------------------------------
-    if show_tables:
+    df_comprehensive = None
+    comprehensive_built = False
+
+    # Build comprehensive results whenever analysis needs summary data.
+    if show_tables or show_plots:
         print(f"\nBuilding comprehensive results table...")
         df_comprehensive = build_comprehensive_table(
             experiments_root, comprehensive_table_path
         )
+        comprehensive_built = True
         print(f"✓ Comprehensive table saved to: {comprehensive_table_path}")
         print(
             f"  Shape: {df_comprehensive.shape[0]} experiments × {df_comprehensive.shape[1]} columns"
         )
+
+    # -----------------------------------------------------------------
+    # 3) Print tables and reports
+    # -----------------------------------------------------------------
+    if show_tables:
 
         tables_dir = summary_root / "tables"
         build_coverage_table(df_comprehensive, tables_dir)
@@ -1380,9 +1384,17 @@ def main(cfg: DictConfig) -> None:
         print("Analysis complete! Plots generated.")
     print("=" * 80)
     print(f"\nGenerated files:")
-    print(f"  • Comprehensive results: {comprehensive_table_path}")
-    print(f"  • Summary metrics: {summary_metrics_path}")
-    print(f"  • Fold-level metrics: {metrics_folds_path}")
+    if comprehensive_built:
+        print(f"  • Comprehensive results: {comprehensive_table_path}")
+    else:
+        print(
+            "  • Comprehensive results: not generated "
+            "(set analysis.tables=true and/or analysis.plots=true)"
+        )
+
+    if show_tables:
+        print(f"  • Summary metrics: {summary_metrics_path}")
+        print(f"  • Fold-level metrics: {metrics_folds_path}")
     if show_plots:
         print(f"  • Plots: {plots_root}")
     if show_plots:

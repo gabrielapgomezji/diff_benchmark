@@ -32,7 +32,10 @@ from diff_benchmark.models.mesh_models.simple_mesh_model import SimpleMeshModel
 from diff_benchmark.models.mesh_models.pointnet import RegionConstrainedPointNetPP
 from diff_benchmark.models.mesh_models.spectral_laplacian_model import SpectralLaplacianAdditiveModel
 from diff_benchmark.models.mesh_models.region_pca import RegionPCAModel
-from diff_benchmark.models.mesh_models.sklearn_group_lasso import RegionGroupLassoModel
+from diff_benchmark.models.mesh_models.sklearn_group_lasso import (
+    RegionFusedSparseGroupLassoModel,
+    RegionGroupLassoModel,
+)
 from diff_benchmark.models.mesh_models.sklearn_elasticnet import RegionElasticNetModel 
 from diff_benchmark.models.utils_models.additive_parcel_head import build_new_parcel_head
 
@@ -116,6 +119,7 @@ def create_model(
         "lasso": LassoModel,
         "region_pca": RegionPCAModel,
         "region_group_lasso": RegionGroupLassoModel,
+        "region_fused_group_lasso": RegionFusedSparseGroupLassoModel,
         "region_elasticnet": RegionElasticNetModel,
     }
     if model_name in _sklearn_models:

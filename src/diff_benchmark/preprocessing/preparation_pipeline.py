@@ -573,12 +573,33 @@ class BrainDataPreparationPipeline(ABC):
             subject_id: Subject identifier.
             recompute: When ``True``, recompute even if derived files exist.
         """
+        files_present = self.verify_subject_files(subject_id, self.metric, self.tissue_type)
+        computed_microstructure = False
+
+        # Fast path for cached subjects: if outputs are already present and we
+        # are not forcing recomputation, avoid expensive raw-file/BIDS checks.
+        if files_present and not recompute:
+            logger.info(
+                "[%s] Microstructure files for %s matter already present.",
+                subject_id,
+                self.tissue_type,
+            )
+            print(
+                f"[{subject_id}] Microstructure files for {self.tissue_type} matter already present."
+            )
+
+            if not self.verify_resampling(subject_id):
+                logger.info("[%s] Existing data needs resampling, resampling now", subject_id)
+                print(f"[{subject_id}] Existing data needs resampling, resampling now")
+                self.resample_data(subject_id)
+            else:
+                logger.debug("[%s] Existing data already properly resampled", subject_id)
+                print(f"[{subject_id}] Existing data already properly resampled")
+            return
+
         if not self.verify_raw_files(subject_id):
             logger.warning("[%s] Missing raw files, skipping", subject_id)
             return
-
-        files_present = self.verify_subject_files(subject_id, self.metric, self.tissue_type)
-        computed_microstructure = False
 
         if files_present and recompute:
             logger.info(
@@ -649,6 +670,16 @@ class BrainDataPreparationPipeline(ABC):
             if cluster_conf.parallel_type not in ["slurm", "joblib"]
             else cluster_conf.parallel_type
         )
+
+        # Local sequential mode: process in this instance to avoid rebuilding
+        # BIDS layouts for every subject.
+        if parallel_type is None:
+            for subject_id in subject_list:
+                self._process_subject(subject_id, recompute)
+
+            print("All required files are ready. Now you can run analysis!")
+            logger.info("All required files are ready. Now you can run analysis!")
+            return
 
         run_jobs(
             run_fn=process_subject_wrapper,

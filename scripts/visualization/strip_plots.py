@@ -21,10 +21,22 @@ from utils import (
 from config import apply_miccai_style
 
 
+DEFAULT_INPUT = "exp_outputs/summary/comprehensive_results.parquet"
+
+
+def _parse_models_arg(models: str | None) -> list[str] | None:
+    if models is None:
+        return None
+    parsed = [m.strip() for m in models.split(",") if m.strip()]
+    return parsed or None
+
+
 def generate_strip_plots(
     parquet_path: str,
     out_dir: str = "analysis_results/visualization_demo/plots/folds",
     best_run: bool = True,
+    model_names: list[str] | None = None,
+    use_default_combos: bool = False,
 ) -> Path:
     apply_miccai_style()
     out_path = Path(out_dir)
@@ -32,7 +44,13 @@ def generate_strip_plots(
 
     df = pd.read_parquet(parquet_path)
     df["target_clean"] = df["target"].map(clean_target)
-    df = filter_combos(df, DEFAULT_COMBOS)
+
+    if model_names:
+        model_set = set(model_names)
+        df = df[df["model_name"].astype(str).isin(model_set)].copy()
+
+    if use_default_combos:
+        df = filter_combos(df, DEFAULT_COMBOS)
 
     if df.empty:
         raise RuntimeError("No rows left after filtering combos")
@@ -119,7 +137,7 @@ def main() -> None:
         description="Generate strip plots per dataset/task combination"
     )
     parser.add_argument(
-        "--input", default="comprehensive_results.parquet", help="Input parquet file"
+        "--input", default=DEFAULT_INPUT, help="Input parquet file"
     )
     parser.add_argument(
         "--outdir",
@@ -127,9 +145,30 @@ def main() -> None:
         help="Output directory",
     )
     parser.add_argument("--no-best-run", action="store_false", dest="best_run")
+    parser.add_argument(
+        "--models",
+        default=None,
+        help=(
+            "Comma-separated model names to include "
+            "(e.g. pointnet,region_elasticnet,region_group_lasso)"
+        ),
+    )
+    parser.add_argument(
+        "--use-default-combos",
+        action="store_true",
+        help="Restrict to built-in dataset/target/task combos",
+    )
     args = parser.parse_args()
 
-    out_path = generate_strip_plots(args.input, args.outdir, best_run=args.best_run)
+    model_names = _parse_models_arg(args.models)
+
+    out_path = generate_strip_plots(
+        args.input,
+        args.outdir,
+        best_run=args.best_run,
+        model_names=model_names,
+        use_default_combos=args.use_default_combos,
+    )
     print("Saved strip plots to", out_path)
 
 

@@ -89,10 +89,13 @@ def run_jobs(
         if slurm_cfg is None:
             raise ValueError("slurm_cfg must be provided for slurm mode")
 
-        log_folder = slurm_cfg.get("log_folder", "./slurm_logs")
+        # submitit.AutoExecutor accepts folder at construction time; passing
+        # log_folder to update_parameters() is invalid and raises NameError.
+        slurm_params = dict(slurm_cfg)
+        log_folder = slurm_params.pop("log_folder", "./slurm_logs")
 
         ex = submitit.AutoExecutor(folder=log_folder)
-        ex.update_parameters(**slurm_cfg, slurm_array_parallelism=n_jobs)
+        ex.update_parameters(**slurm_params, slurm_array_parallelism=n_jobs)
 
         jobs = ex.map_array(fn_to_run, fn_kwargs_list)
 
