@@ -369,7 +369,6 @@ class MeshPipeline(BrainDataPreparationPipeline):
         surface_type: str = "midthickness",
     ):
         super().__init__(dataset_config)
-        breakpoint()
         self.surface_type = surface_type
         self._template_mesh: dict | None = None  # lazily loaded
         # Atlas identifier — always "schaefer" for the current pipeline;
@@ -724,27 +723,16 @@ class MeshPipeline(BrainDataPreparationPipeline):
         if subject_filter is not None:
             subject_ids = [subject_filter]
         else:
-            # Preferred: discover subjects from existing mesh output directories.
-            # This allows mesh-only execution (e.g. on a cluster) where the
-            # default/ tree is absent but parquet/npz files are already present.
-            mesh_subject_dirs = sorted(
-                self.results_root.glob("derivatives/sub-*")
-            )
-            if mesh_subject_dirs:
-                subject_ids = [
-                    d.name.replace("sub-", "") for d in mesh_subject_dirs if d.is_dir()
-                ]
-            else:
-                # Fallback: discover subjects from default derivatives (scalar.gii glob)
-                scalar_glob = sorted(
-                    self._default_root.glob(
-                        f"derivatives/sub-*/dwi/"
-                        f"*_hemi-L_param-{self.metric}_tissue-{tissue_type}.scalar.gii"
-                    )
+            # Discover subjects from default derivatives (scalar.gii glob)
+            scalar_glob = sorted(
+                self._default_root.glob(
+                    f"derivatives/sub-*/dwi/"
+                    f"*_hemi-L_param-{self.metric}_tissue-{tissue_type}.scalar.gii"
                 )
-                subject_ids = [
-                    p.stem.split("_")[0].replace("sub-", "") for p in scalar_glob
-                ]
+            )
+            subject_ids = [
+                p.stem.split("_")[0].replace("sub-", "") for p in scalar_glob
+            ]
 
         # ------------------------------------------------------------------
         # Per-subject loop
