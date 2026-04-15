@@ -79,8 +79,48 @@ def model_label(row: pd.Series) -> str:
     name = str(row.get("model_name", ""))
     if name.startswith("dummy"):
         return "Dummy Baseline"
-    parts = [name, str(row.get("primary_metric", "")), str(row.get("tissue_type", ""))]
+
+    variant = model_variant_label(row)
+    name_with_variant = f"{name} [{variant}]" if variant else name
+
+    parts = [
+        name_with_variant,
+        str(row.get("primary_metric", "")),
+        str(row.get("tissue_type", "")),
+    ]
     return format_label("|".join(parts))
+
+
+def _clean_variant_value(value: object) -> str:
+    if pd.isna(value):
+        return ""
+    s = str(value).strip()
+    if not s or s.lower() in {"none", "nan", "null"}:
+        return ""
+    return s
+
+
+def model_variant_label(row: pd.Series) -> str:
+    """Return a compact model-variant description based on backbone settings."""
+    encoder_type = _clean_variant_value(
+        row.get("config.model.backbone.region_encoder.type", "")
+    )
+    include_size = _clean_variant_value(
+        row.get("config.model.backbone.region_encoder.include_size", "")
+    )
+    representation = _clean_variant_value(
+        row.get("config.model.backbone.region_representation", "")
+    )
+
+    chunks = []
+    if encoder_type:
+        chunks.append(f"enc={encoder_type}")
+    if include_size:
+        chunks.append(f"size={include_size}")
+    if representation:
+        chunks.append(f"repr={representation}")
+
+    return ",".join(chunks)
 
 
 def is_dummy_model(name: str) -> bool:
@@ -112,7 +152,9 @@ def select_best_runs(
     df["_fold_mean"] = df[fold_cols].mean(axis=1, skipna=True)
     df = df[~df["_fold_mean"].isna()].copy()
 
-    group_cols = ["model_name", "primary_metric", "tissue_type"]
+    group_cols = ["model_name", "primary_metric", "tissue_type", "_model_variant"]
+
+    df["_model_variant"] = df.apply(model_variant_label, axis=1)
 
     best_rows = []
     for _, group in df.groupby(group_cols, dropna=False):
@@ -149,6 +191,9 @@ def select_best_runs(
         else:
             best_dummy = dummy.loc[dummy["_fold_mean"].idxmin()]
         selected = pd.concat([non_dummy, pd.DataFrame([best_dummy])], ignore_index=True)
+
+    if "_model_variant" in selected.columns:
+        selected = selected.drop(columns=["_model_variant"])
 
     return selected
 

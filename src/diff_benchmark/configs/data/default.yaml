@@ -1,5 +1,5 @@
 batch_size: 32
-num_workers: 13
+num_workers: 5
 resize_shape: [256, 256]  # Slice reshaping
 num_augmentations: 1
 normalization:

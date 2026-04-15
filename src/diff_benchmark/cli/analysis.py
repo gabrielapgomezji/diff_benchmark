@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import traceback
 
 import hydra
@@ -9,6 +10,11 @@ from omegaconf import DictConfig, OmegaConf
 
 from diff_benchmark.analysis.plot_debug import plot_debug_run
 from diff_benchmark.analysis.plot_script import plot_run
+from diff_benchmark.analysis.region_coefficients import (
+    load_atlas_from_run,
+    load_region_coefficients_table,
+    plot_experiment_coefficients,
+)
 from diff_benchmark.analysis.print_summary_table import (
     is_successful_experiment,
     print_table,
@@ -447,23 +453,20 @@ def build_comprehensive_table(
                     exp_info[f"{metric}_{split}_mean"] = np.mean(values)
                     exp_info[f"{metric}_{split}_std"] = np.std(values)
 
-        sections_to_include = [
-            "model",
-            "backend",
-            "pred_head",
-            "data",
-            "target",
-            "runtime",
-        ]
+        # Keep all available config sections so newly added model families and
+        # their parameters are always represented in the comprehensive table.
+        for section, section_cfg in cfg.items():
+            if section == "hydra":
+                continue
 
-        for section in sections_to_include:
-            if section in cfg:
-                section_cfg = cfg[section]
+            if isinstance(section_cfg, DictConfig):
                 flat_params = flatten_config(section_cfg, prefix=f"config.{section}.")
 
-                # Add all parameters, will be NaN for models that don't have them
+                # Add all parameters, will be NaN for experiments that don't use them.
                 for param_key, param_value in flat_params.items():
                     exp_info[param_key] = param_value
+            else:
+                exp_info[f"config.{section}"] = section_cfg
 
         # Older experiments may not have runtime or learning-curve params;
         # ensure these columns always exist for downstream analysis.
@@ -696,17 +699,11 @@ def _render_report_group(
     col_widths = [min(max(len(h), max((len(r[i]) for r in table_data), default=0)) + 2, 50) for i, h in enumerate(headers)]
     fmt = "".join([f"{{:<{w}}}" for w in col_widths])
 
-    try:
-        report_lines.append(fmt.format(*headers))
-        report_lines.append("-" * sum(col_widths))
-    except Exception as e:
-        report_lines.append(f"Error formatting table: {e}")
+    report_lines.append(fmt.format(*headers))
+    report_lines.append("-" * sum(col_widths))
 
     for row in table_data:
-        try:
-            report_lines.append(fmt.format(*row))
-        except Exception:
-            pass
+        report_lines.append(fmt.format(*row))
 
     report_lines.append("\n" + "=" * 40 + "\n")
     return report_lines
@@ -1036,6 +1033,130 @@ def process_experiment_plots(
         traceback.print_exc()
 
 
+def _plot_region_coefficients_from_config(cfg: DictConfig, experiments_root: Path) -> None:
+    """Optional coefficient plotting entrypoint from analysis config."""
+
+    def _is_missing(value) -> bool:
+        return value in (None, "", "null", "None")
+
+    def _deep_find_first(mapping: dict, candidate_keys: tuple[str, ...]) -> str | None:
+        stack = [mapping]
+        while stack:
+            obj = stack.pop()
+            if not isinstance(obj, dict):
+                continue
+            for key, val in obj.items():
+                if key in candidate_keys and isinstance(val, str) and val.strip():
+                    return val
+                if isinstance(val, dict):
+                    stack.append(val)
+        return None
+
+    coef_cfg = cfg.analysis.get("coefficients_plot", {})
+    if not bool(coef_cfg.get("enabled", False)):
+        return
+
+    run_id = coef_cfg.get("run_id", None)
+
+    if not run_id:
+        raise ValueError(
+            "Missing required parameter: analysis.coefficients_plot.run_id"
+        )
+
+    experiment_dir = experiments_root / f"exp_{run_id}"
+    if not experiment_dir.exists():
+        raise FileNotFoundError(f"Experiment not found: {experiment_dir}")
+
+    exp_cfg_path = experiment_dir / "config.yaml"
+    exp_cfg = OmegaConf.load(exp_cfg_path) if exp_cfg_path.exists() else None
+    exp_cfg_dict = OmegaConf.to_container(exp_cfg, resolve=True) if exp_cfg is not None else {}
+
+    model_name = coef_cfg.get("model_name", None)
+    if _is_missing(model_name):
+        try:
+            if exp_cfg is not None and exp_cfg.get("model") and exp_cfg.model.get("name"):
+                model_name = str(exp_cfg.model.name)
+            else:
+                coeff_df = load_region_coefficients_table(
+                    experiment_dir=experiment_dir,
+                    run_id=str(run_id),
+                    model_name=None,
+                )
+                model_values = sorted(
+                    {str(v) for v in coeff_df["model_name"].dropna().unique().tolist()}
+                )
+                if len(model_values) == 1:
+                    model_name = model_values[0]
+        except Exception:
+            model_name = None
+
+    atlas_override = coef_cfg.get("atlas_path", None)
+    if _is_missing(atlas_override):
+        atlas_override = coef_cfg.get("atlas_img", None)
+
+    fold_cfg = coef_cfg.get("fold", None)
+    fold = None if fold_cfg in (None, "null", "None", "") else int(fold_cfg)
+    average_folds = bool(coef_cfg.get("average_folds", fold is None))
+    label_map = None
+    label_map_path = coef_cfg.get("label_map_path", None)
+    if _is_missing(label_map_path):
+        label_map_path = (
+            exp_cfg_dict.get("analysis", {})
+            .get("coefficients_plot", {})
+            .get("label_map_path", None)
+        )
+    if _is_missing(label_map_path):
+        inferred = _deep_find_first(exp_cfg_dict, ("label_map_path", "label_map", "labels_path"))
+        label_map_path = inferred
+    if _is_missing(label_map_path):
+        fallback = Path("aux_materials/fs_labels.json")
+        if fallback.exists():
+            label_map_path = str(fallback)
+
+    if label_map_path:
+        with Path(label_map_path).open("r", encoding="utf-8") as f:
+            label_map = json.load(f)
+
+    atlas_info = load_atlas_from_run(
+        str(run_id),
+        experiments_root=experiments_root,
+        atlas_path=None if _is_missing(atlas_override) else atlas_override,
+    )
+
+    atlas_type = atlas_info.get("atlas_type", "volume")
+    atlas_img = atlas_info.get("atlas_path", None) if atlas_type == "volume" else None
+    atlas_surface = atlas_info if atlas_type != "volume" else None
+
+    plots_root = experiments_root.parent / "plots"
+    suffix = f"fold{fold}" if fold is not None else "mean_folds"
+    safe_model = (
+        str(model_name).replace("/", "_")
+        if not _is_missing(model_name)
+        else "auto"
+    )
+    coef_plot_output = (
+        plots_root
+        / str(run_id)
+        / "coefficients"
+        / f"coefficients_{safe_model}_{suffix}.png"
+    )
+
+    _, output_file = plot_experiment_coefficients(
+        experiment_dir=experiment_dir,
+        model_name=None if _is_missing(model_name) else str(model_name),
+        atlas_img=atlas_img,
+        atlas_surface=atlas_surface,
+        fold=fold,
+        average_folds=average_folds,
+        run_id=str(run_id),
+        label_map=label_map,
+        cmap=str(coef_cfg.get("cmap", "coolwarm")),
+        threshold=coef_cfg.get("threshold", None),
+        output_file=coef_plot_output,
+    )
+    print(f"✓ Coefficient plot saved to: {output_file}")
+
+
 @hydra.main(
     version_base="1.3",
     config_path="pkg://diff_benchmark.configs",
@@ -1077,18 +1198,25 @@ def main(cfg: DictConfig) -> None:
     metrics_folds_path = summary_root / "metrics_folds.parquet"
     summary_metrics_path = summary_root / "metrics_summary.parquet"
 
-    # -----------------------------------------------------------------
-    # 3) Print tables and reports
-    # -----------------------------------------------------------------
-    if show_tables:
+    df_comprehensive = None
+    comprehensive_built = False
+
+    # Build comprehensive results whenever analysis needs summary data.
+    if show_tables or show_plots:
         print(f"\nBuilding comprehensive results table...")
         df_comprehensive = build_comprehensive_table(
             experiments_root, comprehensive_table_path
         )
+        comprehensive_built = True
         print(f"✓ Comprehensive table saved to: {comprehensive_table_path}")
         print(
             f"  Shape: {df_comprehensive.shape[0]} experiments × {df_comprehensive.shape[1]} columns"
         )
+
+    # -----------------------------------------------------------------
+    # 3) Print tables and reports
+    # -----------------------------------------------------------------
+    if show_tables:
 
         tables_dir = summary_root / "tables"
         build_coverage_table(df_comprehensive, tables_dir)
@@ -1241,6 +1369,9 @@ def main(cfg: DictConfig) -> None:
         print("\nPlots generation complete!")
         print(f"Plots saved to: {plots_root}")
 
+    # Optional coefficient maps (can run even if show_plots=False)
+    _plot_region_coefficients_from_config(cfg, experiments_root)
+
     # -----------------------------------------------------------------
     # Summary
     # -----------------------------------------------------------------
@@ -1253,9 +1384,17 @@ def main(cfg: DictConfig) -> None:
         print("Analysis complete! Plots generated.")
     print("=" * 80)
     print(f"\nGenerated files:")
-    print(f"  • Comprehensive results: {comprehensive_table_path}")
-    print(f"  • Summary metrics: {summary_metrics_path}")
-    print(f"  • Fold-level metrics: {metrics_folds_path}")
+    if comprehensive_built:
+        print(f"  • Comprehensive results: {comprehensive_table_path}")
+    else:
+        print(
+            "  • Comprehensive results: not generated "
+            "(set analysis.tables=true and/or analysis.plots=true)"
+        )
+
+    if show_tables:
+        print(f"  • Summary metrics: {summary_metrics_path}")
+        print(f"  • Fold-level metrics: {metrics_folds_path}")
     if show_plots:
         print(f"  • Plots: {plots_root}")
     if show_plots:

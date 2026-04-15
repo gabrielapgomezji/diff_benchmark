@@ -405,7 +405,7 @@ def setup_logger(
     """
     logger = logging.getLogger(name)
     logger.setLevel(level)
-    logger.propagate = True  # Required for SLURM to forward messages to root.
+    logger.propagate = False
 
     if not logger.handlers:
         formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)

@@ -595,90 +595,90 @@ def resample_subject_to_template(
 
 
 def resample_schaefer_onto_fs_lr(
-    scale: int = 100, target_space: str = "fslr_32k"
+    scale: int = 100,
+    target_space: str = "fslr_32k",
+    local_dir: Path | None = None,
 ) -> dict:
     """Resample the Schaefer 2018 parcellation onto fsLR or fsaverage space.
 
+    Files are resolved with a **local-first** strategy:
+
+    1. If *local_dir* is given (or the default ``aux_materials/schaefer``
+       folder exists next to this package), look for the file there.
+    2. If the file is not found locally, fall back to downloading it via
+       TemplateFlow (``tflow.get()``).
+
+    The expected local layout mirrors the TemplateFlow cache structure, e.g.::
+
+        aux_materials/schaefer/
+            tpl-fsaverage/
+                tpl-fsaverage_hemi-L_den-164k_atlas-Schaefer2018_seg-17n_scale-100_dseg.label.gii
+                tpl-fsaverage_hemi-R_den-164k_atlas-Schaefer2018_seg-17n_scale-100_dseg.label.gii
+                tpl-fsaverage_atlas-Schaefer2018_seg-17n_scale-100_dseg.tsv
+                tpl-fsaverage_hemi-L_den-164k_sulc.shape.gii
+                tpl-fsaverage_hemi-R_den-164k_sulc.shape.gii
+                tpl-fsaverage_hemi-L_den-164k_sphere.surf.gii
+                tpl-fsaverage_hemi-R_den-164k_sphere.surf.gii
+            tpl-fsLR/
+                tpl-fsLR_space-fsaverage_hemi-L_den-32k_sphere.surf.gii
+                tpl-fsLR_space-fsaverage_hemi-R_den-32k_sphere.surf.gii
+
     Args:
-        scale: Schaefer parcellation scale (e.g., ``1000`` for 1000 parcels).
+        scale: Schaefer parcellation scale (e.g., ``100`` for 100 parcels).
         target_space: Target surface space.
 
             - ``"fslr_32k"``: fsLR 32k space (HCP default).
             - ``"fsaverage"``: Native fsaverage space (FreeSurfer/CamCAN).
+
+        local_dir: Optional path to the local mirror folder described above.
+            Defaults to ``<repo_root>/aux_materials/schaefer`` (auto-detected
+            relative to this source file).
 
     Returns:
         Dictionary with keys ``"left.data"``, ``"left.labels"``,
         ``"left.sulc"``, ``"right.data"``, ``"right.labels"``,
         ``"right.sulc"``.
     """
-    fsaverage_left_schaefer = nib.load(
-        tflow.get(
-            "fsaverage",
-            hemi="L",
-            density="164k",
-            atlas="Schaefer2018",
-            segmentation="17n",
-            scale=str(scale),
-            extension="label.gii",
-        )
-    )
-    fsaverage_right_schaefer = nib.load(
-        tflow.get(
-            "fsaverage",
-            hemi="R",
-            density="164k",
-            atlas="Schaefer2018",
-            segmentation="17n",
-            scale=str(scale),
-            extension="label.gii",
-        )
-    )
+    # ------------------------------------------------------------------
+    # Resolve the local cache root (aux_materials/schaefer relative to repo)
+    # ------------------------------------------------------------------
+    _THIS_FILE = Path(__file__).resolve()
+    # Walk up until we find the repo root (contains pyproject.toml) or give up
+    _repo_root = _THIS_FILE
+    for _ in range(10):
+        _repo_root = _repo_root.parent
+        if (_repo_root / "pyproject.toml").exists():
+            break
+    _default_local_dir = _repo_root / "aux_materials" / "schaefer"
+    _local_dir: Path = Path(local_dir) if local_dir is not None else _default_local_dir
 
-    labels = pd.read_csv(
-        tflow.get(
-            "fsaverage",
-            atlas="Schaefer2018",
-            segmentation="17n",
-            scale=str(scale),
-            extension="tsv",
-        ),
-        sep="\t",
-    )
-    labels_left = labels[labels["hemi"] == "L"]
-    labels_right = labels[labels["hemi"] == "R"]
+    def _local_or_tflow(tpl: str, filename: str, **tflow_kwargs) -> Path:
+        """Return a local path if the file exists, otherwise fetch via tflow.
 
-    if target_space == "fsaverage":
-        fslr_left_sulc = (
-            nib.load(
-                tflow.get(
-                    "fsaverage", hemi="L", density="164k", suffix="sulc", desc=None
-                )
-            )
-            .darrays[0]
-            .data
+        Args:
+            tpl: TemplateFlow template name (e.g. ``"fsaverage"``).
+            filename: Bare filename as stored inside ``tpl-<tpl>/``.
+            **tflow_kwargs: Keyword arguments forwarded to ``tflow.get()``.
+
+        Returns:
+            Resolved :class:`~pathlib.Path` to the file.
+        """
+        local_path = _local_dir / f"tpl-{tpl}" / filename
+        if local_path.exists():
+            logger.debug("Loading %s from local cache: %s", filename, local_path)
+            return local_path
+        logger.debug(
+            "Local file not found (%s), downloading via TemplateFlow.", local_path
         )
-        fslr_right_sulc = (
-            nib.load(
-                tflow.get(
-                    "fsaverage", hemi="R", density="164k", suffix="sulc", desc=None
-                )
-            )
-            .darrays[0]
-            .data
-        )
-        return {
-            "left.data": fsaverage_left_schaefer.darrays[0].data,
-            "left.labels": labels_left,
-            "left.sulc": fslr_left_sulc,
-            "right.data": fsaverage_right_schaefer.darrays[0].data,
-            "right.labels": labels_right,
-            "right.sulc": fslr_right_sulc,
-        }
+        return Path(tflow.get(tpl, **tflow_kwargs))
 
-    # Resample to fsLR 32k via KD-tree nearest-neighbour mapping
-    def _load_sphere(template: str, hemi: str, density: str, **kwargs):
-        return nib.load(tflow.get(template, hemi=hemi, density=density, **kwargs))
+    def _load_gii(tpl: str, filename: str, **tflow_kwargs) -> nib.gifti.GiftiImage:
+        """Load a GIFTI file, preferring the local cache."""
+        return nib.load(_local_or_tflow(tpl, filename, **tflow_kwargs))
 
+    # ------------------------------------------------------------------
+    # Helper to build KD-tree sphere mappings (unchanged logic)
+    # ------------------------------------------------------------------
     def _build_mapping(src_sphere, tgt_sphere):
         """Return (src→tgt, tgt→src) nearest-neighbour index arrays."""
         kdtree_src = cKDTree(src_sphere.darrays[0].data)
@@ -687,33 +687,136 @@ def resample_schaefer_onto_fs_lr(
         tgt_to_src = kdtree_tgt.query(src_sphere.darrays[0].data, k=1)
         return src_to_tgt, tgt_to_src
 
-    results = {}
-    for hemi, fsaverage_schaefer in [
-        ("L", fsaverage_left_schaefer),
-        ("R", fsaverage_right_schaefer),
-    ]:
-        fslr_sphere = _load_sphere(
-            "fsLR", hemi=hemi, density="32k", space="fsaverage"
+    # ------------------------------------------------------------------
+    # Load Schaefer fsaverage label GIFTIs (always needed as source)
+    # ------------------------------------------------------------------
+    schaefer_gii: dict[str, nib.gifti.GiftiImage] = {}
+    schaefer_label_paths: dict[str, str] = {}
+    for hemi in ("L", "R"):
+        filename = (
+            f"tpl-fsaverage_hemi-{hemi}_den-164k_atlas-Schaefer2018"
+            f"_seg-17n_scale-{scale}_dseg.label.gii"
         )
-        fsaverage_sphere = _load_sphere(
-            "fsaverage", hemi=hemi, density="164k", suffix="sphere", desc=None
+        label_path = _local_or_tflow(
+            "fsaverage",
+            filename,
+            hemi=hemi,
+            density="164k",
+            atlas="Schaefer2018",
+            segmentation="17n",
+            scale=str(scale),
+            extension="label.gii",
         )
-        fslr_to_fsaverage, fsaverage_to_fslr = _build_mapping(
-            fslr_sphere, fsaverage_sphere
-        )
+        schaefer_label_paths[hemi] = str(label_path)
+        schaefer_gii[hemi] = nib.load(label_path)
 
-        fslr_schaefer = np.zeros(len(fsaverage_to_fslr[1]))
-        fslr_schaefer[fslr_to_fsaverage[1]] = fsaverage_schaefer.darrays[0].data
+    # ------------------------------------------------------------------
+    # Load TSV label table
+    # ------------------------------------------------------------------
+    tsv_filename = (
+        f"tpl-fsaverage_atlas-Schaefer2018_seg-17n_scale-{scale}_dseg.tsv"
+    )
+    tsv_path = _local_or_tflow(
+        "fsaverage",
+        tsv_filename,
+        atlas="Schaefer2018",
+        segmentation="17n",
+        scale=str(scale),
+        extension="tsv",
+    )
+    labels = pd.read_csv(tsv_path, sep="\t")
+    labels_left = labels[labels["hemi"] == "L"]
+    labels_right = labels[labels["hemi"] == "R"]
+    atlas_meta = {
+        "atlas_type": "surface_schaefer",
+        "atlas_name": "Schaefer2018",
+        "scale": int(scale),
+        "target_space": str(target_space),
+        "label_tsv_path": str(tsv_path),
+        "left_label_gii_path": schaefer_label_paths.get("L"),
+        "right_label_gii_path": schaefer_label_paths.get("R"),
+        "n_regions_total": int(len(labels)),
+        "n_regions_left": int(len(labels_left)),
+        "n_regions_right": int(len(labels_right)),
+    }
 
-        sulc_data = (
-            nib.load(
-                tflow.get(
+    # ------------------------------------------------------------------
+    # fsaverage target space: load sulc and return directly
+    # ------------------------------------------------------------------
+    if target_space == "fsaverage":
+        sulc: dict[str, np.ndarray] = {}
+        for hemi in ("L", "R"):
+            sulc_filename = f"tpl-fsaverage_hemi-{hemi}_den-164k_sulc.shape.gii"
+            sulc[hemi] = (
+                _load_gii(
                     "fsaverage",
+                    sulc_filename,
                     hemi=hemi,
                     density="164k",
                     suffix="sulc",
                     desc=None,
                 )
+                .darrays[0]
+                .data
+            )
+        return {
+            "left.data": schaefer_gii["L"].darrays[0].data,
+            "left.labels": labels_left,
+            "left.sulc": sulc["L"],
+            "right.data": schaefer_gii["R"].darrays[0].data,
+            "right.labels": labels_right,
+            "right.sulc": sulc["R"],
+            "atlas_meta": atlas_meta,
+        }
+
+    # ------------------------------------------------------------------
+    # fsLR 32k target space: resample via KD-tree nearest-neighbour
+    # ------------------------------------------------------------------
+    results = {}
+    for hemi in ("L", "R"):
+        # fsLR 32k sphere aligned to fsaverage (the registration sphere)
+        fslr_sphere_filename = (
+            f"tpl-fsLR_space-fsaverage_hemi-{hemi}_den-32k_sphere.surf.gii"
+        )
+        fslr_sphere = _load_gii(
+            "fsLR",
+            fslr_sphere_filename,
+            hemi=hemi,
+            density="32k",
+            space="fsaverage",
+        )
+
+        # fsaverage 164k sphere
+        fsavg_sphere_filename = (
+            f"tpl-fsaverage_hemi-{hemi}_den-164k_sphere.surf.gii"
+        )
+        fsaverage_sphere = _load_gii(
+            "fsaverage",
+            fsavg_sphere_filename,
+            hemi=hemi,
+            density="164k",
+            suffix="sphere",
+            desc=None,
+        )
+
+        fslr_to_fsaverage, fsaverage_to_fslr = _build_mapping(
+            fslr_sphere, fsaverage_sphere
+        )
+
+        # Resample parcellation
+        fslr_schaefer = np.zeros(len(fsaverage_to_fslr[1]))
+        fslr_schaefer[fslr_to_fsaverage[1]] = schaefer_gii[hemi].darrays[0].data
+
+        # Resample sulc
+        sulc_filename = f"tpl-fsaverage_hemi-{hemi}_den-164k_sulc.shape.gii"
+        sulc_data = (
+            _load_gii(
+                "fsaverage",
+                sulc_filename,
+                hemi=hemi,
+                density="164k",
+                suffix="sulc",
+                desc=None,
             )
             .darrays[0]
             .data
@@ -727,6 +830,7 @@ def resample_schaefer_onto_fs_lr(
         results[f"{h_key}.labels"] = lbl
         results[f"{h_key}.sulc"] = fslr_sulc
 
+    results["atlas_meta"] = atlas_meta
     return results
 
 

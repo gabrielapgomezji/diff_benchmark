@@ -2,7 +2,7 @@ name: wand
 data_reading: bids
 
 metric_to_compute: rtop
-scale: 1000
+scale: 100
 
 big_delta: 0.024
 small_delta: 0.007

@@ -29,13 +29,15 @@ from diff_benchmark.models.utils_models.trainer import (
     TorchTrainer,
 )
 from diff_benchmark.models.mesh_models.simple_mesh_model import SimpleMeshModel
-from diff_benchmark.models.mesh_models.group_lasso import MeshGroupLassoModel
+from diff_benchmark.models.mesh_models.pointnet import RegionConstrainedPointNetPP
 from diff_benchmark.models.mesh_models.spectral_laplacian_model import SpectralLaplacianAdditiveModel
 from diff_benchmark.models.mesh_models.region_pca import RegionPCAModel
-from diff_benchmark.models.mesh_models.sklearn_group_lasso import RegionGroupLassoModel
+from diff_benchmark.models.mesh_models.sklearn_group_lasso import (
+    RegionFusedSparseGroupLassoModel,
+    RegionGroupLassoModel,
+)
 from diff_benchmark.models.mesh_models.sklearn_elasticnet import RegionElasticNetModel 
-from diff_benchmark.models.utils_models.additive_parcel_head import build_additive_parcel_head as build_additive_head
-from diff_benchmark.models.utils_models.additive_parcel_head import build_simple_parcel_head
+from diff_benchmark.models.utils_models.additive_parcel_head import build_new_parcel_head
 
 
 class TaskModel(nn.Module):
@@ -117,22 +119,12 @@ def create_model(
         "lasso": LassoModel,
         "region_pca": RegionPCAModel,
         "region_group_lasso": RegionGroupLassoModel,
+        "region_fused_group_lasso": RegionFusedSparseGroupLassoModel,
         "region_elasticnet": RegionElasticNetModel,
     }
     if model_name in _sklearn_models:
         model_kwargs["prediction_task"] = pred_head["prediction_task"]
         return _sklearn_models[model_name](**model_kwargs)
-
-    # --- Mesh group-lasso (deep/torch model, data_type="mesh") ---
-    if model_name == "group_lasso":
-        backbone = MeshGroupLassoModel(**model_kwargs)
-        head = build_additive_head(
-            embed_dim=backbone.parcel_embed_dim,
-            reg_type="group_lasso",
-            lambda1=model_kwargs.get("lambda_gl", 1e-3),
-            **pred_head,
-        )
-        return TaskModel(backbone, head)
 
     # --- Deep models (backbone + head) ---
     if model_name == "2dcnn":
@@ -146,15 +138,23 @@ def create_model(
         head = build_prediction_head(embedding_dim=backbone.hidden_dim, **pred_head)
         return TaskModel(backbone, head)
 
+    if model_name in {"pointnet"}:
+        backbone = RegionConstrainedPointNetPP(**model_kwargs)
+        head = build_new_parcel_head(
+            embed_dim=backbone.out_dim,
+            **pred_head,
+        )
+        return TaskModel(backbone, head)
+
     if model_name == "spectral_laplacian":
         backbone = SpectralLaplacianAdditiveModel(**model_kwargs)
         # AdditiveParcelHead: one weight vector per parcel, optional group regularisation.
         # pred_head may carry reg_type / lambda1 / lambda2 in addition to prediction_task.
-        head = build_additive_head(
-            embed_dim=backbone.parcel_embed_dim,
-            **pred_head,
-        )
-        # head = build_simple_parcel_head(embed_dim=backbone.parcel_embed_dim, **pred_head)
+        # head = build_additive_head(
+        #     embed_dim=backbone.parcel_embed_dim,
+        #     **pred_head,
+        # )
+        head = build_new_parcel_head(embed_dim=backbone.parcel_embed_dim, **pred_head)
         return TaskModel(backbone, head)
 
     if model_name == "medicalnet":
@@ -254,7 +254,11 @@ def get_model(name: str, config: dict) -> object:
     config["backend"]["seed"] = config["random_state"]
     return create_trainer(
         model_name=name,
-        model_kwargs={**config["model"]["backbone"], "random_state": config["random_state"]},
+        model_kwargs={
+            **config["model"]["backbone"],
+            "random_state": config["random_state"],
+            "n_jobs": config["cluster"]["conf"]["n_jobs"],
+        },
         pred_head={**config["pred_head"]},
         backend_kwargs={**config["backend"]},
     )

@@ -112,7 +112,7 @@ class DatasetPreparation:
     def _should_use_cache(self) -> bool:
         """Return ``True`` if this model is cacheable and ``freeze_backbone=True``."""
         # Only cache for heavy pretrained models
-        cacheable_models = ["vit", "dinov2", "curia"]  # , "medicalnet"]
+        cacheable_models = ["vit", "dinov2", "curia", "pointnet"]  # , "medicalnet"]
 
         if self.model_name not in cacheable_models:
             return False
@@ -127,6 +127,11 @@ class DatasetPreparation:
             and "freeze_backbone" not in self.cfg.model.backbone
             and self.cfg.model.backbone.pretrained == True
         ):
+            freeze_backbone = True
+
+        # PointNet caching follows the same frozen-backbone workflow as vision backbones.
+        # If the key is absent in config, default to cache-enabled behavior.
+        if self.model_name == "pointnet" and "freeze_backbone" not in self.cfg.model.backbone:
             freeze_backbone = True
 
         if not freeze_backbone:
@@ -146,6 +151,8 @@ class DatasetPreparation:
 
         # Get image_size from config to ensure separate caches for resized/non-resized
         image_size = _parse_image_size(self.cfg.data.get("resize_shape"))
+        if self.model_name in {"pointnet", "pointnet_pp", "region_pointnet"}:
+            image_size = None
 
         # Get tissue_type from dataset config
         tissue_type = (
@@ -178,7 +185,32 @@ class DatasetPreparation:
             metric_to_compute=metric_to_compute,
         )
 
+        # Backward compatibility: older mesh caches included image-size suffix.
+        if (
+            self.model_name in {"pointnet", "pointnet_pp", "region_pointnet"}
+            and not cache_path.exists()
+        ):
+            legacy_image_size = _parse_image_size(self.cfg.data.get("resize_shape"))
+            legacy_parts = [model_name_for_cache, self.source_dataset.name]
+            if tissue_type is not None:
+                legacy_parts.append(tissue_type)
+            if metric_to_compute is not None:
+                legacy_parts.append(metric_to_compute)
+            if legacy_image_size is not None:
+                legacy_parts.append(f"{legacy_image_size[0]}x{legacy_image_size[1]}")
+            else:
+                legacy_parts.append("original")
+            legacy_cache_path = cache_dir / ("_".join(legacy_parts) + "_features.parquet")
+            if legacy_cache_path.exists():
+                logger.info(
+                    "Using legacy mesh cache path with resize suffix: %s",
+                    legacy_cache_path,
+                )
+                cache_path = legacy_cache_path
+
         required_augs = self.cfg.data.num_augmentations
+        if self.model_name in {"pointnet"}:
+            required_augs = 1
 
         if not cache_path.exists():
             return cache_path, False, required_augs, 0
@@ -218,6 +250,21 @@ class DatasetPreparation:
         """
         from diff_benchmark.data.cached_features import append_augmentations_to_cache
 
+        cache_batch_size = self.cfg.data.get("cache_batch_size", self.cfg.data.batch_size)
+        if self.model_name in {"pointnet"}:
+            cache_batch_size = self.cfg.data.get("mesh_cache_batch_size", 1)
+
+        collate_fn = None
+        if self.model_name in {"pointnet", "pointnet_pp", "region_pointnet"}:
+            # Reuse mesh-safe collate to materialize parquet paths into tensors.
+            mesh_collator = PreprocessedData(
+                np.zeros((1, 1), dtype=np.float32),
+                np.zeros(1, dtype=np.float32),
+                np.zeros(1, dtype=np.int64),
+                config=self.cfg,
+            )
+            collate_fn = mesh_collator.safe_collate
+
         if not cache_exists:
             # Need to compute from scratch
             logger.info(f"Cache not found. Computing {required_augs} augmentations...")
@@ -240,9 +287,10 @@ class DatasetPreparation:
             # Create dataloader
             dataloader = DataLoader(
                 regular_dataset,
-                batch_size=self.cfg.data.batch_size,
+                batch_size=cache_batch_size,
                 shuffle=False,
                 num_workers=0,  # No multiprocessing for caching
+                collate_fn=collate_fn,
             )
 
             # Get device
@@ -252,6 +300,8 @@ class DatasetPreparation:
             norm_mean = self.cfg.data.normalization.mean
             norm_std = self.cfg.data.normalization.std
             image_size = _parse_image_size(self.cfg.data.get("resize_shape"))
+            if self.model_name in {"pointnet", "pointnet_pp", "region_pointnet"}:
+                image_size = None
 
             # Create cached dataset (which computes features)
             _ = CachedFeatureDataset(
@@ -291,10 +341,10 @@ class DatasetPreparation:
             # Create dataloader
             dataloader = DataLoader(
                 regular_dataset,
-                batch_size=self.cfg.data.batch_size,
+                batch_size=cache_batch_size,
                 shuffle=False,
                 num_workers=0,
-                # collate_fn=safe_collate,
+                collate_fn=collate_fn,
             )
 
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -381,7 +431,7 @@ class DatasetPreparation:
         if hasattr(model, "model"):  # trainer wrapper
             model = model.model
         data_type = model.data_type
-
+        
         self.brain_preparator = get_data_pipeline(data_type, self.source_dataset)
         brain_df = self.brain_preparator.load_features().reset_index()
         return brain_df
@@ -497,6 +547,8 @@ class DatasetPreparation:
             norm_mean = self.cfg.data.normalization.mean
             norm_std = self.cfg.data.normalization.std
             image_size = _parse_image_size(self.cfg.data.get("resize_shape"))
+            if self.model_name in {"pointnet", "pointnet_pp", "region_pointnet"}:
+                image_size = None
 
             # Create a reference regular dataset to verify subject alignment
             regular_dataset = CustomDataset(X, y, gender, mesh_data=mesh_data)
@@ -560,10 +612,16 @@ class DatasetPreparation:
             # Compute or update cache if needed
             if not cache_exists or cached_augs < required_augs:
                 print("Creating regular dataset for cache computation...")
+                mesh_data = None
+                if hasattr(self, "brain_preparator") and isinstance(
+                    self.brain_preparator, MeshPipeline
+                ):
+                    mesh_data = self.brain_preparator.get_mesh_parquet_paths()
                 regular_dataset = CustomDataset(
                     brain_filtered,
                     np.asarray(demographics_filtered[self.cfg.target.target_column[0]]),
                     np.asarray(demographics_filtered["Gender"]),
+                    mesh_data=mesh_data,
                 )
 
                 self._compute_or_update_cache(

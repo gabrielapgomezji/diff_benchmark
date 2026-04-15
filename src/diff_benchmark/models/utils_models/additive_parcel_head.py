@@ -556,7 +556,7 @@ class AttentionAdditiveParcelHead(nn.Module):
     Additive head with learned parcel attention.
     """
 
-    def __init__(self, embed_dim, hidden_dim=32, output_dim=1):
+    def __init__(self, embed_dim, hidden_dim=32, output_dim=1, **kwargs):
 
         super().__init__()
 
@@ -578,7 +578,6 @@ class AttentionAdditiveParcelHead(nn.Module):
         self.bias = nn.Parameter(torch.zeros(output_dim))
 
     def forward(self, x):
-
         # x: (B,P,E)
 
         values = self.value_net(x)        # (B,P,C)
@@ -629,7 +628,6 @@ class ParcelMoEHead(nn.Module):
         self.bias = nn.Parameter(torch.zeros(output_dim))
 
     def forward(self, x):
-
         B, P, E = x.shape
 
         gate = torch.softmax(self.gate(x), dim=-1)  # (B,P,K)
@@ -745,6 +743,7 @@ def build_new_parcel_head(
     prediction_task: str,
     head_type: str = "attention",
     bias: bool = True,
+    head: Optional[dict] = None,
     **kwargs,
 ):
     """
@@ -752,12 +751,35 @@ def build_new_parcel_head(
 
     Allows easy experimentation with different heads.
 
-    Supported heads
+        Supported heads
     ---------------
     "simple"
     "additive"
     "attention"
     "transformer"
+        "gam"
+        "moe"
+
+        Hydra config patterns
+        ---------------------
+        New structured style (recommended):
+
+                pred_head:
+                    prediction_task: binary_classification
+                    head_type: attention
+                    head:
+                        attention:
+                            hidden_dim: 64
+
+        Legacy flat style (still supported):
+
+                pred_head:
+                    prediction_task: binary_classification
+                    head_type: additive
+                    reg_type: group_lasso
+                    lambda1: 1e-3
+
+        Only parameters relevant to the selected head are forwarded.
     """
 
     if prediction_task == "regression":
@@ -774,12 +796,40 @@ def build_new_parcel_head(
 
     head_type = head_type.lower()
 
+    # Per-head allowlists prevent unused parameters from being passed to
+    # constructors that don't accept them.
+    allowed_by_head = {
+        "simple": set(),
+        "additive": {"reg_type", "lambda1", "lambda2"},
+        "attention": {"hidden_dim"},
+        "transformer": {"n_heads", "n_layers", "hidden_dim", "dropout"},
+        "gam": {"hidden_dim"},
+        "moe": {"n_experts", "hidden_dim"},
+    }
+
+    if head_type not in allowed_by_head:
+        raise ValueError(
+            f"Unknown head_type '{head_type}'. "
+            "Supported: simple, additive, attention, transformer, gam, moe"
+        )
+
+    selected_params = {}
+
+    # New structured config path: head.<head_type>.*
+    if isinstance(head, dict):
+        selected_params.update(head.get(head_type, {}))
+
+    # Legacy compatibility: consume flat kwargs only if relevant to chosen head.
+    for k, v in kwargs.items():
+        if k in allowed_by_head[head_type]:
+            selected_params[k] = v
+
     if head_type == "simple":
         return SimpleAdditiveParcelHead(
             embed_dim=embed_dim,
             output_dim=output_dim,
             bias=bias,
-            **kwargs,
+            **selected_params,
         )
 
     elif head_type == "additive":
@@ -787,7 +837,7 @@ def build_new_parcel_head(
             embed_dim=embed_dim,
             output_dim=output_dim,
             bias=bias,
-            **kwargs,
+            **selected_params,
         )
 
     elif head_type == "attention":
@@ -795,7 +845,7 @@ def build_new_parcel_head(
             embed_dim=embed_dim,
             output_dim=output_dim,
             bias=bias,
-            **kwargs,
+            **selected_params,
         )
 
     elif head_type == "transformer":
@@ -803,11 +853,25 @@ def build_new_parcel_head(
             embed_dim=embed_dim,
             output_dim=output_dim,
             bias=bias,
-            **kwargs,
+            **selected_params,
+        )
+
+    elif head_type == "gam":
+        return GAMParcelHead(
+            embed_dim=embed_dim,
+            output_dim=output_dim,
+            **selected_params,
+        )
+
+    elif head_type == "moe":
+        return ParcelMoEHead(
+            embed_dim=embed_dim,
+            output_dim=output_dim,
+            **selected_params,
         )
 
     else:
         raise ValueError(
             f"Unknown head_type '{head_type}'. "
-            "Supported: simple, additive, attention, transformer"
+            "Supported: simple, additive, attention, transformer, gam, moe"
         )

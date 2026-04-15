@@ -1,0 +1,30 @@
+name: margaret
+
+paths:
+  cache_dir: /data/parietal/store3/work/ggomezji/benchmark
+  hcp:
+    base_dir: /data/parietal/store4/data/HCP
+    results_dir: /data/parietal/store3/work/ggomezji/benchmark/HCP900
+    csv_file: /data/parietal/store2/work/ggomezji/Merged_HCP_Demographics.csv
+  camcan:
+    base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/camcan
+    results_dir: /data/parietal/store3/work/ggomezji/benchmark/CamCAN
+  wand:
+    base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/WAND-concat
+    results_dir: /data/parietal/store3/work/ggomezji/benchmark/WAND
+  abide:
+    base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/abide
+    results_dir: /data/parietal/store3/work/ggomezji/benchmark/abide
+
+conf:
+  enabled: true
+  parallel_type: slurm #None #
+  n_jobs: 50
+  wait_for_results: false
+
+slurm_cfg:
+  slurm_partition: parietal,normal,normal-best #parietal,normal
+  tasks_per_node: 1
+  slurm_cpus_per_task: 20
+  timeout_min: 900
+  log_folder: ./slurm2_logs

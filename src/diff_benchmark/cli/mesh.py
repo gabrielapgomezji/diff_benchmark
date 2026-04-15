@@ -37,8 +37,11 @@ def main(cfg: DictConfig) -> None:
 
     surface_type = getattr(dataset_selected, "mesh_surface_type", "midthickness")
     pipeline = MeshPipeline(dataset_selected, surface_type=surface_type)
+    force_recompute = bool(getattr(cfg.runtime, "force", False))
     pipeline.run_pipeline(
-        cluster_conf=cfg.cluster.conf, slurm_cfg=cfg.cluster.slurm_cfg, recompute=True
+        cluster_conf=cfg.cluster.conf,
+        slurm_cfg=cfg.cluster.slurm_cfg,
+        recompute=force_recompute,
     )
     pipeline.run_analysis(mesh_cfg=cfg.mesh_pipeline)
 

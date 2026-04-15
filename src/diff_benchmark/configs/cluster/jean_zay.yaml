@@ -6,20 +6,21 @@ paths:
     base_dir: /lustre/fswork/projects/rech/qlr/commun/HCP900
     results_dir: /lustre/fswork/projects/rech/qlr/commun/HCP900
     csv_file: /lustre/fswork/projects/rech/qlr/commun/HCP900/Merged_HCP_Demographics.csv
-  # camcan:
-  #   base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/camcan
-  #   results_dir: /data/parietal/store3/work/ggomezji/benchmark/CamCAN
+  camcan:
+    base_dir: /lustre/fswork/projects/rech/qlr/commun/camcan
+    results_dir: /lustre/fswork/projects/rech/qlr/commun/CamCAN
   # wand:
   #   base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/WAND-concat
   #   results_dir: /data/parietal/store3/work/ggomezji/benchmark/WAND
-  # abide:
-  #   base_dir: /data/parietal/store3/work/haggarwa/diffusion/diffusion-preprocessing/data/abide
-  #   results_dir: /data/parietal/store3/work/ggomezji/benchmark/abide
+  abide:
+    base_dir: /lustre/fswork/projects/rech/qlr/commun/abide
+    results_dir: /lustre/fswork/projects/rech/qlr/commun/abide
+
 
 conf:
   enabled: true
   parallel_type: slurm
-  n_jobs: 50
+  n_jobs: 6
   wait_for_results: false
 
 slurm_cfg:
@@ -27,11 +28,11 @@ slurm_cfg:
   # slurm_partition: "gpu"
   tasks_per_node: 1
   slurm_gpus_per_task: 1
-  cpus_per_task: 20
-  timeout_min: 280 #1440   # 24 hours
+  cpus_per_task: 20 #40
+  timeout_min: 280 #1440   # 24 hours #600
   slurm_additional_parameters:
-    account: "qlr@v100"
-    constraint: "v100-32g"
+    account: "qlr@cpu" #"qlr@v100"
+    # constraint: "v100-32g"
   local_setup:
     - "module purge"
     - "module load pytorch-gpu/py3/2.7.0"

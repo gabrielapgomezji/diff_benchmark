@@ -52,16 +52,24 @@ from diff_benchmark.preprocessing.utils.utils_surface_skeleton import (  # noqa:
 logger = setup_logger(__name__)
 
 
+def _resolve_aux_file(filename: str) -> Path:
+    """Resolve an aux_materials file from the repository root only."""
+    repo_aux = Path(__file__).resolve().parents[4] / "aux_materials" / filename
+    if not repo_aux.exists():
+        raise FileNotFoundError(
+            f"Auxiliary file not found: {repo_aux}. "
+            "Expected files under <repo>/aux_materials/."
+        )
+    return repo_aux
+
+
 def read_label_file() -> dict:
     """Read the FreeSurfer colour LUT and return a mapping of label name → index.
 
     Returns:
         Dict with lowercase label names as keys and integer indices as values.
     """
-    filepath = (
-        Path(__file__).parent.parent.parent.parent
-        / "aux_materials/FreeSurferColorLUT.txt"
-    )
+    filepath = _resolve_aux_file("FreeSurferColorLUT.txt")
     label_dict = {}
 
     with open(filepath, "r", encoding="utf-8") as f:
@@ -135,9 +143,7 @@ def extract_selected_labels(
             logger.info("Using provided labels_dict instead.")
             return labels_dict
         logger.info("Loading labels from fs_labels.json")
-        fs_labels = (
-            Path(__file__).parent.parent.parent.parent / "aux_materials/fs_labels.json"
-        )
+        fs_labels = _resolve_aux_file("fs_labels.json")
         labels_dict = json.load(fs_labels.open())
         return labels_dict
 
