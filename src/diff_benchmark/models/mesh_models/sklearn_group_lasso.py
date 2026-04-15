@@ -718,26 +718,36 @@ class RegionGroupLassoModel(SklearnModel):
         # Keep CV in-process for mesh-list inputs to avoid heavy loky serialization.
         n_jobs = kwargs.get("n_jobs", 1)
         verbose = 3 #kwargs.get("verbose", 3)
-        reg_alpha_grid = kwargs.get("group_lasso_alpha_grid", np.logspace(-3, 5, 10))
-        cls_alpha_grid = kwargs.get(
-            "group_lasso_alpha_grid_classification", np.logspace(-3, 5, 10)
-        )
-        cls_C_grid = kwargs.get("classifier_C_grid", np.logspace(-5, 5, 10))
+        
+        alpha_grid = kwargs.get("group_lasso_alpha_grid", np.logspace(-3, 5, 10))
+        rep_alpha = representation_cfg.get("group_lasso_alpha_grid", None)
+        if rep_alpha is not None:
+            alpha_grid = rep_alpha
+        # reg_alpha_grid = kwargs.get("group_lasso_alpha_grid", np.logspace(-3, 5, 10))
+        # cls_alpha_grid = kwargs.get(
+        #     "group_lasso_alpha_grid", np.logspace(-3, 5, 10)
+        # )
+        # cls_C_grid = kwargs.get("classifier_C", np.logspace(-5, 5, 10))
 
-        rep_alpha_reg = representation_cfg.get("group_lasso_alpha_grid", None)
-        rep_alpha_cls = representation_cfg.get(
-            "group_lasso_alpha_grid_classification",
-            None,
-        )
-        if rep_alpha_cls is not None:
-            cls_alpha_grid = rep_alpha_cls
-        if rep_alpha_reg is not None:
-            reg_alpha_grid = rep_alpha_reg
-        elif rep_alpha_cls is not None:
-            # Optional fallback when only one alpha grid is provided in config.
-            reg_alpha_grid = rep_alpha_cls
+        # rep_alpha_reg = representation_cfg.get("group_lasso_alpha_grid", None)
+        # rep_alpha_cls = representation_cfg.get(
+        #     "group_lasso_alpha_grid",
+        #     None,
+        # )
+        # if rep_alpha_cls is not None:
+        #     cls_alpha_grid = rep_alpha_cls
+        # if rep_alpha_reg is not None:
+        #     reg_alpha_grid = rep_alpha_reg
+        # elif rep_alpha_cls is not None:
+        #     # Optional fallback when only one alpha grid is provided in config.
+        #     reg_alpha_grid = rep_alpha_cls
 
-        cls_C_grid = representation_cfg.get("classifier_C_grid", cls_C_grid)
+        # cls_C_grid = representation_cfg.get("classifier_C_grid", cls_C_grid)
+        cls_C_grid = kwargs.get("classifier__C", np.logspace(-5, 5, 10))
+
+        rep_C = representation_cfg.get("classifier__C", None)
+        if rep_C is not None:
+            cls_C_grid = rep_C
         
         if self.prediction_task == "regression":
 
@@ -756,7 +766,7 @@ class RegionGroupLassoModel(SklearnModel):
             )
 
             param_grid = {
-                "group_lasso__alpha": reg_alpha_grid,
+                "group_lasso__alpha": alpha_grid,
             }
 
             scoring = "neg_mean_absolute_error"
@@ -779,7 +789,7 @@ class RegionGroupLassoModel(SklearnModel):
             )
 
             param_grid = {
-                "group_lasso__alpha": cls_alpha_grid,
+                "group_lasso__alpha": alpha_grid,
                 "classifier__C": cls_C_grid,
             }
 
@@ -868,64 +878,84 @@ class RegionFusedSparseGroupLassoModel(SklearnModel):
         )
         n_jobs = kwargs.get("n_jobs", 1)
         verbose = 3 #kwargs.get("verbose", 1)
+        
+        lambda1_grid = kwargs.get("fused_group_lambda1_grid", np.logspace(-4, 2, 7))
+        lambda2_grid = kwargs.get("fused_group_lambda2_grid", np.logspace(-6, 0, 7))
+        lambda3_grid = kwargs.get("fused_group_lambda3_grid", np.logspace(-6, 0, 7))
 
-        reg_lambda1_grid = kwargs.get(
-            "fused_group_lambda1_grid",
-            np.logspace(-4, 2, 7),
-        )
-        reg_lambda2_grid = kwargs.get(
-            "fused_group_lambda2_grid",
-            np.logspace(-6, 0, 7),
-        )
-        reg_lambda3_grid = kwargs.get(
-            "fused_group_lambda3_grid",
-            np.logspace(-6, 0, 7),
-        )
-        cls_lambda1_grid = kwargs.get(
-            "fused_group_lambda1_grid_classification",
-            reg_lambda1_grid,
-        )
-        cls_lambda2_grid = kwargs.get(
-            "fused_group_lambda2_grid_classification",
-            reg_lambda2_grid,
-        )
-        cls_lambda3_grid = kwargs.get(
-            "fused_group_lambda3_grid_classification",
-            reg_lambda3_grid,
-        )
-        cls_C_grid = kwargs.get("classifier_C_grid", np.logspace(-5, 5, 10))
+        rep_l1 = representation_cfg.get("fused_group_lambda1_grid", None)
+        rep_l2 = representation_cfg.get("fused_group_lambda2_grid", None)
+        rep_l3 = representation_cfg.get("fused_group_lambda3_grid", None)
 
-        rep_reg_l1 = representation_cfg.get("fused_group_lambda1_grid", None)
-        rep_reg_l2 = representation_cfg.get("fused_group_lambda2_grid", None)
-        rep_reg_l3 = representation_cfg.get("fused_group_lambda3_grid", None)
-        rep_cls_l1 = representation_cfg.get(
-            "fused_group_lambda1_grid_classification",
-            None,
-        )
-        rep_cls_l2 = representation_cfg.get(
-            "fused_group_lambda2_grid_classification",
-            None,
-        )
-        rep_cls_l3 = representation_cfg.get(
-            "fused_group_lambda3_grid_classification",
-            None,
-        )
-        rep_cls_C = representation_cfg.get("classifier_C_grid", None)
+        if rep_l1 is not None:
+            lambda1_grid = rep_l1
+        if rep_l2 is not None:
+            lambda2_grid = rep_l2
+        if rep_l3 is not None:
+            lambda3_grid = rep_l3
+            
+        cls_C_grid = kwargs.get("classifier__C", np.logspace(-5, 5, 10))
 
-        if rep_reg_l1 is not None:
-            reg_lambda1_grid = rep_reg_l1
-        if rep_reg_l2 is not None:
-            reg_lambda2_grid = rep_reg_l2
-        if rep_reg_l3 is not None:
-            reg_lambda3_grid = rep_reg_l3
-        if rep_cls_l1 is not None:
-            cls_lambda1_grid = rep_cls_l1
-        if rep_cls_l2 is not None:
-            cls_lambda2_grid = rep_cls_l2
-        if rep_cls_l3 is not None:
-            cls_lambda3_grid = rep_cls_l3
-        if rep_cls_C is not None:
-            cls_C_grid = rep_cls_C
+        rep_C = representation_cfg.get("classifier__C", None)
+        if rep_C is not None:
+            cls_C_grid = rep_C
+        # reg_lambda1_grid = kwargs.get(
+        #     "fused_group_lambda1_grid",
+        #     np.logspace(-4, 2, 7),
+        # )
+        # reg_lambda2_grid = kwargs.get(
+        #     "fused_group_lambda2_grid",
+        #     np.logspace(-6, 0, 7),
+        # )
+        # reg_lambda3_grid = kwargs.get(
+        #     "fused_group_lambda3_grid",
+        #     np.logspace(-6, 0, 7),
+        # )
+        # cls_lambda1_grid = kwargs.get(
+        #     "fused_group_lambda1_grid_classification",
+        #     reg_lambda1_grid,
+        # )
+        # cls_lambda2_grid = kwargs.get(
+        #     "fused_group_lambda2_grid_classification",
+        #     reg_lambda2_grid,
+        # )
+        # cls_lambda3_grid = kwargs.get(
+        #     "fused_group_lambda3_grid_classification",
+        #     reg_lambda3_grid,
+        # )
+        # cls_C_grid = kwargs.get("classifier_C_grid", np.logspace(-5, 5, 10))
+
+        # rep_reg_l1 = representation_cfg.get("fused_group_lambda1_grid", None)
+        # rep_reg_l2 = representation_cfg.get("fused_group_lambda2_grid", None)
+        # rep_reg_l3 = representation_cfg.get("fused_group_lambda3_grid", None)
+        # rep_cls_l1 = representation_cfg.get(
+        #     "fused_group_lambda1_grid_classification",
+        #     None,
+        # )
+        # rep_cls_l2 = representation_cfg.get(
+        #     "fused_group_lambda2_grid_classification",
+        #     None,
+        # )
+        # rep_cls_l3 = representation_cfg.get(
+        #     "fused_group_lambda3_grid_classification",
+        #     None,
+        # )
+        # rep_cls_C = representation_cfg.get("classifier_C_grid", None)
+
+        # if rep_reg_l1 is not None:
+        #     reg_lambda1_grid = rep_reg_l1
+        # if rep_reg_l2 is not None:
+        #     reg_lambda2_grid = rep_reg_l2
+        # if rep_reg_l3 is not None:
+        #     reg_lambda3_grid = rep_reg_l3
+        # if rep_cls_l1 is not None:
+        #     cls_lambda1_grid = rep_cls_l1
+        # if rep_cls_l2 is not None:
+        #     cls_lambda2_grid = rep_cls_l2
+        # if rep_cls_l3 is not None:
+        #     cls_lambda3_grid = rep_cls_l3
+        # if rep_cls_C is not None:
+        #     cls_C_grid = rep_cls_C
 
         fused_edges = kwargs.get(
             "fused_edges",
@@ -976,9 +1006,9 @@ class RegionFusedSparseGroupLassoModel(SklearnModel):
             )
 
             param_grid = {
-                "fused_group_lasso__lambda1": reg_lambda1_grid,
-                "fused_group_lasso__lambda2": reg_lambda2_grid,
-                "fused_group_lasso__lambda3": reg_lambda3_grid,
+                "fused_group_lasso__lambda1": lambda1_grid,
+                "fused_group_lasso__lambda2": lambda2_grid,
+                "fused_group_lasso__lambda3": lambda3_grid,
             }
             scoring = "neg_mean_absolute_error"
 
@@ -999,9 +1029,9 @@ class RegionFusedSparseGroupLassoModel(SklearnModel):
             )
 
             param_grid = {
-                "fused_group_lasso__lambda1": cls_lambda1_grid,
-                "fused_group_lasso__lambda2": cls_lambda2_grid,
-                "fused_group_lasso__lambda3": cls_lambda3_grid,
+                "fused_group_lasso__lambda1": lambda1_grid,
+                "fused_group_lasso__lambda2": lambda2_grid,
+                "fused_group_lasso__lambda3": lambda3_grid,
                 "classifier__C": cls_C_grid,
             }
             scoring = "balanced_accuracy"
