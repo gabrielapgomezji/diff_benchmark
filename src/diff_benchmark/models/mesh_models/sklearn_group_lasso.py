@@ -716,7 +716,8 @@ class RegionGroupLassoModel(SklearnModel):
             ),
         )
         # Keep CV in-process for mesh-list inputs to avoid heavy loky serialization.
-        n_jobs = kwargs.get("n_jobs", 1)
+        n_jobs = kwargs["n_jobs"] #kwargs.get("n_jobs", 1)
+        print(f"Building Group Lasso model with n_jobs={n_jobs} (CV parallelism disabled for mesh data).")
         verbose = 3 #kwargs.get("verbose", 3)
         
         alpha_grid = kwargs.get("group_lasso_alpha_grid", np.logspace(-3, 5, 10))
