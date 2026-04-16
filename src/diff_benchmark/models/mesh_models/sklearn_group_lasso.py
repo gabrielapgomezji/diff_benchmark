@@ -51,6 +51,7 @@ Notes
 from __future__ import annotations
 
 from collections.abc import Sequence
+import os
 import cvxpy as cp
 import numpy as np
 from skglm.datafits import Quadratic
@@ -74,6 +75,40 @@ from sklearn.utils.validation import check_is_fitted
 from diff_benchmark.models.mesh_models.region_feature_extractor import RegionFeatureExtractor
 from diff_benchmark.models.mesh_models.skglm_compat import CompatGeneralizedLinearEstimator
 from diff_benchmark.models.utils_models.trainer import SklearnModel
+
+
+def _mem_profile_enabled() -> bool:
+    return str(os.getenv("DIFF_BENCHMARK_MEM_PROFILE", "0")).lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def _describe_array(x) -> str:
+    if isinstance(x, np.ndarray):
+        mib = x.nbytes / (1024.0 * 1024.0)
+        return f"ndarray shape={x.shape} dtype={x.dtype} size_mib={mib:.2f}"
+    return f"type={type(x).__name__}"
+
+
+def _describe_mesh_list(x) -> str:
+    if not isinstance(x, list):
+        return f"type={type(x).__name__}"
+    if not x:
+        return "list(len=0)"
+    first = x[0]
+    if not isinstance(first, dict):
+        return f"list(len={len(x)}, first_type={type(first).__name__})"
+    key_bits = []
+    for key, value in first.items():
+        shape = getattr(value, "shape", None)
+        if shape is not None:
+            key_bits.append(f"{key}:shape={tuple(shape)}")
+        else:
+            key_bits.append(f"{key}:type={type(value).__name__}")
+    return f"mesh_list len={len(x)} first_keys=[{', '.join(key_bits)}]"
 
 # ---------------------------------------------------------------------------
 # Region Transformer
@@ -165,6 +200,9 @@ class GroupLassoRegressor(BaseEstimator, RegressorMixin):
         -------
         self
         """
+        if _mem_profile_enabled():
+            print(f"[MEM] GroupLassoRegressor.fit X: {_describe_array(X)}")
+
         transformer = getattr(self, "_transformer", None)
         if transformer is not None:
             try:
@@ -619,6 +657,10 @@ class _GroupLassoPipeline(Pipeline):
         which is then passed to the downstream ``LogisticRegression``.
         """
         feature_transformer = self.named_steps.get("region_features")
+        mem_debug = _mem_profile_enabled()
+
+        if mem_debug:
+            print(f"[MEM] Pipeline.fit input: {_describe_mesh_list(X)}")
 
         Xt = X
         for name, step in self.steps:
@@ -639,6 +681,11 @@ class _GroupLassoPipeline(Pipeline):
 
             if is_last:
                 # Final step: always call fit (not fit_transform).
+                if mem_debug:
+                    print(
+                        f"[MEM] Step '{name}' fit input: "
+                        f"{_describe_array(Xt) if isinstance(Xt, np.ndarray) else _describe_mesh_list(Xt)}"
+                    )
                 step.fit(Xt, y)
             else:
                 if hasattr(step, "fit_transform"):
@@ -646,6 +693,11 @@ class _GroupLassoPipeline(Pipeline):
                 else:
                     step.fit(Xt, y)
                     Xt = step.transform(Xt)
+                if mem_debug:
+                    print(
+                        f"[MEM] Step '{name}' output: "
+                        f"{_describe_array(Xt) if isinstance(Xt, np.ndarray) else _describe_mesh_list(Xt)}"
+                    )
 
         return self
 
@@ -785,7 +837,7 @@ class RegionGroupLassoModel(SklearnModel):
             scoring=scoring,
             cv=cv,
             n_jobs=n_jobs,
-            pre_dispatch="n_jobs",
+            # pre_dispatch=1,
             verbose=verbose,
         )
 
@@ -970,7 +1022,6 @@ class RegionFusedSparseGroupLassoModel(SklearnModel):
             scoring=scoring,
             cv=cv,
             n_jobs=n_jobs,
-            pre_dispatch="n_jobs",
             verbose=verbose,
         )
 

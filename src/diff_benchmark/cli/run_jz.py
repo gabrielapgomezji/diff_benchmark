@@ -1,8 +1,11 @@
 import logging
 import faulthandler
+import gc
 import os
+import resource
 import socket
 import sys
+import tracemalloc
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,6 +15,7 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 import hydra
 import numpy as np
+import pandas as pd
 from omegaconf import OmegaConf
 
 from diff_benchmark.analysis.region_coefficients import (
@@ -34,6 +38,10 @@ from diff_benchmark.utils.logger import configure_logging, setup_logger
 from diff_benchmark.utils.parquet_helper import ParquetSaver, metrics_to_rows
 from diff_benchmark.utils.run_id import get_learning_curve_id, is_cached, make_run_id
 from diff_benchmark.utils.scores import compute_metrics
+
+
+MEM_PROFILE_ENV = "DIFF_BENCHMARK_MEM_PROFILE"
+MEM_PROFILE_TOP_ENV = "DIFF_BENCHMARK_MEM_PROFILE_TOP"
 
 
 def _enable_failure_visibility() -> None:
@@ -60,6 +68,66 @@ def _flush_streams() -> None:
         sys.stderr.flush()
     except Exception:
         logging.getLogger(__name__).debug("Failed to flush stderr", exc_info=True)
+
+
+def _read_current_rss_gib() -> float | None:
+    """Return current RSS in GiB for Linux processes, if available."""
+    status_path = "/proc/self/status"
+    if os.path.exists(status_path):
+        try:
+            with open(status_path, encoding="utf-8") as f:
+                for line in f:
+                    if line.startswith("VmRSS:"):
+                        # VmRSS is reported in kB.
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            rss_kib = float(parts[1])
+                            return rss_kib / (1024.0 * 1024.0)
+        except Exception:
+            return None
+    return None
+
+
+def _read_peak_rss_gib() -> float:
+    """Return peak RSS in GiB (Linux ru_maxrss is in KiB)."""
+    peak_kib = float(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+    return peak_kib / (1024.0 * 1024.0)
+
+
+def _log_mem_state(logger, label: str) -> None:
+    """Log current/peak RSS for the current process."""
+    cur = _read_current_rss_gib()
+    peak = _read_peak_rss_gib()
+    if cur is None:
+        logger.info("MEM | %s | peak_rss_gib=%.3f", label, peak)
+    else:
+        logger.info("MEM | %s | rss_gib=%.3f | peak_rss_gib=%.3f", label, cur, peak)
+
+
+def _log_python_alloc_diff(
+    logger,
+    label: str,
+    prev_snapshot: tracemalloc.Snapshot | None,
+    top_n: int,
+) -> tracemalloc.Snapshot | None:
+    """Log top Python allocation deltas using tracemalloc snapshots."""
+    if not tracemalloc.is_tracing():
+        return None
+
+    cur_snapshot = tracemalloc.take_snapshot()
+    if prev_snapshot is None:
+        logger.info("MEMTRACE | %s | baseline snapshot captured", label)
+        return cur_snapshot
+
+    stats = cur_snapshot.compare_to(prev_snapshot, "lineno")
+    if not stats:
+        logger.info("MEMTRACE | %s | no allocation delta", label)
+        return cur_snapshot
+
+    logger.info("MEMTRACE | %s | top %d allocation deltas:", label, top_n)
+    for stat in stats[:top_n]:
+        logger.info("MEMTRACE | %s", stat)
+    return cur_snapshot
 
 
 def _extract_inputs_for_coefficients(trainer, dataloader):
@@ -231,6 +299,18 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
     """
     cfg = OmegaConf.merge(cfg_og)
     logger = setup_logger("Job.run_single_model")
+    enable_mem_profile = str(os.getenv(MEM_PROFILE_ENV, "0")).lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    mem_profile_top = int(os.getenv(MEM_PROFILE_TOP_ENV, "8"))
+
+    trace_snapshot: tracemalloc.Snapshot | None = None
+    if enable_mem_profile and not tracemalloc.is_tracing():
+        tracemalloc.start(25)
+        logger.info("Memory profiling enabled via %s=1", MEM_PROFILE_ENV)
 
     run_id = cfg.runtime.run_id
     learning_curve_id = get_learning_curve_id(cfg)
@@ -282,6 +362,14 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
     ).pipeline()
 
     logger.info("Data preparation completed.")
+    if enable_mem_profile:
+        _log_mem_state(logger, "after_data_preparation")
+        trace_snapshot = _log_python_alloc_diff(
+            logger,
+            "after_data_preparation",
+            trace_snapshot,
+            mem_profile_top,
+        )
 
     try:
         schaefer = resample_schaefer_onto_fs_lr(
@@ -351,23 +439,7 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
         columns=pred_key_cols + ["prediction"],
     )
 
-    metrics_path = experiment_dir / "metrics" / "fold_metrics.parquet"
-    metrics_key_cols = [
-        "run_id",
-        "model_name",
-        "dataset",
-        "prediction_task",
-        "tissue_type",
-        "primary_metric",
-        "fold",
-        "split",
-        "metric",
-    ]
-    metrics_saver = ParquetSaver(
-        metrics_path,
-        key_columns=metrics_key_cols,
-        columns=metrics_key_cols + ["value"],
-    )
+    metrics_rows: list[dict] = []
 
     # ------------------------------------------------------------------ #
     # Cross-validation loop                                               #
@@ -375,6 +447,14 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
     for fold_idx, (train_idx, test_idx) in enumerate(indices):
         try:
             logger.info(f"Run ID: {run_id} — Fold {fold_idx + 1}/{len(indices)}")
+            if enable_mem_profile:
+                _log_mem_state(logger, f"fold_{fold_idx + 1}_start")
+                trace_snapshot = _log_python_alloc_diff(
+                    logger,
+                    f"fold_{fold_idx + 1}_start",
+                    trace_snapshot,
+                    mem_profile_top,
+                )
 
             train_loader, test_loader = preprocessed.get_dataloader_fold(
                 torch_dataset, fold_idx, indices,
@@ -389,8 +469,26 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
             model = get_model(model_name, OmegaConf.to_container(cfg, resolve=True))
             model.set_fold(fold_idx)
 
+            if enable_mem_profile:
+                _log_mem_state(logger, f"fold_{fold_idx + 1}_before_fit")
+                trace_snapshot = _log_python_alloc_diff(
+                    logger,
+                    f"fold_{fold_idx + 1}_before_fit",
+                    trace_snapshot,
+                    mem_profile_top,
+                )
+
             logger.info(f"Fitting model on fold {fold_idx}...")
             model.fit(train_loader)
+
+            if enable_mem_profile:
+                _log_mem_state(logger, f"fold_{fold_idx + 1}_after_fit")
+                trace_snapshot = _log_python_alloc_diff(
+                    logger,
+                    f"fold_{fold_idx + 1}_after_fit",
+                    trace_snapshot,
+                    mem_profile_top,
+                )
 
             # Training split
             train_pred = model.predict(train_loader)
@@ -451,7 +549,7 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
             )
             pred_saver.save()
 
-            # Persist per-fold metrics incrementally to avoid growing RAM usage.
+            # Accumulate metrics
             shared_meta = dict(
                 run_id=run_id,
                 model_name=model_name,
@@ -461,12 +559,27 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
                 primary_metric=cfg.dataset.metric_to_compute,
                 fold=fold_idx,
             )
-            metrics_saver.add_rows(metrics_to_rows(train_score, split="train", **shared_meta))
-            metrics_saver.add_rows(metrics_to_rows(test_score, split="test", **shared_meta))
-            metrics_saver.save()
+            metrics_rows.extend(metrics_to_rows(train_score, split="train", **shared_meta))
+            metrics_rows.extend(metrics_to_rows(test_score, split="test", **shared_meta))
 
             metadata["n_folds_completed"] += 1
             OmegaConf.save(metadata, experiment_dir / "metadata.yaml")
+
+            if enable_mem_profile:
+                # Drop fold-local references and force collection so growth is visible.
+                del model
+                del train_loader
+                del test_loader
+                del train_pred
+                del test_pred
+                gc.collect()
+                _log_mem_state(logger, f"fold_{fold_idx + 1}_end_after_gc")
+                trace_snapshot = _log_python_alloc_diff(
+                    logger,
+                    f"fold_{fold_idx + 1}_end_after_gc",
+                    trace_snapshot,
+                    mem_profile_top,
+                )
 
         except Exception as e:
             logger.exception(f"Crash in fold {fold_idx} of {run_id}: {e}")
@@ -476,6 +589,9 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
             metadata["end_time"] = datetime.now(timezone.utc).isoformat()
             OmegaConf.save(metadata, experiment_dir / "metadata.yaml")
 
+            # Persist any metrics collected before the crash.
+            if metrics_rows:
+                _save_fold_metrics(metrics_rows, experiment_dir)
             _flush_streams()
             raise
 
@@ -491,7 +607,27 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
     metadata.setdefault("end_time", datetime.now(timezone.utc).isoformat())
     OmegaConf.save(metadata, experiment_dir / "metadata.yaml")
 
+    if metrics_rows:
+        _save_fold_metrics(metrics_rows, experiment_dir)
+
+    if enable_mem_profile:
+        _log_mem_state(logger, "run_end")
+        _log_python_alloc_diff(logger, "run_end", trace_snapshot, mem_profile_top)
+
     return model_name, run_id
+
+
+def _save_fold_metrics(metrics_rows: list[dict], experiment_dir: Path) -> None:
+    """Write accumulated per-fold metrics to disk.
+
+    Args:
+        metrics_rows: List of metric row dicts.
+        experiment_dir: Experiment directory; metrics are written to
+            ``metrics/fold_metrics.parquet``.
+    """
+    metrics_path = experiment_dir / "metrics" / "fold_metrics.parquet"
+    metrics_path.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(metrics_rows).to_parquet(metrics_path, index=False)
 
 
 def main():

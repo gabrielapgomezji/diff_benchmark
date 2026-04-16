@@ -11,9 +11,9 @@ backbone:
   region_representation: flatten
   flatten:
     group_lasso_alpha_grid:
-      - 1e-6
+      # - 1e-6
       # - 1e-5 
-      # - 1e-4
+      - 1e-4
       # - 1e-3
   mean_std:
     group_lasso_alpha_grid:
