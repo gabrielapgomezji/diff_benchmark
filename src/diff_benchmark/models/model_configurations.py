@@ -252,12 +252,13 @@ def get_model(name: str, config: dict) -> object:
     config["backend"]["run_id"] = config["runtime"]["run_id"]
     config["backend"]["val_ratio"] = config["data"]["data_partition"]["val_size"]
     config["backend"]["seed"] = config["random_state"]
+    grid_search_n_jobs = config["backend"].get("grid_search_n_jobs", 1)
     return create_trainer(
         model_name=name,
         model_kwargs={
             **config["model"]["backbone"],
             "random_state": config["random_state"],
-            "n_jobs": config["cluster"]["conf"]["n_jobs"],
+            "n_jobs": grid_search_n_jobs,
         },
         pred_head={**config["pred_head"]},
         backend_kwargs={**config["backend"]},
