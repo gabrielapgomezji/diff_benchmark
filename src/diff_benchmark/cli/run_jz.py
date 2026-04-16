@@ -4,7 +4,7 @@ import os
 import socket
 import sys
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Reduce CUDA allocator fragmentation unless the user already configured it.
@@ -12,7 +12,6 @@ os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 import hydra
 import numpy as np
-import pandas as pd
 from omegaconf import OmegaConf
 
 from diff_benchmark.analysis.region_coefficients import (
@@ -255,7 +254,7 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
         "status": "running",
         "n_folds_expected": cfg.data.data_partition.n_splits,
         "n_folds_completed": 0,
-        "start_time": datetime.utcnow().isoformat(),
+        "start_time": datetime.now(timezone.utc).isoformat(),
         "hostname": socket.gethostname(),
         "job_id": os.environ.get("SLURM_JOB_ID"),
     }
@@ -352,7 +351,23 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
         columns=pred_key_cols + ["prediction"],
     )
 
-    metrics_rows: list[dict] = []
+    metrics_path = experiment_dir / "metrics" / "fold_metrics.parquet"
+    metrics_key_cols = [
+        "run_id",
+        "model_name",
+        "dataset",
+        "prediction_task",
+        "tissue_type",
+        "primary_metric",
+        "fold",
+        "split",
+        "metric",
+    ]
+    metrics_saver = ParquetSaver(
+        metrics_path,
+        key_columns=metrics_key_cols,
+        columns=metrics_key_cols + ["value"],
+    )
 
     # ------------------------------------------------------------------ #
     # Cross-validation loop                                               #
@@ -436,7 +451,7 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
             )
             pred_saver.save()
 
-            # Accumulate metrics
+            # Persist per-fold metrics incrementally to avoid growing RAM usage.
             shared_meta = dict(
                 run_id=run_id,
                 model_name=model_name,
@@ -446,8 +461,9 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
                 primary_metric=cfg.dataset.metric_to_compute,
                 fold=fold_idx,
             )
-            metrics_rows.extend(metrics_to_rows(train_score, split="train", **shared_meta))
-            metrics_rows.extend(metrics_to_rows(test_score, split="test", **shared_meta))
+            metrics_saver.add_rows(metrics_to_rows(train_score, split="train", **shared_meta))
+            metrics_saver.add_rows(metrics_to_rows(test_score, split="test", **shared_meta))
+            metrics_saver.save()
 
             metadata["n_folds_completed"] += 1
             OmegaConf.save(metadata, experiment_dir / "metadata.yaml")
@@ -457,12 +473,9 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
 
             metadata["status"] = "crashed"
             metadata["error"] = str(e)
-            metadata["end_time"] = datetime.utcnow().isoformat()
+            metadata["end_time"] = datetime.now(timezone.utc).isoformat()
             OmegaConf.save(metadata, experiment_dir / "metadata.yaml")
 
-            # Persist any metrics collected before the crash.
-            if metrics_rows:
-                _save_fold_metrics(metrics_rows, experiment_dir)
             _flush_streams()
             raise
 
@@ -475,26 +488,10 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
     elif metadata.get("status") != "crashed":
         metadata["status"] = "partial"
 
-    metadata.setdefault("end_time", datetime.utcnow().isoformat())
+    metadata.setdefault("end_time", datetime.now(timezone.utc).isoformat())
     OmegaConf.save(metadata, experiment_dir / "metadata.yaml")
 
-    if metrics_rows:
-        _save_fold_metrics(metrics_rows, experiment_dir)
-
     return model_name, run_id
-
-
-def _save_fold_metrics(metrics_rows: list[dict], experiment_dir: Path) -> None:
-    """Write accumulated per-fold metrics to disk.
-
-    Args:
-        metrics_rows: List of metric row dicts.
-        experiment_dir: Experiment directory; metrics are written to
-            ``metrics/fold_metrics.parquet``.
-    """
-    metrics_path = experiment_dir / "metrics" / "fold_metrics.parquet"
-    metrics_path.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(metrics_rows).to_parquet(metrics_path, index=False)
 
 
 def main():
