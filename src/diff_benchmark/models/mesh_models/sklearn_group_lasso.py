@@ -78,7 +78,7 @@ from diff_benchmark.models.utils_models.trainer import SklearnModel
 
 
 def _mem_profile_enabled() -> bool:
-    return str(os.getenv("DIFF_BENCHMARK_MEM_PROFILE", "0")).lower() in {
+    return str(os.getenv("DIFF_BENCHMARK_MEM_PROFILE", "1")).lower() in {
         "1",
         "true",
         "yes",
@@ -769,7 +769,7 @@ class RegionGroupLassoModel(SklearnModel):
         )
         # Keep CV in-process for mesh-list inputs to avoid heavy loky serialization.
         n_jobs = kwargs["n_jobs"] #kwargs.get("n_jobs", 1)
-        print(f"Building Group Lasso model with n_jobs={n_jobs} (CV parallelism disabled for mesh data).")
+        print(f"Building Group Lasso model with n_jobs={n_jobs}")
         verbose = 3 #kwargs.get("verbose", 3)
         
         alpha_grid = kwargs.get("group_lasso_alpha_grid", np.logspace(-3, 5, 10))
