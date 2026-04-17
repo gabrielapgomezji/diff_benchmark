@@ -20,19 +20,21 @@ runtime:
 
 
 choices:
-  model: [region_pca] #[pointnet] [region_pca, region_group_lasso, region_elasticnet]
+  model: [region_group_lasso] #[pointnet] [region_pca, region_group_lasso, region_elasticnet]
   # model.backbone.region_encoder.type: [anatomical_relative] #anatomical_relative, none, anatomical
   # model.backbone.region_encoder.include_size: [false]
   # model.backbone.freeze_backbone: [false]
-  # model.backbone.region_representation: [flatten] #[flatten, mean_std, pca, summary_stats, percentiles]
-  dataset: [camcan]
+  model.backbone.region_representation: [mean_std] #[flatten, mean_std, pca, summary_stats, percentiles]
+  # dataset: [camcan]
   backend: [sklearn]
-  target: [age]
-  pred_head: [mesh_regression]
+  backend.grid_search_n_jobs: [10]
+  # target: [age]
+  pred_head: [mesh_classification]
+  random_state: [49]
   dataset.tissue_type: [gray]
-  dataset.metric_to_compute: [md]
+  dataset.metric_to_compute: [md] #, sh, mk, b0]
   cluster: [margaret2_cpu]
-  # cluster.conf.parallel_type: [None]
+  cluster.conf.parallel_type: [None]
   cluster.conf.n_jobs: [5]
   data.num_workers: [0]
   # backend.learning_rate: [1e-3]

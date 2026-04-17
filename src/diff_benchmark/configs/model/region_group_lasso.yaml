@@ -2,8 +2,8 @@ name: region_group_lasso
 
 backbone:
   classifier__C:
-    - 0.01
-    # - 0.1
+    # - 0.01
+    - 0.1
     # - 1
     # - 10
     # - 100
@@ -11,16 +11,16 @@ backbone:
   region_representation: flatten
   flatten:
     group_lasso_alpha_grid:
-      # - 1e-6
+      - 1e-6
       # - 1e-5 
-      - 1e-4
+      # # - 1e-4
       # - 1e-3
   mean_std:
     group_lasso_alpha_grid:
       - 1e-6
-      # - 1e-5
-      # - 1e-4
-      # - 1e-3
+      - 1e-5
+      - 1e-4
+      - 1e-3
   pca:
     n_components_per_region: 10
     group_lasso_alpha_grid:
