@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import numpy as np
 from skglm import GeneralizedLinearEstimator
 from skglm.datafits import QuadraticGroup
@@ -15,6 +16,40 @@ from sklearn.utils.validation import check_is_fitted
 
 from diff_benchmark.models.mesh_models.region_feature_extractor import RegionFeatureExtractor
 from diff_benchmark.models.utils_models.trainer import SklearnModel
+
+
+def _mem_profile_enabled() -> bool:
+    return str(os.getenv("DIFF_BENCHMARK_MEM_PROFILE", "1")).lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def _describe_array(x) -> str:
+    if isinstance(x, np.ndarray):
+        mib = x.nbytes / (1024.0 * 1024.0)
+        return f"ndarray shape={x.shape} dtype={x.dtype} size_mib={mib:.2f}"
+    return f"type={type(x).__name__}"
+
+
+def _describe_mesh_list(x) -> str:
+    if not isinstance(x, list):
+        return f"type={type(x).__name__}"
+    if not x:
+        return "list(len=0)"
+    first = x[0]
+    if not isinstance(first, dict):
+        return f"list(len={len(x)}, first_type={type(first).__name__})"
+    key_bits = []
+    for key, value in first.items():
+        shape = getattr(value, "shape", None)
+        if shape is not None:
+            key_bits.append(f"{key}:shape={tuple(shape)}")
+        else:
+            key_bits.append(f"{key}:type={type(value).__name__}")
+    return f"mesh_list len={len(x)} first_keys=[{', '.join(key_bits)}]"
 
     
 class GroupElasticNetRegressor(BaseEstimator, RegressorMixin):
@@ -39,6 +74,9 @@ class GroupElasticNetRegressor(BaseEstimator, RegressorMixin):
     def fit(self, X, y):
         X = np.asarray(X)
         y = np.asarray(y)
+
+        if _mem_profile_enabled():
+            print(f"[MEM] GroupElasticNetRegressor.fit X: {_describe_array(X)}")
 
         transformer = getattr(self, "_transformer", None)
         if not 0.0 <= self.l1_ratio <= 1.0:
@@ -172,6 +210,10 @@ class _GroupElasticNetPipeline(Pipeline):
 
     def fit(self, X, y=None, **params):  # type: ignore[override]
         feature_transformer = self.named_steps.get("region_features")
+        mem_debug = _mem_profile_enabled()
+
+        if mem_debug:
+            print(f"[MEM] Pipeline.fit input: {_describe_mesh_list(X)}")
 
         Xt = X
         for name, step in self.steps:
@@ -184,6 +226,11 @@ class _GroupElasticNetPipeline(Pipeline):
             is_last = name == self.steps[-1][0]
 
             if is_last:
+                if mem_debug:
+                    print(
+                        f"[MEM] Step '{name}' fit input: "
+                        f"{_describe_array(Xt) if isinstance(Xt, np.ndarray) else _describe_mesh_list(Xt)}"
+                    )
                 step.fit(Xt, y)
             else:
                 if hasattr(step, "fit_transform"):
@@ -191,6 +238,11 @@ class _GroupElasticNetPipeline(Pipeline):
                 else:
                     step.fit(Xt, y)
                     Xt = step.transform(Xt)
+                if mem_debug:
+                    print(
+                        f"[MEM] Step '{name}' output: "
+                        f"{_describe_array(Xt) if isinstance(Xt, np.ndarray) else _describe_mesh_list(Xt)}"
+                    )
 
         return self
 
@@ -237,45 +289,21 @@ class RegionElasticNetModel(SklearnModel):
         n_jobs = kwargs.get("n_jobs", 1)
         verbose = kwargs.get("verbose", 1)
 
-        reg_alpha_grid = kwargs.get("elasticnet_alpha_grid", np.logspace(-5, 5, 10))
-        reg_l1_ratio_grid = kwargs.get(
+        alpha_grid = kwargs.get("elasticnet_alpha_grid", np.logspace(-5, 5, 10))
+        l1_ratio_grid = kwargs.get(
             "elasticnet_l1_ratio_grid",
             [0.1, 0.3, 0.5, 0.7, 0.9],
         )
-        cls_alpha_grid = kwargs.get(
-            "elasticnet_alpha_grid_classification",
-            np.logspace(-5, 5, 5),
-        )
-        cls_l1_ratio_grid = kwargs.get(
-            "elasticnet_l1_ratio_grid_classification",
-            [0.3, 0.5, 0.7],
-        )
-        cls_C_grid = kwargs.get("classifier_C_grid", np.logspace(-5, 5, 10))
+        cls_C_grid = kwargs.get("classifier__C", kwargs.get("classifier_C_grid", np.logspace(-5, 5, 10)))
 
-        rep_reg_alpha = representation_cfg.get("elasticnet_alpha_grid", None)
-        rep_reg_l1 = representation_cfg.get("elasticnet_l1_ratio_grid", None)
-        rep_cls_alpha = representation_cfg.get(
-            "elasticnet_alpha_grid_classification",
-            None,
-        )
-        rep_cls_l1 = representation_cfg.get(
-            "elasticnet_l1_ratio_grid_classification",
-            None,
-        )
-        rep_cls_C = representation_cfg.get("classifier_C_grid", None)
+        rep_alpha = representation_cfg.get("elasticnet_alpha_grid", None)
+        rep_l1 = representation_cfg.get("elasticnet_l1_ratio_grid", None)
+        rep_cls_C = representation_cfg.get("classifier__C", representation_cfg.get("classifier_C_grid", None))
 
-        if rep_reg_alpha is not None:
-            reg_alpha_grid = rep_reg_alpha
-        if rep_reg_l1 is not None:
-            reg_l1_ratio_grid = rep_reg_l1
-        if rep_cls_alpha is not None:
-            cls_alpha_grid = rep_cls_alpha
-        elif rep_reg_alpha is not None:
-            cls_alpha_grid = rep_reg_alpha
-        if rep_cls_l1 is not None:
-            cls_l1_ratio_grid = rep_cls_l1
-        elif rep_reg_l1 is not None:
-            cls_l1_ratio_grid = rep_reg_l1
+        if rep_alpha is not None:
+            alpha_grid = rep_alpha
+        if rep_l1 is not None:
+            l1_ratio_grid = rep_l1
         if rep_cls_C is not None:
             cls_C_grid = rep_cls_C
 
@@ -296,8 +324,8 @@ class RegionElasticNetModel(SklearnModel):
             )
 
             param_grid = {
-                "group_elastic_net__alpha": reg_alpha_grid,
-                "group_elastic_net__l1_ratio": reg_l1_ratio_grid,
+                "group_elastic_net__alpha": alpha_grid,
+                "group_elastic_net__l1_ratio": l1_ratio_grid,
             }
 
             scoring = "neg_mean_absolute_error"
@@ -320,8 +348,8 @@ class RegionElasticNetModel(SklearnModel):
             )
 
             param_grid = {
-                "group_elastic_net__alpha": cls_alpha_grid,
-                "group_elastic_net__l1_ratio": cls_l1_ratio_grid,
+                "group_elastic_net__alpha": alpha_grid,
+                "group_elastic_net__l1_ratio": l1_ratio_grid,
                 "classifier__C": cls_C_grid,
             }
 

@@ -58,6 +58,15 @@ def _as_scalar(value: Any) -> Any:
 	return str(value)
 
 
+def _build_exp_id(df: pd.DataFrame) -> pd.Series:
+	cols = ["run_id"]
+	if "fold" in df.columns:
+		cols.append("fold")
+	if "seed" in df.columns:
+		cols.append("seed")
+	return df[cols].astype(str).agg("_".join, axis=1)
+
+
 def _score_table(metrics_df: pd.DataFrame, metric_name: str) -> pd.DataFrame:
 	metric_rows = metrics_df[metrics_df["metric"].astype(str) == str(metric_name)].copy()
 	if metric_rows.empty:
@@ -158,6 +167,10 @@ def build_coeff_table(
 			)
 
 	df_out = pd.DataFrame(rows)
+	if df_out.empty:
+		df_out["exp_id"] = pd.Series(dtype="string")
+	else:
+		df_out["exp_id"] = _build_exp_id(df_out)
 	output_path.parent.mkdir(parents=True, exist_ok=True)
 	df_out.to_parquet(output_path, index=False)
 	return df_out
