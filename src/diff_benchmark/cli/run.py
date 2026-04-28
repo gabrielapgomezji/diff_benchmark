@@ -22,11 +22,17 @@ from diff_benchmark.analysis.region_coefficients import (
     extract_subject_region_coefficients,
     save_region_coefficients,
 )
+from diff_benchmark.analysis.permutation_importance import (
+    build_group_permutation_importance_records,
+)
 from diff_benchmark.analysis.save_results import save_model_results
 from diff_benchmark.analysis.true_vs_pred import plot_true_vs_pred
 from diff_benchmark.cli.utils import build_config_grid, cartesian_cfgs
 from diff_benchmark.data.prepare_data import DatasetPreparation
 from diff_benchmark.models.model_configurations import get_model
+from diff_benchmark.models.mesh_models.permutation_group_lasso import (
+    compute_group_permutation_importance,
+)
 from diff_benchmark.preprocessing.datasets_dataclasses import DatasetConfig
 from diff_benchmark.preprocessing.utils.utils_brain_feature_extraction import (
     resample_schaefer_onto_fs_lr,
@@ -353,6 +359,38 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
         columns=pred_key_cols + ["prediction"],
     )
 
+    permutation_path = experiment_dir / "permutation_importance" / "permutation_importance.parquet"
+    permutation_saver = ParquetSaver(
+        permutation_path,
+        key_columns=[
+            "run_id",
+            "model_name",
+            "fold",
+            "split",
+            "selected_region",
+            "repeat",
+        ],
+        columns=[
+            "run_id",
+            "model_name",
+            "dataset",
+            "tissue_type",
+            "primary_metric",
+            "prediction_task",
+            "fold",
+            "split",
+            "selected_region",
+            "selected_region_label",
+            "repeat",
+            "importance",
+            "importance_mean",
+            "importance_std",
+            "baseline_score",
+            "scoring",
+            "n_repeats",
+        ],
+    )
+
     metrics_rows: list[dict] = []
 
     # ------------------------------------------------------------------ #
@@ -434,6 +472,54 @@ def run_single_model(cfg_og, model_name: str, results_path: Path):
                 fold_idx,
             )
             pred_saver.save()
+
+            permutation_region = cfg.model.backbone.get("permutation_region", None)
+            permutation_n_repeats = int(cfg.model.backbone.get("permutation_n_repeats", 25))
+            permutation_scoring = cfg.model.backbone.get("permutation_scoring", None)
+            save_permutation_importance = bool(
+                cfg.model.backbone.get("save_permutation_importance", True)
+            )
+            if save_permutation_importance:
+                try:
+                    test_inputs = _extract_inputs_for_coefficients(model, test_loader)
+                    permutation_result = compute_group_permutation_importance(
+                        model=model,
+                        X=test_inputs,
+                        y=y_test,
+                        region=permutation_region,
+                        n_repeats=permutation_n_repeats,
+                        scoring=permutation_scoring,
+                        random_state=cfg.random_state,
+                    )
+                    permutation_records = build_group_permutation_importance_records(
+                        permutation_result,
+                        model_name=model_name,
+                        run_id=run_id,
+                        dataset=dataset_selected.name,
+                        tissue_type=cfg.dataset.tissue_type,
+                        primary_metric=cfg.dataset.metric_to_compute,
+                        prediction_task=cfg.pred_head.prediction_task,
+                        fold=fold_idx,
+                        split="test",
+                        metadata_fields={
+                            "permutation_region": permutation_region,
+                            "permutation_n_repeats": permutation_n_repeats,
+                            "permutation_scoring": permutation_scoring,
+                        },
+                    )
+                    permutation_saver.add_rows(permutation_records)
+                    permutation_saver.save()
+                    logger.info(
+                        "Saved permutation importance to %s for fold=%s split=test",
+                        permutation_path,
+                        fold_idx,
+                    )
+                except Exception as perm_err:
+                    logger.warning(
+                        "Permutation importance extraction failed (fold=%s, split=test): %s",
+                        fold_idx,
+                        perm_err,
+                    )
 
             # Accumulate metrics
             shared_meta = dict(

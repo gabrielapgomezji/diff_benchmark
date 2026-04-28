@@ -13,6 +13,10 @@ from diff_benchmark.analysis.print_summary_table import (
     table_weighted_aggregate,
 )
 from diff_benchmark.analysis.save_results import save_model_results
+from diff_benchmark.analysis.permutation_importance import (
+    build_group_permutation_importance_records,
+    save_group_permutation_importance,
+)
 from diff_benchmark.analysis.true_vs_pred import plot_true_vs_pred
 from diff_benchmark.analysis.region_coefficients import (
     average_region_coefficients,
@@ -44,6 +48,8 @@ __all__ = [
     "table_model_aggregate",
     "table_weighted_aggregate",
     "save_model_results",
+    "build_group_permutation_importance_records",
+    "save_group_permutation_importance",
     "plot_true_vs_pred",
     "extract_region_coefficients",
     "extract_subject_region_coefficients",

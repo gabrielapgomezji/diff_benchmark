@@ -6,6 +6,12 @@ backbone:
   # Region index to permute for group permutation importance.
   # Must be an int (lists not supported yet). Use null for random region.
   permutation_region: null
+  # Number of permutation repeats used when saving permutation importance.
+  permutation_n_repeats: 25
+  # Optional scorer name; null falls back to the model default.
+  permutation_scoring: null
+  # When false, skip saving permutation importance to disk.
+  save_permutation_importance: true
   classifier__C:
     - 0.01
     - 0.1
