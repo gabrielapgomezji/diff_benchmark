@@ -36,6 +36,9 @@ from diff_benchmark.models.mesh_models.sklearn_group_lasso import (
     RegionFusedSparseGroupLassoModel,
     RegionGroupLassoModel,
 )
+from diff_benchmark.models.mesh_models.permutation_group_lasso import (
+    PermutationRegionGroupLassoModel,
+)
 from diff_benchmark.models.mesh_models.sklearn_elasticnet import RegionElasticNetModel 
 from diff_benchmark.models.utils_models.additive_parcel_head import build_new_parcel_head
 
@@ -119,6 +122,7 @@ def create_model(
         "lasso": LassoModel,
         "region_pca": RegionPCAModel,
         "region_group_lasso": RegionGroupLassoModel,
+        "region_permutation_group_lasso": PermutationRegionGroupLassoModel,
         "region_fused_group_lasso": RegionFusedSparseGroupLassoModel,
         "region_elasticnet": RegionElasticNetModel,
     }
