@@ -114,6 +114,16 @@ def _add_model_embedding_columns(df: pd.DataFrame) -> pd.DataFrame:
 
     return out
 
+
+def _exclude_region_permutation_models(df: pd.DataFrame) -> pd.DataFrame:
+    cols = [c for c in ["model", "model_type", "model_name"] if c in df.columns]
+    if not cols:
+        return df
+    mask = np.ones(len(df), dtype=bool)
+    for col in cols:
+        mask &= ~df[col].astype(str).str.contains("region_permutation", case=False, na=False)
+    return df.loc[mask].copy()
+
 # ---------------------------------------------------------------------
 # Compute maps
 # ---------------------------------------------------------------------
@@ -571,6 +581,7 @@ def _plot_region_index_legend_map(surface_atlas, region_ids: list[int], title: s
 
 def build_binomial_selection_maps():
     df = pd.read_parquet(INPUT_TABLE)
+    df = _exclude_region_permutation_models(df)
     df["exp_id"] = _build_exp_id(df)
 
     # --------------------------------------------------

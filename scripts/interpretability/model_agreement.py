@@ -71,6 +71,16 @@ def _add_model_columns(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def _exclude_region_permutation_models(df: pd.DataFrame) -> pd.DataFrame:
+    cols = [c for c in ["model", "model_type", "model_name"] if c in df.columns]
+    if not cols:
+        return df
+    mask = np.ones(len(df), dtype=bool)
+    for col in cols:
+        mask &= ~df[col].astype(str).str.contains("region_permutation", case=False, na=False)
+    return df.loc[mask].copy()
+
+
 # ---------------------------------------------------------------------
 # FILTERING (same logic)
 # ---------------------------------------------------------------------
@@ -380,6 +390,8 @@ def plot_embedding_agreement_scatter(df: pd.DataFrame, bernoulli: bool = False):
 
 def main():
     df = pd.read_parquet(INPUT_TABLE)
+
+    df = _exclude_region_permutation_models(df)
 
     df["exp_id"] = _build_exp_id(df)
     df = _add_model_columns(df)
