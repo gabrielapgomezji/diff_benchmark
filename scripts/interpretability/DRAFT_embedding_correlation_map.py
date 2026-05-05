@@ -6,12 +6,16 @@ from diff_benchmark.analysis.region_coefficients import load_atlas_from_run
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 INPUT_TABLE = PROJECT_ROOT / "exp_outputs" / "summary" / "coefficients_long.parquet"
-OUTPUT_DIR = PROJECT_ROOT / "exp_outputs" / "summary" / "EASY_embedding_correlation_maps"
+OUTPUT_DIR = PROJECT_ROOT / "exp_outputs" / "summary" / "DRAFT_embedding_correlation_maps"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # REGION_REPRESENTATIONS = ["flatten", "mean_std", "summary_stats", "percentiles", "pca"]
 PERCENTILE = 0.90
 MICROSTRUCTURE_SELECTION = "md"
+DATASET_SELECTION = "hcp"
+TASK_SELECTION = "binary_classification"
+# TOP_K = 20
+THRESHOLD = 0.50
 
 # -------------------------
 # FILTER region_permutation
@@ -163,8 +167,12 @@ import matplotlib.pyplot as plt
 
 def plot_corr_matrix(corr_matrix, title, out_file):
     plt.figure(figsize=(6, 5))
-
-    plt.imshow(corr_matrix.values.astype(float), vmin=-1, vmax=1, cmap="coolwarm")
+    breakpoint()
+    if corr_matrix.min() < 0:
+        vmin, vmax = -1, 1
+    else:
+        vmin, vmax = 0, 1
+    plt.imshow(corr_matrix.values.astype(float), vmin=vmin, vmax=vmax, cmap="coolwarm")
 
     plt.colorbar(label="Pearson r")
 
@@ -282,9 +290,171 @@ def inspect_pair(embedding_matrix, emb_a, emb_b, top_k=10):
 
     return df_sorted
 
+def compute_binary_accuracy_matrix(binary_matrix: pd.DataFrame) -> pd.DataFrame:
+    embeddings = binary_matrix.columns
+    acc_matrix = pd.DataFrame(index=embeddings, columns=embeddings, dtype=float)
+
+    for a in embeddings:
+        for b in embeddings:
+            x = binary_matrix[a]
+            y = binary_matrix[b]
+
+            # exact agreement
+            acc = (x == y).mean()
+            acc_matrix.loc[a, b] = acc
+
+    return acc_matrix
+
+def build_binary_tensor(df):
+    return df.pivot_table(
+        index=["dataset", "task", "exp_id"],   # run-level
+        columns=["embedding_name", "region"],
+        values="selected",
+        aggfunc="mean"   # safe because selected is binary per run
+    ).fillna(0.0)
+    
+def compute_accuracy_from_selected(df):
+    embeddings = df["embedding_name"].unique()
+    acc = pd.DataFrame(index=embeddings, columns=embeddings, dtype=float)
+
+    for emb_a in embeddings:
+        for emb_b in embeddings:
+
+            sub_a = df[df["embedding_name"] == emb_a]
+            sub_b = df[df["embedding_name"] == emb_b]
+
+            merged = pd.merge(
+                sub_a,
+                sub_b,
+                on=["dataset", "task", "region", "exp_id"],
+                suffixes=("_a", "_b")
+            )
+
+            if len(merged) == 0:
+                acc.loc[emb_a, emb_b] = np.nan
+                continue
+
+            agreement = (merged["selected_a"] == merged["selected_b"]).mean()
+            acc.loc[emb_a, emb_b] = agreement
+
+    return acc
+
+def compute_accuracy_subset(df, region_subset):
+    embeddings = df["embedding_name"].unique()
+    acc = pd.DataFrame(index=embeddings, columns=embeddings, dtype=float)
+
+    df = df[df["region"].isin(region_subset)]
+
+    for emb_a in embeddings:
+        for emb_b in embeddings:
+
+            sub_a = df[df["embedding_name"] == emb_a]
+            sub_b = df[df["embedding_name"] == emb_b]
+
+            merged = pd.merge(
+                sub_a,
+                sub_b,
+                on=["dataset", "task", "region", "exp_id"],
+                suffixes=("_a", "_b")
+            )
+
+            if len(merged) == 0:
+                acc.loc[emb_a, emb_b] = np.nan
+                continue
+
+            acc.loc[emb_a, emb_b] = (
+                (merged["selected_a"] == merged["selected_b"]).mean()
+            )
+
+    return acc
+
+def compute_binary_jaccard_matrix_og(binary_matrix: pd.DataFrame) -> pd.DataFrame:
+    embeddings = binary_matrix.columns
+    acc_matrix = pd.DataFrame(index=embeddings, columns=embeddings, dtype=float)
+
+    for a in embeddings:
+        for b in embeddings:
+
+            x = binary_matrix[a]
+            y = binary_matrix[b]
+
+            intersection = ((x == 1) & (y == 1)).sum()
+            union = ((x == 1) | (y == 1)).sum()
+
+            acc_matrix.loc[a, b] = intersection / (union + 1e-8)
+
+    return acc_matrix
+
+def compute_binary_jaccard_matrix(binary_matrix: pd.DataFrame, mode="jaccard") -> pd.DataFrame:
+    embeddings = binary_matrix.columns
+    out = pd.DataFrame(index=embeddings, columns=embeddings, dtype=float)
+
+    for a in embeddings:
+        for b in embeddings:
+
+            x = binary_matrix[a]
+            y = binary_matrix[b]
+
+            n11 = ((x == 1) & (y == 1)).sum()
+            n00 = ((x == 0) & (y == 0)).sum()
+            n10 = ((x == 1) & (y == 0)).sum()
+            n01 = ((x == 0) & (y == 1)).sum()
+
+            if mode == "jaccard":
+                out.loc[a, b] = n11 / (n11 + n10 + n01 + 1e-8)
+
+            elif mode == "anti":
+                # conditional 0-0 agreement (recommended version)
+                out.loc[a, b] = n00 / (n00 + n10 + n01 + 1e-8)
+
+            else:
+                raise ValueError("mode must be 'jaccard' or 'anti'")
+
+    return out
+
+def compute_binary_balanced_accuracy_matrix(binary_matrix: pd.DataFrame) -> pd.DataFrame:
+    embeddings = binary_matrix.columns
+    out = pd.DataFrame(index=embeddings, columns=embeddings, dtype=float)
+
+    for a in embeddings:
+        for b in embeddings:
+
+            x = binary_matrix[a]
+            y = binary_matrix[b]
+
+            tp = ((x == 1) & (y == 1)).sum()
+            tn = ((x == 0) & (y == 0)).sum()
+            fp = ((x == 1) & (y == 0)).sum()
+            fn = ((x == 0) & (y == 1)).sum()
+
+            tpr = tp / (tp + fn + 1e-8)   # recall on positives
+            tnr = tn / (tn + fp + 1e-8)   # recall on negatives
+
+            out.loc[a, b] = 0.5 * (tpr + tnr)
+
+    return out
+
 def main():
   
     df = pd.read_parquet(INPUT_TABLE)
+    # -------------------------
+    # Filter dataset + task
+    # -------------------------
+    df = df[
+        (df["dataset"] == DATASET_SELECTION) &
+        (df["task"] == TASK_SELECTION)
+    ].copy()
+
+    # -------------------------
+    # PREPARE selected (needed for agreement)
+    # -------------------------
+    df = exclude_region_permutation(df)
+    df = filter_microstructure(df)
+
+    df["exp_id"] = build_exp_id(df)
+    df = add_embedding_name(df)
+    df = add_percentile_selection(df)
+    
     embedding_freq, global_freq = build_frequency_maps(df)
     for (dataset, task), sub_df in embedding_freq.groupby(["dataset", "task"]):
         global_vector = (
@@ -307,6 +477,15 @@ def main():
         # emb_a, emb_b = "flatten", "flatten"
         # inspect_pair(embedding_matrix, emb_a, emb_b, top_k=10)
         global_vector = global_vector.reindex(embedding_matrix.index).fillna(0.0)
+        # -------------------------
+        # Select top-K regions from global
+        # -------------------------
+        # top_regions = (
+        #     global_vector
+        #     .sort_values(ascending=False)
+        #     .head(TOP_K)
+        #     .index
+        # )
         embedding_matrix["global"] = global_vector
         corr_matrix = embedding_matrix.corr()
         plot_corr_matrix(
@@ -316,7 +495,51 @@ def main():
         )
         
         embeddings = list(embedding_matrix.columns)
-
+        
+        # #  -------------------------
+        # # Compute top-K corr matrix
+        # #  -------------------------
+        # embedding_matrix_top = embedding_matrix.loc[top_regions]
+        # # corr_matrix_top = embedding_matrix_top.corr()
+        # corr_matrix_top = embedding_matrix_top.drop(columns=["global"]).corr()
+        # plot_corr_matrix(
+        #     corr_matrix_top,
+        #     title=f"Top-{TOP_K} region correlations | {dataset} | {task}",
+        #     out_file=OUTPUT_DIR / f"corr_top{TOP_K}_{dataset}_{task}.png"
+        # )
+        
+        # --------------------------
+        # Region agreement maps (per embedding pair)
+        # --------------------------
+        binary_matrix = (embedding_matrix >= THRESHOLD).astype(int)
+        acc_matrix = compute_binary_accuracy_matrix(binary_matrix)
+        plot_corr_matrix(
+            acc_matrix,
+            title=f"Binary agreement (≥{THRESHOLD}) | {dataset} | {task}",
+            out_file=OUTPUT_DIR / f"binary_agreement_{dataset}_{task}.png"
+        )
+        
+        acc_matrix2 = compute_binary_jaccard_matrix(binary_matrix)
+        plot_corr_matrix(
+            acc_matrix2,
+            title=f"Binary agreement (≥{THRESHOLD}) | {dataset} | {task}",
+            out_file=OUTPUT_DIR / f"binary_agreement_corrected_{dataset}_{task}.png"
+        )
+        
+        acc_matrix3 = compute_binary_jaccard_matrix(binary_matrix, mode="anti")
+        plot_corr_matrix(
+            acc_matrix3,
+            title=f"Binary agreement (≥{THRESHOLD}) | {dataset} | {task}",
+            out_file=OUTPUT_DIR / f"binary_agreement_corrected0s_{dataset}_{task}.png"
+        )
+        
+        acc_matrix_balanced = compute_binary_balanced_accuracy_matrix(binary_matrix)
+        plot_corr_matrix(
+            acc_matrix_balanced,
+            title=f"Binary balanced agreement (≥{THRESHOLD}) | {dataset} | {task}",
+            out_file=OUTPUT_DIR / f"binary_agreement_balanced_{dataset}_{task}.png"
+        )
+        
         # -------------------------
         # Frequency maps grid (global + embeddings)
         # -------------------------
@@ -333,69 +556,6 @@ def main():
             f"Embedding frequency maps | {dataset} | {task}",
             OUTPUT_DIR / f"embedding_frequency_maps_{dataset}_{task}.png",
         )
-
-        # # -------------------------
-        # # Region-wise relative diff grid (frequency-based)
-        # # -------------------------
-        # n = len(embeddings)
-
-        # max_rel = 0.0
-        # for emb_a in embeddings:
-        #     for emb_b in embeddings:
-        #         a = embedding_matrix[emb_a]
-        #         b = embedding_matrix[emb_b]
-        #         # rel = (a - b).abs() / (a.abs() + 1e-8)
-        #         # rel = (a - b).abs() / (np.maximum(a.abs(), b.abs()) + 1e-8)
-        #         eps = 0.35
-        #         rel = (a - b).abs() / (np.maximum(np.maximum(a, b), eps))
-        #         if rel.notna().any():
-        #             max_rel = max(max_rel, float(rel.max()))
-        # if max_rel <= 0.0:
-        #     max_rel = 1e-6
-
-        # fig = plt.figure(figsize=(2.4 * n * 2 + 1.6, 2.4 * n))
-        # gs = fig.add_gridspec(n, n * 2 + 1, width_ratios=[1] * (n * 2) + [0.06], wspace=0.02, hspace=0.08)
-
-        # vmin, vmax = 0.0, max_rel
-        
-        # for i, emb_a in enumerate(embeddings):
-        #     for j, emb_b in enumerate(embeddings):
-        #         ax_left = fig.add_subplot(gs[i, j * 2], projection="3d")
-        #         ax_right = fig.add_subplot(gs[i, j * 2 + 1], projection="3d")
-
-        #         a = embedding_matrix[emb_a]
-        #         b = embedding_matrix[emb_b]
-        #         # rel = (a - b).abs() / (a.abs() + 1e-8)
-        #         # rel = (a - b).abs() / (np.maximum(a.abs(), b.abs()) + 1e-8)
-        #         eps = 0.35
-        #         rel = (a - b).abs() / (np.maximum(np.maximum(a, b), eps))
-        #         values = to_label_map(rel)
-        #         title = f"{emb_a} vs {emb_b}"
-
-        #         _plot_surface_row(
-        #             surface_atlas,
-        #             values,
-        #             ax_left,
-        #             ax_right,
-        #             vmin,
-        #             vmax,
-        #             title,
-        #             "Reds"
-        #         )
-
-        # cax = fig.add_subplot(gs[:, -1])
-        # sm = plt.cm.ScalarMappable(cmap="Reds", norm=plt.Normalize(vmin=vmin, vmax=vmax))
-        # sm.set_array([])
-        # fig.colorbar(sm, cax=cax)
-
-        # plt.suptitle(f"Embedding relative diff grid | {dataset} | {task}", fontsize=18)
-        # plt.tight_layout()
-
-        # plt.savefig(
-        #     OUTPUT_DIR / f"embedding_relative_diff_grid_{dataset}_{task}.png",
-        #     dpi=150
-        # )
-        # plt.close()
 
 if __name__ == "__main__":
 	main()
