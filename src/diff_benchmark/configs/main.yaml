@@ -33,7 +33,7 @@ choices:
   # target: [age]
   backend.grid_search_n_jobs: [7]
   pred_head: [mesh_classification] #[mesh_regression] #
-  random_state: [50, 55] #[70, 75]
+  random_state: [90, 95, 100] #[70, 75]
   dataset.tissue_type: [gray]
   dataset.metric_to_compute: [sh, md, b0] #[md, sh, mk, b0]
   cluster: [margaret2_cpu]
