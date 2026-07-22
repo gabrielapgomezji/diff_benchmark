@@ -28,6 +28,8 @@ scripts/main_test_modular.py
 scripts/optimize_training.py
 scripts/prepare_data_wrapped.py
 scripts/rename_gray_matter_files.py
+scripts/interpretability/OUT*
+scripts/interpretability/focus/outputs/
 
 
 # Code files
@@ -37,6 +39,7 @@ poetry.lock
 analysis_results/
 outputs/
 multirun/
+*.parquet
 
 
 # Byte-compiled / optimized / DLL files
