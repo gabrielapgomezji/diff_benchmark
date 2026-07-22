@@ -420,6 +420,14 @@ def build_comprehensive_table(
             continue
 
         cfg = OmegaConf.load(config_file)
+        try:
+            random_state = cfg.random_state
+            int(random_state)
+        except Exception:
+            print(
+                f"Skipping {exp_dir.name}: invalid random_state={random_state}"
+            )
+            continue
 
         exp_info = {
             "run_id": exp_dir.name.replace("exp_", ""),
@@ -474,7 +482,6 @@ def build_comprehensive_table(
         exp_info.setdefault("config.runtime.learning_curve_id", None)
 
         all_experiments.append(exp_info)
-
     if not all_experiments:
         raise RuntimeError("No valid experiments found")
 
@@ -1174,6 +1181,9 @@ def main(cfg: DictConfig) -> None:
         plots=false: Skip generating plots
         force_plots=true: Force recomputing plots even if they exist (default: false)
         analysis.debug=true: Generate debug plots even for running/incomplete experiments (default: false)
+        analysis.experiments_root=/abs/path/to/experiments: Use a custom experiments directory
+        analysis.output_root=/abs/path/to/output: Save tables/plots outside ./exp_outputs
+        analysis.save_folds_table=true: Save per-fold results table (default: true)
         (no options): Do both tables and plots (default)
 
     Examples:
@@ -1188,17 +1198,29 @@ def main(cfg: DictConfig) -> None:
     show_plots = cfg.analysis.plots
     force_plots = cfg.analysis.get("force_plots", False)
     debug_mode = cfg.analysis.get("debug", False)
+    save_folds_table = cfg.analysis.get("save_folds_table", True)
 
     results_dir = Path("./exp_outputs")
-    experiments_root = results_dir / "experiments"
-    plots_root = results_dir / "plots"
-    summary_root = results_dir / "summary"
+    experiments_root_override = cfg.analysis.get("experiments_root", None)
+    if experiments_root_override:
+        experiments_root = Path(experiments_root_override)
+    else:
+        experiments_root = results_dir / "experiments"
+    output_root_override = cfg.analysis.get("output_root", None)
+    if output_root_override:
+        output_root = Path(output_root_override).expanduser()
+    else:
+        output_root = results_dir
+
+    plots_root = output_root / "plots"
+    summary_root = output_root / "summary"
 
     comprehensive_table_path = summary_root / "comprehensive_results.parquet"
     metrics_folds_path = summary_root / "metrics_folds.parquet"
     summary_metrics_path = summary_root / "metrics_summary.parquet"
 
     df_comprehensive = None
+    df_folds = None
     comprehensive_built = False
 
     # Build comprehensive results whenever analysis needs summary data.
@@ -1213,6 +1235,11 @@ def main(cfg: DictConfig) -> None:
             f"  Shape: {df_comprehensive.shape[0]} experiments × {df_comprehensive.shape[1]} columns"
         )
 
+        if save_folds_table:
+            print("\nBuilding per-fold results table...")
+            df_folds = build_global_metrics(experiments_root, metrics_folds_path)
+            print(f"✓ Per-fold table saved to: {metrics_folds_path}")
+
     # -----------------------------------------------------------------
     # 3) Print tables and reports
     # -----------------------------------------------------------------
@@ -1224,7 +1251,8 @@ def main(cfg: DictConfig) -> None:
         reports_dir = summary_root / "reports"
         generate_dataset_reports(df_comprehensive, reports_dir)
 
-        df_folds = build_global_metrics(experiments_root, metrics_folds_path)
+        if df_folds is None:
+            df_folds = build_global_metrics(experiments_root, metrics_folds_path)
         df_summary = build_summary_metrics(df_folds, summary_metrics_path)
 
         # -----------------------------------------------------------------
@@ -1394,6 +1422,7 @@ def main(cfg: DictConfig) -> None:
 
     if show_tables:
         print(f"  • Summary metrics: {summary_metrics_path}")
+    if df_folds is not None:
         print(f"  • Fold-level metrics: {metrics_folds_path}")
     if show_plots:
         print(f"  • Plots: {plots_root}")

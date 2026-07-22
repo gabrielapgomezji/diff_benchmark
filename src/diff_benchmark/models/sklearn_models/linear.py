@@ -16,7 +16,7 @@ class PCALinearModel(SklearnModel):
         self.prediction_task = kwargs.get("prediction_task", None)
         self.output_dim = 1
         if self.prediction_task == "binary_classification":
-            head = LogisticRegression(max_iter=1000)
+            head = LogisticRegression(max_iter=5000) #1000
             scoring = "balanced_accuracy"
 
             param_grid = {
@@ -89,7 +89,7 @@ class LinearModel(SklearnModel):
         self.output_dim = 1
 
         if self.prediction_task == "binary_classification":
-            head = LogisticRegression(max_iter=1000)
+            head = LogisticRegression(max_iter=5000) #1000
             scoring = "balanced_accuracy"
             param_grid = {
                 "linear__C": np.logspace(-10, 10, 21), 

@@ -3,6 +3,9 @@ plots: true
 force_plots: false
 debug: false
 run_ids: null
+experiments_root: null
+output_root: null
+save_folds_table: true
 
 coefficients_plot:
   enabled: false

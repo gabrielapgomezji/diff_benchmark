@@ -46,6 +46,12 @@ class PreprocessedData:
             shuffle=True,
             random_state=config.random_state,
         )
+        
+        prediction_task = self.config.pred_head.prediction_task
+        if prediction_task == "binary_classification":
+            self.stratify_labels = self.targets.ravel()
+        else:
+            self.stratify_labels = self.genders
 
     def get_fold_indices(self) -> list[tuple[np.ndarray, np.ndarray]]:
         """Return stratified K-fold split indices, optionally subsampling training sets.
@@ -61,7 +67,8 @@ class PreprocessedData:
         Raises:
             ValueError: If ``train_size`` is not a positive number.
         """
-        indices = list(self.skf.split(np.zeros(len(self.genders)), self.genders))
+        # indices = list(self.skf.split(np.zeros(len(self.genders)), self.genders))
+        indices = list(self.skf.split(np.zeros(len(self.genders)), self.stratify_labels))
         train_size = self.config.data.data_partition.train_size
 
         if train_size == 1.0:
@@ -303,7 +310,8 @@ class PreprocessedData:
             List of ``(train_loader, val_loader)`` tuples, one per fold.
         """
         folds = []
-        for train_idx, val_idx in self.skf.split(self.features, self.genders):
+        # for train_idx, val_idx in self.skf.split(self.features, self.genders):
+        for train_idx, val_idx in self.skf.split(self.features, self.stratify_labels):
             train_loader = DataLoader(
                 self._create_dataset(train_idx), batch_size=batch_size, shuffle=shuffle
             )
@@ -322,7 +330,8 @@ class PreprocessedData:
             List of ``((X_train, y_train, g_train), (X_val, y_val, g_val))`` per fold.
         """
         folds = []
-        for train_idx, val_idx in self.skf.split(self.features, self.genders):
+        # for train_idx, val_idx in self.skf.split(self.features, self.genders):
+        for train_idx, val_idx in self.skf.split(self.features, self.stratify_labels):
             train_data = (self.features[train_idx], self.targets[train_idx], self.genders[train_idx])
             val_data = (self.features[val_idx], self.targets[val_idx], self.genders[val_idx])
             folds.append((train_data, val_data))

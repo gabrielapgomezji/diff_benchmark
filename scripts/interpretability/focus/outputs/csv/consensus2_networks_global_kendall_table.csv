@@ -1,0 +1,8 @@
+network_name,hcp_score,hcp_rank,camcan_score,camcan_rank,rank_delta
+Default,0.9953,1,0.7330,2,-1
+Somatomotor,0.9251,2,0.7217,3,-1
+Control,0.8650,3,0.6404,4,-1
+VentralAttention,0.6678,4,0.4913,6,-2
+DorsalAttention,0.6250,5,0.4667,7,-2
+Visual,0.5212,6,0.7442,1,+5
+Limbic,0.4610,7,0.5603,5,+2

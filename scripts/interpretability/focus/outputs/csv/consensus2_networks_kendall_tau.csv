@@ -1,0 +1,11 @@
+model,region_representation,kendall_tau,p_value,n_networks
+region_elasticnet,flatten,0.2381,0.5619,7
+region_elasticnet,mean_std,0.4286,0.2389,7
+region_elasticnet,pca,0.3333,0.3813,7
+region_elasticnet,percentiles,-0.0476,1.0,7
+region_elasticnet,summary_stats,0.5238,0.1361,7
+region_group_lasso,flatten,0.7143,0.0302,7
+region_group_lasso,mean_std,0.488,0.1287,7
+region_group_lasso,pca,0.3333,0.3813,7
+region_group_lasso,percentiles,-0.0476,1.0,7
+region_group_lasso,summary_stats,0.5238,0.1361,7

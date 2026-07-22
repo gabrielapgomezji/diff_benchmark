@@ -1,0 +1,35 @@
+{
+  "Default_PFCm": "Dorsal + medial prefrontal cortex",
+  "Default_PFCv": "Ventral prefrontal cortex",
+  "Default_PFCmp": "Medial prefrontal cortex",
+  "Default_pCunPCC": "Precuneus + posterior cingulate cortex",
+  "Default_Par": "Parietal cortex",
+  "Default_Temp": "Temporal cortex",
+
+  "SomMot": "Primary somatosensory + motor cortex",
+  "SomMotA": "Somatomotor association area",
+  "SomMotB": "Secondary somatomotor subdivision",
+
+  "DorsAttn_Post": "Posterior dorsal attention system",
+  "DorsAttn_PrCv": "Precentral dorsal attention region",
+  "DorsAttn_FEF": "Frontal eye fields",
+
+  "SalVentAttn_FrOperIns": "Frontal operculum + insula",
+  "SalVentAttn_ParOper": "Parietal operculum",
+  "SalVentAttn_Med": "Medial salience network (ACC / midline integration)",
+  "SalVentAttn_TempOccPar": "Temporo-occipital-parietal junction",
+
+  "Limbic_OFC": "Orbitofrontal cortex",
+  "Limbic_TempPole": "Temporal pole",
+
+  "Cont_Par": "Parietal control region",
+  "Cont_PFCl": "Lateral prefrontal cortex",
+  "Cont_pCun": "Precuneus control node",
+  "Cont_Cing": "Cingulate cortex",
+  "Cont_PFCmp": "Medial prefrontal control region",
+
+  "Vis": "Primary + higher-order visual cortex",
+  "VisCent": "Central visual field representations",
+  "VisPeri": "Peripheral visual field representations",
+  "VisStriate": "Primary visual cortex"
+}

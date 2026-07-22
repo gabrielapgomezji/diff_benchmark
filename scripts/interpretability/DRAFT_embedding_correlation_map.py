@@ -3,18 +3,21 @@ import pandas as pd
 import ast
 from pathlib import Path
 from diff_benchmark.analysis.region_coefficients import load_atlas_from_run
+import json
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 INPUT_TABLE = PROJECT_ROOT / "exp_outputs" / "summary" / "coefficients_long.parquet"
-OUTPUT_DIR = PROJECT_ROOT / "exp_outputs" / "summary" / "DRAFT_embedding_correlation_maps"
+OUTPUT_DIR = PROJECT_ROOT / "exp_outputs" / "summary" / "DRAFT_embedding_correlation_maps" / "camcan" / "md"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+# FS_LABELS_JSON = PROJECT_ROOT / "aux_materials" / "fs_labels.json"
+SCHAEFER_LABELS_JSON = PROJECT_ROOT / "aux_materials" / "schaefer_labels.json"
 
 # REGION_REPRESENTATIONS = ["flatten", "mean_std", "summary_stats", "percentiles", "pca"]
 PERCENTILE = 0.90
 MICROSTRUCTURE_SELECTION = "md"
-DATASET_SELECTION = "hcp"
+DATASET_SELECTION = "camcan"
 TASK_SELECTION = "binary_classification"
-# TOP_K = 20
+TOP_K = 10 
 THRESHOLD = 0.50
 
 # -------------------------
@@ -167,12 +170,13 @@ import matplotlib.pyplot as plt
 
 def plot_corr_matrix(corr_matrix, title, out_file):
     plt.figure(figsize=(6, 5))
-    breakpoint()
-    if corr_matrix.min() < 0:
+    if corr_matrix.values.min() < 0:
         vmin, vmax = -1, 1
+        plt.imshow(corr_matrix.values.astype(float), vmin=vmin, vmax=vmax, cmap="coolwarm")
     else:
         vmin, vmax = 0, 1
-    plt.imshow(corr_matrix.values.astype(float), vmin=vmin, vmax=vmax, cmap="coolwarm")
+        plt.imshow(corr_matrix.values.astype(float), vmin=vmin, vmax=vmax, cmap="Reds")
+    
 
     plt.colorbar(label="Pearson r")
 
@@ -434,6 +438,213 @@ def compute_binary_balanced_accuracy_matrix(binary_matrix: pd.DataFrame) -> pd.D
 
     return out
 
+def plot_brain_and_heatmap(surface_atlas, global_vector, heatmap_df, title, out_file):
+    import matplotlib.pyplot as plt
+    from nilearn import plotting
+
+    fig = plt.figure(figsize=(12, 5))
+    gs = fig.add_gridspec(1, 3, width_ratios=[1, 1, 1.4], wspace=0.08)
+
+    # -------------------------
+    # LEFT: brain map
+    # -------------------------
+    ax_left = fig.add_subplot(gs[0, 0], projection="3d")
+    ax_right = fig.add_subplot(gs[0, 1], projection="3d")
+    ax_heat = fig.add_subplot(gs[0, 2])
+
+    label_map = to_label_map(global_vector)
+
+    _plot_surface_row(
+        surface_atlas,
+        label_map,
+        ax_left,
+        ax_right,
+        vmin=0,
+        vmax=1,
+        title="Global selection frequency",
+        cmap="Reds"
+    )
+
+    # -------------------------
+    # RIGHT: heatmap
+    # -------------------------
+    # label_map = _load_label_name_map()
+    label_map = load_schaefer_label_map(surface_atlas)
+
+    heatmap_df_named = heatmap_df.copy()
+    subnetwork_map = load_subnetwork_map()
+
+    heatmap_df_named.index = [
+        format_region_name(
+            parse_schaefer_label(
+                region_id_to_name(r, label_map),
+                subnetwork_map
+            ),
+            max_words_per_line=3   # slightly larger chunks works better here
+        )
+        for r in heatmap_df.index
+    ]
+    
+    ax = ax_heat
+
+    # data = heatmap_df.values.astype(float)
+    data = heatmap_df_named.values.astype(float)
+
+    im = ax.imshow(data, vmin=0, vmax=1, cmap="Reds")
+
+    # ticks
+    ax.set_xticks(range(len(heatmap_df.columns)))
+    ax.set_xticklabels(heatmap_df.columns, rotation=45, ha="right")
+
+    ax.set_yticks(range(len(heatmap_df.index)))
+    # ax.set_yticklabels(heatmap_df.index)
+    # ax.set_yticklabels(heatmap_df_named.index, fontsize=8)
+    ax.set_yticklabels(
+        heatmap_df_named.index,
+        fontsize=7,
+        linespacing=1.2   # ← key for multi-line readability
+    )
+
+    # annotations (percentages)
+    for i in range(data.shape[0]):
+        for j in range(data.shape[1]):
+            val = data[i, j]
+            ax.text(
+                j, i,
+                f"{val*100:.0f}%",
+                ha="center",
+                va="center",
+                color="black",
+                fontsize=8
+            )
+
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.02, label="Selection frequency")
+
+    ax.set_title("Top regions across embeddings")
+
+    fig.suptitle(title)
+    # plt.tight_layout()
+    fig.subplots_adjust(
+        left=0.04,   # space for brain
+        right=0.92,  # prevents colorbar cutoff
+        top=0.92,
+        bottom=0.21  # space for x labels
+    )
+    # fig.subplots_adjust(left=0.03, right=0.98)
+
+    plt.savefig(out_file, dpi=150)
+    plt.close()
+    
+def format_region_name(name: str, max_words_per_line: int = 2) -> str:
+    words = name.replace("_", " ").split()
+
+    lines = []
+    for i in range(0, len(words), max_words_per_line):
+        lines.append(" ".join(words[i:i + max_words_per_line]))
+
+    return "\n".join(lines)
+
+def clean_schaefer_name(name):
+    return (
+        name
+        .replace("17Networks_", "")
+        .replace("LH_", "L ")
+        .replace("RH_", "R ")
+        .replace("_", " ")
+    )
+
+def load_subnetwork_map():
+    if not SCHAEFER_LABELS_JSON.exists():
+        return {}
+
+    try:
+        return json.loads(SCHAEFER_LABELS_JSON.read_text())
+    except Exception:
+        return {}
+    
+def parse_schaefer_label(raw_name: str, subnetwork_map: dict) -> str:
+    """
+    Example:
+    LH_DefaultA_PFCdPFCm_1
+
+    → 
+    L Default A
+    Dorsal + medial prefrontal cortex
+    """
+
+    name = raw_name.replace("17Networks_", "")
+    parts = name.split("_")
+
+    # -------------------------
+    # Hemisphere
+    # -------------------------
+    hemi = "L" if parts[0] == "LH" else "R"
+
+    # -------------------------
+    # Network + subdivision (A/B/C)
+    # -------------------------
+    network_full = parts[1]  # e.g. DefaultA
+
+    network = network_full[:-1] if network_full[-1] in "ABC" else network_full
+    subpart = network_full[-1] if network_full[-1] in "ABC" else ""
+
+    # -------------------------
+    # Subnetwork key (KEEP A/B/C removed for mapping)
+    # -------------------------
+    sub_key = "_".join(parts[1:-1])  # DefaultA_PFCdPFCm
+
+    # IMPORTANT:
+    # remove A/B/C ONLY for lookup
+    sub_key_lookup = sub_key.replace("DefaultA", "Default") \
+                           .replace("DefaultB", "Default") \
+                           .replace("DefaultC", "Default")
+
+    region_name = subnetwork_map.get(sub_key_lookup, sub_key_lookup)
+
+    # -------------------------
+    # Final label
+    # -------------------------
+    if subpart:
+        header = f"{hemi} {network} ({subpart})"
+    else:
+        header = f"{hemi} {network}"
+
+    return f"{header}\n{region_name}"
+
+def load_schaefer_label_map(surface_atlas):
+    import pandas as pd
+    import numpy as np
+
+    tsv_path = surface_atlas["atlas_meta"]["label_tsv_path"]
+    df = pd.read_csv(tsv_path, sep="\t")
+
+    # remove background / medial wall
+    df = df[~df["name"].str.contains("Background", na=False)].copy()
+
+    # extract actual parcel IDs from surface atlas
+    parcel_ids = np.unique(surface_atlas["parcel_labels"])
+    parcel_ids = np.sort(parcel_ids)
+
+    # remove 0 if present (background)
+    parcel_ids = parcel_ids[parcel_ids != 0]
+
+    # sanity check
+    if len(parcel_ids) != len(df):
+        print("WARNING: mismatch between atlas parcels and TSV labels")
+
+    # map parcel ID → name
+    return {
+        int(pid): str(name)
+        for pid, name in zip(parcel_ids, df["name"])
+    }
+
+def region_id_to_name(region_index, label_map):
+    try:
+        rid = int(str(region_index).split(":")[-1])
+        return label_map.get(rid, f"region_{rid}")
+    except Exception:
+        return str(region_index)
+    
 def main():
   
     df = pd.read_parquet(INPUT_TABLE)
@@ -457,6 +668,13 @@ def main():
     
     embedding_freq, global_freq = build_frequency_maps(df)
     for (dataset, task), sub_df in embedding_freq.groupby(["dataset", "task"]):
+        run_id = df[
+            (df["dataset"] == dataset) &
+            (df["task"] == task)
+        ]["run_id"].iloc[0]
+
+        surface_atlas = load_atlas_from_run(run_id)
+        
         global_vector = (
             global_freq[
                 (global_freq["dataset"] == dataset) &
@@ -480,12 +698,26 @@ def main():
         # -------------------------
         # Select top-K regions from global
         # -------------------------
-        # top_regions = (
-        #     global_vector
-        #     .sort_values(ascending=False)
-        #     .head(TOP_K)
-        #     .index
-        # )
+        top_regions = (
+            global_vector
+            .sort_values(ascending=False)
+            .head(TOP_K)
+            .index
+        )
+        heatmap_df = embedding_matrix.loc[top_regions]
+
+        # remove "global" column if present
+        if "global" in heatmap_df.columns:
+            heatmap_df = heatmap_df.drop(columns=["global"])
+            
+        plot_brain_and_heatmap(
+            surface_atlas,
+            global_vector,
+            heatmap_df,
+            title=f"Top-{TOP_K} regions | {dataset} | {task}",
+            out_file=OUTPUT_DIR / f"brain_heatmap_{dataset}_{task}.png"
+        )
+        
         embedding_matrix["global"] = global_vector
         corr_matrix = embedding_matrix.corr()
         plot_corr_matrix(

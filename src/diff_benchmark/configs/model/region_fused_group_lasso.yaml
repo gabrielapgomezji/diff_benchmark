@@ -3,9 +3,9 @@ name: region_fused_group_lasso
 backbone:
   classifier__C:
     - 0.01
-    # - 0.1
-    # - 1
-    # - 10
+    - 0.1
+    - 1
+    - 10
     # - 100
 
   # options: "mean_std", "flatten", "pca", "summary_stats", "percentiles"
@@ -22,9 +22,9 @@ backbone:
 
   flatten:
     fused_group_lambda1_grid:
-      # - 0.0001
-      - 0.001
-      # - 0.01
+      - 0.0001
+      # - 0.001
+      - 0.01
       # - 0.1
     fused_group_lambda2_grid:
       # - 1e-6
@@ -32,110 +32,73 @@ backbone:
       - 1e-4
       # - 1e-3
     fused_group_lambda3_grid:
-      # - 1e-6
+      - 1e-6
       - 1e-5
-      - 1e-4
+      # - 1e-4
       # - 1e-3
 
   mean_std:
     fused_group_lambda1_grid:
       - 1e-6
-      - 3e-6
       - 1e-5
-      - 3e-5
       - 1e-4
-      - 3e-4
       - 1e-3
     fused_group_lambda2_grid:
       - 1e-7
-      - 3e-7
       - 1e-6
-      - 3e-6
       - 1e-5
-      - 3e-5
       - 1e-4
     fused_group_lambda3_grid:
       - 1e-7
-      - 3e-7
       - 1e-6
-      - 3e-6
       - 1e-5
-      - 3e-5
       - 1e-4
 
   pca:
     n_components_per_region: 10
     fused_group_lambda1_grid:
       - 1e-5
-      - 3e-5
       - 1e-4
-      - 3e-4
       - 1e-3
-      - 3e-3
     fused_group_lambda2_grid:
       - 1e-7
-      - 3e-7
       - 1e-6
-      - 3e-6
       - 1e-5
-      - 3e-5
     fused_group_lambda3_grid:
       - 1e-7
-      - 3e-7
       - 1e-6
-      - 3e-6
       - 1e-5
-      - 3e-5
 
   summary_stats:
     fused_group_lambda1_grid:
       - 1e-6
-      - 3e-6
       - 1e-5
-      - 3e-5
       - 1e-4
-      - 3e-4
       - 1e-3
-      - 3e-3
     fused_group_lambda2_grid:
       - 1e-7
-      - 3e-7
       - 1e-6
-      - 3e-6
       - 1e-5
-      - 3e-5
       - 1e-4
     fused_group_lambda3_grid:
       - 1e-7
-      - 3e-7
       - 1e-6
-      - 3e-6
       - 1e-5
-      - 3e-5
       - 1e-4
 
   percentiles:
     fused_group_lambda1_grid:
       - 1e-6
-      - 3e-6
       - 1e-5
-      - 3e-5
       - 1e-4
-      - 3e-4
       - 1e-3
     fused_group_lambda2_grid:
       - 1e-7
-      - 3e-7
       - 1e-6
-      - 3e-6
       - 1e-5
-      - 3e-5
       - 1e-4
     fused_group_lambda3_grid:
       - 1e-7
-      - 3e-7
       - 1e-6
-      - 3e-6
       - 1e-5
-      - 3e-5
       - 1e-4
