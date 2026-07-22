@@ -7,6 +7,7 @@ example.py
 scripts/main_test.py
 scripts/main_test2.py
 scripts/main_test_modular.py
+*_logs/
 *.png
 /data
 /data_old
@@ -15,6 +16,10 @@ MedicalNet_pytorch_files2
 slurm_logs
 lightning_logs
 _scratch/
+OUT/
+analysis_results/
+outputs/
+MICCAI2026-Latex-Template/
 
 
 # Byte-compiled / optimized / DLL files
