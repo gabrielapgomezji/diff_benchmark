@@ -1,25 +1,42 @@
-poetry.lock
+# Personal files
 scripts/example.py
 .vscode/
 configuration.yaml
 configuration2.yaml
 example.py
-scripts/main_test.py
-scripts/main_test2.py
-scripts/main_test_modular.py
-*_logs/
-*.png
 /data
 /data_old
 example_result.jsonl
 MedicalNet_pytorch_files2
 slurm_logs
 lightning_logs
-_scratch/
+MICCAI2026-Latex-Template/
 OUT/
+_scratch/
+scripts/analysis/
+scripts/data/
+scripts/visualization_backup/
+scripts/compute_cache.py
+scripts/data_preparation.py
+scripts/demographics_preparation.py
+scripts/download_curia.py
+scripts/hydra_main.py
+scripts/main.py
+scripts/main_test.py
+scripts/main_test2.py
+scripts/main_test_modular.py
+scripts/optimize_training.py
+scripts/prepare_data_wrapped.py
+scripts/rename_gray_matter_files.py
+
+
+# Code files
+poetry.lock
+*_logs/
+*.png
 analysis_results/
 outputs/
-MICCAI2026-Latex-Template/
+multirun/
 
 
 # Byte-compiled / optimized / DLL files
