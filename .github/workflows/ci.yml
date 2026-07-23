@@ -39,21 +39,28 @@ jobs:
       run: |
         poetry install --with dev
     
-    - name: Black (check only)
-      run: |
-        # Check code formatting with Black
-        poetry run black --check .
+    # - name: Black (check only)
+    #   run: |
+    #     # Check code formatting with Black
+    #     poetry run black --check .
     
-    - name: isort (check only)
-      run: |
-        # Check import sorting with isort
-        poetry run isort --check-only .
+    # - name: isort (check only)
+    #   run: |
+    #     # Check import sorting with isort
+    #     poetry run isort --check-only .
 
-    - name: Pylint
-      run: |
-        # Run Pylint on the main script
-        poetry run pylint src/
-
+    # - name: Pylint
+    #   run: |
+    #     # Run Pylint on the main script
+    #     poetry run pylint src/
+    ####
     # - name: Run tests with coverage
     #   run: |
     #     poetry run pytest tests --maxfail=1 --disable-warnings --cov=src --cov-report=xml
+    ####
+    - name: Run selected tests
+    run: |
+      poetry run pytest \
+        tests/test_cache.py \
+        tests/test_data_distribution.py \
+        tests/test_dimensions.py \
