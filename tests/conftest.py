@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+from omegaconf import OmegaConf
 
 
 @pytest.fixture
@@ -105,3 +106,29 @@ def sample_all_results(tmp_path: Path):
         json.dump(all_results, f)
 
     return tmp_path  # return directory containing the file
+
+@pytest.fixture
+def cached_experiments_root(tmp_path: Path) -> Path:
+    """Create fake experiment directories for cache tests."""
+
+    successful_runs = [
+        "2dcnn_1f5f8fac",
+        "mlp_a1b2c3d4",
+    ]
+
+    for run_id in successful_runs:
+        experiment_dir = tmp_path / f"exp_{run_id}"
+        metrics_dir = experiment_dir / "metrics"
+
+        metrics_dir.mkdir(parents=True)
+
+        OmegaConf.save(
+            {"status": "success"},
+            experiment_dir / "metadata.yaml",
+        )
+
+        # is_cached only checks that this file exists, so it does not
+        # need to contain a valid Parquet table for this unit test.
+        (metrics_dir / "summary.parquet").touch()
+
+    return tmp_path
