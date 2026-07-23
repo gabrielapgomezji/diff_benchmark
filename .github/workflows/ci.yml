@@ -37,7 +37,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        poetry install --with dev
+        poetry install --extras dev
     
     # - name: Black (check only)
     #   run: |
@@ -63,4 +63,4 @@ jobs:
         poetry run pytest \
           tests/test_cache.py \
           tests/test_data_distribution.py \
-          tests/test_dimensions.py 
+          tests/test_dimensions.py
