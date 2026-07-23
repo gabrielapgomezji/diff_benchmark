@@ -59,8 +59,8 @@ jobs:
     #     poetry run pytest tests --maxfail=1 --disable-warnings --cov=src --cov-report=xml
     ####
     - name: Run selected tests
-    run: |
-      poetry run pytest \
-        tests/test_cache.py \
-        tests/test_data_distribution.py \
-        tests/test_dimensions.py \
+      run: |
+        poetry run pytest \
+          tests/test_cache.py \
+          tests/test_data_distribution.py \
+          tests/test_dimensions.py
