@@ -84,3 +84,9 @@ fail-under = "9.20"
 [tool.pylint.'MESSAGES CONTROL']
 disable = "missing-module-docstring,line-too-long,too-few-public-methods"
 enable = ["useless-suppression", "use-symbolic-message-instead"]
+
+[tool.poetry.group.dev.dependencies]
+sphinx = "^9.1.0"
+myst-parser = "^5.1.0"
+furo = "^2025.12.19"
+
