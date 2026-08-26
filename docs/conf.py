@@ -41,13 +41,15 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 html_theme = "pydata_sphinx_theme"
 
 html_theme_options = {
+    "logo": {
+        "text": "DiffBench",
+    },
     "show_prev_next": True,
     "navigation_with_keys": True,
     "collapse_navigation": False,
     "show_nav_level": 2,
     "show_toc_level": 2,
     "navbar_align": "left",
-
     "icon_links": [
         {
             "name": "GitHub",
@@ -60,9 +62,3 @@ html_static_path = ['_static']
 html_css_files = [
     "custom.css",
 ]
-
-html_theme_options = {
-    "logo": {
-        "text": "DiffBench",
-    },
-}
